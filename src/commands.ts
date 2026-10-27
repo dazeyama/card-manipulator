@@ -180,6 +180,38 @@ export class Commands {
     land(this.app, landings, { stagger: 0 });
   }
 
+  /**
+   * F, right-click: flip cards over with a physical turn, rising and turning
+   * about the long axis; a selection flips in a quick cascade (spec 10.5, 15.5).
+   */
+  flip(uids: string[] = this.sel): void {
+    const store = this.app.store;
+    const cards = uids.map((u) => store.cards.get(u)!).filter(Boolean).sort((a, b) => b.z - a.z);
+    if (!cards.length) return;
+    const step = Math.min(10, 600 / cards.length);
+    store.moveCards(cards.map((c) => ({ uid: c.uid, faceUp: !c.faceUp })));
+    cards.forEach((c, i) => {
+      const pose = this.app.layer.pose(c.uid);
+      if (!pose) return;
+      // Always turn the same way; the roll is tidied back to 0 or PI afterwards.
+      const target = pose.roll + Math.PI;
+      this.app.motion.animate(c.uid, { x: c.x, y: c.y, z: c.z, yaw: c.yaw, roll: target }, {
+        duration: 350,
+        delay: i * step,
+        arc: 24,
+        ease: (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2),
+        done: () => {
+          const p = this.app.layer.pose(c.uid);
+          if (p && !this.app.motion.isAnimating(c.uid)) {
+            p.roll = c.faceUp ? 0 : Math.PI;
+            this.app.layer.touch(c.uid);
+          }
+        },
+      });
+    });
+    store.events.emit('settled', cards.map((c) => c.uid));
+  }
+
   /** Z: move the camera to fit the selection (or the whole table). */
   frame(): void {
     const store = this.app.store;

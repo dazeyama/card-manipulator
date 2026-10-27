@@ -875,6 +875,12 @@ All dated 2026-10-27, from the brainstorming session.
 | 63 | **(agent, 2026-10-27)** Backspace removes like Delete. The Removed tray groups cards by printing and finish and spawns back one line or everything, using the spawn panel's Arrival, Face and Where settings. |
 | 64 | **(agent, 2026-10-27)** `R` turns cards clockwise. Until physics lands (Phase 5), messy landings use the same random layout as messy spawns. |
 | 65 | **(agent, 2026-10-27)** A pile badge sits over the pile's top card (a stack's anchor, a messy pile's centre) and hides while its cards are held. A partly selected pile's badge reads "3 of 40 selected" (9.7) from Phase 4 on. |
+| 66 | **(agent, 2026-10-27)** Physics runs only for messy landings: a single card dropped on open table, any group dropped on a messy pile with Tidy drops off, flicks, and messy spawns of up to 180 cards. Tidy landings (onto a stack or single card, Tidy drops on, a gather on open table, formation) stay model-authored tweens. A physics drop is cut off at 420 ms and snapped flat, so a drag settles in about 125–170 ms plus a 90 ms snap. |
+| 67 | **(agent, 2026-10-27)** Held cards get no kinematic bodies: they pass over everything (15.2) and nothing needs to collide with them, so only loose cards ever have bodies. This simplifies the 15.1 table without changing any behaviour. |
+| 68 | **(agent, 2026-10-27)** Flick thresholds: Normal 2,300 px/s, Sensitive 1,400 px/s, Off never; the reversal must turn more than about 105°. A flicked card is tossed about 0.65 m/s along the flick with a spin about its long axis, so it lands turned over. |
+| 69 | **(agent, 2026-10-27)** A flip rises 24 mm and turns about the long axis in 350 ms; a cascade goes top card first, 10 ms apart, capped at 600 ms. Right-clicking a badge flips its pile. |
+| 70 | **(agent, 2026-10-27)** Card edges are shaded by hand rather than through the shadow map, with a little slack on the corner outline, so the side of a stack reads as clean layers instead of speckle. |
+| 71 | **(agent, 2026-10-27)** Rapier, whose WASM is inlined (4.3 MB), loads as its own chunk after the table appears; until it has loaded, drops land with tweens. |
 
 ## Appendix B: Open items
 

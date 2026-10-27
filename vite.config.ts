@@ -6,6 +6,6 @@ export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
   plugins: [shotPlugin()],
   server: { port: 5173, strictPort: true },
-  build: { target: 'es2022', chunkSizeWarningLimit: 4000 },
+  build: { target: 'es2022', chunkSizeWarningLimit: 6000 },
   test: { include: ['tests/**/*.test.ts'] },
 });

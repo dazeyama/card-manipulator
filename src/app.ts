@@ -10,6 +10,7 @@ import { Atlas, type Slot } from './render/atlas';
 import { CardImages } from './render/cardImages';
 import { CardLayer, type Pose } from './render/cards';
 import { Motion } from './physics/motion';
+import type { Physics } from './physics/world';
 
 export const ACCENT = new THREE.Color('#2563eb');
 
@@ -28,6 +29,8 @@ export class App {
   readonly layer: CardLayer;
   readonly motion: Motion;
   readonly images: CardImages;
+  /** Set once Rapier has loaded (Phase 5); null until then. */
+  physics: Physics | null = null;
   /** The table point under the cursor the last time it was over the table (spawn "at the cursor"). */
   readonly lastTablePoint = { x: 0, y: 0 };
   /** Last cursor position over the canvas, in canvas pixels. */

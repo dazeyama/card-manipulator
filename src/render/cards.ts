@@ -93,7 +93,9 @@ vec3 hue(float h) {
 
 const mapFragment = /* glsl */ `
 float cd = cardDist(vLocal.xy);
-if (cd > 0.0) discard;
+// Edge faces lie exactly on the outline (cd = 0): give them a little slack or
+// rounding noise punches holes in them.
+if (cd > (abs(vFace) < 0.5 ? 0.05 : 0.0)) discard;
 vec2 cuv = vLocal.xy / (CARD_HALF * 2.0) + 0.5;
 vec4 texel;
 if (vFace > 0.5) texel = sampleSlot(vFront, cuv);
@@ -108,6 +110,18 @@ const emissiveFragment = /* glsl */ `
 float px = max(fwidth(vLocal.x), fwidth(vLocal.y));
 float rimW = max(1.6, px * 2.6);
 float rim = vFlags.x * step(0.5, abs(vFace)) * smoothstep(-rimW, -rimW * 0.35, cd);
+if (abs(vFace) < 0.5) {
+  // Card edges: lit by hand, without the shadow map, so a stack's side reads as
+  // clean layers of card instead of shadow-map speckle.
+  vec3 n = normalize(vWorldN);
+  float lit = 0.66 + 0.26 * max(dot(n, normalize(vec3(-0.35, -0.55, 1.0))), 0.0);
+  // A faint line between cards, faded out once cards are too thin on screen to show it cleanly.
+  float fw = fwidth(vLocal.z);
+  float line = 1.0 - smoothstep(0.0, fw * 1.5, ${(CARD_T / 2).toFixed(3)} - abs(vLocal.z));
+  float fade = 1.0 - smoothstep(0.04, 0.1, fw);
+  totalEmissiveRadiance += vec3(0.40, 0.385, 0.36) * lit * (1.0 - 0.35 * line * fade);
+  diffuseColor.rgb = vec3(0.0);
+}
 diffuseColor.rgb = mix(diffuseColor.rgb, uAccent, rim * 0.85 + vFlags.x * 0.06);
 totalEmissiveRadiance += uAccent * rim * 0.55;
 if (vFlags.z > 0.5 && vFace > 0.5) {

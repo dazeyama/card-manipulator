@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Phases finished** | 1, 2, 3, 4 |
+| **Phases finished** | 1, 2, 3, 4, 5 |
 | **Phases with BROKEN items** | none so far |
 | **Run it** | `npm install` once, then `npm run dev` and open http://localhost:5173 (or double-click `start.bat`) |
 
@@ -95,6 +95,26 @@ Run in progress: the build is working through the phases in order.
 
 ---
 
+## Phase 5: Physics and feel ✅
+
+**Built**
+- Rapier world (`src/physics/world.ts`), metres inside, millimetres outside. Only loose cards have dynamic bodies (2 mm thick); nearby stacks become one static box each, other cards static slabs, the table a static ground. When everything sleeps (or after 420 ms) cards are snapped flat, stacked by the model 0.3 mm apart and handed back. Capped at 180 bodies (spec 17: under 200).
+- Messy drops through physics (decision 66), messy spawns of up to 180 cards fall as a handful; larger spawns use the dealt layout.
+- Tidy drops toggle in the top bar.
+- Flip: right-click (the selection if the card is in it), `F`, HUD Flip, right-click a badge; a physical turn with a cascade.
+- Flick: a fast move that reverses sharply tosses the card or clump and turns it over in the air (setting Off / Normal / Sensitive, UI in Phase 7).
+- Foil sheen (since Phase 1), now checked at two angles. Card edges re-shaded (decision 70).
+
+**Gate:** typecheck clean · 80 tests passed (adds flick detection) · build OK (Rapier split into its own chunk) · browser check OK, no console errors.
+
+**Measured:** 60-card messy spawn: 60 bodies, settled in 463 ms (dropped from up to 16 cm). 10 cards dropped on a messy pile: settled 125 ms after release. Single card on open table: 167 ms. Tidy drops on: ten cards land squared on one spot. Flick: card tossed about 195 mm and landed face down. Stack of 100: poses identical over one second, every step exactly 0.300 mm, zero bodies.
+
+**Screenshots:** [handful falling](reports/screenshots/phase-5/01-handful-falling.png) · [handful landed](reports/screenshots/phase-5/02-handful-landed.png) · [flip cascade](reports/screenshots/phase-5/03-flip-cascade.png) · [flick mid-air](reports/screenshots/phase-5/04-flick-midair.png) · [stack of 100](reports/screenshots/phase-5/05-stack-of-100.png) · [foil, angle A](reports/screenshots/phase-5/07-foil-a.png) · [foil, angle B](reports/screenshots/phase-5/08-foil-b.png)
+
+**Agent decisions:** 66–71.
+
+---
+
 ## Owner's QA checklist
 
 ### Phase 1
@@ -128,3 +148,11 @@ Run in progress: the build is working through the phases in order.
 - [ ] S, X, T, R, Z, Delete; Removed tray spawns back.
 - [ ] Refresh restores the table and camera.
 - [ ] Does the drag spring feel right (lag, tilt)?
+
+### Phase 5
+- [ ] Drop a handful (spawn ~60 as a messy pile, or drag a group onto a messy pile): it looks dropped.
+- [ ] Toggle Tidy drops (top bar) and drop again: it squares up.
+- [ ] Right-click flips with a turn; select forty and press F for a cascade.
+- [ ] **Flick feel:** a quick jerk and reverse during a drag tosses and flips the card. Is Normal too hard or too easy to trigger?
+- [ ] A stack of 100 doesn't jitter.
+- [ ] **Foil sheen taste:** does it read as "that one's a foil", not a disco effect?

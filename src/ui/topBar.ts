@@ -22,6 +22,17 @@ export class TopBar {
     this.el = h('header', { class: 'topbar' }, h('span', { class: 'brand' }, 'Card Manipulator'), name, this.status, this.actions);
     host.append(this.el);
     setInterval(() => this.refreshStatus(), 500);
+
+    // Tidy drops (spec 15.4): every release lands squared up when on.
+    const tidy = h('button', { class: 'btn small', title: 'When on, every drop lands squared up instead of messy' }, 'Tidy drops');
+    const syncTidy = () => {
+      tidy.classList.toggle('on', app.store.settings.tidyDrops);
+      tidy.setAttribute('aria-pressed', String(app.store.settings.tidyDrops));
+    };
+    tidy.addEventListener('click', () => app.store.updateSettings({ tidyDrops: !app.store.settings.tidyDrops }));
+    app.store.events.on('settings', syncTidy);
+    syncTidy();
+    this.actions.append(tidy);
   }
 
   private refreshStatus(): void {
