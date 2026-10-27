@@ -1,7 +1,8 @@
 // The feel of dragging (spec 10.1–10.4, 15.5): held cards lift about 10 mm,
 // tilt a little toward their motion and follow the cursor through a short
 // spring. Gather drags trail the selection in a clump behind the cursor;
-// formation and whole-stack drags move the cards as a rigid group.
+// formation and whole-stack drags move the cards as a rigid group. A Shift
+// drag sweeps: cards the cursor passes over are pulled into the clump.
 
 import type { App } from '../app';
 import { land, leaveSpreads, placeSequential, stackAt, type Landing } from '../commands';
@@ -33,6 +34,34 @@ interface Held {
   home: { x: number; y: number; z: number; yaw: number };
 }
 
+/** Sweep (decision 89): a pile gives up its top card at once, more after this long... */
+export const SWEEP_MORE_MS = 350;
+/** ...and all of it after this long under the cursor. */
+export const SWEEP_ALL_MS = 1600;
+/** Moving off a pile for less than this keeps its dwell time. */
+const SWEEP_GRACE_MS = 150;
+
+/** How many cards a sweep has pulled from a pile of `size` after `ms` over it. */
+export function sweepCount(ms: number, size: number): number {
+  if (size <= 1 || ms < SWEEP_MORE_MS) return Math.min(1, size);
+  if (ms >= SWEEP_ALL_MS) return size;
+  // Slow at first, then faster: a heavy pile resists, then gives way.
+  const k = ((ms - SWEEP_MORE_MS) / (SWEEP_ALL_MS - SWEEP_MORE_MS)) ** 2.2;
+  return Math.min(size, Math.max(2, 1 + Math.floor(k * (size - 1))));
+}
+
+/** The pile (or loose card) the sweep is over, and how long it has been there. */
+interface Dwell {
+  key: string;
+  since: number;
+  /** Cards pulled from it so far. */
+  taken: number;
+  /** Its size when the sweep reached it. */
+  size: number;
+  /** When the cursor slipped off it, or 0. */
+  lost: number;
+}
+
 /** Flick thresholds in screen pixels per second (spec 10.5: Off / Normal / Sensitive). */
 const FLICK_SPEED = { off: Infinity, normal: 2300, sensitive: 1400 };
 
@@ -45,6 +74,10 @@ export class DragController {
   /** Smoothed cursor velocity on screen, px/s, for flick detection. */
   private vel = { x: 0, y: 0 };
   private flicked = false;
+  private sweeping = false;
+  private dwell: Dwell | null = null;
+  /** Latest cursor position on screen, for the sweep's pick. */
+  private screen = { x: 0, y: 0 };
 
   constructor(private readonly app: App) {
     this.label = document.createElement('div');
@@ -67,8 +100,11 @@ export class DragController {
     return this.flicked;
   }
 
-  /** Begin a drag of these cards. `sx, sy` is the press point on screen. */
-  begin(uids: string[], mode: DragMode, sx: number, sy: number): CustomGesture | null {
+  /**
+   * Begin a drag of these cards. `sx, sy` is the press point on screen.
+   * `sweepFrom` (the pressed card) turns on the Shift sweep for a gather.
+   */
+  begin(uids: string[], mode: DragMode, sx: number, sy: number, sweepFrom?: string): CustomGesture | null {
     const store = this.app.store;
     const grab = this.app.rig.screenToPlane(sx, sy, 0);
     if (!grab || !uids.length) return null;
@@ -80,7 +116,7 @@ export class DragController {
     this.mode = mode;
     this.cursor = { x: grab.x, y: grab.y };
     this.held = cards.map((c, i) => {
-      const rank = i / Math.max(1, n - 1);
+      const rank = n === 1 ? 1 : i / (n - 1);
       let ox = c.x - grab.x;
       let oy = c.y - grab.y;
       let dz = c.z - minZ;
@@ -106,6 +142,14 @@ export class DragController {
     this.active = true;
     this.flicked = false;
     this.vel = { x: 0, y: 0 };
+    this.screen = { x: sx, y: sy };
+    this.sweeping = !!sweepFrom && mode === 'gather';
+    this.dwell = null;
+    if (sweepFrom && this.sweeping) {
+      // The pile the drag started on counts as already reached, its top card taken.
+      const pile = store.pileOf(sweepFrom);
+      this.dwell = { key: pile?.id ?? sweepFrom, since: performance.now(), taken: 1, size: pile ? pile.cardUids.length : 1, lost: 0 };
+    }
     this.showLabel(sx, sy);
     let last = { x: sx, y: sy, t: performance.now() };
 
@@ -115,6 +159,7 @@ export class DragController {
         if (!this.active) return;
         const p = this.app.rig.screenToPlane(x, y, 0);
         if (p) this.cursor = { x: p.x, y: p.y };
+        this.screen = { x, y };
         const now = performance.now();
         const dt = Math.max(4, now - last.t) / 1000;
         const v = { x: (x - last.x) / dt, y: (y - last.y) / dt };
@@ -181,9 +226,70 @@ export class DragController {
     return true;
   }
 
+  /** Shift sweep: pull in what the cursor is over, more the longer it stays (decision 89). */
+  private sweep(now: number): void {
+    const app = this.app;
+    const store = app.store;
+    const held = new Set(this.held.map((c) => c.uid));
+    const hit = pickCard(app.rig, app.layer, this.screen.x, this.screen.y, held);
+    let d = this.dwell;
+    if (!hit) {
+      if (d && !d.lost) d.lost = now;
+      if (d && now - d.lost > SWEEP_GRACE_MS) this.dwell = null;
+      return;
+    }
+    const pile = store.pileOf(hit);
+    const key = pile?.id ?? hit;
+    if (d && d.key === key) d.lost = 0;
+    else {
+      d = { key, since: now, taken: 0, size: pile ? pile.cardUids.filter((u) => !held.has(u)).length : 1, lost: 0 };
+      this.dwell = d;
+    }
+    const want = sweepCount(now - d.since, d.size);
+    while (d.taken < want) {
+      // The card under the cursor first, then the pile from the top down.
+      let next: string | null = d.taken === 0 ? hit : null;
+      if (!next && pile) {
+        let topZ = -Infinity;
+        for (const u of pile.cardUids) {
+          const c = store.cards.get(u);
+          if (c && !held.has(u) && c.z > topZ) {
+            topZ = c.z;
+            next = u;
+          }
+        }
+      }
+      if (!next) break;
+      this.collect(next);
+      held.add(next);
+      d.taken++;
+    }
+  }
+
+  /** Add a card to the clump; it springs up from where it lies. */
+  private collect(uid: string): void {
+    const app = this.app;
+    const card = app.store.cards.get(uid);
+    if (!card) return;
+    leaveSpreads(app, [uid]);
+    const i = this.held.length;
+    const a = i * 2.399963;
+    const r = Math.min(6, 1.5 * Math.sqrt(i % 9));
+    const top = this.held.reduce((m, c) => Math.max(m, c.dz), -CARD_T);
+    this.held.push({
+      uid, ox: Math.cos(a) * r, oy: Math.sin(a) * r, dz: top + CARD_T, omega: OMEGA_TAIL,
+      vx: 0, vy: 0, vz: 0, home: { x: card.x, y: card.y, z: card.z, yaw: card.yaw },
+    });
+    app.motion.cancel(uid);
+    app.motion.held.add(uid);
+    app.store.setSelection([...app.store.selection, uid]);
+    this.showLabel(this.screen.x, this.screen.y);
+  }
+
   /** Spring every held card toward its target. */
   private step(dt: number): void {
     if (!this.active) return;
+    if (this.sweeping) this.sweep(performance.now());
     const layer = this.app.layer;
     const steps = 2;
     const h = Math.min(dt, 1 / 30) / steps;
@@ -211,6 +317,8 @@ export class DragController {
 
   private finish(): void {
     this.active = false;
+    this.sweeping = false;
+    this.dwell = null;
     this.label.hidden = true;
     this.held = [];
   }

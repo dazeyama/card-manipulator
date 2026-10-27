@@ -404,7 +404,7 @@ One directional light with a shadow map covering the visible table, plus soft am
 | Esc | Clears the selection (or cancels a drag in progress). |
 | Click empty table | Clears the selection. |
 
-Shift has no click meaning on a card. It is reserved for lifting a whole stack (Ctrl and Shift were swapped by decision 88) (Section 10.2), so a press on a stack never has to guess between "toggle" and "lift" (owner, 2026-10-27).
+Shift has no click meaning on a card. It is reserved for the sweep drag (Section 10.3, decision 89), so a press never has to guess between "toggle" and "drag" (owner, 2026-10-27; Ctrl and Shift swapped by decision 88).
 
 ### 9.2 Selection HUD
 
@@ -477,17 +477,17 @@ Dragging a card that is in the selection drags the whole selection. Dragging a c
 
 ### 10.2 Stack grab: top card or whole stack
 
-Owner's decision (2026-10-27): **a plain drag on a stack peels the top card; a modifier drags the whole stack.**
+Owner's decision (2026-10-27): **a plain drag on a stack peels the top card; dragging its badge moves the whole stack** (a modifier did this until decision 89).
 
 - Left-drag on a stack's top card: that one card comes off.
-- **Shift + left-drag** on a stack: the whole stack lifts as one. One modifier lifts and the other toggles, so no modifier means one thing on click and another on drag (owner, 2026-10-27; Ctrl and Shift swapped by decision 88). Shift + drag on a single card simply drags it.
-- Dragging the count badge also lifts the whole stack, with no modifier.
+- Dragging a stack's count badge lifts the whole stack (decision 89; before that, Shift + drag on a card did too).
 
 ### 10.3 Group drag: gather by default, modifier keeps formation
 
 Owner's decision (2026-10-27): **gather by default; a modifier keeps the formation.**
 
 - **Gather**: as the drag begins, every selected card flows toward the cursor along a spring and trails behind it in a loose clump. On release the clump squares up into one stack at the drop point (Section 10.4).
+- **Sweep** (hold **Shift** while dragging a card, decision 89): a gather that keeps collecting. The selection (or just the pressed card, if it was not selected) gathers to the cursor, and every card the cursor passes over is pulled into the clump and selected. A quick pass over a pile takes only its top card; lingering over it pulls more, slowly at first and then faster, until after about 1.6 s the whole pile comes. On release the clump lands like any gather.
 - **Formation** (hold **Alt** while dragging): cards keep their relative positions and move as a rigid group. On release they drop in place, each landing on whatever is beneath it. On Windows, releasing Alt can focus the browser's menu bar; the app swallows Alt's `keyup` with `preventDefault`. If that still misfires in testing, the fallback is Ctrl + Shift + drag (decision 29).
 - Cards in the clump are drawn with a small per-card offset so the clump reads as "many cards", with the count in a label beside the cursor.
 
@@ -686,7 +686,7 @@ Personality: **snappy and light** (decision 42). Quick follow, short settles, ve
 | Shift + left-click | Nothing (reserved) | — | — |
 | Left-drag | Move it (or the selection if it is selected); on a stack, peels the top card | Move the whole pile | Marquee select |
 | Ctrl + left-drag | Move it; Ctrl has no drag meaning on cards | Move the whole pile | Marquee, adding |
-| Shift + left-drag | Move the whole stack | Move the whole pile | Marquee, subtracting |
+| Shift + left-drag | Sweep: gather it, pulling in every card the cursor passes over (Section 10.3) | Move the whole pile | Marquee, subtracting |
 | Alt + left-drag | Move the selection in formation | — | — |
 | Middle-click | Flip it (and the selection if it is selected) | Flip the pile | — |
 | Middle-drag | — | — | Orbit camera |
@@ -902,6 +902,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 86 | Owner (2026-10-27): a View button cycles four camera presets (Tilted 55°, Top-down 89°, Low 30°, Corner 45° turned 35° front-left), keeping position and zoom; Home and double middle-click reset to the table's centre at the current preset's angle. **(agent)** additions: the `V` key also cycles; cycles and resets swing over 450 ms and any manual pan, zoom or orbit interrupts the swing; the preset is kept in `localStorage` (a per-browser convenience, not part of the save file); a double middle-click is two presses within 350 ms and 8 px. |
 | 87 | Owner (2026-10-27): a double middle-click only straightens the angle back to the current preset; it no longer moves or zooms the camera, so the view can be fixed at any time while looking at something. Home still does the full reset to the table's centre. Replaces that part of decision 86. |
 | 88 | Owner (2026-10-27): **Ctrl and Shift swap on every mouse action**: Ctrl + click toggles a card or pile, Ctrl + marquee adds, Shift + marquee subtracts, Shift + drag lifts a whole stack, Ctrl-click negates a quick chip; Ctrl + Shift stays the formation fallback. **Right and middle buttons swap**: right-drag pans anywhere, double right-click straightens the view, middle-click flips, middle-drag on empty table orbits. Supersedes the button and modifier parts of decisions 17, 23, 28, 69 and 87. **(agent)** Keyboard shortcuts (Ctrl + A, Ctrl + F, Ctrl + S, Ctrl + E, Ctrl + Enter in the list box) keep Ctrl: they are the standard browser shortcuts, and Shift + a letter would clash with the plain letter keys. The Phase 1, 3, 5 and 6 "Where to look" lists in Section 18 keep their original wording as history. |
+| 89 | Owner (2026-10-27): **Shift + drag on a card sweeps**: the selection (or the pressed card) gathers to the cursor and cards the cursor passes over join the clump, like a magnet. A quick pass takes a pile's top card; lingering takes more, then all of it, so a big pile feels heavy. Whole-stack lift moves to badge drag only. Shift + drag on a selected card starts from the whole selection. **(agent)** timing: the second card comes after 350 ms over a pile, the rest arrive on an accelerating curve (`sweepCount`, exponent 2.2) and the whole pile after 1.6 s; slipping off a pile for under 150 ms keeps its dwell time; the pile the drag started on counts as reached; a swept card springs up from where it lay at the clump's slow tail rate; swept cards join the selection, and Esc sends them all home. |
 
 ## Appendix B: Open items
 

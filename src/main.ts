@@ -72,12 +72,11 @@ mouse.hooks.hover = (uid) => {
 // ---- mouse grammar (spec 16) ----
 
 mouse.hooks.cardDrag = (uid, x, y, mods) => {
-  // Shift + drag lifts the whole stack (decisions 23 and 88); Ctrl + Shift is the formation fallback (decision 29).
+  // Shift + drag sweeps: the selection (or this card) gathers, and cards the cursor
+  // passes over join it (decision 89). Ctrl + Shift is the formation fallback (decision 29).
   if (mods.shift && !mods.ctrl) {
-    const pile = store.pileOf(uid);
-    const uids = pile ? pile.cardUids : [uid];
-    store.setSelection(uids);
-    return drag.begin(uids, pile ? 'rigid' : 'single', x, y);
+    if (!store.selection.has(uid)) store.setSelection([uid]);
+    return drag.begin([...store.selection], 'gather', x, y, uid);
   }
   if (store.selection.has(uid) && store.selection.size > 1) {
     const formation = mods.alt || (mods.ctrl && mods.shift);
