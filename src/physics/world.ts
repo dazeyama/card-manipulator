@@ -28,6 +28,12 @@ const STEP = 1 / 120;
 const MAX_MS = 420;
 /** Spec 17: under 200 dynamic bodies at any moment. */
 export const MAX_BODIES = 180;
+/**
+ * The most cards one drop simulates. Measured on the target machine, a
+ * 60-card drop steps in about 5 ms and a 150-card tower in about 9 ms with
+ * 40 ms spikes, so bigger drops land by layout instead to keep frames smooth.
+ */
+export const MAX_DROP = 80;
 
 export interface LooseCard {
   uid: string;
@@ -82,9 +88,9 @@ export class Physics {
    * snapped flat, stacked by the model and `done` is called with their uids.
    * Returns false (and does nothing) if physics isn't ready or the drop is too big.
    */
-  drop(cards: LooseCard[], done: (uids: string[]) => void = () => {}): boolean {
+  drop(cards: LooseCard[], done: (uids: string[]) => void = () => {}, opts: { ccd?: boolean } = {}): boolean {
     const world = this.world;
-    if (!world || !cards.length || this.bodyCount + cards.length > MAX_BODIES) return false;
+    if (!world || !cards.length || cards.length > MAX_DROP || this.bodyCount + cards.length > MAX_BODIES) return false;
     const app = this.app;
     const loose = new Set(cards.map((c) => c.uid));
     const session: Session = { bodies: [], statics: [], started: performance.now(), done };
@@ -129,7 +135,7 @@ export class Physics {
         .setAngvel({ x: c.wx ?? 0, y: c.wy ?? 0, z: c.wz ?? 0 })
         .setLinearDamping(1.2)
         .setAngularDamping(2.5)
-        .setCcdEnabled(true)
+        .setCcdEnabled(opts.ccd ?? false)
         .setCanSleep(true);
       const body = world.createRigidBody(desc);
       world.createCollider(
@@ -157,7 +163,8 @@ export class Physics {
   private step(now: number, dt: number): void {
     const world = this.world;
     if (!world || !this.sessions.length) return;
-    this.accumulator = Math.min(this.accumulator + dt, 4 * STEP);
+    // At most two steps a frame: a slow frame slows the drop rather than snowballing.
+    this.accumulator = Math.min(this.accumulator + dt, 2 * STEP);
     while (this.accumulator >= STEP) {
       world.step();
       this.accumulator -= STEP;

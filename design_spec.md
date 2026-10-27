@@ -5,7 +5,7 @@
 | **Product** | 3D Card Manipulator (working name: "card-manipulator") |
 | **Owner** | Daisy |
 | **Spec version** | 0.3 — 2026-10-27 |
-| **Status** | Approved for an autonomous overnight build of Phases 1–8 (Section 0.1). Nothing is built yet. |
+| **Status** | Phases 1–8 built in the autonomous overnight run of 2026-10-27 (see `MORNING_REPORT.md`); awaiting the owner's morning QA. |
 | **Project folder** | `C:\ClaudeProjects\card-manipulator` |
 | **Live URL** | None yet. Deploy is deferred (decision 37). When it happens: `https://dazeyama.github.io/card-manipulator/`. |
 | **Inspiration** | Lucky Paper's MTG Scratchpad (`https://luckypaper.co/resources/scratchpad/`), rebuilt as a 3D table with physics and RTS-style selection |
@@ -891,6 +891,10 @@ All dated 2026-10-27, from the brainstorming session.
 | 79 | **(agent, 2026-10-27)** The inspect panel draws mana symbols as small coloured pills instead of fetching Scryfall's symbol SVGs, keeping network use to the API and the image CDN. |
 | 80 | **(agent, 2026-10-27)** The settings panel (gear in the top bar) holds Tidy drops, spawn arrival, face and place, flick sensitivity, the query cap (1–2,000) and the export format. Settings travel with the table document and the autosave. |
 | 81 | **(agent, 2026-10-27)** New, Open, Save and Export (whole table) sit in the top bar; Ctrl + S saves, Ctrl + E exports the selection. The overnight gate checked Save and Open by running the same document round trip in code, so nothing was written to the owner's Downloads folder. |
+| 82 | **(agent, 2026-10-27)** Close-up images (8.3): when a card is over 250 px tall on screen, up to 12 cards get their `normal` image, the hovered card first and then the cards nearest the centre whose face is on top, from a pool of 32 textures. The image plane is inset 2 mm so the card's border, rounded corners and selection rim still show. |
+| 83 | **(agent, 2026-10-27)** Far-zoom feedback (9.7): once the view is wider than 1.5 m, selected cards get a constant-size dot (one points draw call) and badges switch to short text ("3/20"). Badges declutter by priority (named, then partly selected, then bigger piles); the pencil and export buttons show on hover. |
+| 84 | **(agent, 2026-10-27)** One physics drop simulates at most 80 cards (`MAX_DROP`), continuous collision detection is on only for flicks, and physics takes at most two steps a frame. Measured on the target machine: 20 cards step in about 1.3 ms, 60 in about 5 ms, a 150-card tower in about 9 ms with 40 ms spikes. Bigger messy drops and spawns land by layout. |
+| 85 | **(agent, 2026-10-27)** Files beyond the 4.3 layout: `src/app.ts` (app context and frame loop), `src/commands.ts`, `src/named.ts`, `src/spawn.ts`, `src/state/pileSync.ts`, `src/render/{hires,markers,outlines}.ts`, `src/ui/{dom,pileEditor,exportPanel,queryTab,tray}.ts`, `src/io/download.ts`, `src/dev/*` (dev only), `devtools/shotPlugin.ts`, `scripts/make-test-data.ts`. `history.ts` is not created yet; undo is deferred (19). |
 
 ## Appendix B: Open items
 

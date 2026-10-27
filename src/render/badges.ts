@@ -20,12 +20,19 @@ interface Badge {
   y: number;
   shown: boolean;
   key: string;
+  /** Measured size, refreshed when the text changes. */
+  w: number;
+  h: number;
+  /** Higher wins a crowded spot: named piles, selected piles, bigger piles. */
+  prio: number;
 }
 
 export class Badges {
   private readonly layer: HTMLDivElement;
   private readonly badges = new Map<string, Badge>();
   private dirty = true;
+  /** Zoomed far out: shorter badge text so more fit. */
+  private compact = false;
 
   constructor(private readonly app: App, private readonly handlers: BadgeHandlers) {
     this.layer = document.createElement('div');
@@ -52,7 +59,8 @@ export class Badges {
       want.add(p.id);
       const sel = p.cardUids.filter((u) => store.selection.has(u)).length;
       const name = p.name ?? store.named.get(p.id)?.name ?? null;
-      const text = sel && sel < p.cardUids.length ? `${sel} of ${p.cardUids.length} selected` : `${p.cardUids.length}`;
+      const n = p.cardUids.length;
+      const text = sel && sel < n ? (this.compact ? `${sel}/${n}` : `${sel} of ${n} selected`) : `${n}`;
       this.ensure(p.id, name ? `${name} · ${text}` : text, sel === p.cardUids.length ? 'all' : sel ? 'some' : '', false);
     }
     for (const sp of store.spreads.values()) {
@@ -102,7 +110,7 @@ export class Badges {
       });
       this.handlers.decorate?.(pileId, el, spread);
       this.layer.append(el);
-      b = { el, text: t, x: NaN, y: NaN, shown: true, key: '' };
+      b = { el, text: t, x: NaN, y: NaN, shown: true, key: '', w: 0, h: 0, prio: 0 };
       this.badges.set(id, b);
     }
     const key = `${text}|${selState}|${spread}|${outline}`;
@@ -114,10 +122,18 @@ export class Badges {
       b.el.classList.toggle('spread', spread);
       b.el.classList.toggle('outline', outline);
       b.el.classList.toggle('named', !!this.app.store.named.get(spread || outline ? id.slice(id.indexOf(':') + 1) : id));
+      b.w = 0;
     }
+    const n = parseInt(text.replace(/^.*?(\d+)[^\d]*$/, '$1'), 10) || 0;
+    b.prio = (b.el.classList.contains('named') ? 1e6 : 0) + (selState ? 1e5 : 0) + n;
   }
 
   private update(): void {
+    const compact = this.app.rig.visibleWidth() > 1500;
+    if (compact !== this.compact) {
+      this.compact = compact;
+      this.dirty = true;
+    }
     if (this.dirty) {
       this.rebuild();
       this.dirty = false;
@@ -126,6 +142,7 @@ export class Badges {
     const rig = this.app.rig;
     const { width, height } = rig.viewport;
     const held = this.app.motion.held;
+    const placed: { b: Badge; px: number; py: number; on: boolean }[] = [];
     for (const [id, b] of this.badges) {
       let x: number, y: number, z: number;
       let hidden = false;
@@ -166,15 +183,34 @@ export class Badges {
         px = s.x;
         py = s.y;
       }
-      const onScreen = visible && px > -60 && py > -30 && px < width + 60 && py < height + 30;
-      if (onScreen !== b.shown) {
-        b.el.style.display = onScreen ? '' : 'none';
-        b.shown = onScreen;
+      const on = visible && px > -60 && py > -30 && px < width + 60 && py < height + 30;
+      placed.push({ b, px, py, on });
+    }
+    // Declutter: when badges overlap (zoomed out), the more important one stays.
+    placed.sort((a, b) => b.b.prio - a.b.prio);
+    const taken: [number, number, number, number][] = [];
+    for (const item of placed) {
+      const b = item.b;
+      let on = item.on;
+      if (on) {
+        // Measure once the badge has been laid out (a hidden badge measures 0).
+        if (!b.w && b.shown && b.el.offsetWidth) {
+          b.w = b.el.offsetWidth;
+          b.h = b.el.offsetHeight;
+        }
+        const w = b.w || 44, hh = b.h || 20;
+        const x0 = item.px - w / 2 - 2, y0 = item.py - hh - 2, x1 = x0 + w + 4, y1 = y0 + hh + 4;
+        if (taken.some(([a0, b0, a1, b1]) => x0 < a1 && x1 > a0 && y0 < b1 && y1 > b0)) on = false;
+        else taken.push([x0, y0, x1, y1]);
       }
-      if (onScreen && !(Math.abs(px - b.x) <= 0.3 && Math.abs(py - b.y) <= 0.3)) {
-        b.el.style.transform = `translate(${px.toFixed(1)}px, ${py.toFixed(1)}px) translate(-50%, -100%)`;
-        b.x = px;
-        b.y = py;
+      if (on !== b.shown) {
+        b.el.style.display = on ? '' : 'none';
+        b.shown = on;
+      }
+      if (on && !(Math.abs(item.px - b.x) <= 0.3 && Math.abs(item.py - b.y) <= 0.3)) {
+        b.el.style.transform = `translate(${item.px.toFixed(1)}px, ${item.py.toFixed(1)}px) translate(-50%, -100%)`;
+        b.x = item.px;
+        b.y = item.py;
       }
     }
   }

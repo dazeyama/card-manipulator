@@ -6,7 +6,7 @@ import { newUid } from './state/store';
 import { messyLayout, stackLayout, surfaceTop } from './state/piles';
 import type { Arrival, Card, CardRecord, Finish } from './state/types';
 import { easeOut } from './physics/motion';
-import { MAX_BODIES } from './physics/world';
+import { MAX_BODIES, MAX_DROP } from './physics/world';
 
 export interface SpawnItem {
   record: CardRecord;
@@ -53,7 +53,7 @@ export function spawnCards(app: App, items: SpawnItem[], opts: SpawnOptions): st
 
   // A messy handful falls through the physics world when it is small enough (spec 15.1).
   const physics = app.physics;
-  if (opts.arrival === 'messy' && physics && physics.bodyCount + cards.length <= MAX_BODIES) {
+  if (opts.arrival === 'messy' && physics && cards.length <= MAX_DROP && physics.bodyCount + cards.length <= MAX_BODIES) {
     cards.forEach((c, i) => {
       app.layer.setPose(c.uid, { x: c.x, y: c.y, z: base + 20 + i * 2.4, yaw: c.yaw, roll: c.faceUp ? 0 : Math.PI, tiltX: (Math.random() - 0.5) * 0.3, tiltY: (Math.random() - 0.5) * 0.3 });
     });

@@ -25,6 +25,9 @@ import { InspectPanel } from './ui/inspectPanel';
 import { ExportPanel } from './ui/exportPanel';
 import { SettingsPanel, confirmDialog } from './ui/settings';
 import { buildQueryTab } from './ui/queryTab';
+import { HiRes } from './render/hires';
+import { SelectionMarkers } from './render/markers';
+import { ACCENT } from './app';
 import { loadDoc, toDoc, validateDoc } from './io/saveFile';
 import { downloadText, pickFile, slug } from './io/download';
 import type { TableDoc } from './state/types';
@@ -59,7 +62,12 @@ const inspect = new InspectPanel(app, right);
 const exporter = new ExportPanel(app);
 const settingsPanel = new SettingsPanel(app);
 spawnPanel.addTab('query', 'Query', buildQueryTab(app, () => spawnPanel.options()));
-mouse.hooks.hover = (uid) => inspect.hover(uid);
+const hires = new HiRes(app);
+const markers = new SelectionMarkers(app, ACCENT);
+mouse.hooks.hover = (uid) => {
+  inspect.hover(uid);
+  hires.hovered = uid;
+};
 
 // ---- mouse grammar (spec 16) ----
 
@@ -279,7 +287,7 @@ physics
   .then(() => (app.physics = physics))
   .catch((err) => console.warn('Physics failed to load; drops land without it', err));
 
-export const ui = { app, mouse, keyboard, topBar, spawnPanel, hud, commands, drag, badges, tray, autosave, pileSync, physics, outlines, pileEditor, inspect, exporter, settingsPanel, saveFile, openFile, newTable };
+export const ui = { app, mouse, keyboard, topBar, spawnPanel, hud, commands, drag, badges, tray, autosave, pileSync, physics, outlines, pileEditor, inspect, exporter, settingsPanel, saveFile, openFile, newTable, hires, markers };
 
 if (import.meta.env.DEV) {
   // The phase gate reads this to confirm the page logged no errors since it loaded.
@@ -296,6 +304,7 @@ if (import.meta.env.DEV) {
     m.installShot(app);
     m.installSpawnFile(app);
   });
+  import('./dev/regression').then((m) => m.installRegression(app, ui));
   (window as unknown as { app: App; ui: typeof ui }).app = app;
   (window as unknown as { ui: typeof ui }).ui = ui;
 }

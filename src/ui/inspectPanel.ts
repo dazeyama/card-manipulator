@@ -12,7 +12,8 @@ const HOVER_MS = 150;
 export class InspectPanel {
   readonly el: HTMLElement;
   private readonly body: HTMLElement;
-  private shown: string | null = null;
+  // undefined until the first render, so the empty state is drawn too.
+  private shown: string | null | undefined = undefined;
   private pinned: string | null = null;
   private hovered: string | null = null;
   private timer = 0;

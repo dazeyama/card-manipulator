@@ -174,7 +174,8 @@ export class DragController {
       const spread = 1 + (i % 5) * 0.04;
       return { uid: c.uid, vx: tx * 650 * spread, vy: ty * 650 * spread, vz: 950, wx: ax * spin, wy: ay * spin, wz: 0 };
     });
-    if (!physics.drop(loose)) return false;
+    // Tossed cards move fast enough to need continuous collision detection.
+    if (!physics.drop(loose, undefined, { ccd: true })) return false;
     this.flicked = true;
     this.finish();
     return true;

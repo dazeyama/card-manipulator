@@ -4,11 +4,26 @@
 
 | | |
 |---|---|
-| **Phases finished** | 1, 2, 3, 4, 5, 6, 7 |
-| **Phases with BROKEN items** | none so far |
-| **Run it** | `npm install` once, then `npm run dev` and open http://localhost:5173 (or double-click `start.bat`) |
+| **Phases finished** | All eight (1–8), each through the full gate: typecheck, tests, build, browser check, commit |
+| **BROKEN items** | None |
+| **Tests** | 97 passing (query engine, decklist parser and export, pile detection, layouts, named piles, Scryfall client, camera, flick) |
+| **Final pass** | `await __regression()` in the dev console: 28 of 28 checklist items pass, no page errors |
+| **Run it** | `npm install` once, then `npm run dev` and open http://localhost:5173, or double-click `start.bat` |
 
-Run in progress: the build is working through the phases in order.
+**What works.** Everything in Sections 1–17 that Phases 1–8 list. You can spawn from a decklist, a single card or a Scryfall query; marquee and refine with the local query engine; gather, formation and whole-stack drags; messy drops through Rapier; spread and restack; named piles with filters and empty bins; inspect; decklist and CSV export; save and load files; autosave. Your 1,008-card cube resolves completely; it took 17 s cold and resolves in 50 ms from the cache. 2,000 cards run at a steady 60 fps on your RTX 4070 Ti, and a 1080p frame costs about 0.6 ms.
+
+**What I could not check myself (please do):**
+1. **Alt-drag formation on Windows** (decision 29): the browser tool can't hold modifier keys during a drag. Formation, Ctrl whole-stack drags and Shift/Ctrl marquees were checked with synthetic events that carry the modifier flags. I couldn't check whether releasing Alt focuses the browser menu bar. If it does, Ctrl + Shift + drag is already wired as the fallback.
+2. **Save and Open dialogs.** I didn't click them overnight, because that would have written files to your Downloads folder. The same document round trip passes in code.
+3. **Feel and taste:** drag spring and tilt, flick sensitivity, foil sheen, the size of the settle hop, and whether the `small` image is readable mid-zoom. Close-ups switch to `normal` images automatically.
+4. **Pasting an exported decklist into Moxfield.** The export parses back through this tool's own parser exactly.
+
+**Things to know:**
+- A spawn at the centre of the view lands on whatever pile is there and joins it, like any drop (decision 78).
+- One physics drop simulates at most 80 cards; bigger messy drops land by layout (decision 84).
+- A neat stack of the whole 1,008-card cube is a 30 cm tower, as a real one would be.
+- During testing I copied a decklist to your clipboard once (the Keep export check).
+- Your own Chrome starts with an empty table: the autosave, card cache and image cache live in each browser's own storage, and everything above ran in the built-in browser. The first cube paste in Chrome takes the cold times (about 17 s to resolve, about 24 s for images); after that it is fast.
 
 ---
 
@@ -27,7 +42,7 @@ Run in progress: the build is working through the phases in order.
 
 **Agent decisions:** 44–50 (Appendix A).
 
-**Commit:** see `git log` ("Phase 1: table and camera").
+**Commit:** `4fb437f`.
 
 ---
 
@@ -53,6 +68,8 @@ Run in progress: the build is working through the phases in order.
 
 **Agent decisions:** 51–56.
 
+**Commit:** `11bcba7`.
+
 ---
 
 ## Phase 3: Selection and the query engine ✅
@@ -71,6 +88,8 @@ Run in progress: the build is working through the phases in order.
 **Screenshots:** [marquee](reports/screenshots/phase-3/01-marquee.png) · [refined](reports/screenshots/phase-3/02-refined.png) · [table search c:r](reports/screenshots/phase-3/03-table-search-c-r.png) · [unsupported term](reports/screenshots/phase-3/04-unsupported-term.png)
 
 **Agent decisions:** 57–59.
+
+**Commit:** `548e34b`.
 
 ---
 
@@ -93,6 +112,8 @@ Run in progress: the build is working through the phases in order.
 
 **Agent decisions:** 60–65.
 
+**Commit:** `1130728`.
+
 ---
 
 ## Phase 5: Physics and feel ✅
@@ -112,6 +133,8 @@ Run in progress: the build is working through the phases in order.
 **Screenshots:** [handful falling](reports/screenshots/phase-5/01-handful-falling.png) · [handful landed](reports/screenshots/phase-5/02-handful-landed.png) · [flip cascade](reports/screenshots/phase-5/03-flip-cascade.png) · [flick mid-air](reports/screenshots/phase-5/04-flick-midair.png) · [stack of 100](reports/screenshots/phase-5/05-stack-of-100.png) · [foil, angle A](reports/screenshots/phase-5/07-foil-a.png) · [foil, angle B](reports/screenshots/phase-5/08-foil-b.png)
 
 **Agent decisions:** 66–71.
+
+**Commit:** `ff2def3`.
 
 ---
 
@@ -135,6 +158,8 @@ Run in progress: the build is working through the phases in order.
 
 **Agent decisions:** 72–75.
 
+**Commit:** `4c07bdf`.
+
 ---
 
 ## Phase 7: Inspect, export, save files, query spawn ✅
@@ -154,12 +179,48 @@ Run in progress: the build is working through the phases in order.
 
 **Agent decisions:** 77–81.
 
+**Commit:** `81541e9`.
+
+---
+
+## Phase 8: Polish ✅
+
+**Built**
+- Close-up quality (8.3, decision 82): `normal` images for the hovered card and the cards nearest the middle once cards are over 250 px tall.
+- Selection feedback at a distance (9.7, decision 83): constant-size dots for selected cards when zoomed far out; "3 of 40 selected" badges (since Phase 4) shorten to "3/40".
+- Badge decluttering by priority, with the pencil and export buttons on hover.
+- Physics tuned for frame time (decision 84); Rapier in its own chunk.
+- Error states: Scryfall unreachable or 429 (banner and toasts), invalid save files, query errors from Scryfall, an export with nothing selected, and the inspect panel's empty state (fixed: it started blank).
+- CLAUDE.md brought up to date (where things are, dev tooling, gotchas); `card-manipulator-preview` launch entry for the production build.
+- `src/dev/regression.ts`: the final pass as a script you can rerun (`await __regression()` in the dev console; it clears the table).
+
+**Gate:** typecheck clean · 97 tests · build OK · production build booted in the browser with no console errors · final pass 28/28.
+
+**Screenshots:** [close-up normal images](reports/screenshots/phase-8/01-closeup-normal-images.png) · [2,000 cards, red selected, far](reports/screenshots/phase-8/02-stress-2000-far-selection.png) · [2,000 cards, badges](reports/screenshots/phase-8/03-stress-2000-badges.png) · [cube sorted by colour](reports/screenshots/phase-8/04-cube-sorted-by-colour.png)
+
+**Agent decisions:** 82–85.
+
+### Performance against Section 17 (stress-2000.txt, measured on your RTX 4070 Ti)
+
+| Measure | Target | Measured |
+|---|---|---|
+| 2,000 cards on the table | 60 fps, frame under 8 ms at 1080p | 60 fps steady while panning far, panning near and orbiting with all 2,000 selected (median and p95 frame 16.7 ms, i.e. vsync). Full frame with shadows at 1920 × 1080: about 0.6 ms (render plus GPU sync, 40-frame average). Frame-loop CPU work 0.1–0.4 ms. |
+| Draw calls | under 20 | 4 in the main pass (table, cards, contact shadows, outlines/points), plus the shadow pass |
+| Dynamic bodies | under 200 | Capped at 180 total and 80 per drop; zero at rest |
+| Texture memory | under 1 GB | 5 atlas pages for 2,058 images, about 430 MB with mipmaps, plus at most 32 close-up textures (about 40 MB) |
+| Spawn a large list | 540 cards visible under 15 s warm | 1,008-card cube: 1.4 s warm (resolve 50 ms, images from cache); 17 s cold resolve. 2,000 distinct cards: 29 s cold |
+| Autosave | under 50 ms, off the frame | 0.5 ms (100 cards), 2.3 ms (2,000 cards), on idle time |
+| Pile detection after a drop | under 5 ms | Full table of 2,000 cards: about 4.5 ms once warm (6.5 ms the first time); typical tables 0.3 ms |
+| Physics frame cost | (not in 17) | 20 cards 1.3 ms a step, 60 cards about 5 ms, 80 the cap |
+
+The measurements ran in the browser pane (about 700 × 740 px) except the 1080p render timing, which resized the drawing buffer to 1920 × 1080.
+
 ---
 
 ## Owner's QA checklist
 
 ### Phase 1
-- [ ] Page loads with the numbered cards.
+- [ ] Page loads (your last table, restored). The Phase 1 numbered placeholder cards were removed in Phase 2 (decision 56).
 - [ ] Middle-drag pans; Space + left-drag pans too.
 - [ ] Wheel zooms toward the cursor.
 - [ ] Right-drag on empty table orbits and stops at the limits.
@@ -211,3 +272,9 @@ Run in progress: the build is working through the phases in order.
 - [ ] Save a file (Ctrl + S), New table, Open it back. **Not clicked overnight** (it would have written to your Downloads); the same round trip was tested in code.
 - [ ] Spawn `set:ltr r:rare` from the Query tab: the preview count comes first.
 - [ ] Settings: flick sensitivity, query cap, export format.
+
+### Phase 8
+- [ ] 2,000 cards (spawn `test-data/stress-2000.txt`) pan and orbit smoothly.
+- [ ] Zoom in close: cards in the middle sharpen to the big image.
+- [ ] Zoom far out with a selection: dots mark the selected cards; badges shorten and don't pile up.
+- [ ] Every checklist above still passes (or run `await __regression()` in the dev console).

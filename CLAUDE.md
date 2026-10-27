@@ -18,7 +18,9 @@ npm test
 npm run build
 ```
 
-`start.bat` runs the dev server and opens the browser. The built-in browser can start it by name: `card-manipulator` in `.claude/launch.json`.
+`start.bat` runs the dev server and opens the browser. The built-in browser can start it by name: `card-manipulator` in `.claude/launch.json`; `card-manipulator-preview` serves the production build on port 4173 (run `npm run build` first).
+
+Regenerate the test lists (Scryfall, through the app's own client): `node --experimental-transform-types scripts/make-test-data.ts [deck|dfc|bad|stress]`.
 
 ## Rules
 
@@ -34,12 +36,22 @@ npm run build
 
 ## Where things are
 
-- `src/state/` the table model, selection and piles.
+- `src/main.ts` boots everything and wires the mouse grammar, keys, badges and files; `src/app.ts` owns the store, renderer, camera and frame loop.
+- `src/commands.ts` landing cards and the Stack / Spread / Tidy / Rotate / Flip / Frame commands; `src/named.ts` named piles; `src/spawn.ts` creating cards.
+- `src/state/` the table model, selection, pile geometry and detection (`piles.ts`, pure), and `pileSync.ts` which runs detection after cards settle.
 - `src/scryfall/` the API client, resolution and caches.
 - `src/query/` the local Scryfall-subset query engine.
-- `src/render/` Three.js scene, instanced cards, atlas, picking, badges.
-- `src/physics/` Rapier world and the feel code.
+- `src/render/` Three.js scene, instanced cards (`cards.ts`, one draw call, shader does corners, rim, foil), the atlas (layers of one array texture), picking, badges, outlines of empty named piles, close-up `normal` images (`hires.ts`), far-zoom selection dots.
+- `src/physics/` `world.ts` Rapier for loose cards only, `feel.ts` drags, landings and flicks, `motion.ts` display tweens.
 - `src/input/` the mouse and keyboard grammar from spec Section 16.
 - `src/ui/` the DOM panels.
-- `src/io/` decklist parsing, export, save files.
+- `src/io/` decklist parsing, export (decklist, CSV), save files, autosave.
+- `src/dev/` dev-only tooling, never in the production build: `__shot(name)` saves a screenshot to `reports/screenshots/` (through `devtools/shotPlugin.ts`), `__spawnFile('cube.txt', opts)`, `await __regression()` runs every phase's checklist, `__errors` lists page errors since load.
 - `test-data/` lists for manual and automated testing; `cube.txt` is the owner's.
+
+## Gotchas
+
+- The Bash tool on this machine chokes on non-ASCII characters (such as `…` or `—`) inside heredocs: write such files with the Write tool.
+- If the dev page fails with "does not provide an export named …", Vite served a half-written module: `touch` the file and reload.
+- The built-in browser's drag action cannot hold Shift, Ctrl or Alt; test modifier drags with synthetic pointer events that carry the flags, and say so in reports.
+- `window.app` is the `#app` element when `main.ts` failed to load; check `__errors` or the console first.
