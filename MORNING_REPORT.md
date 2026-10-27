@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Phases finished** | 1, 2, 3, 4, 5, 6 |
+| **Phases finished** | 1, 2, 3, 4, 5, 6, 7 |
 | **Phases with BROKEN items** | none so far |
 | **Run it** | `npm install` once, then `npm run dev` and open http://localhost:5173 (or double-click `start.bat`) |
 
@@ -137,6 +137,25 @@ Run in progress: the build is working through the phases in order.
 
 ---
 
+## Phase 7: Inspect, export, save files, query spawn ✅
+
+**Built**
+- Inspect panel on the right: after 150 ms of hover (or with exactly one card selected) the `normal` image, name, mana cost, type line, oracle text for every face, P/T or loyalty, set, number, rarity and finish. Double-faced cards show both faces' images. Click the image to pin; the panel collapses to a strip.
+- Export: HUD Export (selection), Ctrl + E, a ⤓ button on every pile badge, and Export in the top bar (whole table). The decklist is copied at once; format `4 Name` or `4 Name (SET) 123` with `*F*` / `*E*` (remembered); Download .txt and Download CSV (14.2 columns).
+- Save file (Ctrl + S) with `cardData` embedded, Open… with validation and a confirm, New table with a confirm.
+- Spawn panel Query tab: Preview count, cap (500 default, settings allow up to 2,000), `-is:extra` always appended (noted under the box).
+- Settings panel (decision 80).
+
+**Gate:** typecheck clean · 97 tests passed (decklist export incl. a round trip through the parser, CSV rows and quoting, the `-is:extra` rule) · build OK · browser check OK, no page errors.
+
+**Checked in the browser:** hovered a modal DFC (both faces shown); named a pile Keep and clicked its ⤓ with the real mouse (decklist copied, 40 lines, parses back to 40 cards; this put a test decklist on the clipboard); typed `set:ltr r:rare`, Preview count said 79, Spawn 79 spawned them; save round trip in code (119 cards, the named pile and the table name came back; 199 KB file); New with Cancel and with confirm; settings panel.
+
+**Screenshots:** [inspect DFC](reports/screenshots/phase-7/01-inspect-dfc.png) · [export Keep](reports/screenshots/phase-7/02-export-keep.png) · [query preview](reports/screenshots/phase-7/03-query-preview.png) · [settings](reports/screenshots/phase-7/04-settings.png)
+
+**Agent decisions:** 77–81.
+
+---
+
 ## Owner's QA checklist
 
 ### Phase 1
@@ -185,3 +204,10 @@ Run in progress: the build is working through the phases in order.
 - [ ] Empty the pile: the label and outline stay; drop creatures on the outline to refill it.
 - [ ] Press N on empty table to prepare a bin; pencil, Delete removes it.
 - [ ] Merge two named piles: the one you drop onto keeps its name.
+
+### Phase 7
+- [ ] Hover shows a big readable image; a DFC shows both faces; click to pin.
+- [ ] Export Keep (⤓ on its badge) and paste it into Moxfield.
+- [ ] Save a file (Ctrl + S), New table, Open it back. **Not clicked overnight** (it would have written to your Downloads); the same round trip was tested in code.
+- [ ] Spawn `set:ltr r:rare` from the Query tab: the preview count comes first.
+- [ ] Settings: flick sensitivity, query cap, export format.

@@ -58,9 +58,14 @@ export class SpawnPanel {
     pane.classList.add('tab-pane');
     this.body.append(pane);
     this.tabs.set(id, { button, pane });
+    // Tabs added later start hidden behind whichever tab is showing.
+    pane.hidden = this.active !== null && this.active !== id;
   }
 
+  private active: string | null = null;
+
   show(id: string): void {
+    this.active = id;
     for (const [k, t] of this.tabs) {
       t.button.classList.toggle('active', k === id);
       t.pane.hidden = k !== id;

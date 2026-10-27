@@ -21,6 +21,13 @@ import { Physics } from './physics/world';
 import { NamedPiles } from './named';
 import { Outlines } from './render/outlines';
 import { PileEditor } from './ui/pileEditor';
+import { InspectPanel } from './ui/inspectPanel';
+import { ExportPanel } from './ui/exportPanel';
+import { SettingsPanel, confirmDialog } from './ui/settings';
+import { buildQueryTab } from './ui/queryTab';
+import { loadDoc, toDoc, validateDoc } from './io/saveFile';
+import { downloadText, pickFile, slug } from './io/download';
+import type { TableDoc } from './state/types';
 
 const root = document.getElementById('app')!;
 const top = h('div', { class: 'top-host' });
@@ -48,6 +55,11 @@ app.named = new NamedPiles(app);
 const outlines = new Outlines(app);
 const pileEditor = new PileEditor(app);
 store.events.on('notice', (msg) => toast(msg, 'warn', 4200));
+const inspect = new InspectPanel(app, right);
+const exporter = new ExportPanel(app);
+const settingsPanel = new SettingsPanel(app);
+spawnPanel.addTab('query', 'Query', buildQueryTab(app, () => spawnPanel.options()));
+mouse.hooks.hover = (uid) => inspect.hover(uid);
 
 // ---- mouse grammar (spec 16) ----
 
@@ -118,6 +130,20 @@ const badges = new Badges(app, {
       pileEditor.open(pileId, { x: r.left + r.width / 2, y: r.bottom });
     });
     el.append(pencil);
+    // Export this pile as a decklist (spec 11.3, 14.1).
+    const out = document.createElement('button');
+    out.className = 'badge-btn export-trigger';
+    out.title = 'Export this pile as a decklist';
+    out.textContent = '⤓';
+    out.addEventListener('pointerdown', (e) => e.stopPropagation());
+    out.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const r = el.getBoundingClientRect();
+      const id = pileId;
+      const uids = store.piles.get(id)?.cardUids ?? store.spreads.get(id)?.uids ?? [];
+      exporter.open(uids, store.named.get(id)?.name ?? 'pile', { x: r.left + r.width / 2, y: r.bottom });
+    });
+    el.append(out);
   },
   doubleClick(id) {
     if (id.startsWith('spread:')) commands.restack(id.slice(7));
@@ -179,6 +205,59 @@ hud.addButton('Stack', 'Gather the selection into one neat stack (S)', () => com
 hud.addButton('Spread', 'Spread the selection in a grid (X)', () => commands.spread());
 hud.addButton('Tidy', 'Square up each pile the selection touches (T)', () => commands.tidy());
 hud.addButton('Flip', 'Flip the selection over (F)', () => commands.flip());
+const exportBtn = hud.addButton('Export', 'Export the selection as a decklist or CSV (Ctrl + E)', () => exportSelection());
+exportBtn.classList.add('export-trigger');
+function exportSelection(): void {
+  const r = exportBtn.getBoundingClientRect();
+  exporter.open([...store.selection], 'selection', { x: r.left + r.width / 2 - 120, y: r.top - 360 });
+}
+keyboard.bind('ctrl+e', () => exportSelection());
+
+// ---- files (spec 14.3) ----
+
+function saveFile(): void {
+  const doc = toDoc(app, true);
+  downloadText(`${slug(store.name)}.json`, JSON.stringify(doc), 'application/json');
+  toast(`Saved ${store.name} (${store.cards.size.toLocaleString()} cards)`, 'ok');
+}
+async function openFile(): Promise<void> {
+  const file = await pickFile('.json,application/json');
+  if (!file) return;
+  let doc: unknown;
+  try {
+    doc = JSON.parse(await file.text());
+  } catch {
+    toast('That file is not valid JSON', 'error');
+    return;
+  }
+  const err = validateDoc(doc);
+  if (err) {
+    toast(err, 'error');
+    return;
+  }
+  if (store.cards.size && !(await confirmDialog(`Replace the table (${store.cards.size.toLocaleString()} cards) with ${file.name}?`, 'Replace'))) return;
+  await loadDoc(app, doc as TableDoc);
+  toast(`Loaded ${(doc as TableDoc).name}`, 'ok');
+}
+async function newTable(): Promise<void> {
+  if (store.cards.size && !(await confirmDialog(`Clear the table (${store.cards.size.toLocaleString()} cards) and start a new one?`, 'New table'))) return;
+  store.clear();
+  store.setName('Untitled table');
+  app.rig.reset();
+}
+keyboard.bind('ctrl+s', () => saveFile());
+const fileBtn = (label: string, title: string, run: () => void) => {
+  const b = h('button', { class: 'btn small', title }, label);
+  b.addEventListener('click', run);
+  topBar.actions.append(b);
+  return b;
+};
+fileBtn('New', 'Clear the table and start a new one', () => void newTable());
+fileBtn('Open…', 'Load a saved table file', () => void openFile());
+fileBtn('Save', 'Save the table as a file (Ctrl + S)', () => saveFile());
+fileBtn('Export', 'Export the whole table as a decklist or CSV', () => exporter.open([...store.cards.keys()], store.name)).classList.add('export-trigger');
+const gear = fileBtn('⚙', 'Settings', () => settingsPanel.toggle(gear));
+gear.classList.add('settings-trigger');
 
 // A 429 pauses the queue; say so while it lasts (spec 5.2).
 let bannerTimer = 0;
@@ -200,7 +279,7 @@ physics
   .then(() => (app.physics = physics))
   .catch((err) => console.warn('Physics failed to load; drops land without it', err));
 
-export const ui = { app, mouse, keyboard, topBar, spawnPanel, hud, commands, drag, badges, tray, autosave, pileSync, physics, outlines, pileEditor };
+export const ui = { app, mouse, keyboard, topBar, spawnPanel, hud, commands, drag, badges, tray, autosave, pileSync, physics, outlines, pileEditor, inspect, exporter, settingsPanel, saveFile, openFile, newTable };
 
 if (import.meta.env.DEV) {
   // The phase gate reads this to confirm the page logged no errors since it loaded.

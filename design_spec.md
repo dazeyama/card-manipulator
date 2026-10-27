@@ -886,6 +886,11 @@ All dated 2026-10-27, from the brainstorming session.
 | 74 | **(agent, 2026-10-27)** `N` with nothing selected creates a new empty named pile (a bin) at the cursor and opens its editor; cancelling removes it again. `N` on a selection that is not one pile shows a hint instead of guessing. |
 | 75 | **(agent, 2026-10-27)** Rejected cards land beside the pile, a card's width plus 28 mm to its right, as a small messy pile, then wobble. Dropping cards on an empty named pile's outline lands them as a neat stack in it, filter applied. |
 | 76 | **(agent, 2026-10-27)** In development the page counts its own errors (`window.__errors`) so the phase gate's "no console errors" check covers only the page as it is now, not messages kept from earlier reloads. Not part of the production build. |
+| 77 | **(agent, 2026-10-27)** Export opens a small panel and copies the decklist straight away (14.1). Several piles get `// Name` header lines, which this tool's parser and Moxfield both read as comments; unnamed piles are "Pile 1, 2…", loose cards "Loose cards". The CSV pile column holds the named pile's name, or is blank. |
+| 78 | **(agent, 2026-10-27)** Query spawns take results in name order, one card each, nonfoil. Like any drop, a spawn at the centre of view onto an existing pile joins it. |
+| 79 | **(agent, 2026-10-27)** The inspect panel draws mana symbols as small coloured pills instead of fetching Scryfall's symbol SVGs, keeping network use to the API and the image CDN. |
+| 80 | **(agent, 2026-10-27)** The settings panel (gear in the top bar) holds Tidy drops, spawn arrival, face and place, flick sensitivity, the query cap (1–2,000) and the export format. Settings travel with the table document and the autosave. |
+| 81 | **(agent, 2026-10-27)** New, Open, Save and Export (whole table) sit in the top bar; Ctrl + S saves, Ctrl + E exports the selection. The overnight gate checked Save and Open by running the same document round trip in code, so nothing was written to the owner's Downloads folder. |
 
 ## Appendix B: Open items
 
