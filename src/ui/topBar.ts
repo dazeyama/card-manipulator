@@ -26,14 +26,14 @@ export class TopBar {
     host.append(this.el);
     setInterval(() => this.refreshStatus(), 500);
 
-    // View angle (spec 7.2): cycles the presets; Home and double middle-click return to the current one.
+    // View angle (spec 7.2): cycles the presets; double middle-click straightens to the current one.
     try {
       const saved = Number(localStorage.getItem(PRESET_KEY));
       if (saved > 0 && saved < VIEW_PRESETS.length) app.rig.preset = saved;
     } catch {
       // No storage: start on the first preset.
     }
-    const view = h('button', { class: 'btn small view-btn', title: 'Next camera angle (V). Home or double middle-click returns to it.' });
+    const view = h('button', { class: 'btn small view-btn', title: 'Next camera angle (V). Double middle-click straightens back to it.' });
     let shown = -1;
     const syncView = () => {
       if (app.rig.preset === shown) return;

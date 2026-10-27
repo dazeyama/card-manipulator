@@ -110,12 +110,12 @@ export class MouseInput {
     this.app.pointer.y = y;
     this.app.canvas.focus({ preventScroll: true });
     if (e.button === 1) {
-      // Double middle-click returns to the current default view.
+      // Double middle-click straightens the view to the current preset's angle, staying put.
       const now = performance.now();
       const m = this.lastMiddle;
       if (now - m.at < 350 && Math.hypot(x - m.x, y - m.y) < 8) {
         this.lastMiddle = { x: 0, y: 0, at: 0 };
-        this.app.rig.reset();
+        this.app.rig.straighten();
         e.preventDefault();
         return;
       }

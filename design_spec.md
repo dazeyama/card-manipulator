@@ -355,7 +355,8 @@ Owner's decision (2026-10-27): **light UI on a pale table** (decision 39).
 - **Zoom**: mouse wheel, toward the cursor, between a whole-table view (about 3,000 mm wide) and a single-card view (about 150 mm wide).
 - **Orbit**: right-drag on empty table. Right-click without dragging on a card flips it (Section 10.5), so orbit begins only after the cursor has moved more than 4 px with the button down, and only if the press was not on a card.
 - **View presets** (owner, 2026-10-27, decision 86): a **View** button in the top bar, and the `V` key, cycle the camera through four angles: Tilted (55°), Top-down (89°), Low (30°) and Corner (45°, turned 35° to the front-left). Cycling keeps where the camera looks and how far out it is; only the angle swings, smoothly, in about half a second. The current preset is remembered in the browser.
-- **Home** key, or a **double middle-click**, resets the camera: back to the table's centre at the default zoom, looking from the current preset's angle (decision 86). **Frame selection** (`Z`) moves the camera to fit the selection.
+- **Double middle-click** straightens the view: the angle swings back to the current preset, and where the camera looks and how far out it is stay put (decision 87).
+- **Home** key resets the camera: back to the table's centre at the default zoom, looking from the current preset's angle (decision 86). **Frame selection** (`Z`) moves the camera to fit the selection.
 
 ---
 
@@ -690,7 +691,7 @@ Personality: **snappy and light** (decision 42). Quick follow, short settles, ve
 | Right-click | Flip it (and the selection if it is selected) | Flip the pile | — |
 | Right-drag | — | — | Orbit camera |
 | Middle-drag, Space + left-drag | Pan | Pan | Pan |
-| Double middle-click | Reset camera to the current view preset | Reset camera | Reset camera |
+| Double middle-click | Straighten the view to the current preset angle, staying put | Straighten view | Straighten view |
 | Wheel | Zoom toward cursor | Zoom | Zoom |
 | Double-click | Toggle spread of its stack | Toggle spread | — |
 | Fast flick during a drag | Toss and flip | — | — |
@@ -899,6 +900,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 84 | **(agent, 2026-10-27)** One physics drop simulates at most 80 cards (`MAX_DROP`), continuous collision detection is on only for flicks, and physics takes at most two steps a frame. Measured on the target machine: 20 cards step in about 1.3 ms, 60 in about 5 ms, a 150-card tower in about 9 ms with 40 ms spikes. Bigger messy drops and spawns land by layout. |
 | 85 | **(agent, 2026-10-27)** Files beyond the 4.3 layout: `src/app.ts` (app context and frame loop), `src/commands.ts`, `src/named.ts`, `src/spawn.ts`, `src/state/pileSync.ts`, `src/render/{hires,markers,outlines}.ts`, `src/ui/{dom,pileEditor,exportPanel,queryTab,tray}.ts`, `src/io/download.ts`, `src/dev/*` (dev only), `devtools/shotPlugin.ts`, `scripts/make-test-data.ts`. `history.ts` is not created yet; undo is deferred (19). |
 | 86 | Owner (2026-10-27): a View button cycles four camera presets (Tilted 55°, Top-down 89°, Low 30°, Corner 45° turned 35° front-left), keeping position and zoom; Home and double middle-click reset to the table's centre at the current preset's angle. **(agent)** additions: the `V` key also cycles; cycles and resets swing over 450 ms and any manual pan, zoom or orbit interrupts the swing; the preset is kept in `localStorage` (a per-browser convenience, not part of the save file); a double middle-click is two presses within 350 ms and 8 px. |
+| 87 | Owner (2026-10-27): a double middle-click only straightens the angle back to the current preset; it no longer moves or zooms the camera, so the view can be fixed at any time while looking at something. Home still does the full reset to the table's centre. Replaces that part of decision 86. |
 
 ## Appendix B: Open items
 

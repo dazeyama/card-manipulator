@@ -177,9 +177,14 @@ export class CameraRig {
   /** Switch to the next preset angle, keeping where the camera looks and how far out it is. */
   cycle(): ViewPreset {
     this.preset = (this.preset + 1) % VIEW_PRESETS.length;
+    this.straighten();
+    return VIEW_PRESETS[this.preset];
+  }
+
+  /** Swing back to the current preset's angle, keeping where the camera looks and how far out it is. */
+  straighten(): void {
     const p = VIEW_PRESETS[this.preset];
     this.swingTo({ x: this.target.x, y: this.target.y, distance: this.distance, pitch: p.pitch, yaw: p.yaw }, performance.now());
-    return p;
   }
 
   private view(): View {

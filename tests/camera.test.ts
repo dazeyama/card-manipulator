@@ -76,6 +76,20 @@ describe('camera rig', () => {
     expect(r.target.length()).toBe(0);
   });
 
+  it('straightens to the current preset without moving or zooming', () => {
+    const r = rig();
+    r.target.set(-300, 450, 0);
+    r.distance = 700;
+    r.orbit(80, -60);
+    r.straighten();
+    r.step(performance.now() + 1000);
+    expect(r.pitch).toBe(VIEW_PRESETS[0].pitch);
+    expect(r.yaw).toBe(VIEW_PRESETS[0].yaw);
+    expect(r.target.x).toBeCloseTo(-300, 6);
+    expect(r.target.y).toBeCloseTo(450, 6);
+    expect(r.distance).toBeCloseTo(700, 6);
+  });
+
   it('a manual camera move interrupts a swing', () => {
     const r = rig();
     r.cycle();
