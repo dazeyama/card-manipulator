@@ -251,7 +251,7 @@ async function newTable(): Promise<void> {
   if (store.cards.size && !(await confirmDialog(`Clear the table (${store.cards.size.toLocaleString()} cards) and start a new one?`, 'New table'))) return;
   store.clear();
   store.setName('Untitled table');
-  app.rig.reset();
+  app.rig.reset(false);
 }
 keyboard.bind('ctrl+s', () => saveFile());
 const fileBtn = (label: string, title: string, run: () => void) => {

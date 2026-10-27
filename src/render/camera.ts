@@ -13,6 +13,28 @@ const FOV = 35;
 const MIN_WIDTH = 150;
 const MAX_WIDTH = 3600;
 export const DEFAULT_DISTANCE = 1400;
+const SWING_MS = 450;
+
+/** The view angles the View button cycles through; Home and double middle-click return to the current one. */
+export interface ViewPreset {
+  name: string;
+  pitch: number;
+  yaw: number;
+}
+export const VIEW_PRESETS: ViewPreset[] = [
+  { name: 'Tilted', pitch: DEFAULT_PITCH, yaw: 0 },
+  { name: 'Top-down', pitch: 89, yaw: 0 },
+  { name: 'Low', pitch: 30, yaw: 0 },
+  { name: 'Corner', pitch: 45, yaw: -35 },
+];
+
+interface View {
+  x: number;
+  y: number;
+  distance: number;
+  pitch: number;
+  yaw: number;
+}
 
 export class CameraRig {
   readonly camera: THREE.PerspectiveCamera;
@@ -23,6 +45,10 @@ export class CameraRig {
   yaw = 0;
   /** Set whenever the view changes, cleared by the owner. */
   changed = true;
+  /** Index into VIEW_PRESETS of the current default view. */
+  preset = 0;
+  /** A smooth move to another view in progress (cycling and resetting). */
+  private swing: { from: View; to: View; start: number } | null = null;
   private readonly ray = new THREE.Raycaster();
   private readonly ndc = new THREE.Vector2();
   private readonly tmp = new THREE.Vector3();
@@ -111,6 +137,7 @@ export class CameraRig {
 
   /** Shift the target so that the table point `grab` sits under the screen point again. */
   panTo(grab: THREE.Vector3, sx: number, sy: number): void {
+    this.swing = null;
     const now = this.screenToPlane(sx, sy, grab.z);
     if (!now) return;
     this.target.x += grab.x - now.x;
@@ -120,6 +147,7 @@ export class CameraRig {
 
   /** Zoom by a factor toward the table point under the cursor. */
   zoomAt(sx: number, sy: number, factor: number): void {
+    this.swing = null;
     const before = this.screenToPlane(sx, sy, 0);
     this.distance *= factor;
     this.update();
@@ -132,21 +160,65 @@ export class CameraRig {
   }
 
   orbit(dxPixels: number, dyPixels: number): void {
+    this.swing = null;
     this.yaw -= dxPixels * 0.25;
     this.pitch += dyPixels * 0.25;
     this.update();
   }
 
-  reset(): void {
-    this.target.set(0, 0, 0);
-    this.distance = DEFAULT_DISTANCE;
-    this.pitch = DEFAULT_PITCH;
-    this.yaw = 0;
+  /** Back to the table's centre at the default zoom, looking from the current preset's angle. */
+  reset(smooth = true): void {
+    const p = VIEW_PRESETS[this.preset];
+    const to = { x: 0, y: 0, distance: DEFAULT_DISTANCE, pitch: p.pitch, yaw: p.yaw };
+    if (smooth) this.swingTo(to, performance.now());
+    else this.jump(to);
+  }
+
+  /** Switch to the next preset angle, keeping where the camera looks and how far out it is. */
+  cycle(): ViewPreset {
+    this.preset = (this.preset + 1) % VIEW_PRESETS.length;
+    const p = VIEW_PRESETS[this.preset];
+    this.swingTo({ x: this.target.x, y: this.target.y, distance: this.distance, pitch: p.pitch, yaw: p.yaw }, performance.now());
+    return p;
+  }
+
+  private view(): View {
+    return { x: this.target.x, y: this.target.y, distance: this.distance, pitch: this.pitch, yaw: this.yaw };
+  }
+
+  private jump(v: View): void {
+    this.swing = null;
+    this.target.set(v.x, v.y, 0);
+    this.distance = v.distance;
+    this.pitch = v.pitch;
+    this.yaw = v.yaw;
     this.update();
+  }
+
+  private swingTo(to: View, now: number): void {
+    this.swing = { from: this.view(), to, start: now };
+  }
+
+  /** Advance a swing in progress; called once a frame. */
+  step(now: number): void {
+    const s = this.swing;
+    if (!s) return;
+    const t = Math.min(1, (now - s.start) / SWING_MS);
+    const k = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+    const a = s.from, b = s.to;
+    // Zoom in log space so a long zoom feels even.
+    const distance = a.distance * (b.distance / a.distance) ** k;
+    this.jump({ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, distance, pitch: a.pitch + (b.pitch - a.pitch) * k, yaw: a.yaw + (b.yaw - a.yaw) * k });
+    if (t < 1) this.swing = s;
+  }
+
+  get swinging(): boolean {
+    return this.swing !== null;
   }
 
   /** Move the camera to fit a table-space box (spec 7.2, Z). */
   frame(minX: number, minY: number, maxX: number, maxY: number, top = 0): void {
+    this.swing = null;
     this.target.set((minX + maxX) / 2, (minY + maxY) / 2, 0);
     const w = Math.max(maxX - minX, 90) * 1.35;
     const h = Math.max(maxY - minY, 120) * 1.35;
@@ -171,6 +243,7 @@ export class CameraRig {
   }
 
   fromState(s: CameraState): void {
+    this.swing = null;
     this.target.set(s.target[0], s.target[1], s.target[2]);
     this.distance = s.distance;
     this.pitch = s.pitch;

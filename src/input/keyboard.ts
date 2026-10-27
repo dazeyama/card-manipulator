@@ -32,6 +32,7 @@ export class KeyboardInput {
     });
     window.addEventListener('blur', () => (mouse.spaceDown = false));
     this.bind('home', () => this.app.rig.reset());
+    this.bind('v', () => this.app.rig.cycle());
   }
 
   bind(key: string, action: KeyAction): void {

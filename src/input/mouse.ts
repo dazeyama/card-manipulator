@@ -46,6 +46,7 @@ export class MouseInput {
   hovered: string | null = null;
   private readonly marqueeEl: HTMLDivElement;
   private lastClick = { uid: '', at: 0 };
+  private lastMiddle = { x: 0, y: 0, at: 0 };
 
   constructor(private readonly app: App) {
     const el = app.canvas.parentElement!;
@@ -108,6 +109,18 @@ export class MouseInput {
     this.app.pointer.x = x;
     this.app.pointer.y = y;
     this.app.canvas.focus({ preventScroll: true });
+    if (e.button === 1) {
+      // Double middle-click returns to the current default view.
+      const now = performance.now();
+      const m = this.lastMiddle;
+      if (now - m.at < 350 && Math.hypot(x - m.x, y - m.y) < 8) {
+        this.lastMiddle = { x: 0, y: 0, at: 0 };
+        this.app.rig.reset();
+        e.preventDefault();
+        return;
+      }
+      this.lastMiddle = { x, y, at: now };
+    }
     if (e.button === 1 || (e.button === 0 && this.spaceDown)) {
       const grab = this.app.rig.screenToPlane(x, y, 0);
       if (grab) this.gesture = { kind: 'pan', grab, button: e.button };

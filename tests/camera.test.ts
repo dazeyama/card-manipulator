@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CameraRig, DEFAULT_PITCH } from '../src/render/camera';
+import { CameraRig, DEFAULT_PITCH, VIEW_PRESETS } from '../src/render/camera';
 import { shortAngle } from '../src/physics/motion';
 
 function rig(): CameraRig {
@@ -49,10 +49,38 @@ describe('camera rig', () => {
     const r = rig();
     r.orbit(50, 50);
     r.target.set(100, 200, 0);
-    r.reset();
+    r.reset(false);
     expect(r.pitch).toBe(DEFAULT_PITCH);
     expect(r.yaw).toBe(0);
     expect(r.target.length()).toBe(0);
+  });
+
+  it('cycles view presets, keeping position and zoom, and resets to the current preset', () => {
+    const r = rig();
+    r.target.set(100, 200, 0);
+    r.distance = 900;
+    r.update();
+    const p = r.cycle();
+    expect(p.name).toBe('Top-down');
+    r.step(performance.now() + 1000);
+    expect(r.swinging).toBe(false);
+    expect(r.pitch).toBe(VIEW_PRESETS[1].pitch);
+    expect(r.target.x).toBeCloseTo(100, 6);
+    expect(r.target.y).toBeCloseTo(200, 6);
+    expect(r.distance).toBeCloseTo(900, 6);
+    for (let i = 0; i < VIEW_PRESETS.length; i++) r.cycle();
+    expect(r.preset).toBe(1);
+    r.reset();
+    r.step(performance.now() + 1000);
+    expect(r.pitch).toBe(VIEW_PRESETS[1].pitch);
+    expect(r.target.length()).toBe(0);
+  });
+
+  it('a manual camera move interrupts a swing', () => {
+    const r = rig();
+    r.cycle();
+    r.orbit(10, 0);
+    expect(r.swinging).toBe(false);
   });
 
   it('round-trips through the save state', () => {

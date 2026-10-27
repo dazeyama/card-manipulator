@@ -112,6 +112,7 @@ export class App {
       this.lastFrame = now;
       const t0 = performance.now();
       this.motion.update(now);
+      this.rig.step(now);
       for (const fn of this.frameHooks) fn(now, dt);
       this.layer.setTime(now / 1000);
       this.layer.update();

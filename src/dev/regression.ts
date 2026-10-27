@@ -47,7 +47,8 @@ export function installRegression(app: App, ui: Ui): void {
     const errorsBefore = ((window as unknown as { __errors: string[] }).__errors ?? []).length;
 
     store.clear();
-    app.rig.reset();
+    app.rig.preset = 0;
+    app.rig.reset(false);
     await wait(300);
 
     // ---- Phase 1 ----
@@ -61,7 +62,7 @@ export function installRegression(app: App, ui: Ui): void {
     check(1, 'wheel zoom is toward the cursor', Math.hypot(z1.x - z0.x, z1.y - z0.y) < 0.01);
     app.rig.orbit(-99999, 99999);
     check(1, 'orbit stops at the limits', app.rig.pitch === 89 && Math.abs(app.rig.yaw) === 60, `pitch ${app.rig.pitch} yaw ${app.rig.yaw}`);
-    app.rig.reset();
+    app.rig.reset(false);
     check(1, 'Home resets the camera', app.rig.pitch === 55 && app.rig.yaw === 0 && app.rig.target.length() === 0);
     check(1, 'shadows are on', app.view.renderer.shadowMap.enabled && app.view.sun.castShadow);
 
