@@ -351,11 +351,11 @@ Owner's decision (2026-10-27): **light UI on a pale table** (decision 39).
 
 - A perspective camera tilted toward the table. Default pitch 55° from horizontal, looking at the origin.
 - **Limited orbit** (owner, 2026-10-27): pitch between 25° and 89°, yaw ±60° from the default (decision 25). The camera can lean in to see the side of a pile but never goes below the table or around behind it.
-- **Pan**: middle-drag, or hold Space and left-drag. Pan is in table coordinates so the ground stays under the cursor.
+- **Pan**: right-drag, or hold Space and left-drag (decision 88). Pan is in table coordinates so the ground stays under the cursor.
 - **Zoom**: mouse wheel, toward the cursor, between a whole-table view (about 3,000 mm wide) and a single-card view (about 150 mm wide).
-- **Orbit**: right-drag on empty table. Right-click without dragging on a card flips it (Section 10.5), so orbit begins only after the cursor has moved more than 4 px with the button down, and only if the press was not on a card.
+- **Orbit**: middle-drag on empty table (decision 88). Middle-click without dragging on a card flips it (Section 10.5), so orbit begins only after the cursor has moved more than 4 px with the button down, and only if the press was not on a card.
 - **View presets** (owner, 2026-10-27, decision 86): a **View** button in the top bar, and the `V` key, cycle the camera through four angles: Tilted (55°), Top-down (89°), Low (30°) and Corner (45°, turned 35° to the front-left). Cycling keeps where the camera looks and how far out it is; only the angle swings, smoothly, in about half a second. The current preset is remembered in the browser.
-- **Double middle-click** straightens the view: the angle swings back to the current preset, and where the camera looks and how far out it is stay put (decision 87).
+- **Double right-click** straightens the view: the angle swings back to the current preset, and where the camera looks and how far out it is stay put (decision 87).
 - **Home** key resets the camera: back to the table's centre at the default zoom, looking from the current preset's angle (decision 86). **Frame selection** (`Z`) moves the camera to fit the selection.
 
 ---
@@ -396,15 +396,15 @@ One directional light with a shadow map covering the visible table, plus soft am
 | Action | Result |
 |---|---|
 | Left-click a card | Selects only that card. |
-| Shift + left-click a card | Toggles it: adds it if it is out, removes it if it is in. |
-| Left-drag on empty table | Rectangle marquee in screen space; selects every card whose centre is inside. Shift adds the marquee's cards; Ctrl subtracts them. |
+| Ctrl + left-click a card | Toggles it: adds it if it is out, removes it if it is in. |
+| Left-drag on empty table | Rectangle marquee in screen space; selects every card whose centre is inside. Ctrl adds the marquee's cards; Shift subtracts them. |
 | Left-click a stack's top card | Selects just the top card. |
-| Click a stack's count badge | Selects the whole stack. Shift toggles it. |
+| Click a stack's count badge | Selects the whole stack. Ctrl toggles it. |
 | Ctrl + A | Selects every card on the table. |
 | Esc | Clears the selection (or cancels a drag in progress). |
 | Click empty table | Clears the selection. |
 
-Ctrl has no click meaning on a card. It is reserved for lifting a whole stack (Section 10.2), so a press on a stack never has to guess between "toggle" and "lift" (owner, 2026-10-27).
+Shift has no click meaning on a card. It is reserved for lifting a whole stack (Ctrl and Shift were swapped by decision 88) (Section 10.2), so a press on a stack never has to guess between "toggle" and "lift" (owner, 2026-10-27).
 
 ### 9.2 Selection HUD
 
@@ -455,7 +455,7 @@ Not supported in version one: `art:`, `flavor:`, `a:` artist, `year:`, `usd:`, `
 
 ### 9.5 Quick chips
 
-Beside the filter box, one-click refinements for the most common narrowings: W U B R G C M (multicolour), Creature, Instant/Sorcery, Artifact, Enchantment, Planeswalker, Land, and mana value 0–1, 2, 3, 4, 5, 6+. Clicking a chip appends its term to the filter box and applies it. Shift-click a chip to negate it.
+Beside the filter box, one-click refinements for the most common narrowings: W U B R G C M (multicolour), Creature, Instant/Sorcery, Artifact, Enchantment, Planeswalker, Land, and mana value 0–1, 2, 3, 4, 5, 6+. Clicking a chip appends its term to the filter box and applies it. Ctrl-click a chip to negate it.
 
 ### 9.6 Table search
 
@@ -480,7 +480,7 @@ Dragging a card that is in the selection drags the whole selection. Dragging a c
 Owner's decision (2026-10-27): **a plain drag on a stack peels the top card; a modifier drags the whole stack.**
 
 - Left-drag on a stack's top card: that one card comes off.
-- **Ctrl + left-drag** on a stack: the whole stack lifts as one. Ctrl was chosen over Shift so that no modifier means one thing on click and another on drag (owner, 2026-10-27). Ctrl + drag on a single card simply drags it.
+- **Shift + left-drag** on a stack: the whole stack lifts as one. One modifier lifts and the other toggles, so no modifier means one thing on click and another on drag (owner, 2026-10-27; Ctrl and Shift swapped by decision 88). Shift + drag on a single card simply drags it.
 - Dragging the count badge also lifts the whole stack, with no modifier.
 
 ### 10.3 Group drag: gather by default, modifier keeps formation
@@ -500,9 +500,9 @@ Owner's decision (2026-10-27): **gather by default; a modifier keeps the formati
 
 ### 10.5 Flip
 
-Owner's decision (2026-10-27): **right-click flips, no context menu; a flick during a drag also flips; the `F` key flips the selection** (decision 28, added after decision 17).
+Owner's decision (2026-10-27): **middle-click flips (right-click until decision 88), no context menu; a flick during a drag also flips; the `F` key flips the selection** (decision 28, added after decision 17).
 
-- Right-click a card: it flips over with a physical turn, rising, rotating about its long axis and landing. If the card is in the selection, every selected card flips in a quick cascade.
+- Middle-click a card: it flips over with a physical turn, rising, rotating about its long axis and landing. If the card is in the selection, every selected card flips in a quick cascade.
 - `F`: every selected card flips, the same cascade, without aiming the mouse at one of them.
 - A face-down normal card shows the Magic back. A face-down double-faced card shows its back face. The tool does not distinguish; there is no special "transform" command.
 - **Flick**: if the cursor's speed during a drag exceeds a threshold and reverses sharply, the dragged card (or clump) is tossed a short distance in the flick direction and flips in the air. The threshold is tuned in Phase 5 and exposed in settings as Off / Normal / Sensitive.
@@ -525,7 +525,7 @@ Available as HUD buttons and keys, acting on the selection:
 | Stack | `S` | Gather the selection into one neat stack at its centroid. |
 | Spread | `X` | Spread the selection in a grid at its centroid. |
 | Tidy | `T` | Square up each pile the selection touches without merging piles. |
-| Flip | `F`, right-click | See 10.5. |
+| Flip | `F`, middle-click | See 10.5. |
 | Rotate | `R` | Turn the selection 90° (tap it sideways). Cosmetic in v1; piles stay piles. |
 
 ### 10.8 Remove
@@ -682,16 +682,16 @@ Personality: **snappy and light** (decision 42). Quick follow, short settles, ve
 | Input | On a card | On a stack badge | On empty table |
 |---|---|---|---|
 | Left-click | Select only it | Select the pile | Clear selection |
-| Shift + left-click | Toggle in or out of selection | Toggle pile | — |
-| Ctrl + left-click | Nothing (reserved) | — | — |
+| Ctrl + left-click | Toggle in or out of selection | Toggle pile | — |
+| Shift + left-click | Nothing (reserved) | — | — |
 | Left-drag | Move it (or the selection if it is selected); on a stack, peels the top card | Move the whole pile | Marquee select |
-| Shift + left-drag | Move it; Shift has no drag meaning on cards | Move the whole pile | Marquee, adding |
-| Ctrl + left-drag | Move the whole stack | Move the whole pile | Marquee, subtracting |
+| Ctrl + left-drag | Move it; Ctrl has no drag meaning on cards | Move the whole pile | Marquee, adding |
+| Shift + left-drag | Move the whole stack | Move the whole pile | Marquee, subtracting |
 | Alt + left-drag | Move the selection in formation | — | — |
-| Right-click | Flip it (and the selection if it is selected) | Flip the pile | — |
-| Right-drag | — | — | Orbit camera |
-| Middle-drag, Space + left-drag | Pan | Pan | Pan |
-| Double middle-click | Straighten the view to the current preset angle, staying put | Straighten view | Straighten view |
+| Middle-click | Flip it (and the selection if it is selected) | Flip the pile | — |
+| Middle-drag | — | — | Orbit camera |
+| Right-drag, Space + left-drag | Pan | Pan | Pan |
+| Double right-click | Straighten the view to the current preset angle, staying put | Straighten view | Straighten view |
 | Wheel | Zoom toward cursor | Zoom | Zoom |
 | Double-click | Toggle spread of its stack | Toggle spread | — |
 | Fast flick during a drag | Toss and flip | — | — |
@@ -801,7 +801,7 @@ Performance pass against Section 17 with `stress-2000.txt`. Badge decluttering. 
 - Sound effects.
 - A dark theme.
 - Firefox and Safari support.
-- A context menu, if right-click flip proves too easy to trigger by accident.
+- A context menu, if middle-click flip proves too easy to trigger by accident.
 - Spawning decklist sections (Sideboard, Commander) as separate piles.
 - Prices on cards; sorting a pile by price.
 - Auto-layout commands ("sort this pile into columns by mana value") beyond the simple grid spread.
@@ -901,6 +901,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 85 | **(agent, 2026-10-27)** Files beyond the 4.3 layout: `src/app.ts` (app context and frame loop), `src/commands.ts`, `src/named.ts`, `src/spawn.ts`, `src/state/pileSync.ts`, `src/render/{hires,markers,outlines}.ts`, `src/ui/{dom,pileEditor,exportPanel,queryTab,tray}.ts`, `src/io/download.ts`, `src/dev/*` (dev only), `devtools/shotPlugin.ts`, `scripts/make-test-data.ts`. `history.ts` is not created yet; undo is deferred (19). |
 | 86 | Owner (2026-10-27): a View button cycles four camera presets (Tilted 55°, Top-down 89°, Low 30°, Corner 45° turned 35° front-left), keeping position and zoom; Home and double middle-click reset to the table's centre at the current preset's angle. **(agent)** additions: the `V` key also cycles; cycles and resets swing over 450 ms and any manual pan, zoom or orbit interrupts the swing; the preset is kept in `localStorage` (a per-browser convenience, not part of the save file); a double middle-click is two presses within 350 ms and 8 px. |
 | 87 | Owner (2026-10-27): a double middle-click only straightens the angle back to the current preset; it no longer moves or zooms the camera, so the view can be fixed at any time while looking at something. Home still does the full reset to the table's centre. Replaces that part of decision 86. |
+| 88 | Owner (2026-10-27): **Ctrl and Shift swap on every mouse action**: Ctrl + click toggles a card or pile, Ctrl + marquee adds, Shift + marquee subtracts, Shift + drag lifts a whole stack, Ctrl-click negates a quick chip; Ctrl + Shift stays the formation fallback. **Right and middle buttons swap**: right-drag pans anywhere, double right-click straightens the view, middle-click flips, middle-drag on empty table orbits. Supersedes the button and modifier parts of decisions 17, 23, 28, 69 and 87. **(agent)** Keyboard shortcuts (Ctrl + A, Ctrl + F, Ctrl + S, Ctrl + E, Ctrl + Enter in the list box) keep Ctrl: they are the standard browser shortcuts, and Shift + a letter would clash with the plain letter keys. The Phase 1, 3, 5 and 6 "Where to look" lists in Section 18 keep their original wording as history. |
 
 ## Appendix B: Open items
 

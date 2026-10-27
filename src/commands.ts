@@ -181,7 +181,7 @@ export class Commands {
   }
 
   /**
-   * F, right-click: flip cards over with a physical turn, rising and turning
+   * F, middle-click: flip cards over with a physical turn, rising and turning
    * about the long axis; a selection flips in a quick cascade (spec 10.5, 15.5).
    */
   flip(uids: string[] = this.sel): void {

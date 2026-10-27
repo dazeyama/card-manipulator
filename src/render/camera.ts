@@ -15,7 +15,7 @@ const MAX_WIDTH = 3600;
 export const DEFAULT_DISTANCE = 1400;
 const SWING_MS = 450;
 
-/** The view angles the View button cycles through; Home and double middle-click return to the current one. */
+/** The view angles the View button cycles through; Home and double right-click return to the current one. */
 export interface ViewPreset {
   name: string;
   pitch: number;

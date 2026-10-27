@@ -17,7 +17,7 @@ export interface Mods {
 type Gesture =
   | { kind: 'none' }
   | { kind: 'pan'; grab: THREE.Vector3; button: number }
-  | { kind: 'right-pending'; x: number; y: number; onCard: string | null }
+  | { kind: 'middle-pending'; x: number; y: number; onCard: string | null }
   | { kind: 'orbit'; x: number; y: number }
   | { kind: 'card-press'; uid: string; x: number; y: number; mods: Mods }
   | { kind: 'empty-press'; x: number; y: number; mods: Mods }
@@ -31,8 +31,8 @@ export type CustomGesture = Extract<Gesture, { kind: 'custom' }>;
 export interface MouseHooks {
   /** A left-drag started on a card. Return a custom gesture to own it, or null. */
   cardDrag?: (uid: string, x: number, y: number, mods: Mods) => CustomGesture | null;
-  /** Right-click without dragging on a card (flip, spec 10.5). */
-  rightClickCard?: (uid: string) => void;
+  /** Middle-click without dragging on a card (flip, spec 10.5). */
+  middleClickCard?: (uid: string) => void;
   /** Double-click on a card (spread, spec 10.6). */
   doubleClickCard?: (uid: string) => void;
   /** The hovered card changed. */
@@ -46,7 +46,7 @@ export class MouseInput {
   hovered: string | null = null;
   private readonly marqueeEl: HTMLDivElement;
   private lastClick = { uid: '', at: 0 };
-  private lastMiddle = { x: 0, y: 0, at: 0 };
+  private lastRight = { x: 0, y: 0, at: 0 };
 
   constructor(private readonly app: App) {
     const el = app.canvas.parentElement!;
@@ -109,27 +109,29 @@ export class MouseInput {
     this.app.pointer.x = x;
     this.app.pointer.y = y;
     this.app.canvas.focus({ preventScroll: true });
-    if (e.button === 1) {
-      // Double middle-click straightens the view to the current preset's angle, staying put.
+    if (e.button === 2) {
+      // Double right-click straightens the view to the current preset's angle, staying put.
       const now = performance.now();
-      const m = this.lastMiddle;
+      const m = this.lastRight;
       if (now - m.at < 350 && Math.hypot(x - m.x, y - m.y) < 8) {
-        this.lastMiddle = { x: 0, y: 0, at: 0 };
+        this.lastRight = { x: 0, y: 0, at: 0 };
         this.app.rig.straighten();
         e.preventDefault();
         return;
       }
-      this.lastMiddle = { x, y, at: now };
+      this.lastRight = { x, y, at: now };
     }
-    if (e.button === 1 || (e.button === 0 && this.spaceDown)) {
+    // Right-drag pans (decision 88), as does Space + left-drag.
+    if (e.button === 2 || (e.button === 0 && this.spaceDown)) {
       const grab = this.app.rig.screenToPlane(x, y, 0);
       if (grab) this.gesture = { kind: 'pan', grab, button: e.button };
       e.preventDefault();
       return;
     }
     const onCard = pickCard(this.app.rig, this.app.layer, x, y);
-    if (e.button === 2) {
-      this.gesture = { kind: 'right-pending', x, y, onCard };
+    if (e.button === 1) {
+      this.gesture = { kind: 'middle-pending', x, y, onCard };
+      e.preventDefault();
       return;
     }
     if (e.button !== 0) return;
@@ -167,7 +169,7 @@ export class MouseInput {
       case 'pan':
         this.app.rig.panTo(g.grab, x, y);
         break;
-      case 'right-pending':
+      case 'middle-pending':
         if (!g.onCard && Math.hypot(x - g.x, y - g.y) > DRAG_THRESHOLD) this.gesture = { kind: 'orbit', x, y };
         break;
       case 'orbit':
@@ -184,7 +186,7 @@ export class MouseInput {
         break;
       case 'empty-press':
         if (Math.hypot(x - g.x, y - g.y) > DRAG_THRESHOLD) {
-          const mode = g.mods.shift ? 'add' : g.mods.ctrl ? 'subtract' : 'replace';
+          const mode = g.mods.ctrl ? 'add' : g.mods.shift ? 'subtract' : 'replace';
           this.gesture = { kind: 'marquee', x0: g.x, y0: g.y, x1: x, y1: y, mode, base: new Set(this.app.store.selection) };
           this.updateMarquee();
         }
@@ -207,9 +209,9 @@ export class MouseInput {
     const store = this.app.store;
     switch (g.kind) {
       case 'card-press':
-        // Ctrl has no click meaning on a card (spec 9.1, decision 23).
-        if (g.mods.ctrl) break;
-        if (g.mods.shift) toggle(store, [g.uid]);
+        // Shift has no click meaning on a card (spec 9.1, decisions 23 and 88).
+        if (g.mods.shift) break;
+        if (g.mods.ctrl) toggle(store, [g.uid]);
         else store.setSelection([g.uid]);
         break;
       case 'empty-press':
@@ -218,8 +220,8 @@ export class MouseInput {
       case 'marquee':
         this.marqueeEl.hidden = true;
         break;
-      case 'right-pending':
-        if (g.onCard && e.button === 2) this.hooks.rightClickCard?.(g.onCard);
+      case 'middle-pending':
+        if (g.onCard && e.button === 1) this.hooks.middleClickCard?.(g.onCard);
         break;
       case 'custom':
         g.up(x, y, e);

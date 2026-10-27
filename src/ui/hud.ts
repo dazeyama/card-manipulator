@@ -51,8 +51,8 @@ export class Hud {
     this.buttons = h('div', { class: 'hud-buttons' });
     const chips = h('div', { class: 'chips' });
     for (const c of CHIPS) {
-      const b = h('button', { class: `chip ${c.cls ?? ''}`, title: `${c.title ?? c.label}: ${c.term}  (Shift-click to exclude)` }, c.label);
-      b.addEventListener('click', (e) => this.chip(c.term, e.shiftKey));
+      const b = h('button', { class: `chip ${c.cls ?? ''}`, title: `${c.title ?? c.label}: ${c.term}  (Ctrl-click to exclude)` }, c.label);
+      b.addEventListener('click', (e) => this.chip(c.term, e.ctrlKey || e.metaKey));
       chips.append(b);
     }
     this.el = h('footer', { class: 'hud' },

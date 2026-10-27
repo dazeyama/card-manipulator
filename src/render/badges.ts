@@ -1,5 +1,5 @@
 // Pile badges (spec 11.2, 9.7): a count pill above every pile of two or more
-// cards, facing the camera at a constant size. Click selects the pile, Shift
+// cards, facing the camera at a constant size. Click selects the pile, Ctrl
 // toggles it, dragging lifts it, double-click spreads it. Open spreads keep a
 // badge at their anchor. One HTML layer, culled to the view.
 
@@ -8,7 +8,7 @@ import type { App } from '../app';
 export interface BadgeHandlers {
   press: (pileId: string, e: PointerEvent) => void;
   doubleClick: (pileId: string) => void;
-  rightClick?: (pileId: string) => void;
+  middleClick?: (pileId: string) => void;
   /** Extra buttons on a badge (pencil, export) are added by later features. */
   decorate?: (pileId: string, el: HTMLElement, isSpread: boolean) => void;
 }
@@ -96,12 +96,14 @@ export class Badges {
         if (e.button === 0) {
           e.stopPropagation();
           this.handlers.press(spread || outline ? id : pileId, e);
-        } else if (e.button === 2) {
+        } else if (e.button === 1) {
+          // No middle-click autoscroll; the click flips the pile.
           e.stopPropagation();
+          e.preventDefault();
         }
       });
       el.addEventListener('pointerup', (e) => {
-        if (e.button === 2 && !spread && !outline) this.handlers.rightClick?.(pileId);
+        if (e.button === 1 && !spread && !outline) this.handlers.middleClick?.(pileId);
       });
       el.addEventListener('contextmenu', (e) => e.preventDefault());
       el.addEventListener('dblclick', (e) => {

@@ -72,8 +72,8 @@ mouse.hooks.hover = (uid) => {
 // ---- mouse grammar (spec 16) ----
 
 mouse.hooks.cardDrag = (uid, x, y, mods) => {
-  // Ctrl + drag lifts the whole stack (decision 23); Ctrl + Shift is the formation fallback (decision 29).
-  if (mods.ctrl && !mods.shift) {
+  // Shift + drag lifts the whole stack (decisions 23 and 88); Ctrl + Shift is the formation fallback (decision 29).
+  if (mods.shift && !mods.ctrl) {
     const pile = store.pileOf(uid);
     const uids = pile ? pile.cardUids : [uid];
     store.setSelection(uids);
@@ -88,8 +88,8 @@ mouse.hooks.cardDrag = (uid, x, y, mods) => {
   return drag.begin([uid], 'single', x, y);
 };
 mouse.hooks.doubleClickCard = (uid) => commands.toggleSpread(uid);
-// Right-click flips the card, or the whole selection if the card is in it (spec 10.5).
-mouse.hooks.rightClickCard = (uid) => commands.flip(store.selection.has(uid) ? [...store.selection] : [uid]);
+// Middle-click flips the card, or the whole selection if the card is in it (spec 10.5).
+mouse.hooks.middleClickCard = (uid) => commands.flip(store.selection.has(uid) ? [...store.selection] : [uid]);
 
 function pileCards(id: string): string[] {
   if (id.startsWith('spread:')) return store.spreads.get(id.slice(7))?.uids.filter((u) => store.cards.has(u)) ?? [];
@@ -116,13 +116,13 @@ const badges = new Badges(app, {
       },
       up: (x, y, ev) => {
         if (inner) inner.up(x, y, ev);
-        else if (e.shiftKey) toggle(store, pileCards(id));
+        else if (e.ctrlKey || e.metaKey) toggle(store, pileCards(id));
         else store.setSelection(pileCards(id));
       },
       cancel: () => inner?.cancel(),
     });
   },
-  rightClick(id) {
+  middleClick(id) {
     commands.flip(pileCards(id));
   },
   decorate(pileId, el) {
