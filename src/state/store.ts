@@ -26,6 +26,8 @@ export interface StoreEvents {
   name: void;
   /** The whole table was replaced (load, new table). */
   reset: void;
+  /** A short message for the user (a merge of named piles, spec 11.4). */
+  notice: string;
 }
 
 type Listener<T> = (payload: T) => void;

@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Phases finished** | 1, 2, 3, 4, 5 |
+| **Phases finished** | 1, 2, 3, 4, 5, 6 |
 | **Phases with BROKEN items** | none so far |
 | **Run it** | `npm install` once, then `npm run dev` and open http://localhost:5173 (or double-click `start.bat`) |
 
@@ -115,6 +115,28 @@ Run in progress: the build is working through the phases in order.
 
 ---
 
+## Phase 6: Named piles ✅
+
+**Built**
+- Promote with `N` (selected pile) or the pencil on any badge; the editor names the pile and sets its filter (validated live with the query engine). Rename, Un-name, and Delete for an empty one.
+- Named piles keep their identity as cards join or leave, while spread (the name moves to the anchor badge; `pile:` still matches spread cards), and through save/restore.
+- Own filter: cards dropped on a named pile that don't match slide off beside it with a wobble and a toast ("7 cards don't match Keep: `t:creature or t:land`").
+- Empty named piles stay as a dashed outline with a "Keep · empty" badge; dropping on the outline fills the bin. `N` on empty table makes a new bin at the cursor.
+- Merge rules (11.4): receiving name wins with a toast; a named pile dropped on an ordinary one carries its name over.
+- `pile:` query term (engine since Phase 3, now backed by real named piles).
+
+**Gate:** typecheck clean · 90 tests passed (named-pile detection: joins, shrink to one, leaving, merges; NamedPiles promote/validate/sort/outline/un-name) · build OK · browser check OK, no page errors (dev error counter, decision 76).
+
+**Checked in the browser:** made Keep with `t:creature` through a real badge click, `N`, typing and Enter; dragged a Mountain onto it with the real mouse (slid off, toast); emptied Keep with Delete (outline and label stay); filled the bin again (11 creatures accepted, a land rejected; `pile:keep` = 12); merged Deck B into Deck A (toast) and Deck A onto an ordinary stack (name carried over); spread and restacked a named pile; renamed, un-named, made and deleted a bin with real clicks; reload restored Keep, Sell and Trade.
+
+**Fixed along the way:** a drop onto an ordinary stack right after a merge looked the target up by its new id and threw; it now finds the pile by membership.
+
+**Screenshots:** [named pile and bins](reports/screenshots/phase-6/01-named-pile-and-bins.png) · [land rejected](reports/screenshots/phase-6/02-land-rejected.png) · [empty outline](reports/screenshots/phase-6/03-empty-outline.png) · [named spread](reports/screenshots/phase-6/04-named-spread.png) · [merged](reports/screenshots/phase-6/05-merged-named.png)
+
+**Agent decisions:** 72–75.
+
+---
+
 ## Owner's QA checklist
 
 ### Phase 1
@@ -156,3 +178,10 @@ Run in progress: the build is working through the phases in order.
 - [ ] **Flick feel:** a quick jerk and reverse during a drag tosses and flips the card. Is Normal too hard or too easy to trigger?
 - [ ] A stack of 100 doesn't jitter.
 - [ ] **Foil sheen taste:** does it read as "that one's a foil", not a disco effect?
+
+### Phase 6
+- [ ] Name a pile Keep with filter `t:creature` (click its badge, press N, or use the pencil).
+- [ ] Drop a land on it: it slides off with a toast.
+- [ ] Empty the pile: the label and outline stay; drop creatures on the outline to refill it.
+- [ ] Press N on empty table to prepare a bin; pencil, Delete removes it.
+- [ ] Merge two named piles: the one you drop onto keeps its name.

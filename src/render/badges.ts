@@ -61,6 +61,11 @@ export class Badges {
       const name = sp.pileId ? store.named.get(sp.pileId)?.name ?? null : null;
       this.ensure(key, `${name ? `${name} · ` : ''}spread ${sp.uids.length}`, '', true);
     }
+    for (const n of this.app.named.empty()) {
+      const key = `named:${n.id}`;
+      want.add(key);
+      this.ensure(key, `${n.name} · empty${n.filter ? ' ⧩' : ''}`, '', false, true);
+    }
     for (const [id, b] of this.badges) {
       if (!want.has(id)) {
         b.el.remove();
@@ -69,43 +74,46 @@ export class Badges {
     }
   }
 
-  private ensure(id: string, text: string, selState: string, spread: boolean): void {
+  private ensure(id: string, text: string, selState: string, spread: boolean, outline = false): void {
     let b = this.badges.get(id);
     if (!b) {
       const el = document.createElement('div');
       el.className = 'badge';
+      el.dataset.pile = id;
       const t = document.createElement('span');
       t.className = 'badge-text';
       el.append(t);
-      const pileId = spread ? id.slice('spread:'.length) : id;
+      const pileId = spread ? id.slice('spread:'.length) : outline ? id.slice('named:'.length) : id;
       el.addEventListener('pointerdown', (e) => {
         if (e.button === 0) {
           e.stopPropagation();
-          this.handlers.press(spread ? `spread:${pileId}` : pileId, e);
+          this.handlers.press(spread || outline ? id : pileId, e);
         } else if (e.button === 2) {
           e.stopPropagation();
         }
       });
       el.addEventListener('pointerup', (e) => {
-        if (e.button === 2 && !spread) this.handlers.rightClick?.(pileId);
+        if (e.button === 2 && !spread && !outline) this.handlers.rightClick?.(pileId);
       });
       el.addEventListener('contextmenu', (e) => e.preventDefault());
       el.addEventListener('dblclick', (e) => {
         e.stopPropagation();
-        this.handlers.doubleClick(spread ? `spread:${pileId}` : pileId);
+        if (!outline) this.handlers.doubleClick(spread ? `spread:${pileId}` : pileId);
       });
       this.handlers.decorate?.(pileId, el, spread);
       this.layer.append(el);
       b = { el, text: t, x: NaN, y: NaN, shown: true, key: '' };
       this.badges.set(id, b);
     }
-    const key = `${text}|${selState}|${spread}`;
+    const key = `${text}|${selState}|${spread}|${outline}`;
     if (b.key !== key) {
       b.key = key;
       b.text.textContent = text;
       b.el.classList.toggle('sel-all', selState === 'all');
       b.el.classList.toggle('sel-some', selState === 'some');
       b.el.classList.toggle('spread', spread);
+      b.el.classList.toggle('outline', outline);
+      b.el.classList.toggle('named', !!this.app.store.named.get(spread || outline ? id.slice(id.indexOf(':') + 1) : id));
     }
   }
 
@@ -126,6 +134,12 @@ export class Badges {
         if (!sp) continue;
         x = sp.anchor.x;
         y = sp.anchor.y;
+        z = 1;
+      } else if (id.startsWith('named:')) {
+        const n = store.named.get(id.slice(6));
+        if (!n) continue;
+        x = n.anchor.x;
+        y = n.anchor.y;
         z = 1;
       } else {
         const p = store.piles.get(id);

@@ -881,6 +881,11 @@ All dated 2026-10-27, from the brainstorming session.
 | 69 | **(agent, 2026-10-27)** A flip rises 24 mm and turns about the long axis in 350 ms; a cascade goes top card first, 10 ms apart, capped at 600 ms. Right-clicking a badge flips its pile. |
 | 70 | **(agent, 2026-10-27)** Card edges are shaded by hand rather than through the shadow map, with a little slack on the corner outline, so the side of a stack reads as clean layers instead of speckle. |
 | 71 | **(agent, 2026-10-27)** Rapier, whose WASM is inlined (4.3 MB), loads as its own chunk after the table appears; until it has loaded, drops land with tweens. |
+| 72 | **(agent, 2026-10-27)** Named-pile membership is the card's `pileId`. Detection gives named ids priority, and in a merge the pile whose cards stayed put is the receiving one. A whole named pile dropped on an ordinary pile gives the merged pile its name; dropped on another named pile it merges into the receiver and its own name goes, with a toast. Cards peeled off a named pile just leave it. |
+| 73 | **(agent, 2026-10-27)** A named pile shrunk to a single card is still a pile ("Keep · 1"). Pile names are unique, ignoring case. |
+| 74 | **(agent, 2026-10-27)** `N` with nothing selected creates a new empty named pile (a bin) at the cursor and opens its editor; cancelling removes it again. `N` on a selection that is not one pile shows a hint instead of guessing. |
+| 75 | **(agent, 2026-10-27)** Rejected cards land beside the pile, a card's width plus 28 mm to its right, as a small messy pile, then wobble. Dropping cards on an empty named pile's outline lands them as a neat stack in it, filter applied. |
+| 76 | **(agent, 2026-10-27)** In development the page counts its own errors (`window.__errors`) so the phase gate's "no console errors" check covers only the page as it is now, not messages kept from earlier reloads. Not part of the production build. |
 
 ## Appendix B: Open items
 

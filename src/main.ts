@@ -18,6 +18,9 @@ import { Badges } from './render/badges';
 import { RemovedTray } from './ui/tray';
 import { Autosave } from './io/autosave';
 import { Physics } from './physics/world';
+import { NamedPiles } from './named';
+import { Outlines } from './render/outlines';
+import { PileEditor } from './ui/pileEditor';
 
 const root = document.getElementById('app')!;
 const top = h('div', { class: 'top-host' });
@@ -41,6 +44,10 @@ const drag = new DragController(app);
 const tray = new RemovedTray(app, spawnPanel.trayHost);
 const autosave = new Autosave(app);
 const store = app.store;
+app.named = new NamedPiles(app);
+const outlines = new Outlines(app);
+const pileEditor = new PileEditor(app);
+store.events.on('notice', (msg) => toast(msg, 'warn', 4200));
 
 // ---- mouse grammar (spec 16) ----
 
@@ -66,6 +73,7 @@ mouse.hooks.rightClickCard = (uid) => commands.flip(store.selection.has(uid) ? [
 
 function pileCards(id: string): string[] {
   if (id.startsWith('spread:')) return store.spreads.get(id.slice(7))?.uids.filter((u) => store.cards.has(u)) ?? [];
+  if (id.startsWith('named:')) return [];
   return store.piles.get(id)?.cardUids ?? [];
 }
 
@@ -78,7 +86,7 @@ const badges = new Badges(app, {
     mouse.startGesture({
       kind: 'custom',
       move: (x, y, ev) => {
-        if (!inner && !id.startsWith('spread:') && Math.hypot(x - x0, y - y0) > 4) {
+        if (!inner && !id.includes(':') && Math.hypot(x - x0, y - y0) > 4) {
           // Dragging a badge lifts the whole pile, no modifier needed (spec 10.2).
           const uids = pileCards(id);
           store.setSelection(uids);
@@ -96,6 +104,20 @@ const badges = new Badges(app, {
   },
   rightClick(id) {
     commands.flip(pileCards(id));
+  },
+  decorate(pileId, el) {
+    // The pencil: name, filter, rename, un-name, delete (spec 11.3).
+    const pencil = document.createElement('button');
+    pencil.className = 'badge-btn';
+    pencil.title = 'Name this pile, set its filter';
+    pencil.textContent = '✎';
+    pencil.addEventListener('pointerdown', (e) => e.stopPropagation());
+    pencil.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const r = el.getBoundingClientRect();
+      pileEditor.open(pileId, { x: r.left + r.width / 2, y: r.bottom });
+    });
+    el.append(pencil);
   },
   doubleClick(id) {
     if (id.startsWith('spread:')) commands.restack(id.slice(7));
@@ -120,6 +142,32 @@ keyboard.bind('t', () => commands.tidy());
 keyboard.bind('r', () => commands.rotate());
 keyboard.bind('z', () => commands.frame());
 keyboard.bind('f', () => commands.flip());
+// N: name the selected pile; with nothing selected, a new empty bin at the cursor (spec 11.3).
+keyboard.bind('n', () => {
+  const near = { x: app.pointer.x + app.canvas.getBoundingClientRect().left, y: app.pointer.y + app.canvas.getBoundingClientRect().top };
+  if (!store.selection.size) {
+    const at = app.lastTablePoint;
+    const id = `p${Date.now().toString(36)}`;
+    store.named.set(id, { id, name: 'New pile', filter: null, anchor: { x: at.x, y: at.y }, yaw: 0 });
+    store.events.emit('piles', undefined);
+    pileEditor.open(id, near, true);
+    return;
+  }
+  const ids = new Set<string>();
+  for (const u of store.selection) {
+    const c = store.cards.get(u);
+    ids.add(c?.pileId ?? `loose:${u}`);
+  }
+  const [only] = ids;
+  if (ids.size === 1 && !only.startsWith('loose:')) {
+    const sp = [...store.spreads.values()].find((s) => s.id === only || s.pileId === only);
+    const id = sp?.id ?? only;
+    // Open beside the pile's badge.
+    const badge = document.querySelector(`.badge[data-pile="${sp ? `spread:${id}` : id}"]`);
+    const r = badge?.getBoundingClientRect();
+    pileEditor.open(id, r && r.width ? { x: r.left + r.width / 2, y: r.bottom } : near);
+  } else toast('Select one pile to name it (S stacks a selection into one pile)', 'warn');
+});
 const removeSelection = () => {
   const n = tray.remove([...store.selection]);
   if (n) toast(`${n} card${n === 1 ? '' : 's'} moved to the Removed tray`);
@@ -152,9 +200,19 @@ physics
   .then(() => (app.physics = physics))
   .catch((err) => console.warn('Physics failed to load; drops land without it', err));
 
-export const ui = { app, mouse, keyboard, topBar, spawnPanel, hud, commands, drag, badges, tray, autosave, pileSync, physics };
+export const ui = { app, mouse, keyboard, topBar, spawnPanel, hud, commands, drag, badges, tray, autosave, pileSync, physics, outlines, pileEditor };
 
 if (import.meta.env.DEV) {
+  // The phase gate reads this to confirm the page logged no errors since it loaded.
+  const errors: string[] = [];
+  window.addEventListener('error', (e) => errors.push(String(e.message)));
+  window.addEventListener('unhandledrejection', (e) => errors.push(String(e.reason)));
+  const origError = console.error;
+  console.error = (...args: unknown[]) => {
+    errors.push(args.map(String).join(' '));
+    origError(...args);
+  };
+  (window as unknown as { __errors: string[] }).__errors = errors;
   import('./dev/shot').then((m) => {
     m.installShot(app);
     m.installSpawnFile(app);

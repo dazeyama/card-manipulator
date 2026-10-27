@@ -17,7 +17,14 @@ export type ToastKind = 'info' | 'ok' | 'warn' | 'error';
 export function toast(message: string, kind: ToastKind = 'info', ms = 3200): void {
   const el = document.createElement('div');
   el.className = `toast toast-${kind}`;
-  el.textContent = message;
+  // `term` in a message is shown as code.
+  message.split('`').forEach((part, i) => {
+    if (i % 2) {
+      const code = document.createElement('code');
+      code.textContent = part;
+      el.append(code);
+    } else el.append(part);
+  });
   ensureHost().append(el);
   requestAnimationFrame(() => el.classList.add('show'));
   setTimeout(() => {

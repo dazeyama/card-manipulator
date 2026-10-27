@@ -8,7 +8,7 @@ import { land, leaveSpreads, placeSequential, stackAt, type Landing } from '../c
 import type { CustomGesture } from '../input/mouse';
 import { pickCard } from '../render/picking';
 import { messyLayout, snapYaw } from '../state/piles';
-import { CARD_T } from '../state/types';
+import { CARD_T, CARD_W } from '../state/types';
 
 export type DragMode = 'single' | 'gather' | 'formation' | 'rigid';
 
@@ -225,11 +225,119 @@ export class DragController {
   }
 
   private release(sx: number, sy: number): void {
-    const held = this.held;
+    let held = this.held;
     const mode = this.mode;
     this.finish();
+    if (mode !== 'formation') {
+      const target = this.target(held, sx, sy);
+      if (target) {
+        // A named pile with a filter turns away cards that don't match (spec 11.3).
+        const { accepted, rejected } = this.app.named.sort(target.id, held.map((c) => c.uid));
+        if (rejected.length) {
+          const out = new Set(rejected);
+          this.reject(held.filter((c) => out.has(c.uid)), target.id);
+          held = held.filter((c) => !out.has(c.uid));
+          if (!held.length) return;
+        }
+        this.join(target.id, accepted);
+      }
+    }
     if (this.dropLoose(held, mode, sx, sy)) return;
     land(this.app, this.landings(held, mode, sx, sy));
+  }
+
+  /**
+   * Landed cards join the target pile, so it keeps its identity. A whole
+   * named pile dropped on another pile merges into it: the receiving pile's
+   * name wins if both are named, otherwise the dropped pile's name carries
+   * over (spec 11.4).
+   */
+  private join(targetId: string, accepted: string[]): void {
+    const store = this.app.store;
+    const moving = new Set(accepted);
+    const sources = new Set<string>();
+    for (const u of accepted) {
+      const id = store.cards.get(u)?.pileId;
+      if (id && id !== targetId && store.named.has(id)) sources.add(id);
+    }
+    // Only a whole named pile merges; a few cards peeled off it just join.
+    for (const id of [...sources]) {
+      for (const c of store.cards.values()) {
+        if (c.pileId === id && !moving.has(c.uid)) {
+          sources.delete(id);
+          break;
+        }
+      }
+    }
+    let keepId = targetId;
+    if (!store.named.has(targetId) && sources.size) {
+      keepId = [...sources][0];
+      sources.delete(keepId);
+      for (const u of store.piles.get(targetId)?.cardUids ?? []) {
+        const c = store.cards.get(u);
+        if (c) c.pileId = keepId;
+      }
+    }
+    const keeper = store.named.get(keepId);
+    for (const id of sources) {
+      const lost = store.named.get(id);
+      if (lost && keeper) store.events.emit('notice', `${lost.name} merged into ${keeper.name}; ${keeper.name} keeps its name`);
+      store.named.delete(id);
+    }
+    for (const u of accepted) {
+      const c = store.cards.get(u);
+      if (c) c.pileId = keepId;
+    }
+  }
+
+  /** The pile (or empty named outline) a release lands on, if any. */
+  private target(held: Held[], sx: number, sy: number): { id: string } | null {
+    const app = this.app;
+    const moving = new Set(held.map((c) => c.uid));
+    const hit = pickCard(app.rig, app.layer, sx, sy, moving);
+    if (hit) {
+      const pile = app.store.pileOf(hit);
+      // A single loose card is a target too: dropping onto it makes a new pile.
+      return pile ? { id: pile.id } : null;
+    }
+    const n = app.named.outlineAt(this.cursor.x, this.cursor.y);
+    return n ? { id: n.id } : null;
+  }
+
+  /** Rejected cards slide off beside the pile with a short shake and a toast. */
+  private reject(held: Held[], pileId: string): void {
+    const app = this.app;
+    const store = app.store;
+    const n = store.named.get(pileId);
+    const anchor = store.piles.get(pileId)?.anchor ?? n?.anchor ?? this.cursor;
+    const yaw = n?.yaw ?? 0;
+    const off = CARD_W + 28;
+    const at = { x: anchor.x + Math.cos(yaw) * off, y: anchor.y + Math.sin(yaw) * off, yaw };
+    const uids = held.map((c) => c.uid);
+    for (const u of uids) {
+      const c = store.cards.get(u);
+      if (c && c.pileId === pileId) c.pileId = null;
+    }
+    const spots = messyLayout(uids.length, at).map((p) => ({ x: p.x, y: p.y, yaw: p.yaw }));
+    land(app, placeSequential(app, uids, spots), { duration: 260, arc: 8 });
+    // The shake: a quick wobble once they have slid off.
+    setTimeout(() => {
+      for (const u of uids) {
+        const pose = app.layer.pose(u);
+        const c = store.cards.get(u);
+        if (!pose || !c) continue;
+        const base = c.yaw;
+        app.motion.animate(u, { yaw: base + 0.12 }, {
+          duration: 60,
+          done: () => app.motion.animate(u, { yaw: base - 0.1 }, {
+            duration: 70,
+            done: () => app.motion.animate(u, { yaw: base }, { duration: 60 }),
+          }),
+        });
+      }
+    }, 270);
+    const label = uids.length === 1 ? '1 card doesn’t' : `${uids.length} cards don’t`;
+    store.events.emit('notice', `${label} match ${n?.name ?? 'the pile'}: \`${n?.filter ?? ''}\``);
   }
 
   /**
@@ -243,9 +351,9 @@ export class DragController {
     if (!physics || app.store.settings.tidyDrops || mode === 'formation') return false;
     const moving = new Set(held.map((c) => c.uid));
     const hit = pickCard(app.rig, app.layer, sx, sy, moving);
-    const pile = hit ? app.store.pileOf(hit) : undefined;
+    const pile = hit ? [...app.store.piles.values()].find((p) => p.cardUids.includes(hit)) : undefined;
     const ontoMessy = !!pile && pile.kind === 'messy';
-    const singleOnTable = !hit && mode === 'single';
+    const singleOnTable = !hit && mode === 'single' && !app.named.outlineAt(this.cursor.x, this.cursor.y);
     if (!ontoMessy && !singleOnTable) return false;
     return physics.drop(held.map((c) => ({ uid: c.uid, vx: c.vx * 0.6, vy: c.vy * 0.6, vz: 0, wz: (Math.random() - 0.5) * 2 })));
   }
@@ -266,8 +374,10 @@ export class DragController {
 
     const hit = pickCard(app.rig, app.layer, sx, sy, moving);
     if (hit) {
-      const pile = store.pileOf(hit);
-      const target = pile ? pile.cardUids.filter((u) => !moving.has(u)) : [hit];
+      // By membership, not pileId: a merge may already have re-tagged the target's cards.
+      const pile = [...store.piles.values()].find((p) => p.cardUids.includes(hit));
+      const rest = pile ? pile.cardUids.filter((u) => !moving.has(u)) : [];
+      const target = rest.length ? rest : [hit];
       const top = store.cards.get(target[target.length - 1])!;
       const bottom = store.cards.get(target[0])!;
       const squared = !pile || pile.kind === 'stack' || tidy;
@@ -280,6 +390,10 @@ export class DragController {
       const spots = messyLayout(uids.length, { x: this.cursor.x, y: this.cursor.y, yaw: top.yaw }).map((p) => ({ x: p.x, y: p.y, yaw: p.yaw }));
       return placeSequential(app, uids, spots, moving);
     }
+
+    // An empty named pile's outline takes the cards as a neat stack (a prepared bin, decision 27).
+    const bin = app.named.outlineAt(this.cursor.x, this.cursor.y);
+    if (bin) return stackAt(app, uids, { x: bin.anchor.x, y: bin.anchor.y, yaw: bin.yaw }, moving);
 
     // Empty table.
     if (mode === 'single') {

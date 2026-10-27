@@ -149,3 +149,19 @@ textarea.decklist { width: 100%; height: 190px; resize: vertical; font: 12px/1.4
 .tray.empty .tray-title { color: var(--text-2); font-weight: 500; }
 .tray-list { overflow: auto; font-size: 12px; margin-top: 4px; }
 .tray-row { display: flex; align-items: center; justify-content: space-between; }
+
+/* ---- named piles ---- */
+.badge.named { border-color: var(--accent); }
+.badge.outline { background: #f3f6fe; border: 1px dashed var(--accent); color: var(--accent); }
+.badge-btn { border: none; background: transparent; padding: 0 0 0 2px; margin: 0; cursor: pointer; font-size: 12px; color: inherit; opacity: 0; width: 0; overflow: hidden; transition: opacity 0.1s; }
+.badge:hover .badge-btn, .badge.outline .badge-btn, .badge.named .badge-btn { opacity: 0.75; width: auto; }
+.badge-btn:hover { opacity: 1 !important; }
+.pile-editor { position: fixed; width: 300px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18); padding: 10px 12px; z-index: 40; display: flex; flex-direction: column; gap: 6px; }
+.pile-editor[hidden] { display: none; }
+.pile-editor label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--text-2); }
+.pile-editor input { font-size: 13px; }
+.pile-editor .mono { font-family: var(--mono); }
+.pe-title { font-weight: 650; }
+.pe-error { color: var(--danger); font-size: 12px; min-height: 0; }
+.btn.danger { color: var(--danger); border-color: #f1c4c4; }
+code { font-family: var(--mono); font-size: 0.95em; background: rgba(0, 0, 0, 0.05); padding: 0 3px; border-radius: 3px; }

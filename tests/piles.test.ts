@@ -124,3 +124,46 @@ describe('detectPiles (spec 11.1)', () => {
     expect(snapYaw(-1.7)).toBeCloseTo(-Math.PI / 2);
   });
 });
+
+describe('detectPiles with named piles (spec 11.3, 11.4)', () => {
+  let n = 0;
+  const id = () => `new${++n}`;
+  const card = (uid: string, x: number, y: number, z = 0.15, yaw = 0) => ({ uid, x, y, z, yaw });
+
+  it('a named pile keeps its id when more cards join than it had', () => {
+    const prev = new Map([['keep', ['a']], ['other', ['b', 'c', 'd']]]);
+    const cards = [card('a', 0, 0), card('b', 0, 0, 0.45), card('c', 0, 0, 0.75), card('d', 0, 0, 1.05)];
+    const piles = detectPiles(cards, prev, id, { named: new Set(['keep']), moved: new Set(['b', 'c', 'd']) });
+    expect(piles[0].id).toBe('keep');
+  });
+
+  it('a named pile shrunk to one card is still a pile', () => {
+    const prev = new Map([['keep', ['a', 'b']]]);
+    const piles = detectPiles([card('a', 0, 0), card('b', 400, 0)], prev, id, { named: new Set(['keep']), moved: new Set(['b']) });
+    expect(piles).toHaveLength(1);
+    expect(piles[0]).toMatchObject({ id: 'keep', cardUids: ['a'] });
+  });
+
+  it('the card that left a named pile does not steal its id', () => {
+    const prev = new Map([['keep', ['a', 'b', 'c']]]);
+    const cards = [card('a', 0, 0), card('b', 0, 0, 0.45), card('c', 500, 0), card('x', 500, 0, 0.45)];
+    const piles = detectPiles(cards, prev, id, { named: new Set(['keep']), moved: new Set(['c']) });
+    expect(piles.find((p) => p.cardUids.includes('a'))!.id).toBe('keep');
+    expect(piles.find((p) => p.cardUids.includes('c'))!.id).not.toBe('keep');
+  });
+
+  it('when two named piles merge the receiving pile wins and the other is reported', () => {
+    const prev = new Map([['keep', ['a', 'b']], ['sell', ['c', 'd']]]);
+    const cards = [card('a', 0, 0), card('b', 0, 0, 0.45), card('c', 0, 0, 0.75), card('d', 0, 0, 1.05)];
+    const piles = detectPiles(cards, prev, id, { named: new Set(['keep', 'sell']), moved: new Set(['c', 'd']) });
+    expect(piles).toHaveLength(1);
+    expect(piles[0].id).toBe('keep');
+    expect(piles[0].merged).toEqual(['sell']);
+  });
+
+  it('an emptied named pile simply has no group', () => {
+    const prev = new Map([['keep', ['a']]]);
+    const piles = detectPiles([card('x', 0, 0)], prev, id, { named: new Set(['keep']) });
+    expect(piles).toHaveLength(0);
+  });
+});

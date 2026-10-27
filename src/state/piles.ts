@@ -136,6 +136,8 @@ export interface DetectedPile {
   yaw: number;
   /** Height of the top card's upper face. */
   top: number;
+  /** Named piles whose cards all ended up in this one (a merge). */
+  merged: string[];
 }
 
 const STACK_TOLERANCE = 2;
@@ -151,9 +153,15 @@ export function sameYaw(a: number, b: number): boolean {
  * Group cards whose footprints overlap, transitively. Groups of two or more
  * are piles: a stack when every card shares the bottom card's centre within
  * 2 mm and its yaw, otherwise messy. `prev` maps old pile ids to their cards
- * so a pile keeps its id while it keeps most of its cards.
+ * so a pile keeps its id while it keeps most of its cards. Named piles keep
+ * their id however many cards join or leave, down to a single card.
  */
-export function detectPiles(cards: PileCard[], prev: Map<string, string[]> = new Map(), makeId: () => string = defaultId): DetectedPile[] {
+export function detectPiles(
+  cards: PileCard[],
+  prev: Map<string, string[]> = new Map(),
+  makeId: () => string = defaultId,
+  opts: { named?: Set<string>; moved?: Set<string> } = {},
+): DetectedPile[] {
   const n = cards.length;
   const parent = new Int32Array(n);
   for (let i = 0; i < n; i++) parent[i] = i;
@@ -203,28 +211,63 @@ export function detectPiles(cards: PileCard[], prev: Map<string, string[]> = new
   // Old pile of each card, to keep ids stable.
   const oldOf = new Map<string, string>();
   for (const [id, uids] of prev) for (const u of uids) oldOf.set(u, id);
+  const named = opts.named ?? new Set<string>();
+  const moved = opts.moved ?? new Set<string>();
+
+  interface Group {
+    cards: PileCard[];
+    votes: Map<string, { all: number; stayed: number }>;
+  }
+  const list: Group[] = [];
+  for (const g of groups.values()) {
+    const votes = new Map<string, { all: number; stayed: number }>();
+    for (const c of g) {
+      const o = oldOf.get(c.uid);
+      if (!o) continue;
+      const v = votes.get(o) ?? { all: 0, stayed: 0 };
+      v.all++;
+      if (!moved.has(c.uid)) v.stayed++;
+      votes.set(o, v);
+    }
+    // A lone card is not a pile, unless it is all that is left of a named pile.
+    if (g.length < 2 && ![...votes.keys()].some((o) => named.has(o))) continue;
+    list.push({ cards: g, votes });
+  }
+
+  // Hand out old ids, strongest claims first: named piles before emergent
+  // ones, then the group holding the most cards that stayed put (the
+  // receiving pile, spec 11.4), then the most cards overall.
+  const claims: { group: Group; id: string; rank: number[] }[] = [];
+  for (const group of list) {
+    for (const [id, v] of group.votes) claims.push({ group, id, rank: [named.has(id) ? 1 : 0, v.stayed, v.all] });
+  }
+  claims.sort((a, b) => b.rank[0] - a.rank[0] || b.rank[1] - a.rank[1] || b.rank[2] - a.rank[2]);
+  const idOf = new Map<Group, string>();
   const usedIds = new Set<string>();
+  for (const c of claims) {
+    if (idOf.has(c.group) || usedIds.has(c.id)) continue;
+    // A single leftover card never takes an emergent pile's id.
+    if (c.group.cards.length < 2 && !named.has(c.id)) continue;
+    idOf.set(c.group, c.id);
+    usedIds.add(c.id);
+  }
 
   const out: DetectedPile[] = [];
-  for (const g of groups.values()) {
-    if (g.length < 2) continue;
+  for (const group of list) {
+    const g = group.cards;
+    let id = idOf.get(group);
+    if (!id) {
+      if (g.length < 2) continue;
+      id = makeId();
+    }
     g.sort((a, b) => a.z - b.z);
     const bottom = g[0];
     const isStack = g.every((c) => Math.hypot(c.x - bottom.x, c.y - bottom.y) <= STACK_TOLERANCE && sameYaw(c.yaw, bottom.yaw));
     const anchor = isStack
       ? { x: bottom.x, y: bottom.y }
       : { x: g.reduce((s, c) => s + c.x, 0) / g.length, y: g.reduce((s, c) => s + c.y, 0) / g.length };
-    // The old id that holds most of these cards, if it hasn't been claimed.
-    const votes = new Map<string, number>();
-    for (const c of g) {
-      const o = oldOf.get(c.uid);
-      if (o) votes.set(o, (votes.get(o) ?? 0) + 1);
-    }
-    let id = '';
-    let best = 0;
-    for (const [o, v] of votes) if (v > best && !usedIds.has(o)) [id, best] = [o, v];
-    if (!id) id = makeId();
-    usedIds.add(id);
+    // Named piles that were folded into this one (spec 11.4: the receiving name wins).
+    const mergedNamed = [...group.votes.keys()].filter((o) => o !== id && named.has(o) && !usedIds.has(o));
     out.push({
       id,
       kind: isStack ? 'stack' : 'messy',
@@ -232,6 +275,7 @@ export function detectPiles(cards: PileCard[], prev: Map<string, string[]> = new
       anchor,
       yaw: bottom.yaw,
       top: g[g.length - 1].z + CARD_T / 2,
+      merged: mergedNamed,
     });
   }
   return out;
