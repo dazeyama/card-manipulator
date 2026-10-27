@@ -1,0 +1,14 @@
+// The unresolved-line path. Should NOT resolve: Lightnig Bolt, Counterspel, Sol Ring (ZZZ) 999,
+// Totally Made Up Card, Jace, the Mind Sculpter. Should resolve: the rest, including the
+// accent-less Lim-Dul's Vault and the back-face-only Insectile Aberration.
+// Generated from Scryfall data on 2026-10-27 by scripts/make-test-data.ts.
+4 Lightning Bolt
+2 Lightnig Bolt
+1 Counterspel
+1 Sol Ring (ZZZ) 999
+1 Black Lotus
+1 Totally Made Up Card
+3 Jace, the Mind Sculpter
+1 Lim-Dul's Vault
+1 Fire // Ice
+2 Insectile Aberration

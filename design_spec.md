@@ -860,6 +860,12 @@ All dated 2026-10-27, from the brainstorming session.
 | 48 | **(agent, 2026-10-27)** The renderer uses the model's axes directly: z is up in three.js too (`camera.up = z`), x right, y away from the default camera. |
 | 49 | **(agent, 2026-10-27)** Zoom runs from 150 mm to 3,600 mm of visible table width, a little past the spec's "about 3,000 mm" to leave room around a 2,000-card table. The table grid is 100 mm minor and 500 mm major lines, the minor lines fading out when zoomed far. |
 | 50 | **(agent, 2026-10-27)** Section 9.1's selection table was split by a paragraph, hiding three rows; the paragraph now follows the table. No behaviour changed. |
+| 51 | **(agent, 2026-10-27)** Decklist names go through the cached name catalog before `/cards/collection`: case and accents are fixed to the catalog's spelling, and a line naming only a back face ("Insectile Aberration") is sent as its front face. Typos are not auto-corrected; they come back unresolved so the owner sees them in red. |
+| 52 | **(agent, 2026-10-27)** A resolved line is remembered for seven days (identifier → printing id, records in IndexedDB), so a list spawns again without Scryfall: the owner's 1,008-card cube resolves in about 50 ms warm against about 17 s cold. |
+| 53 | **(agent, 2026-10-27)** A line with a set code but no number takes the printing `/cards/collection` returns for `{name, set}`, rather than computing "first by collector number" with an extra search per line. |
+| 54 | **(agent, 2026-10-27)** Messy arrival shipped with Phase 2 because its layout is a pure function; the default stays Messy (decision 21). The parser also reads `*E*` and `(etched)` as the etched finish. |
+| 55 | **(agent, 2026-10-27)** The test lists are written by `scripts/make-test-data.ts`, which runs the app's own Scryfall client in Node. The owner's `cube.txt` holds 1,008 cards, so it doubles as a bigger-than-540 test. |
+| 56 | **(agent, 2026-10-27)** Phase 1's numbered placeholder cards are gone from Phase 2 on; the table starts empty until autosave restores it (Phase 4). |
 
 ## Appendix B: Open items
 

@@ -98,7 +98,7 @@ vec2 cuv = vLocal.xy / (CARD_HALF * 2.0) + 0.5;
 vec4 texel;
 if (vFace > 0.5) texel = sampleSlot(vFront, cuv);
 else if (vFace < -0.5) texel = sampleSlot(vBack, vec2(1.0 - cuv.x, cuv.y));
-else texel = vec4(0.16, 0.15, 0.14, 1.0);
+else texel = vec4(0.58, 0.56, 0.53, 1.0);
 diffuseColor.rgb *= texel.rgb;
 diffuseColor.rgb *= 1.0 + 0.14 * vFlags.y;
 `;

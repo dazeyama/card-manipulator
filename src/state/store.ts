@@ -17,6 +17,8 @@ export interface StoreEvents {
   removed: string[];
   /** Model positions, yaw or face changed. */
   moved: string[];
+  /** Cards came to rest at new model positions: pile detection and autosave run (spec 11.1, 14.3). */
+  settled: string[];
   selection: void;
   piles: void;
   records: string[];

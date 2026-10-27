@@ -1,40 +1,48 @@
 // Boot: store, renderer, physics, UI (spec 4.3).
 
 import './styles/app.css';
-import { App, levelZ } from './app';
+import { App } from './app';
 import { MouseInput } from './input/mouse';
 import { KeyboardInput } from './input/keyboard';
-import { newUid } from './state/store';
-import type { Card } from './state/types';
+import { scryfall } from './scryfall/client';
+import { SpawnPanel } from './ui/spawnPanel';
+import { TopBar } from './ui/topBar';
+import { setBanner } from './ui/toasts';
+import { h } from './ui/dom';
 
-const app = new App(document.getElementById('app')!);
+const root = document.getElementById('app')!;
+const top = h('div', { class: 'top-host' });
+const middle = h('div', { class: 'middle' });
+const left = h('div', { class: 'left-host' });
+const stageHost = h('div', { class: 'stage-host' });
+const right = h('div', { class: 'right-host' });
+const bottom = h('div', { class: 'bottom-host' });
+middle.append(left, stageHost, right);
+root.append(top, middle, bottom);
+
+const app = new App(stageHost);
 const mouse = new MouseInput(app);
-new KeyboardInput(app, mouse);
+const keyboard = new KeyboardInput(app, mouse);
+const topBar = new TopBar(app, top);
+const spawnPanel = new SpawnPanel(app, left);
 
-// Phase 1: fifty numbered placeholder cards through the instanced path.
-function placeholderCards(): Card[] {
-  const cards: Card[] = [];
-  for (let i = 0; i < 40; i++) {
-    const col = i % 8;
-    const row = Math.floor(i / 8);
-    cards.push({
-      uid: newUid(), scryfallId: `placeholder:${i + 1}`, finish: i === 5 ? 'foil' : 'nonfoil',
-      x: (col - 3.5) * 75, y: (2 - row) * 100, z: levelZ(0), yaw: 0, faceUp: i !== 7, pileId: null, spreadOf: null,
-    });
+// A 429 pauses the queue; say so while it lasts (spec 5.2).
+let bannerTimer = 0;
+scryfall.onStatus((s) => {
+  const left = s.pausedUntil - Date.now();
+  if (left > 0) {
+    setBanner(`Scryfall asked us to slow down. Waiting ${Math.ceil(left / 1000)} s…`);
+    clearTimeout(bannerTimer);
+    bannerTimer = window.setTimeout(() => setBanner(null), left);
   }
-  for (let i = 0; i < 10; i++) {
-    cards.push({
-      uid: newUid(), scryfallId: `placeholder:${41 + i}`, finish: 'nonfoil',
-      x: 420, y: 0, z: levelZ(i), yaw: 0, faceUp: true, pileId: null, spreadOf: null,
-    });
-  }
-  return cards;
-}
+});
 
-app.store.addCards(placeholderCards());
 app.start();
+
+export const ui = { app, mouse, keyboard, topBar, spawnPanel };
 
 if (import.meta.env.DEV) {
   import('./dev/shot').then((m) => m.installShot(app));
-  (window as unknown as { app: App }).app = app;
+  (window as unknown as { app: App; ui: typeof ui }).app = app;
+  (window as unknown as { ui: typeof ui }).ui = ui;
 }

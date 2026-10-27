@@ -59,6 +59,13 @@ export class MouseInput {
     const { x, y } = this.local(e);
     this.app.pointer.x = x;
     this.app.pointer.y = y;
+    if (this.app.pointer.inside) {
+      const p = this.app.rig.screenToPlane(x, y, 0);
+      if (p) {
+        this.app.lastTablePoint.x = p.x;
+        this.app.lastTablePoint.y = p.y;
+      }
+    }
     const g = this.gesture;
     switch (g.kind) {
       case 'pan':

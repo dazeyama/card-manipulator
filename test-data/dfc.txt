@@ -1,0 +1,42 @@
+// Double-faced, split, adventure and flip cards. Some lines use only one face name.
+// Generated from Scryfall data on 2026-10-27 by scripts/make-test-data.ts.
+1 Sink into Stupor // Soporific Springs
+1 Fell the Profane // Fell Mire
+1 Malakir Rebirth // Malakir Mire
+1 Witch-Blessed Meadow
+1 Bala Ged Recovery
+1 Disciple of Freyalise // Garden of Freyalise
+1 Birgi, God of Storytelling // Harnfel, Horn of Bounty
+1 Valakut Awakening // Valakut Stoneforge
+1 Mystic Peak
+1 Growing Rites of Itlimoc
+1 Hydroelectric Specimen // Hydroelectric Laboratory
+1 Boggart Trawler // Boggart Bog
+1 Sea Gate Restoration // Sea Gate, Reborn
+1 Tanglespan Bridgeworks
+1 Sundering Eruption
+1 Revitalizing Repast // Old-Growth Grove
+1 Etali, Primal Conqueror // Etali, Primal Sickness
+1 Clearwater Pathway // Murkwater Pathway
+1 Grimclimb Pathway
+1 Blightstep Pathway
+1 Riverglide Pathway // Lavaglide Pathway
+1 Needleverge Pathway // Pillarverge Pathway
+1 Ojer Taq, Deepest Foundation // Temple of Civilization
+1 Sejiri Glacier
+1 Agadeem's Awakening
+1 Cragcrown Pathway // Timbercrown Pathway
+1 Dusk // Dawn
+1 Wear // Tear
+1 Reactor Raid
+1 Lindblum, Industrial Regency
+1 Ishgard, the Holy See // Faith & Grief
+1 Murderous Rider // Swift End
+1 Walk-In Closet // Forgotten Cellar
+1 Prop Room
+1 Monster Manual
+1 Virtue of Persistence // Locthwain Scorn
+1 Jidoor, Aristocratic Capital // Overture
+1 Funeral Room // Awakening Hall
+1 Vantress Visions
+1 Two-Handed Axe

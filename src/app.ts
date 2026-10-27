@@ -6,7 +6,8 @@ import { Store } from './state/store';
 import { CARD_T, type Card } from './state/types';
 import { SceneView } from './render/scene';
 import { CameraRig } from './render/camera';
-import { Atlas, BACK_KEY, drawPlaceholder, type Slot } from './render/atlas';
+import { Atlas, type Slot } from './render/atlas';
+import { CardImages } from './render/cardImages';
 import { CardLayer, type Pose } from './render/cards';
 import { Motion } from './physics/motion';
 
@@ -26,6 +27,9 @@ export class App {
   readonly atlas: Atlas;
   readonly layer: CardLayer;
   readonly motion: Motion;
+  readonly images: CardImages;
+  /** The table point under the cursor the last time it was over the table (spawn "at the cursor"). */
+  readonly lastTablePoint = { x: 0, y: 0 };
   /** Last cursor position over the canvas, in canvas pixels. */
   readonly pointer = { x: 0, y: 0, inside: false };
   /** Per-frame hooks run before rendering. */
@@ -48,6 +52,8 @@ export class App {
     this.atlas = new Atlas(this.view.renderer, 1);
     this.layer = new CardLayer(this.view.scene, this.atlas, ACCENT);
     this.motion = new Motion(this.layer);
+    this.images = new CardImages(this.atlas, this.layer, this.store);
+    void this.images.loadBack();
 
     const ro = new ResizeObserver(() => this.resize());
     ro.observe(stage);
@@ -71,16 +77,10 @@ export class App {
     this.frameHooks.push(fn);
   }
 
-  /** Atlas slots for a card's front and back. Overridden once images exist (Phase 2). */
-  slotsFor: (card: Card) => { front: Slot; back: Slot } = (card) => {
-    const key = `ph:${card.scryfallId}`;
-    let front = this.atlas.get(key);
-    if (!front) {
-      front = this.atlas.allocate(key);
-      this.atlas.draw(front, drawPlaceholder(card.scryfallId.replace(/^placeholder:/, '')));
-    }
-    return { front, back: this.atlas.get(BACK_KEY)! };
-  };
+  /** Atlas slots for a card's front and back. */
+  slotsFor(card: Card): { front: Slot; back: Slot } {
+    return this.images.slotsFor(card);
+  }
 
   private onAdded(uids: string[]): void {
     for (const uid of uids) {

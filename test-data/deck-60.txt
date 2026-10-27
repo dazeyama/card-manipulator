@@ -1,0 +1,17 @@
+// A 60-card burn deck: set codes, collector numbers and *F* foil markers.
+// Generated from Scryfall data on 2026-10-27 by scripts/make-test-data.ts.
+Deck
+4 Lightning Bolt (MSC) 806 *F*
+4 Monastery Swiftspear (BRO) 144
+4 Goblin Guide (2XM) 127
+4 Lava Spike (UMA) 136 *F*
+4 Rift Bolt (2X2) 122
+4 Skewer the Critics (RVR) 124
+4 Light Up the Stage (DSC) 166
+4 Eidolon of the Great Revel (A25) 128
+4 Searing Blaze (DDI) 67
+3 Boros Charm (FDN) 721 *F*
+2 Skullcrack (RVR) 125
+3 Inspiring Vantage (OTJ) 269
+4 Sacred Foundry (TRK) 295 *F*
+12 Mountain (MDD) 298
