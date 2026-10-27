@@ -200,6 +200,8 @@
 
 **Agent decisions:** 82–85.
 
+**Commit:** `cb81d06` (this report's final update is the commit after it).
+
 ### Performance against Section 17 (stress-2000.txt, measured on your RTX 4070 Ti)
 
 | Measure | Target | Measured |
