@@ -1,0 +1,866 @@
+# 3D Card Manipulator — Design Specification
+
+| | |
+|---|---|
+| **Product** | 3D Card Manipulator (working name: "card-manipulator") |
+| **Owner** | Daisy |
+| **Spec version** | 0.3 — 2026-10-27 |
+| **Status** | Approved for an autonomous overnight build of Phases 1–8 (Section 0.1). Nothing is built yet. |
+| **Project folder** | `C:\ClaudeProjects\card-manipulator` |
+| **Live URL** | None yet. Deploy is deferred (decision 37). When it happens: `https://dazeyama.github.io/card-manipulator/`. |
+| **Inspiration** | Lucky Paper's MTG Scratchpad (`https://luckypaper.co/resources/scratchpad/`), rebuilt as a 3D table with physics and RTS-style selection |
+| **Words** | A **card** is one physical object on the table. A **stack** is a tidy pile of cards squared up on top of each other. A **pile** is any group of cards resting together, tidy or messy. A **named pile** is a pile the owner has given a name. A **selection** is the set of cards currently under command. See Section 2. |
+
+---
+
+## 0. How to use this document
+
+This spec is written for an engineer building the app with Claude Code. It is the single source of truth. Where it says **must**, that is a requirement. Where it says **should**, use judgement. If something here conflicts with the owner's later instructions, the owner wins. Update this file so the conflict doesn't come back.
+
+1. **Read the whole document before starting.** Sections 1–17 describe the finished product. Section 18 splits the build into phases.
+2. **Build one phase at a time, in order.** Each phase ends at a state the owner can open on `localhost` and check. During the overnight build, a phase is finished when it passes the gate in Section 0.1, not when the owner reports back.
+3. **The owner is QA, in the morning.** For the overnight build only, Claude Code also verifies its own work in the built-in browser (Section 0.1). The owner still does the final QA from each phase's "Where to look" checklist.
+4. **The PUG Pricing Tool is reference material only** (Section 3). Read `src/lib/scryfall.js`, `cache.js` and `transport.js` for conventions. Never edit that project.
+5. **Every owner decision is logged** in Appendix A with its date. Open questions live in Appendix B. When one is answered, move it to Appendix A and update the body.
+6. **No secrets.** Scryfall is keyless. There is no backend.
+
+### 0.1 Autonomous build mode (owner, 2026-10-27)
+
+The owner will run Phases 1–8 overnight in one unattended Claude Code session, started from `OVERNIGHT_PROMPT.md`. These rules apply to that run and override anything above that assumes the owner is present.
+
+- **All eight phases, in order, without waiting.** A phase is finished when it passes the **phase gate**:
+  1. `npm run typecheck` passes with no errors.
+  2. `npm test` passes. Every pure module the phase adds has tests.
+  3. `npm run build` succeeds.
+  4. The agent starts the dev server, opens it in the built-in browser, walks the phase's "Where to look" checklist itself, saves screenshots into `reports/screenshots/phase-N/`, and confirms the console shows no errors.
+  5. A local git commit closes the phase.
+- **Ambiguity:** decide, log, keep going. Pick the option most in line with this spec and the owner's decisions, and add a row to Appendix A marked **(agent)** with the reasoning. Never stop the run to ask.
+- **Stuck:** after a genuine effort on one item, stub it so later phases still work, mark it **BROKEN** in the morning report with what was tried, and continue.
+- **Dependencies:** any package may be added if its reason is logged as an agent decision (decision 35).
+- **Git:** local commits only. No remote, no push, no `gh` commands, no GitHub repo (decision 36).
+- **Deploy:** none. Nothing is published (decision 37).
+- **Network:** Scryfall's API and image CDN only, from the app in the browser, plus the one card back download. Be gentle: reuse the caches and don't reload large lists in loops.
+- **Progress:** `MORNING_REPORT.md` is updated at the end of every phase (Section 18.1). It is also how a resumed or compacted session finds where the run stands.
+
+---
+
+## 1. Overview
+
+### 1.1 Purpose
+
+A browser scratchpad for working with hundreds to a couple of thousand Magic cards as simulated physical objects on a 3D table. It assists tasks that involve sorting, grouping, comparing and arranging many cards at once: cube curation, collection triage, splitting one pool into several decks, and reviewing draft picks and pools.
+
+It is not a game client. There are no turns, zones, life totals or rules. It is a table, cards, and tools for commanding them.
+
+### 1.2 Goals
+
+1. **RTS-style selection and filtering is the headline feature.** Grab a crowd of cards with a rectangle, refine the selection with a Scryfall-style query, and move the result as a unit. This is the one thing the tool must do better than the Lucky Paper Scratchpad (owner, 2026-10-27).
+2. **Physical feel.** Cards have thickness, cast shadows, slide, settle, stack and flip. Motion feels like cardboard; results are tidy when you want them tidy.
+3. **Scale.** Up to about 2,000 cards on one table at a smooth frame rate on the owner's machine: an NVIDIA RTX 4070 Ti at 1920 × 1080 (decision 38).
+4. **Scryfall-native.** Cards are specific printings with their real images and data, spawned from decklists, single-card search or a Scryfall query.
+5. **Round trip.** Piles leave the tool as decklists and CSV. The whole table saves and reloads, including across a browser refresh.
+
+### 1.3 Non-goals (version one)
+
+These are deliberately out, and listed in Section 19 for later: undo/redo, saved selection groups bound to number keys, multiple tables or tabs, drawn snap zones or lanes, collapsing duplicates into one card with a count, shareable links or any backend, touch and phone support, rules or game simulation, pricing, sound, deployment, a dark theme, and browsers other than Chrome and Edge.
+
+### 1.4 The jobs this tool is for
+
+The owner named four tasks (2026-10-27). Every design decision should be tested against them.
+
+| Job | What a session looks like |
+|---|---|
+| Cube sorting and curation | Spawn a 540-card list. Select by color and mana value, lay piles in rows, swap cards in and out, export the result. |
+| Collection triage | Spawn a few hundred cards from a list. Sort into keep, sell, trade and bulk piles. Export each pile as CSV. |
+| Building multiple decks | Spawn one pool. Pull candidates into several deck piles side by side, compare, move cards between them, export each deck. |
+| Draft and pick analysis | Spawn a pool or a set. Filter by archetype signals, rank by eye, spread stacks to compare. |
+
+---
+
+## 2. Glossary
+
+| Term | Meaning |
+|---|---|
+| **Table** | The infinite flat surface everything rests on. There is exactly one table in version one. |
+| **Card** | One physical object: a specific Scryfall printing plus a finish (foil or nonfoil), a position, a rotation and a face (up or down). Four copies of a card are four card objects. |
+| **Face** | The side showing. A face-down normal card shows the Magic card back. A face-down double-faced card shows its back face. The tool treats both identically: flipping is flipping. |
+| **Pile** | Any group of cards resting together on the table. Piles are detected automatically from positions (Section 11.1). |
+| **Stack** | A tidy pile: cards squared up, one on top of the next, with a count badge. |
+| **Messy pile** | An untidy pile: cards overlapping at small random offsets and angles. |
+| **Named pile** | A pile the owner has promoted by giving it a name. It keeps its identity, has its own filter and exports as a unit (Section 11.3). |
+| **Spread** | A stack temporarily fanned out into a grid so every card is visible. Double-click toggles it. |
+| **Selection** | The set of cards currently under command. Highlighted, counted in the HUD, moved together. |
+| **Refine** | Narrowing the selection with a query. The selection shrinks to the cards that match. |
+| **Table search** | Running a query over every card on the table. Matches become the selection wherever they are. |
+| **Spawn** | Creating cards on the table from a decklist, a single card, or a Scryfall query. |
+| **Arrival** | How spawned cards land: as a messy pile (default) or as a neat stack. |
+| **Inspect panel** | The side panel showing a large image and the text of the card under the cursor. |
+| **Gather** | The default group-drag behaviour: selected cards flow toward the cursor as you drag. |
+| **Formation** | The alternative group-drag behaviour: selected cards keep their relative positions. |
+| **Tidy** | A command that squares up the selection into stacks. Also the name of the toggle that makes every drop land tidy. |
+| **Flick** | A fast sideways mouse motion during a drag that tosses the card and flips it. |
+
+---
+
+## 3. Reference projects
+
+### 3.1 What to take from the PUG Pricing Tool (`C:\ClaudeProjects\pug-pricing-tool`)
+
+Read, don't edit. Port the ideas, in TypeScript.
+
+- **One serialized Scryfall queue** (`src/lib/scryfall.js`). Every request waits its turn. General calls are spaced 100 ms apart. Searches are spaced 550 ms apart because Scryfall allows about two searches a second and a 429 locks the app out for a minute. Keep both numbers.
+- **Caches with an age** (`src/lib/cache.js`, `storedOrDownload`). The set list is cached for a day and the card-name catalog for seven days, each under a versioned key so a shape change invalidates cleanly.
+- **Name terms quoted word by word** (`nameTerms`) so "or", "-" and similar are never Scryfall syntax.
+- **The decklist parser's tolerance** (`cm/domain.py` in Collection Manager, `decklist.js` in the pricing tool): accents dropped, sideboard headers recognised, counts optional, duplicates merged per section.
+- **Spec conventions**: header table, numbered sections, a decisions log with dates, phases that end in something the owner can check.
+
+### 3.2 What to take from the Lucky Paper Scratchpad
+
+Feature parity to match or beat: paste a list and get cards; drag cards into columns; sort and group by color, type, mana value; hover for a large image; copy a column out as a list. Where the scratchpad is a 2D grid of columns, this tool is a free table, so "columns" become piles you place wherever you like.
+
+---
+
+## 4. Architecture
+
+### 4.1 Summary
+
+A single-page static web app. No server. The browser talks to Scryfall directly for card data and images, keeps a local cache of both in IndexedDB and the Cache API, renders the table with WebGL through Three.js, and runs a physics step for cards that are moving. The table autosaves to IndexedDB and can be saved to and loaded from a JSON file.
+
+```
+ ┌─────────────────────────────────────────────────────────────────┐
+ │ UI layer (HTML/CSS over the canvas)                             │
+ │  Spawn panel · Selection HUD + filter box · Inspect panel ·     │
+ │  Top bar (table name, save/load, export, settings)              │
+ ├─────────────────────────────────────────────────────────────────┤
+ │ Table state (the model)                                         │
+ │  cards[] · piles[] · selection · camera · settings               │
+ │  pure functions: query evaluator, pile detection, layouts        │
+ ├───────────────────────┬─────────────────────────────────────────┤
+ │ Renderer (Three.js)   │ Physics (Rapier, only for moving cards) │
+ │  instanced card meshes│  kinematic while dragged, dynamic on    │
+ │  texture atlas pages  │  release, static once settled           │
+ ├───────────────────────┴─────────────────────────────────────────┤
+ │ Scryfall client · image loader · IndexedDB/Cache API stores     │
+ └─────────────────────────────────────────────────────────────────┘
+```
+
+### 4.2 Technology choices
+
+| Concern | Choice | Notes |
+|---|---|---|
+| Language | **TypeScript** | Owner's choice, confirmed 2026-10-27 (decision 24). Strict mode. Keep types simple so the code stays readable. |
+| Build | **Vite** | Dev server and static bundle. |
+| 3D | **Three.js** (latest stable) | Instanced meshes, custom shaders where needed. |
+| Physics | **Rapier** (`@dimforge/rapier3d-compat`) | WASM, fast, good sleeping. Only cards in motion have bodies. Committed without a spike (owner, 2026-10-27, decision 26). |
+| UI | **Plain DOM, HTML and CSS, no framework** | The UI is a few panels over a canvas. A framework earns nothing here. If the panels grow unwieldy, revisit at Phase 7. |
+| State | A single plain TypeScript store with explicit mutation functions and a change event | No Redux or similar. |
+| Storage | **IndexedDB** via `idb` (card JSON, autosave) and the **Cache API** (images) | |
+| Query parsing | Hand-written parser for the Scryfall subset in Section 9.4 | No dependency. |
+| Fuzzy names | `fuse.js` | Single-card autocomplete typo tolerance, as in the pricing tool. |
+| Tests | `vitest` | Pure functions only: query engine, decklist parser, pile detection, layouts. |
+| Tooling | Node 24, npm 11, Git, GitHub CLI | Installed on the owner's machine (checked 2026-10-27). |
+
+Start from this list. Any further package, runtime or dev, may be added when its reason is logged in Appendix A as an agent decision (decision 35).
+
+**Browsers:** current Chrome and Edge only (decision 41). Firefox and Safari are not tested or supported.
+
+### 4.3 Repository layout
+
+```
+card-manipulator/
+  design_spec.md
+  CLAUDE.md                 (project rules for every session; written 2026-10-27)
+  OVERNIGHT_PROMPT.md       (the prompt that starts the overnight build)
+  MORNING_REPORT.md         (written by the overnight build, Section 18.1)
+  reports/screenshots/      (phase gate screenshots)
+  test-data/                (Section 18.2)
+  .claude/launch.json       (dev server entry for the built-in browser)
+  .claude/settings.local.json (pre-approved build commands)
+  index.html
+  package.json
+  vite.config.ts
+  tsconfig.json
+  start.bat
+  public/
+    card-back.jpg           (Scryfall's standard back, downloaded once; Section 5.4)
+  src/
+    main.ts                 (boot: store, renderer, physics, UI)
+    state/
+      store.ts              (table state, mutations, change events)
+      types.ts              (Card, Pile, TableDoc, Settings)
+      selection.ts          (select, add, toggle, refine, table search)
+      piles.ts              (pile detection, stack/spread/tidy layouts)
+      history.ts            (reserved; empty in v1)
+    scryfall/
+      client.ts             (serialized queue, spacing, retries)
+      resolve.ts            (decklist lines -> printings via /cards/collection)
+      search.ts             (Scryfall query -> printings via /cards/search)
+      names.ts              (card-name catalog, 7-day cache, fuse index)
+      cardData.ts           (the trimmed card record we keep; IndexedDB cache)
+    query/
+      lexer.ts, parser.ts, evaluate.ts   (local Scryfall-subset query engine)
+    render/
+      scene.ts              (table, lights, shadows)
+      camera.ts             (tilted camera with limited orbit, pan, zoom)
+      cards.ts              (instanced meshes, per-card attributes)
+      atlas.ts              (texture atlas pages for small images)
+      images.ts             (image loader, Cache API, hi-res on demand)
+      picking.ts            (raycast -> card, marquee -> cards)
+      badges.ts             (stack count badges, pile labels)
+    physics/
+      world.ts              (Rapier world, step loop)
+      bodies.ts             (body lifecycle: static / kinematic / dynamic)
+      feel.ts               (gather spring, drop settle, flick detection)
+    input/
+      mouse.ts              (the full mouse grammar, Section 16)
+      keyboard.ts
+    ui/
+      spawnPanel.ts, hud.ts, inspectPanel.ts, topBar.ts, settings.ts, toasts.ts
+    io/
+      decklist.ts           (parse formats, Section 12.2)
+      exportDecklist.ts, exportCsv.ts
+      saveFile.ts, autosave.ts
+    styles/
+      app.css
+  tests/
+    query.test.ts, decklist.test.ts, piles.test.ts
+```
+
+### 4.4 Git, GitHub and deployment
+
+- `git init` on day one. Default branch `main`. Commit at the end of each phase at least.
+- **Local only for now** (decision 36). No remote is added and nothing is pushed.
+- **Deploy is deferred** (decision 37). Set Vite `base` from an environment variable defaulting to `/`, so a later GitHub Pages deploy at `/card-manipulator/` is a one-line change. Don't write or run a deploy script.
+- Local run: `npm run dev`. A `start.bat` that runs it and opens the browser, matching the owner's other projects.
+
+---
+
+## 5. Data source: Scryfall
+
+### 5.1 Endpoints used
+
+| Need | Endpoint | Notes |
+|---|---|---|
+| Resolve a decklist | `POST /cards/collection` | Up to 75 identifiers per call. Identifiers: `{name}`, `{name, set}`, `{set, collector_number}`. Unresolved lines come back in `not_found`. |
+| Spawn from a query | `GET /cards/search?q=…&unique=cards` | 175 per page; follow `next_page`. The app always appends `-is:extra` so tokens, emblems and art cards never spawn from a query (decision 31). Cap at 500 cards; the owner can raise the cap to 2,000 in settings (decision 32). |
+| Single card | `GET /cards/named?fuzzy=…` or exact, with optional `set` | Spawns the default printing unless a set is pinned. |
+| Card names for autocomplete | `GET /catalog/card-names` | Cached seven days. |
+| Set list | `GET /sets` | Cached one day. Used to validate set codes in decklist lines. |
+| Images | `image_uris.small` and `image_uris.normal` (per face for double-faced cards) | From `cards.scryfall.io`, cached in the Cache API. |
+
+### 5.2 Rate limits and queueing
+
+One serialized queue, as in the pricing tool. General calls 100 ms apart; searches 550 ms apart measured from the previous answer. A 429 pauses the queue for the time Scryfall asks for, with a visible banner. Image downloads bypass the queue (they are CDN requests) but run at most eight in parallel.
+
+### 5.3 The card record we keep
+
+Only the fields the tool needs, trimmed from Scryfall's response and stored in IndexedDB keyed by Scryfall `id`:
+
+```
+id, oracle_id, name, set, set_name, collector_number, rarity, lang,
+layout, mana_cost, cmc, type_line, oracle_text, colors, color_identity,
+power, toughness, loyalty, keywords, produced_mana, legalities (subset),
+finishes, prices (usd, usd_foil, as of fetch time),
+faces: [{ name, mana_cost, type_line, oracle_text, colors, power, toughness, image_small, image_normal }],
+image_small, image_normal, back_image_small, back_image_normal (for DFCs),
+fetched_at
+```
+
+Everything the local query engine (Section 9.4) can filter on must be in this record, because filtering never calls Scryfall.
+
+### 5.4 The card back
+
+Scryfall's standard Magic back, the `card_back_id` of ordinary cards (checked 2026-10-27), downloaded once in Phase 2 into `public/card-back.jpg` and committed (decision 40):
+
+```
+https://backs.scryfall.io/large/0/a/0aeebaf5-8c7d-4636-9e82-8c27447861f7.jpg
+```
+
+It is a 131 KB JPEG. It occupies slot 0 of atlas page 0, scaled to the `small` size.
+
+---
+
+## 6. Data model (table state)
+
+### 6.1 Card
+
+| Field | Type | Notes |
+|---|---|---|
+| `uid` | string | Unique per card object on this table. |
+| `scryfallId` | string | The printing. |
+| `finish` | `'nonfoil' \| 'foil' \| 'etched'` | Foils render with a sheen (Section 8.4). |
+| `x, y, z` | number | Table position in millimetres. A card is 63 × 88 × 0.3 mm (the physics thickness is larger; Section 15.3). |
+| `yaw` | number | Rotation about the vertical axis, radians. Tidy cards are 0 or ±90°. |
+| `faceUp` | boolean | |
+| `pileId` | string or null | The pile this card is detected in. Recomputed, not authored, except for named piles. |
+| `spreadOf` | string or null | If the card is currently part of a spread, the stack it came from. |
+
+### 6.2 Pile
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | string | |
+| `name` | string or null | Non-null means a named pile. |
+| `kind` | `'stack' \| 'messy'` | Detected from positions. |
+| `anchor` | `{x, y}` | Centre of the pile footprint. |
+| `cardUids` | string[] | Bottom to top for stacks. |
+| `filter` | string or null | A named pile's own query (Section 11.3). |
+
+Emergent piles are recomputed whenever cards settle. Named piles persist: their `id`, `name` and `filter` survive even if every card leaves (Section 11.3).
+
+### 6.3 Table document (save format v1)
+
+```json
+{
+  "format": "card-manipulator-table",
+  "version": 1,
+  "name": "Vintage cube pass 3",
+  "savedAt": "2026-10-27T18:00:00Z",
+  "settings": { "tidyDrops": false, "arrival": "messy" },
+  "camera": { "target": [0,0,0], "distance": 900, "pitch": 55, "yaw": 0 },
+  "piles": [ { "id": "p1", "name": "Keep", "filter": null } ],
+  "cards": [
+    { "uid": "c1", "scryfallId": "…", "finish": "nonfoil", "x": 0, "y": 0, "z": 0, "yaw": 0, "faceUp": true, "pileId": "p1" }
+  ],
+  "cardData": { "<scryfallId>": { "…trimmed card record…" } }
+}
+```
+
+`cardData` is included so a save file reopens without Scryfall. On load, any missing records are fetched through `/cards/collection` and the cards show as grey placeholders until they arrive.
+
+---
+
+## 7. The table and camera
+
+### 7.1 Table
+
+- An infinite flat plane in a pale warm grey, with a faint grid that fades with distance to give scale and a sense of motion (decision 39). The origin is the centre of the initial view.
+- Nothing is pinned to table coordinates in version one: no lanes, no zones (owner, 2026-10-27: blank infinite table only). Named piles provide the only structure.
+
+### 7.1a Look of the interface
+
+Owner's decision (2026-10-27): **light UI on a pale table** (decision 39).
+
+- Panels are white or near-white with soft shadows, dark grey text, and one accent colour for selection: a saturated blue that reads clearly against both card art and the pale table.
+- The selection rim glow uses the accent colour. Badges are white pills with dark text.
+- Fonts: the system UI stack. No web fonts.
+- Colours are defined once as CSS custom properties so a dark theme can be added later.
+- Cards must stand out from the table: the table stays low-contrast and desaturated, and card shadows do the separating.
+
+### 7.2 Camera
+
+- A perspective camera tilted toward the table. Default pitch 55° from horizontal, looking at the origin.
+- **Limited orbit** (owner, 2026-10-27): pitch between 25° and 89°, yaw ±60° from the default (decision 25). The camera can lean in to see the side of a pile but never goes below the table or around behind it.
+- **Pan**: middle-drag, or hold Space and left-drag. Pan is in table coordinates so the ground stays under the cursor.
+- **Zoom**: mouse wheel, toward the cursor, between a whole-table view (about 3,000 mm wide) and a single-card view (about 150 mm wide).
+- **Orbit**: right-drag on empty table. Right-click without dragging on a card flips it (Section 10.5), so orbit begins only after the cursor has moved more than 4 px with the button down, and only if the press was not on a card.
+- **Home** key resets the camera. **Frame selection** (`Z`) moves the camera to fit the selection.
+
+---
+
+## 8. Cards: rendering
+
+### 8.1 Geometry
+
+Each card is a thin box, 63 × 88 mm, with rounded corners baked into the texture's alpha rather than the mesh. Face up shows the front image; face down shows the Magic back, or the back face of a double-faced card.
+
+### 8.2 Instancing and atlas pages
+
+- All cards share one geometry. Rendering uses `InstancedMesh`, one per atlas page, with per-instance transform, atlas rectangle for the front, atlas rectangle for the back, a selection flag, a foil flag and a hover flag.
+- Atlas pages are 4096 × 4096 textures of Scryfall `small` images (146 × 204). Each page holds about 560 images; 2,000 cards with many duplicates typically fit in two or three pages. More pages are fine on the target GPU; above eight the app warns in the console and keeps going.
+- The Magic back image occupies slot 0 of page 0. Double-faced backs take their own slots.
+- Until an image arrives, the slot shows a neutral grey card with the name rendered in the badge layer.
+
+### 8.3 Close-up quality
+
+The `small` image is sharp enough for the table view (decision 33). When the camera zooms close enough that a card exceeds about 250 px on screen, the renderer swaps the hovered card and the nearest cards for `normal` images through a small pool of individual textures. The inspect panel always uses `normal`.
+
+### 8.4 Selection, hover and foil
+
+- Selected cards get an emissive outline in the instanced shader (a rim glow, not a post-process) so 2,000 highlighted cards cost nothing extra.
+- The hovered card lifts 2 mm and brightens slightly.
+- Foil cards get a subtle animated sheen based on view angle. It should read as "that one's a foil", not as a disco effect.
+
+### 8.5 Shadows and light
+
+One directional light with a shadow map covering the visible table, plus soft ambient. Stacks cast a visible thickness shadow. Shadow map resolution adapts to zoom so close-ups stay crisp.
+
+---
+
+## 9. Selection: the headline feature
+
+### 9.1 Basic selection
+
+| Action | Result |
+|---|---|
+| Left-click a card | Selects only that card. |
+| Shift + left-click a card | Toggles it: adds it if it is out, removes it if it is in. |
+| Left-drag on empty table | Rectangle marquee in screen space; selects every card whose centre is inside. Shift adds the marquee's cards; Ctrl subtracts them. |
+| Left-click a stack's top card | Selects just the top card. |
+| Click a stack's count badge | Selects the whole stack. Shift toggles it. |
+| Ctrl + A | Selects every card on the table. |
+| Esc | Clears the selection (or cancels a drag in progress). |
+| Click empty table | Clears the selection. |
+
+Ctrl has no click meaning on a card. It is reserved for lifting a whole stack (Section 10.2), so a press on a stack never has to guess between "toggle" and "lift" (owner, 2026-10-27).
+
+### 9.2 Selection HUD
+
+A bar along the bottom of the screen, always visible:
+
+- Count: "128 cards selected" and, when all come from one pile, the pile's name.
+- A colour pip summary (W U B R G C counts) and a tiny mana-value histogram, as a glance at what's in hand.
+- The **filter box** (Section 9.3).
+- Quick chips (Section 9.5).
+- Buttons: Stack, Spread, Tidy, Flip, Export.
+
+### 9.3 Refine: the filter box
+
+The RTS "refine my squad" control. Type a query and press Enter. The selection shrinks to the cards that match (owner, 2026-10-27). Non-matching cards are deselected; nothing moves.
+
+- Ctrl + F or `/` focuses the box.
+- The box shows a live count as you type: "128 → 34 match". Enter commits. Esc returns focus to the table with the selection unchanged.
+- With nothing selected, the box runs a **table search** instead (Section 9.6). The placeholder says which mode it is in.
+- Refinements chain: refine, then refine again, until the squad is what you want.
+
+### 9.4 The local query language
+
+A subset of Scryfall syntax, evaluated locally over the card records already on the table. The engine must never call Scryfall. Unsupported terms produce an inline error, not a silent empty match.
+
+Supported in version one:
+
+| Term | Examples | Notes |
+|---|---|---|
+| Bare words | `bolt`, `"lightning bolt"` | Match card name, case and accent insensitive. |
+| `name:`, `n:` | `n:dragon` | |
+| `o:`, `oracle:` | `o:"draw a card"`, `o:flying` | Oracle text, all faces. |
+| `t:`, `type:` | `t:creature`, `t:legendary` | Type line, all faces. |
+| `c:`, `color:` | `c:r`, `c:rg`, `c>=uw`, `c:colorless`, `c:multicolor` | Colour with `:`, `=`, `>=`, `<=`, `>`, `<`, `!=`. |
+| `id:`, `ci:`, `identity:` | `id<=bg` | Colour identity, same operators. |
+| `mv:`, `cmc:`, `manavalue:` | `mv<=2`, `mv=3`, `mv>6` | |
+| `pow:`, `tou:`, `loy:` | `pow>=4` | `*` is treated as 0. |
+| `r:`, `rarity:` | `r:mythic`, `r>=rare` | |
+| `s:`, `set:`, `e:` | `s:m11` | |
+| `cn:`, `number:` | `cn:149` | |
+| `kw:`, `keyword:` | `kw:flying` | |
+| `is:` | `is:foil`, `is:nonfoil`, `is:dfc`, `is:permanent`, `is:spell`, `is:faceup`, `is:facedown`, `is:selected` | The last three are this tool's own. |
+| `f:`, `format:` | `f:modern`, `f:commander` | Legal in the format. |
+| `pile:` | `pile:keep`, `pile:"deck a"` | This tool's own: cards in the named pile. |
+| `-term` | `-t:land` | Negation. |
+| `or`, parentheses | `(c:r or c:g) mv<=2` | Implicit `and` between terms. |
+
+Not supported in version one: `art:`, `flavor:`, `a:` artist, `year:`, `usd:`, `prefer:`, `order:`, `unique:`, regular-expression values. The parser must reject these with the message "Not supported on the table: `term`".
+
+### 9.5 Quick chips
+
+Beside the filter box, one-click refinements for the most common narrowings: W U B R G C M (multicolour), Creature, Instant/Sorcery, Artifact, Enchantment, Planeswalker, Land, and mana value 0–1, 2, 3, 4, 5, 6+. Clicking a chip appends its term to the filter box and applies it. Shift-click a chip to negate it.
+
+### 9.6 Table search
+
+With nothing selected, the filter box searches the whole table. Matching cards become the selection, highlighted in place, wherever they are (owner, 2026-10-27). They do not move. The HUD then reads "34 cards selected across 5 piles". From there the owner can drag them as a group, press Stack to gather them, or refine again.
+
+### 9.7 Selection feedback at a distance
+
+When zoomed out, a highlighted card is a few pixels. Selected cards therefore also get a small marker in the badge layer when the camera is far, and pile badges show "3 of 40 selected" when a pile is partly selected.
+
+---
+
+## 10. Moving, stacking, flipping
+
+### 10.1 Single card drag
+
+Left-press on a card and move. The card lifts about 10 mm, tilts slightly in the direction of motion, and follows the cursor with a short spring so it feels like it has mass. Releasing drops it. If it lands on a stack, it joins the top of that stack and squares up. If it lands on a messy pile, it lands messily unless **Tidy drops** is on.
+
+Dragging a card that is in the selection drags the whole selection. Dragging a card that is not in the selection first selects only that card.
+
+### 10.2 Stack grab: top card or whole stack
+
+Owner's decision (2026-10-27): **a plain drag on a stack peels the top card; a modifier drags the whole stack.**
+
+- Left-drag on a stack's top card: that one card comes off.
+- **Ctrl + left-drag** on a stack: the whole stack lifts as one. Ctrl was chosen over Shift so that no modifier means one thing on click and another on drag (owner, 2026-10-27). Ctrl + drag on a single card simply drags it.
+- Dragging the count badge also lifts the whole stack, with no modifier.
+
+### 10.3 Group drag: gather by default, modifier keeps formation
+
+Owner's decision (2026-10-27): **gather by default; a modifier keeps the formation.**
+
+- **Gather**: as the drag begins, every selected card flows toward the cursor along a spring and trails behind it in a loose clump. On release the clump squares up into one stack at the drop point (Section 10.4).
+- **Formation** (hold **Alt** while dragging): cards keep their relative positions and move as a rigid group. On release they drop in place, each landing on whatever is beneath it. On Windows, releasing Alt can focus the browser's menu bar; the app swallows Alt's `keyup` with `preventDefault`. If that still misfires in testing, the fallback is Ctrl + Shift + drag (decision 29).
+- Cards in the clump are drawn with a small per-card offset so the clump reads as "many cards", with the count in a label beside the cursor.
+
+### 10.4 Release and landing
+
+- A gathered group released on empty table becomes a **neat stack** (owner, 2026-10-27: stacks by default).
+- Released over an existing stack, the group joins the top of it.
+- Released over a messy pile, the group joins the pile. Messy if the global **Tidy drops** toggle is off, squared up on top if it is on.
+- Landing plays a short settle: a few millimetres of drop, a soft bounce, and shadows pooling. It must finish within about 300 ms so fast work never waits on animation.
+
+### 10.5 Flip
+
+Owner's decision (2026-10-27): **right-click flips, no context menu; a flick during a drag also flips; the `F` key flips the selection** (decision 28, added after decision 17).
+
+- Right-click a card: it flips over with a physical turn, rising, rotating about its long axis and landing. If the card is in the selection, every selected card flips in a quick cascade.
+- `F`: every selected card flips, the same cascade, without aiming the mouse at one of them.
+- A face-down normal card shows the Magic back. A face-down double-faced card shows its back face. The tool does not distinguish; there is no special "transform" command.
+- **Flick**: if the cursor's speed during a drag exceeds a threshold and reverses sharply, the dragged card (or clump) is tossed a short distance in the flick direction and flips in the air. The threshold is tuned in Phase 5 and exposed in settings as Off / Normal / Sensitive.
+
+### 10.6 Spread and restack
+
+Owner's decision (2026-10-27): **double-click toggles spread.**
+
+- Double-click a stack: its cards fan out into a grid beside the stack's position, rows of up to ten, top card first, with the stack's badge staying at the original spot as an anchor.
+- Double-click any card of a spread, or its anchor badge: the spread restacks in the same order.
+- A card dragged out of a spread leaves it. The spread closes around the gap on restack.
+- Spreads are still real cards on the table: they can be selected, refined and flipped.
+
+### 10.7 Tidy, Stack, Spread commands
+
+Available as HUD buttons and keys, acting on the selection:
+
+| Command | Key | Effect |
+|---|---|---|
+| Stack | `S` | Gather the selection into one neat stack at its centroid. |
+| Spread | `X` | Spread the selection in a grid at its centroid. |
+| Tidy | `T` | Square up each pile the selection touches without merging piles. |
+| Flip | `F`, right-click | See 10.5. |
+| Rotate | `R` | Turn the selection 90° (tap it sideways). Cosmetic in v1; piles stay piles. |
+
+### 10.8 Remove
+
+`Delete` removes the selected cards from the table into a **Removed** tray in the spawn panel. They can be spawned back from there in the same session. The tray empties when the page is closed. This stands in for undo in version one.
+
+---
+
+## 11. Piles
+
+### 11.1 Detection
+
+Piles are detected, not authored. After cards settle, the model groups cards whose footprints overlap, transitively. A group whose cards all share the same centre within 2 mm and the same yaw is a **stack**; anything else is a **messy pile**. Detection runs on a settle event, not every frame, and only for the cards that moved and their neighbours.
+
+### 11.2 Badges
+
+Every pile with two or more cards shows a floating badge above it: the count, and the name if it has one. Badges face the camera, keep a constant screen size, and avoid overlapping each other when zoomed out. Clicking a badge selects the pile. Dragging a badge lifts the pile.
+
+### 11.3 Named piles
+
+Owner's decision (2026-10-27): **piles are emergent by default and can be promoted to named containers.**
+
+- Promote: with a pile selected, press `N` or click the pencil on its badge, type a name, Enter. The badge now shows the name.
+- A named pile keeps its identity when cards join or leave, and when it is spread.
+- **Own filter**: a named pile can carry a query (Section 9.4). Cards dropped onto it that do not match are rejected: they slide off to the side with a short shake and a toast ("3 cards don't match Keep: `t:creature`"). This turns a named pile into a sorting bin.
+- **Empty named piles** remain on the table as a labelled outline footprint, so a set of bins can be prepared before sorting (decision 27). Delete the outline through the badge's pencil → Delete.
+- Export per pile: the badge's export button copies the pile as a decklist (Section 14.1).
+- Rename or un-name through the same pencil. Un-naming reverts it to an emergent pile.
+
+### 11.4 Merging and splitting
+
+Dropping a stack onto a stack merges them, and a named stack keeps its name (if both are named, the receiving pile's name wins and a toast says so). Peeling cards off never renames anything. Spreading a named pile keeps the name on the anchor.
+
+---
+
+## 12. Spawning cards
+
+### 12.1 Spawn panel
+
+A collapsible panel on the left with three tabs:
+
+1. **List**: a textarea for a decklist, a Parse button, a preview of resolved and unresolved lines, and Spawn.
+2. **Card**: a search box with autocomplete from the name catalog (fuse.js for typos), an optional set code and collector number, a quantity, a finish, and Spawn.
+3. **Query**: a Scryfall query, a Preview count (runs the search and reports the total before spawning), a cap field (default 500, settings allow up to 2,000) and Spawn. Extras are always excluded (Section 5.1); a small note under the box says so.
+
+Panel-wide controls:
+
+- **Arrival**: Messy pile (default) or Neat stack. Owner's decision (2026-10-27): "dumped in a messy pile, with a toggle somewhere to drop as a neat stack/deck."
+- **Face**: up (default) or down.
+- **Where**: at the cursor's last table position, or the centre of the view. Spawned cards appear in a short "dealt onto the table" animation.
+- The **Removed** tray (Section 10.8).
+
+### 12.2 Decklist formats
+
+Owner's decision (2026-10-27): plain decklists, lines with set and number, and Scryfall search as a source. CSV import is out of version one.
+
+Each line is parsed with the tolerance of the owner's other tools:
+
+| Line | Reading |
+|---|---|
+| `4 Lightning Bolt` | Four copies, default printing. |
+| `4x Lightning Bolt`, `Lightning Bolt x4`, `Lightning Bolt` | Same; a missing count is 1. |
+| `1 Lightning Bolt (M11) 149` | Arena/Moxfield style: set code and collector number pin the printing. |
+| `1 Lightning Bolt (M11)` | Set only: the first printing in that set by collector number. |
+| `1 Lightning Bolt [M11]`, `1 Lightning Bolt M11 149` | Also accepted. |
+| `1 Lightning Bolt *F*`, `… (foil)`, `… F` at the end | Foil finish. |
+| `Sideboard`, `SB:`, `Commander`, `Maybeboard`, blank lines, `//` comments | Recognised as headers and comments and skipped. Every section's cards spawn together as one pile (decision 30). A card listed in two sections spawns the sum of both counts. |
+| `Lightning Bolt // Something` | Double-faced and split names resolve by either face or the full name. |
+
+Resolution goes through `/cards/collection` in batches of 75. Unresolved lines are listed in red in the preview with a "fix it" field that reruns just that line. Spawn proceeds with the resolved lines; the unresolved stay in the panel until fixed or cleared.
+
+### 12.3 Duplicates
+
+Every copy is its own card object. There is no collapsing in version one. A 60-card deck with 20 basics spawns 60 cards.
+
+---
+
+## 13. Inspect panel
+
+The one extra the owner kept in version one (2026-10-27).
+
+- A panel on the right. When the cursor rests on a card for about 150 ms it shows that card's `normal` image, name, mana cost, type line, oracle text (every face), power/toughness or loyalty, set name, collector number, rarity and finish.
+- Double-faced cards show both faces stacked vertically in the panel regardless of which face is up on the table.
+- When exactly one card is selected and nothing is hovered, the panel shows the selected card.
+- Click the panel image to pin it; the panel then ignores hover until unpinned.
+- The panel collapses to a thin strip with a toggle for small screens.
+
+---
+
+## 14. Export and save
+
+### 14.1 Decklist per pile
+
+From a pile's badge or the HUD's Export button (for the selection). Copies to the clipboard and offers a `.txt` download. Format option, remembered: `4 Lightning Bolt` or `4 Lightning Bolt (M11) 149`, with `*F*` after foils. Exporting several piles at once produces one file with a header line per pile.
+
+### 14.2 CSV
+
+The whole table or the selection. One row per distinct (pile, printing, finish) with a quantity column, so it round-trips into the owner's CSV tools:
+
+```
+pile,quantity,name,set,collector_number,finish,scryfall_id
+Keep,4,Lightning Bolt,m11,149,nonfoil,…
+```
+
+### 14.3 Save and load
+
+- **Autosave** to IndexedDB after every settle, debounced to one second. Reopening the page restores the last table, camera included.
+- **Save as file**: the Table document (Section 6.3) as `.json`, with `cardData` embedded. **Load file** replaces the table after a confirm.
+- **New table** clears everything after a confirm.
+- The table name sits in the top bar and is editable.
+
+---
+
+## 15. Physics and feel
+
+### 15.1 Model
+
+Only cards that are moving have physics bodies. The three states:
+
+| State | Body | When |
+|---|---|---|
+| Settled | none (or static) | Resting on the table or in a pile. Position is authored by the model. |
+| Held | kinematic | Being dragged. Follows the cursor through a spring and damper so it lags and tilts. |
+| Loose | dynamic | Just released, flicked, or shoved. Simulated until it sleeps, then snapped and returned to Settled. |
+
+Cards become Loose only briefly. A table of 2,000 settled cards has zero dynamic bodies.
+
+### 15.2 Collisions
+
+A Held card or clump passes over settled cards without disturbing them; shoving a thousand cards around by accident is worse than a little unreality. On release the Loose cards collide with the table and with the cards of the pile they land on, so messy drops look like a dropped handful.
+
+### 15.3 Thickness
+
+Real cards are 0.3 mm thick, which makes stacks of thin boxes jitter in any engine. The physics body is 2 mm thick while the rendered card stays thin, and stacks are authored by the model rather than simulated: a stack of 40 is one static collider the height of 40 cards, not 40 bodies.
+
+### 15.4 Messy versus tidy
+
+Owner's decision (2026-10-27): hybrid with a toggle. The global **Tidy drops** setting (top bar, default off) decides whether releases land messy or squared up. The `Tidy` command (Section 10.7) squares up on demand. Spawn's Arrival control is the same idea for new cards.
+
+### 15.5 Feel targets
+
+Personality: **snappy and light** (decision 42). Quick follow, short settles, very little bounce. Speed of sorting beats realism whenever they conflict.
+
+- Pick-up to first movement under one frame.
+- Gather clump follows the cursor with visible but short lag, about 80 ms.
+- Settle under 300 ms.
+- Flip animation about 350 ms for one card; a cascade over a selection adds 10 ms per card, capped at 600 ms total.
+- No animation ever blocks input.
+
+---
+
+## 16. Mouse and keyboard reference
+
+| Input | On a card | On a stack badge | On empty table |
+|---|---|---|---|
+| Left-click | Select only it | Select the pile | Clear selection |
+| Shift + left-click | Toggle in or out of selection | Toggle pile | — |
+| Ctrl + left-click | Nothing (reserved) | — | — |
+| Left-drag | Move it (or the selection if it is selected); on a stack, peels the top card | Move the whole pile | Marquee select |
+| Shift + left-drag | Move it; Shift has no drag meaning on cards | Move the whole pile | Marquee, adding |
+| Ctrl + left-drag | Move the whole stack | Move the whole pile | Marquee, subtracting |
+| Alt + left-drag | Move the selection in formation | — | — |
+| Right-click | Flip it (and the selection if it is selected) | Flip the pile | — |
+| Right-drag | — | — | Orbit camera |
+| Middle-drag, Space + left-drag | Pan | Pan | Pan |
+| Wheel | Zoom toward cursor | Zoom | Zoom |
+| Double-click | Toggle spread of its stack | Toggle spread | — |
+| Fast flick during a drag | Toss and flip | — | — |
+
+| Key | Action |
+|---|---|
+| Esc | Clear selection, cancel drag, close panel field |
+| Ctrl + A | Select all |
+| Ctrl + F, `/` | Focus the filter box |
+| Enter (in filter box) | Apply refine or table search |
+| S | Stack selection |
+| X | Spread selection |
+| T | Tidy selection |
+| F | Flip selection |
+| R | Rotate selection 90° |
+| N | Name the selected pile |
+| Z | Frame the selection |
+| Home | Reset camera |
+| Delete | Remove selection to the tray |
+| Ctrl + S | Save file |
+| Ctrl + E | Export selection as decklist |
+
+All keys are inactive while a text field has focus.
+
+---
+
+## 17. Performance budget
+
+| Measure | Target |
+|---|---|
+| Cards on table | 2,000 at 60 fps on the owner's RTX 4070 Ti at 1920 × 1080, with headroom: frame time under 8 ms there |
+| Draw calls per frame | Under 20 (one per atlas page, plus table, shadows, badges) |
+| Dynamic physics bodies | Under 200 at any moment |
+| Texture memory | Under 1 GB |
+| Spawn 540 cards from a list | Resolved and visible in under 15 s on a warm cache, image fill-in continuing after |
+| Autosave | Under 50 ms, off the frame |
+| Pile detection after a drop | Under 5 ms for the touched region |
+
+Techniques assumed: instancing, atlas pages, per-instance attributes updated in bulk, shadow map sized to view, no per-card DOM, badges drawn in one sprite batch or one HTML layer with culling, query evaluation in a worker if it ever exceeds 16 ms.
+
+---
+
+## 18. Build phases
+
+Each phase ends with something the owner can open at `localhost` and check. During the overnight build each phase must pass the gate in Section 0.1, then commit, then move on.
+
+### 18.1 The morning report
+
+`MORNING_REPORT.md` at the project root, updated at the end of every phase. It must contain:
+
+1. A one-screen summary at the top: phases finished, phases with **BROKEN** items, and how to run the app.
+2. Per phase: what was built, the gate results (typecheck, tests with counts, build, browser check), links to its screenshots, its commit hash, agent decisions made, and anything **BROKEN** with what was tried.
+3. The owner's QA checklist for the morning: each phase's "Where to look" list, plus everything the agent could not judge itself, such as Alt-drag on Windows, flick feel, foil sheen taste, and readability of small images.
+4. Measured performance against Section 17 with the 2,000-card stress table.
+
+### 18.2 Test data
+
+- `test-data/cube.txt` is the owner's real cube list (decision 43). If it holds no card lines when the run starts, the agent builds a 540-card stand-in from a Scryfall query and says so in the report.
+- The agent also writes, from Scryfall data: `deck-60.txt` (a 60-card deck using set codes, collector numbers and foil markers), `dfc.txt` (about 40 double-faced and split cards), `bad-lines.txt` (typos and unknown cards for the unresolved-line path), and `stress-2000.txt` (2,000 cards for Section 17).
+
+### Phase 1: Table and camera
+Vite + TypeScript + Three.js scaffold. Table plane, lighting, shadows. Camera with pan, zoom, limited orbit, Home. Fifty placeholder cards (grey, numbered) rendered through the instanced path. `start.bat`. npm scripts: `dev`, `build`, `preview`, `test`, `typecheck`.
+**Where to look:** page loads; drag with middle button pans; wheel zooms toward cursor; right-drag orbits within limits; Home resets; shadows under cards.
+
+### Phase 2: Scryfall and spawn
+Scryfall client with the serialized queue. Name catalog and set list caches. Decklist parser with the formats in 12.2 and its unit tests. `/cards/collection` resolution. Atlas pages and image loading with Cache API. Download the card back (Section 5.4). Spawn panel (List and Card tabs) with arrival as a neat stack only for now.
+**Where to look:** paste a 540-card cube list; unresolved lines show in red; cards appear as a stack and images fill in; refresh and the images come from cache; 2,000 cards still pan smoothly.
+
+### Phase 3: Selection and the query engine
+Click, Shift toggle, Ctrl-subtract marquee, marquee. HUD with count and pips. Query lexer, parser and evaluator with unit tests covering every term in 9.4. Refine, table search, quick chips, live count.
+**Where to look:** marquee a crowd; type `t:creature mv<=2` and watch the count drop; Enter shrinks the selection; clear and search the table for `c:r`; an unsupported term shows an error.
+
+### Phase 4: Moving, stacking, spreading
+Single drag, gather drag, Alt formation drag, release into stacks, peel versus Ctrl whole stack, badge drag, double-click spread and restack, Stack/Spread/Tidy/Rotate commands, Delete tray. Pile detection and badges. Autosave.
+**Where to look:** drag one card onto another and get a badge reading 2; select thirty and drag them into a clump that stacks on release; Alt-drag keeps formation; double-click spreads; refresh restores the table.
+
+### Phase 5: Physics and feel
+Rapier integration with the three-state body model. Spring follow on held cards, settle on release, messy drops, Tidy drops toggle, right-click flip, `F` flip, flick flip, foil sheen.
+**Where to look:** drop a handful and it looks dropped; toggle Tidy drops and it squares up; right-click flips with a turn; select forty and press F for a cascade; a flick tosses and flips; nothing jitters in a stack of 100.
+
+### Phase 6: Named piles
+Promote, rename, un-name, pile filter with rejection, empty-pile outlines, merge rules, `pile:` query term.
+**Where to look:** name a pile Keep with filter `t:creature`; drop a land on it and it slides off with a toast; empty the pile and the label stays.
+
+### Phase 7: Inspect, export, save files, query spawn
+Inspect panel with pin. Decklist and CSV export. Save and load file. Spawn Query tab with preview and cap. Settings panel.
+**Where to look:** hover shows a big readable image with both faces of a DFC; export Keep and paste it into Moxfield; save a file, New table, load it back; spawn `set:ltr r:rare` and get the preview count first.
+
+### Phase 8: Polish
+Performance pass against Section 17 with `stress-2000.txt`. Badge decluttering. Distance selection markers. Toasts and error states. Bring CLAUDE.md up to date. A final pass of every earlier checklist. No deploy (decision 37).
+**Where to look:** 2,000 cards at a smooth frame rate; every checklist above still passes; the morning report is complete.
+
+---
+
+## 19. Later (explicitly deferred)
+
+- Undo/redo (`history.ts` is reserved).
+- Saved selection groups on Ctrl + 1–9, RTS style.
+- Multiple tables or tabs in one session.
+- Drawn snap zones and lanes.
+- Collapsing duplicates into one card with a count.
+- CSV import from the owner's other tools.
+- Shareable saved tables (URL or hosted).
+- Touch, tablet and phone.
+- Deploying to GitHub Pages, and a GitHub remote.
+- Sound effects.
+- A dark theme.
+- Firefox and Safari support.
+- A context menu, if right-click flip proves too easy to trigger by accident.
+- Spawning decklist sections (Sideboard, Commander) as separate piles.
+- Prices on cards; sorting a pile by price.
+- Auto-layout commands ("sort this pile into columns by mana value") beyond the simple grid spread.
+
+---
+
+## Appendix A: Decisions log
+
+All dated 2026-10-27, from the brainstorming session.
+
+| # | Decision |
+|---|---|
+| 1 | The tool is for cube sorting and curation, collection triage, building multiple decks from one pool, and draft or pick analysis. |
+| 2 | Performance target is about 2,000 cards. |
+| 3 | Camera is tilted with limited orbit, not fixed top-down and not free orbit. |
+| 4 | Physics is a hybrid: messy possible, tidy possible, with a toggle. |
+| 5 | A dragged group released on the table becomes a neat stack by default. |
+| 6 | Piles are both emergent and promotable to named containers. |
+| 7 | Selection refinement uses Scryfall syntax plus quick chips. |
+| 8 | Each card is a specific printing (set and collector number) and carries a finish. Quantity collapsing and price/condition fields are out of v1. |
+| 9 | Import formats for day one: plain decklists, lines with set and number, and a Scryfall search as a source. CSV import is later. |
+| 10 | Outputs: a decklist per pile, CSV export, and a saved table layout. Screenshots are later. |
+| 11 | The table is blank and infinite with no built-in zones. |
+| 12 | Any card can be flipped physically. A normal card shows the Magic back; a double-faced card shows its back face. No difference in treatment. |
+| 13 | Rendering is Three.js, in TypeScript with Vite, hosted as a static site with local saves. |
+| 14 | The one thing this beats the Lucky Paper Scratchpad at is RTS-style selection and filtering. |
+| 15 | Refining a selection shrinks it to the matches. |
+| 16 | Group drag gathers under the cursor by default; a modifier keeps the formation. |
+| 17 | Flip is right-click with no context menu, and a flick gesture during a drag. No flip key in v1. |
+| 18 | Of the proposed extras, only the hover inspect panel is in v1. Undo/redo, control groups and multiple tables are later. |
+| 19 | Dragging a stack peels the top card; a modifier takes the whole stack. |
+| 20 | Double-click toggles spreading a stack. |
+| 21 | Spawned cards arrive as a messy pile by default, with a toggle for a neat stack. |
+| 22 | A table-wide search selects the matches wherever they are without moving them. |
+| 23 | Whole-stack grab is Ctrl + drag, not Shift, so no modifier overlaps between click and drag. Consequence: Shift-click is the single add-or-remove toggle, and Ctrl has no click meaning on a card. |
+| 24 | TypeScript is accepted, despite the pricing tool's choice of plain JavaScript. |
+| 25 | Orbit limits are pitch 25°–89° and yaw ±60° from the default view. |
+| 26 | Rapier is the physics engine, committed without a comparison spike. |
+| 27 | An emptied named pile stays on the table as a labelled outline until deleted explicitly. |
+| 28 | The `F` key flips the selection, in addition to right-click and the flick gesture. Supersedes the "no flip key" part of decision 17. |
+| 29 | Formation drag uses Alt, with its `keyup` swallowed on Windows. Fallback if it misfires in testing: Ctrl + Shift + drag. |
+| 30 | A pasted decklist always spawns as one pile. Section headers such as Sideboard and Commander are recognised and skipped, never split. |
+| 31 | Query spawns always exclude extras (tokens, emblems, art cards) by appending `-is:extra`. |
+| 32 | A query spawn is capped at 500 cards by default, with a settings override up to 2,000. |
+| 33 | Table textures use Scryfall's `small` image; `normal` is used close up and in the inspect panel. |
+| 34 | The build runs overnight, unattended, through all eight phases. Each phase must pass a self-verification gate that includes a browser check by the agent; the owner does QA in the morning. On ambiguity the agent decides, logs an agent decision, and continues. |
+| 35 | Any package may be added, runtime or dev, when its reason is logged. |
+| 36 | Git is local commits only. No remote, no push. |
+| 37 | Deploy is skipped entirely for now. Nothing is published. |
+| 38 | The performance target is the owner's machine (RTX 4070 Ti, 1080p), not integrated GPUs. |
+| 39 | Light UI on a pale table. |
+| 40 | The card back is Scryfall's standard back, downloaded once into `public/card-back.jpg`. |
+| 41 | Chrome and Edge only. |
+| 42 | Physics personality is snappy and light. No sound in v1. |
+| 43 | The owner supplies a real cube list as `test-data/cube.txt`; the agent generates the other test lists. Results arrive as `MORNING_REPORT.md`. Formation drag stays on Alt with the Windows fix, and the owner tests it in the morning. |
+| 44 | **(agent, 2026-10-27)** The atlas pages are layers of one 2D array texture instead of one texture per page, so every card is drawn in a single instanced draw call and a card's front and back may sit on different pages. Images are copied into their cell on the GPU, never by re-uploading a whole page. Pages stay 4096 × 4096; a 2 px gutter per cell (513 cells per page instead of about 560) limits mipmap bleeding. |
+| 45 | **(agent, 2026-10-27)** A card without its image yet shows a grey card with its name drawn into its own atlas cell, not in the badge layer. It costs nothing per frame and scales to 2,000 cards with no DOM. |
+| 46 | **(agent, 2026-10-27)** Cards resting on the table also get a soft contact shadow, because a flat 0.3 mm card casts almost no shadow-map shadow and the spec wants shadows to separate cards from the table (7.1a). The shadow map still does stacks and lifted cards. |
+| 47 | **(agent, 2026-10-27)** Packages added: `html-to-image` and `@types/node` (dev only) so the phase gate can save screenshots through a dev-server endpoint; TypeScript is pinned to 5.9 rather than the new 7.0 line for tooling stability. |
+| 48 | **(agent, 2026-10-27)** The renderer uses the model's axes directly: z is up in three.js too (`camera.up = z`), x right, y away from the default camera. |
+| 49 | **(agent, 2026-10-27)** Zoom runs from 150 mm to 3,600 mm of visible table width, a little past the spec's "about 3,000 mm" to leave room around a 2,000-card table. The table grid is 100 mm minor and 500 mm major lines, the minor lines fading out when zoomed far. |
+| 50 | **(agent, 2026-10-27)** Section 9.1's selection table was split by a paragraph, hiding three rows; the paragraph now follows the table. No behaviour changed. |
+
+## Appendix B: Open items
+
+None as of 2026-10-27. Every question raised while drafting has been answered and logged in Appendix A (decisions 23–43). During the overnight build the agent does not add items here: it decides and logs an agent decision in Appendix A instead (Section 0.1).
