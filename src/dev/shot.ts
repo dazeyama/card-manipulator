@@ -33,3 +33,19 @@ export function installShot(app: App): void {
     return res.ok ? `saved ${name}` : `failed: ${await res.text()}`;
   };
 }
+
+/** Dev-only: spawn a test-data list by file name, e.g. __spawnFile('cube.txt', { arrival: 'messy', at: { x: 0, y: 0 } }). */
+export function installSpawnFile(app: App): void {
+  (window as unknown as { __spawnFile: unknown }).__spawnFile = async (file: string, opts: Partial<import('../spawn').SpawnOptions> = {}) => {
+    const { parseDecklist } = await import('../io/decklist');
+    const { resolveEntries } = await import('../scryfall/resolve');
+    const { spawnCards } = await import('../spawn');
+    const text = await (await fetch(`/test-data/${file}`)).text();
+    const parsed = parseDecklist(text);
+    const res = await resolveEntries(parsed.entries);
+    const uids = spawnCards(app, res.resolved.map((r) => ({ record: r.record, finish: r.entry.finish, count: r.entry.count })), {
+      arrival: 'messy', faceUp: true, where: 'center', ...opts,
+    });
+    return { spawned: uids.length, unresolved: res.unresolved.length };
+  };
+}

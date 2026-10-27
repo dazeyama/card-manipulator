@@ -866,6 +866,9 @@ All dated 2026-10-27, from the brainstorming session.
 | 54 | **(agent, 2026-10-27)** Messy arrival shipped with Phase 2 because its layout is a pure function; the default stays Messy (decision 21). The parser also reads `*E*` and `(etched)` as the etched finish. |
 | 55 | **(agent, 2026-10-27)** The test lists are written by `scripts/make-test-data.ts`, which runs the app's own Scryfall client in Node. The owner's `cube.txt` holds 1,008 cards, so it doubles as a bigger-than-540 test. |
 | 56 | **(agent, 2026-10-27)** Phase 1's numbered placeholder cards are gone from Phase 2 on; the table starts empty until autosave restores it (Phase 4). |
+| 57 | **(agent, 2026-10-27)** With `:`, `c:` means "at least these colours" and `id:` means "within this identity", as on Scryfall. Both take letters, colour names, guilds, shards and wedges. A few free extras are supported beside the spec's list: `!"exact name"`, `is:` `mdfc`, `transform`, `split`, `multicolor`, `colorless`, `legendary`, `historic`, `etched`, and `~` in `o:` for the card's own name. |
+| 58 | **(agent, 2026-10-27)** The filter box keeps its text after Enter, so quick chips append to it and Enter re-applies the whole chain (AND chains are idempotent). It clears whenever the selection changes any other way. Errors show inline under the live count and never change the selection. |
+| 59 | **(agent, 2026-10-27)** The HUD's mana value histogram leaves lands out, and the C pip counts cards with no colour. The selection updates live while a marquee is dragged, so the count follows the rectangle. |
 
 ## Appendix B: Open items
 

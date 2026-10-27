@@ -9,6 +9,8 @@ import { SpawnPanel } from './ui/spawnPanel';
 import { TopBar } from './ui/topBar';
 import { setBanner } from './ui/toasts';
 import { h } from './ui/dom';
+import { Hud } from './ui/hud';
+import { selectAll } from './state/selection';
 
 const root = document.getElementById('app')!;
 const top = h('div', { class: 'top-host' });
@@ -25,6 +27,14 @@ const mouse = new MouseInput(app);
 const keyboard = new KeyboardInput(app, mouse);
 const topBar = new TopBar(app, top);
 const spawnPanel = new SpawnPanel(app, left);
+const hud = new Hud(app, bottom);
+
+keyboard.bind('ctrl+a', () => selectAll(app.store));
+keyboard.bind('escape', () => {
+  if (!mouse.cancel()) app.store.clearSelection();
+});
+keyboard.bind('ctrl+f', () => hud.focus());
+keyboard.bind('/', () => hud.focus());
 
 // A 429 pauses the queue; say so while it lasts (spec 5.2).
 let bannerTimer = 0;
@@ -39,10 +49,13 @@ scryfall.onStatus((s) => {
 
 app.start();
 
-export const ui = { app, mouse, keyboard, topBar, spawnPanel };
+export const ui = { app, mouse, keyboard, topBar, spawnPanel, hud };
 
 if (import.meta.env.DEV) {
-  import('./dev/shot').then((m) => m.installShot(app));
+  import('./dev/shot').then((m) => {
+    m.installShot(app);
+    m.installSpawnFile(app);
+  });
   (window as unknown as { app: App; ui: typeof ui }).app = app;
   (window as unknown as { ui: typeof ui }).ui = ui;
 }

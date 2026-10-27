@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Phases finished** | 1, 2 |
+| **Phases finished** | 1, 2, 3 |
 | **Phases with BROKEN items** | none so far |
 | **Run it** | `npm install` once, then `npm run dev` and open http://localhost:5173 (or double-click `start.bat`) |
 
@@ -55,6 +55,25 @@ Run in progress: the build is working through the phases in order.
 
 ---
 
+## Phase 3: Selection and the query engine ✅
+
+**Built**
+- Click selects only that card; Shift-click toggles; Ctrl-click does nothing (reserved); click on empty table clears; Ctrl + A; Esc clears (or cancels a marquee).
+- Marquee in screen space by card centre; Shift adds, Ctrl subtracts; the selection follows the rectangle live.
+- HUD: count with pile wording, W U B R G C pips, mana value histogram, filter box with live "128 → 34 match", inline errors, nineteen quick chips (Shift-click negates), Ctrl + F and `/` focus the box, Esc leaves it with the selection unchanged.
+- Local query engine (`src/query/`): lexer, parser and evaluator for every term in 9.4, plus a few free extras (decision 57). Unsupported terms say "Not supported on the table: `term`".
+- Table search when nothing is selected; refinements chain.
+
+**Gate:** typecheck clean · 67 tests passed (25 for the query engine covering every term, operator, negation, `or`, parentheses and every error; selection refine/search/summary) · build OK · browser check OK, no console errors.
+
+**Checked in the browser:** real-mouse marquee over a 360-card grid (84 selected), typed `t:creature mv<=2` + Enter (84 → 30), Esc twice, `/` then `c:r` + Enter (186 red cards selected across the table), `t:dragon art:dragon` shows the error, chips Creature → 2 → Shift-G (457 → 127 → 94), click / Shift-click / Ctrl-click / Ctrl + A. The browser tool cannot hold Shift or Ctrl during a drag, so the add and subtract marquees were checked with synthetic pointer events carrying the modifier flags (1,008 → 924 subtract, 84 → 120 add).
+
+**Screenshots:** [marquee](reports/screenshots/phase-3/01-marquee.png) · [refined](reports/screenshots/phase-3/02-refined.png) · [table search c:r](reports/screenshots/phase-3/03-table-search-c-r.png) · [unsupported term](reports/screenshots/phase-3/04-unsupported-term.png)
+
+**Agent decisions:** 57–59.
+
+---
+
 ## Owner's QA checklist
 
 ### Phase 1
@@ -71,3 +90,10 @@ Run in progress: the build is working through the phases in order.
 - [ ] Refresh, paste the cube again: it resolves at once and the images come from cache.
 - [ ] Card tab: type a misspelt name, pick from the suggestions, spawn four foils.
 - [ ] Is the `small` image readable enough up close? (decision 33; close-up `normal` images come in Phase 8)
+
+### Phase 3
+- [ ] Marquee a crowd; Shift-marquee adds, Ctrl-marquee subtracts (checked only with synthetic events, see above).
+- [ ] Type `t:creature mv<=2`: the live count drops as you type; Enter shrinks the selection.
+- [ ] Esc, Esc, then `/`, `c:r`, Enter: red cards highlight wherever they are.
+- [ ] An unsupported term (`art:x`) shows an error and changes nothing.
+- [ ] Chips append and apply; Shift-click excludes.

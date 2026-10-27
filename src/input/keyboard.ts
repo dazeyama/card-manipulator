@@ -43,8 +43,7 @@ export class KeyboardInput {
     const name = (e.ctrlKey || e.metaKey ? 'ctrl+' : '') + key;
     const action = this.bindings.get(name);
     if (!action) return;
-    // Esc still works in text fields; it is bound with a handler that checks itself.
-    if (isTyping() && key !== 'escape') return;
+    if (isTyping()) return;
     e.preventDefault();
     action(e);
   }
