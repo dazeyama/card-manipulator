@@ -30,6 +30,16 @@ export interface StoreEvents {
 
 type Listener<T> = (payload: T) => void;
 
+export interface Spread {
+  id: string;
+  anchor: { x: number; y: number };
+  yaw: number;
+  /** Top card first, the order the stack had. */
+  uids: string[];
+  /** The named pile the stack was, if any (spec 11.4: the name stays on the anchor). */
+  pileId: string | null;
+}
+
 export class Emitter<E> {
   private listeners = new Map<keyof E, Set<Listener<never>>>();
 
@@ -76,6 +86,8 @@ export class Store {
   /** Named pile identities (spec 11.3). */
   readonly named = new Map<string, NamedPile>();
   readonly selection = new Set<string>();
+  /** Open spreads (spec 10.6): the stack's anchor and its cards, top card first. */
+  readonly spreads = new Map<string, Spread>();
   settings: Settings = { ...DEFAULT_SETTINGS };
 
   // ---- cards ----
@@ -154,6 +166,7 @@ export class Store {
 
   setPiles(piles: Map<string, Pile>): void {
     this.piles = piles;
+    for (const c of this.cards.values()) c.pileId = null;
     for (const p of piles.values()) {
       for (const uid of p.cardUids) {
         const c = this.cards.get(uid);
@@ -185,6 +198,7 @@ export class Store {
     this.cards.clear();
     this.piles = new Map();
     this.named.clear();
+    this.spreads.clear();
     this.selection.clear();
     this.events.emit('reset', undefined);
   }

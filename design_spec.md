@@ -869,6 +869,12 @@ All dated 2026-10-27, from the brainstorming session.
 | 57 | **(agent, 2026-10-27)** With `:`, `c:` means "at least these colours" and `id:` means "within this identity", as on Scryfall. Both take letters, colour names, guilds, shards and wedges. A few free extras are supported beside the spec's list: `!"exact name"`, `is:` `mdfc`, `transform`, `split`, `multicolor`, `colorless`, `legendary`, `historic`, `etched`, and `~` in `o:` for the card's own name. |
 | 58 | **(agent, 2026-10-27)** The filter box keeps its text after Enter, so quick chips append to it and Enter re-applies the whole chain (AND chains are idempotent). It clears whenever the selection changes any other way. Errors show inline under the live count and never change the selection. |
 | 59 | **(agent, 2026-10-27)** The HUD's mana value histogram leaves lands out, and the C pip counts cards with no colour. The selection updates live while a marquee is dragged, so the count follows the rectangle. |
+| 60 | **(agent, 2026-10-27)** `X` on a selection that is exactly one whole stack behaves like double-click (spread beside the stack, anchor badge left behind, restackable). Any other selection spreads in a grid at its centroid with no anchor. |
+| 61 | **(agent, 2026-10-27)** Open spreads are saved in the table document as an optional `spreads` list and a `spreadOf` per card, so a refresh keeps them restackable. Files without them load as before. |
+| 62 | **(agent, 2026-10-27)** Ctrl + drag on a stack, and dragging a badge, also select the lifted pile, the same way a plain drag selects the card it lifts. |
+| 63 | **(agent, 2026-10-27)** Backspace removes like Delete. The Removed tray groups cards by printing and finish and spawns back one line or everything, using the spawn panel's Arrival, Face and Where settings. |
+| 64 | **(agent, 2026-10-27)** `R` turns cards clockwise. Until physics lands (Phase 5), messy landings use the same random layout as messy spawns. |
+| 65 | **(agent, 2026-10-27)** A pile badge sits over the pile's top card (a stack's anchor, a messy pile's centre) and hides while its cards are held. A partly selected pile's badge reads "3 of 40 selected" (9.7) from Phase 4 on. |
 
 ## Appendix B: Open items
 

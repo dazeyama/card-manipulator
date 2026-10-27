@@ -70,6 +70,12 @@ export class MouseInput {
     app.canvas.tabIndex = 0;
   }
 
+  /** Hand the current press to a gesture owned by another module (badge presses). */
+  startGesture(g: CustomGesture): void {
+    this.gesture = g;
+    this.setHover(null);
+  }
+
   get busy(): boolean {
     return this.gesture.kind !== 'none';
   }

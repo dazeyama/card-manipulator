@@ -147,6 +147,9 @@ export interface TableDoc {
     yaw: number;
     faceUp: boolean;
     pileId: string | null;
+    spreadOf?: string | null;
   }[];
+  /** Open spreads (agent decision 61); older files have none. */
+  spreads?: { id: string; anchor: { x: number; y: number }; yaw: number; uids: string[]; pileId: string | null }[];
   cardData: Record<string, CardRecord>;
 }

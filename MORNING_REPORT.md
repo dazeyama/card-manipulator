@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Phases finished** | 1, 2, 3 |
+| **Phases finished** | 1, 2, 3, 4 |
 | **Phases with BROKEN items** | none so far |
 | **Run it** | `npm install` once, then `npm run dev` and open http://localhost:5173 (or double-click `start.bat`) |
 
@@ -74,6 +74,27 @@ Run in progress: the build is working through the phases in order.
 
 ---
 
+## Phase 4: Moving, stacking, spreading ✅
+
+**Built**
+- Drag controller (`src/physics/feel.ts`): held cards lift 10 mm, tilt toward their motion and follow through a short spring (lead card about 80 ms of lag). Modes: single, gather (clump with a count label, trailing springs), Alt formation (rigid, Ctrl + Shift as the fallback, decision 29), whole stack (Ctrl + drag, or drag the badge). Esc cancels a drag and the cards fly home.
+- Landing (10.4): on empty table a gather becomes a neat stack at the drop point; onto a stack or single card it joins the top squared up; onto a messy pile it lands messily unless Tidy drops is on; formation drops each card on whatever is beneath it. Settle in 190 ms with a 0.8 mm hop.
+- Peel versus whole stack: a plain drag on a stack takes the top card; Ctrl + drag or a badge drag takes the stack.
+- Double-click spreads a pile beside its spot in rows of ten (top card first) and leaves an anchor badge; double-click any spread card or the anchor badge restacks in the same order; a card dragged out leaves the spread.
+- Commands: Stack `S`, Spread `X`, Tidy `T`, Rotate `R`, Frame `Z`, Delete/Backspace to the Removed tray (spawn back one line or all). HUD buttons Stack, Spread, Tidy.
+- Pile detection (`detectPiles`, union-find over a spatial hash), stable pile ids, badges with counts and "3 of 40 selected".
+- Autosave to IndexedDB one second after any settle (and camera moves), restored on load.
+
+**Gate:** typecheck clean · 77 tests passed (pile detection incl. a 1,000-card tower under 50 ms, layouts, yaw snapping, save-file validation) · build OK · browser check OK, no console errors.
+
+**Checked in the browser:** real-mouse drag of one card onto another (badge 2); marquee 30 then gather-drag (clump with "30" label, lands as a stack of 30); real double-click spread and restack (order kept); Alt formation drag (all five cards moved by the same offset, synthetic events because the tool can't hold Alt); Ctrl + drag whole stack (synthetic); peel the top card (30 → 29); real badge drag of the 29 stack; `R`, `Delete` (29 to the tray), Spawn all back, Ctrl + A then `S` (one stack of 40), `T` on a messy pile of 60 (stack of 60); refresh restores 100 cards, both piles and the camera exactly. Pile detection after a drop: 0.3 ms; autosave 0.5 ms.
+
+**Screenshots:** [badge reads 2](reports/screenshots/phase-4/01-badge-reads-2.png) · [gather clump](reports/screenshots/phase-4/02-gather-clump.png) · [spread](reports/screenshots/phase-4/03-spread.png) · [formation drag](reports/screenshots/phase-4/04-formation-drag.png) · [tidied](reports/screenshots/phase-4/05-tidied-and-stacks.png) · [after refresh](reports/screenshots/phase-4/06-after-refresh.png)
+
+**Agent decisions:** 60–65.
+
+---
+
 ## Owner's QA checklist
 
 ### Phase 1
@@ -97,3 +118,13 @@ Run in progress: the build is working through the phases in order.
 - [ ] Esc, Esc, then `/`, `c:r`, Enter: red cards highlight wherever they are.
 - [ ] An unsupported term (`art:x`) shows an error and changes nothing.
 - [ ] Chips append and apply; Shift-click excludes.
+
+### Phase 4
+- [ ] Drag one card onto another: badge reads 2.
+- [ ] Select thirty, drag: they clump behind the cursor and stack on release.
+- [ ] **Alt-drag keeps formation, and releasing Alt does not focus the browser menu (decision 29).** If it misfires, Ctrl + Shift + drag is the fallback and already works.
+- [ ] Ctrl-drag a stack lifts it whole; a plain drag peels the top card; dragging a badge lifts the pile.
+- [ ] Double-click spreads; double-click again restacks in the same order.
+- [ ] S, X, T, R, Z, Delete; Removed tray spawns back.
+- [ ] Refresh restores the table and camera.
+- [ ] Does the drag spring feel right (lag, tilt)?

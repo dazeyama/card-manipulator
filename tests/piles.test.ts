@@ -56,3 +56,71 @@ describe('layouts', () => {
     expect(Math.abs(cx - 100)).toBeLessThan(70);
   });
 });
+
+import { detectPiles, sameYaw, snapYaw } from '../src/state/piles';
+
+describe('detectPiles (spec 11.1)', () => {
+  let n = 0;
+  const id = () => `new${++n}`;
+  const card = (uid: string, x: number, y: number, z = 0.15, yaw = 0) => ({ uid, x, y, z, yaw });
+
+  it('finds a stack, a messy pile and leaves loose cards out', () => {
+    const cards = [
+      card('a', 0, 0, 0.15), card('b', 0.5, 0.5, 0.45), card('c', 0, 0, 0.75),
+      card('d', 300, 0, 0.15, 0.1), card('e', 320, 10, 0.45, -0.2),
+      card('f', 600, 0),
+    ];
+    const piles = detectPiles(cards, new Map(), id);
+    expect(piles).toHaveLength(2);
+    const stack = piles.find((p) => p.cardUids.includes('a'))!;
+    expect(stack.kind).toBe('stack');
+    expect(stack.cardUids).toEqual(['a', 'b', 'c']);
+    expect(stack.top).toBeCloseTo(0.9);
+    const messy = piles.find((p) => p.cardUids.includes('d'))!;
+    expect(messy.kind).toBe('messy');
+  });
+
+  it('joins piles transitively through overlaps', () => {
+    const cards = [card('a', 0, 0), card('b', 50, 0, 0.45), card('c', 100, 0, 0.75)];
+    expect(detectPiles(cards, new Map(), id)[0].cardUids).toEqual(['a', 'b', 'c']);
+  });
+
+  it('does not join cards laid side by side with a gap', () => {
+    const cards = [card('a', 0, 0), card('b', 69, 0), card('c', 0, 94)];
+    expect(detectPiles(cards, new Map(), id)).toHaveLength(0);
+  });
+
+  it('a card turned 180 degrees still squares up; 90 degrees does not', () => {
+    expect(sameYaw(0, Math.PI)).toBe(true);
+    expect(sameYaw(0, Math.PI / 2)).toBe(false);
+    const piles = detectPiles([card('a', 0, 0, 0.15, 0), card('b', 0, 0, 0.45, Math.PI / 2)], new Map(), id);
+    expect(piles[0].kind).toBe('messy');
+  });
+
+  it('keeps a pile id while the pile keeps most of its cards', () => {
+    const prev = new Map([['keep', ['a', 'b', 'c']]]);
+    const piles = detectPiles([card('a', 0, 0), card('b', 0, 0, 0.45), card('x', 0, 0, 0.75)], prev, id);
+    expect(piles[0].id).toBe('keep');
+  });
+
+  it('gives two piles split from one their own ids', () => {
+    const prev = new Map([['old', ['a', 'b', 'c', 'd']]]);
+    const piles = detectPiles([card('a', 0, 0), card('b', 0, 0, 0.45), card('c', 500, 0), card('d', 500, 0, 0.45)], prev, id);
+    expect(new Set(piles.map((p) => p.id)).size).toBe(2);
+    expect(piles.map((p) => p.id)).toContain('old');
+  });
+
+  it('handles a tower of 1,000 cards quickly', () => {
+    const cards = Array.from({ length: 1000 }, (_, i) => card(`t${i}`, 0, 0, 0.15 + i * 0.3));
+    const t0 = performance.now();
+    const piles = detectPiles(cards, new Map(), id);
+    expect(performance.now() - t0).toBeLessThan(50);
+    expect(piles[0].cardUids).toHaveLength(1000);
+  });
+
+  it('snaps yaw to quarter turns', () => {
+    expect(snapYaw(0.3)).toBe(0);
+    expect(snapYaw(1.4)).toBeCloseTo(Math.PI / 2);
+    expect(snapYaw(-1.7)).toBeCloseTo(-Math.PI / 2);
+  });
+});

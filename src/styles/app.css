@@ -133,3 +133,19 @@ textarea.decklist { width: 100%; height: 190px; resize: vertical; font: 12px/1.4
 .chip { border: 1px solid var(--line); background: var(--panel-2); border-radius: 12px; padding: 1px 9px; font-size: 12px; cursor: pointer; }
 .chip:hover { border-color: var(--accent); background: var(--accent-soft); }
 .chip.pip-w, .chip.pip-u, .chip.pip-b, .chip.pip-r, .chip.pip-g, .chip.pip-c, .chip.pip-m { font-weight: 650; min-width: 26px; }
+
+/* ---- badges, drag label, tray ---- */
+.badges { position: absolute; inset: 0; pointer-events: none; }
+.badge { position: absolute; left: 0; top: 0; pointer-events: auto; display: flex; align-items: center; gap: 4px; background: #fff; color: #2b2b2b; border: 1px solid rgba(0, 0, 0, 0.12); border-radius: 11px; padding: 2px 9px; font-size: 12px; font-weight: 600; white-space: nowrap; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18); cursor: grab; user-select: none; }
+.badge:hover { border-color: var(--accent); }
+.badge.sel-all { background: var(--accent); color: #fff; border-color: var(--accent); }
+.badge.sel-some { border-color: var(--accent); color: var(--accent); }
+.badge.spread { background: #f4f1ea; border-style: dashed; font-weight: 500; }
+.drag-label { position: absolute; left: 0; top: 0; background: var(--accent); color: #fff; font-weight: 700; font-size: 12px; padding: 1px 8px; border-radius: 10px; pointer-events: none; box-shadow: var(--shadow); }
+.tray-host { border-top: 1px solid var(--line); }
+.tray { padding: 6px 10px; max-height: 180px; display: flex; flex-direction: column; }
+.tray-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tray-title { font-weight: 600; font-size: 12px; }
+.tray.empty .tray-title { color: var(--text-2); font-weight: 500; }
+.tray-list { overflow: auto; font-size: 12px; margin-top: 4px; }
+.tray-row { display: flex; align-items: center; justify-content: space-between; }
