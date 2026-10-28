@@ -115,13 +115,15 @@ const widthOf = (cols: number) => cols * CARD_W + (cols - 1) * COLUMN_GAP;
 /** Multicolour cards in a column: cheapest first, then by name. */
 const byCost = (a: CurveCard, b: CurveCard) => columnOf(a) - columnOf(b) || byName(a, b);
 
+/** The identity columns these cards use, in landColumn order. */
+const identityCols = (cards: CurveCard[]) => [...new Set(cards.map((c) => landColumn(c.identity)))].sort((a, b) => a - b);
+
 /**
  * A row by colour identity (decisions 149, 150): a cascading column per
- * identity that has cards, in landColumn order.
+ * identity in `cols`, by default those these cards use.
  */
-function identityRow(cards: CurveCard[], split: boolean, order: (a: CurveCard, b: CurveCard) => number): Block & { width: number } {
+function identityRow(cards: CurveCard[], split: boolean, order: (a: CurveCard, b: CurveCard) => number, cols = identityCols(cards)): Block & { width: number } {
   const column = (c: CurveCard) => landColumn(c.identity);
-  const cols = [...new Set(cards.map(column))].sort((a, b) => a - b);
   return { ...block(cards, cols, split, column, order), width: widthOf(cols.length) };
 }
 
@@ -140,6 +142,8 @@ export function curveLayout(cards: CurveCard[], centre: { x: number; y: number }
   const lands = cards.filter((c) => c.land);
   const cols = [...new Set(spells.map(columnOf))].sort((a, b) => a - b);
   let width = 0, height = 0;
+  /** With Shift + C, the identity columns the multicolour and land rows share. */
+  let shared: number[] | null = null;
   // A full-width row under everything so far. With Shift + C it starts one
   // column in, under mana value 1, leaving the 0 column empty (decision 151).
   const indent = opts.byColour && cols[0] === 0 ? CARD_W + COLUMN_GAP : 0;
@@ -176,13 +180,16 @@ export function curveLayout(cards: CurveCard[], centre: { x: number; y: number }
       width = used * blockWidth + (used - 1) * BLOCK_GAP;
       height = -top - ROW_GAP;
     }
-    // Multicolour: a row by colour identity, guilds first (decision 150).
+    // Multicolour: a row by colour identity, guilds first (decision 150). It shares its
+    // columns with the land row below, so each guild lines up; a guild with neither
+    // multicolour cards nor lands has no column (decision 161).
     const multi = spells.filter((c) => c.group === 'multi');
-    if (multi.length) addRow(identityRow(multi, opts.split, byCost));
+    shared = identityCols([...multi, ...lands]);
+    if (multi.length) addRow(identityRow(multi, opts.split, byCost, shared));
   }
 
   // Lands: their own row underneath, by colour identity (decision 149).
-  if (lands.length) addRow(identityRow(lands, false, byName));
+  if (lands.length) addRow(identityRow(lands, false, byName, shared ?? identityCols(lands)));
 
   // Centre the whole layout on the spot.
   const ox = centre.x - width / 2, oy = centre.y + height / 2;

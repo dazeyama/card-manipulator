@@ -78,6 +78,23 @@ describe('curve layout (decision 107)', () => {
     expect(plain.get('dovin')!.x).toBe(plain.get('kroxa')!.x);
   });
 
+  it('with Shift + C, lines the multicolour and land rows up in shared guild columns (decision 161)', () => {
+    const cards = [
+      card('w1', 1, { group: 'W', identity: ['W'] }),
+      card('dovin', 2, { group: 'multi', identity: ['W', 'U'] }),
+      card('kiora', 3, { group: 'multi', identity: ['G', 'U'] }),
+      land('godless', ['W', 'B']),
+      land('breeding', ['G', 'U']),
+    ];
+    const at = new Map(curveLayout(cards, { x: 0, y: 0 }, { byColour: true, split: false }).map((p) => [p.uid, p.at]));
+    // Simic lines up across both rows, even though only lands have Orzhov.
+    expect(at.get('kiora')!.x).toBeCloseTo(at.get('breeding')!.x, 9);
+    expect(at.get('dovin')!.x).toBeLessThan(at.get('godless')!.x);
+    expect(at.get('godless')!.x).toBeLessThan(at.get('kiora')!.x);
+    // No column for guilds neither row has: Azorius, Orzhov, Simic sit side by side.
+    expect(at.get('kiora')!.x - at.get('dovin')!.x).toBeCloseTo(2 * (at.get('godless')!.x - at.get('dovin')!.x), 9);
+  });
+
   it('gives each land a column: the guilds in order, then 3+ colours, then one colour or none', () => {
     expect(GUILDS.map((g) => landColumn(g.split('')))).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     expect(landColumn(['U', 'G'])).toBe(9);
