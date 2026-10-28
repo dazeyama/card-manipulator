@@ -6,7 +6,7 @@ import { CARD_H, CARD_T, CARD_W, type Card } from './state/types';
 import { gridLayout, looseStackLayout, nextQuarterClockwise, overlaps, shuffled, snapYaw, spreadLayout, uprightYaw, type Footprint, type Placed } from './state/piles';
 import type { Spread } from './state/store';
 import { colourGroup, curveLayout, type CurveCard } from './state/curve';
-import { fanLayout } from './state/fan';
+import { fanLayout, handLayout } from './state/fan';
 
 export interface Landing {
   uid: string;
@@ -244,7 +244,8 @@ export class Commands {
     const top = byHeight(this.app, source.filter((u) => store.cards.has(u))).slice(-count);
     if (!top.length) return;
     leaveSpreads(this.app, top);
-    const landings = placeSequential(this.app, top, fanLayout(top.length, at));
+    // More than 20 cards are dealt as several fans, one under the next (decision 162).
+    const landings = placeSequential(this.app, top, handLayout(top.length, at));
     // A hand is for reading: face down cards come up.
     for (const l of landings) l.faceUp = true;
     land(this.app, landings, { stagger: Math.min(30, 300 / top.length), arc: 14 });

@@ -137,13 +137,14 @@ export class Cursors {
     c.width = c.height = SIZE;
     c.getContext('2d')!.drawImage(point, 0, 0, SIZE, SIZE);
     document.documentElement.style.setProperty('--cursor-point', `url(${c.toDataURL()}) ${px} ${py}, pointer`);
-    // Drawing a hand: the pointing glove with the number as a keycap (decision 143).
-    for (let n = 1; n <= 9; n++) {
+    // Drawing a hand: the pointing glove with the number as a keycap (decision 143);
+    // 0 (any number, decision 162) shows the numbers keycap.
+    for (let n = 0; n <= 9; n++) {
       const d = document.createElement('canvas');
       d.width = d.height = SIZE;
       const g = d.getContext('2d')!;
       g.drawImage(point, 0, 0, SIZE, SIZE);
-      drawEmoji(g, `${n}️⃣`, SIZE);
+      drawEmoji(g, n ? `${n}️⃣` : '🔢', SIZE);
       this.drawCursors[n] = `url(${d.toDataURL()}) ${px} ${py}, pointer`;
     }
     const sp = document.createElement('canvas');
@@ -196,7 +197,7 @@ export class Cursors {
     const draw = this.app.drawing;
     const state = this.pick();
     const next = draw
-      ? this.drawCursors[draw.count] ?? 'pointer'
+      ? this.drawCursors[draw.count <= 9 ? draw.count : 0] ?? 'pointer'
       : this.app.spreading
         ? this.spreadCursor || 'pointer'
         : this.cursors[state] ?? STATES[state][2];

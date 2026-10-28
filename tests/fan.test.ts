@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FAN_MAX_SPREAD, FAN_RADIUS, FAN_STEP, fanLayout } from '../src/state/fan';
+import { FAN_MAX_SPREAD, FAN_RADIUS, FAN_STEP, fanLayout, HAND_ROW_STEP, handLayout } from '../src/state/fan';
 import { overlaps } from '../src/state/piles';
 
 describe('fan layout (decision 141)', () => {
@@ -38,5 +38,30 @@ describe('fan layout (decision 141)', () => {
     const fan = fanLayout(60, { x: 0, y: 0 });
     expect(fan[0].yaw - fan[59].yaw).toBeCloseTo(FAN_MAX_SPREAD, 9);
     expect(fanLayout(1, { x: 3, y: 4 })).toEqual([{ x: 3, y: 4, yaw: -0, z: 0.15 }]);
+  });
+});
+
+describe('big hands drawn with 0 (decision 162)', () => {
+  it('deals up to 20 cards as one fan', () => {
+    expect(handLayout(20, { x: 0, y: 0 })).toEqual(fanLayout(20, { x: 0, y: 0 }));
+  });
+
+  it('deals 100 cards as five fans of 20, one under the next, centred', () => {
+    const spots = handLayout(100, { x: 50, y: 0 });
+    expect(spots).toHaveLength(100);
+    const rows = [0, 1, 2, 3, 4].map((r) => spots.slice(r * 20, r * 20 + 20));
+    // Each fan's middle sits one row step below the last.
+    const mid = rows.map((row) => Math.max(...row.map((p) => p.y)));
+    for (let r = 1; r < 5; r++) expect(mid[r - 1] - mid[r]).toBeCloseTo(HAND_ROW_STEP, 6);
+    expect((mid[0] + mid[4]) / 2).toBeCloseTo(fanLayout(20, { x: 50, y: 0 }).reduce((m, p) => Math.max(m, p.y), -Infinity), 6);
+  });
+
+  it('splits an awkward count into nearly equal fans', () => {
+    // 41 cards: three fans of 14, 14 and 13.
+    const spots = handLayout(41, { x: 0, y: 0 });
+    expect(spots).toHaveLength(41);
+    const fans = [spots.slice(0, 14), spots.slice(14, 28), spots.slice(28)];
+    expect(fans[2]).toEqual(fanLayout(13, { x: 0, y: -HAND_ROW_STEP }));
+    expect(fans[0]).toEqual(fanLayout(14, { x: 0, y: HAND_ROW_STEP }));
   });
 });

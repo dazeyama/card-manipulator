@@ -24,7 +24,7 @@ import { Outlines } from './render/outlines';
 import { PileEditor } from './ui/pileEditor';
 import { InspectPanel } from './ui/inspectPanel';
 import { ExportPanel } from './ui/exportPanel';
-import { confirmDialog } from './ui/confirm';
+import { confirmDialog, numberDialog } from './ui/confirm';
 import { Cursors } from './ui/cursors';
 import { Mats } from './mats';
 import { buildPlaymatTab } from './ui/playmatTab';
@@ -270,6 +270,22 @@ for (let n = 1; n <= 9; n++) {
     app.drawing = source.length ? { count: n, source } : null;
   });
 }
+// 0: the same, for any number of cards, asked for in a dialog: a whole sealed pool at once (decision 162).
+let askingCount = false;
+keyboard.bind('0', () => {
+  if (drag.dragging || askingCount) return;
+  const source = hoveredPile();
+  if (!source.length) return;
+  app.spreading = null;
+  app.drawing = null;
+  askingCount = true;
+  const all = source.length;
+  void numberDialog(`How many cards to draw? This pile has ${all.toLocaleString()}.`, { min: 1, max: all, value: all, ok: 'Draw' })
+    .then((n) => {
+      if (n && source.some((u) => store.cards.has(u))) app.drawing = { count: n, source };
+    })
+    .finally(() => (askingCount = false));
+});
 app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
   const draw = app.drawing;
   if (!draw || e.button !== 0) return;

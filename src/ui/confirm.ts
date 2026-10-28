@@ -27,3 +27,39 @@ export function confirmDialog(message: string, ok = 'OK'): Promise<boolean> {
     });
   });
 }
+
+/**
+ * A small modal asking for a whole number from `min` to `max` (0 to draw
+ * any number of cards, decision 162). Resolves with the number, or null if
+ * cancelled. Out-of-range numbers are brought into range.
+ */
+export function numberDialog(message: string, opts: { min: number; max: number; value: number; ok?: string }): Promise<number | null> {
+  return new Promise((resolve) => {
+    const input = h('input', { type: 'number', class: 'grow', min: String(opts.min), max: String(opts.max), step: '1', value: String(opts.value), 'aria-label': message });
+    const yes = h('button', { class: 'btn primary' }, opts.ok ?? 'OK');
+    const no = h('button', { class: 'btn' }, 'Cancel');
+    const box = h('div', { class: 'modal' }, h('p', {}, message), h('div', { class: 'row' }, input), h('div', { class: 'row end' }, no, yes));
+    const back = h('div', { class: 'modal-back' }, box);
+    document.body.append(back);
+    input.focus();
+    input.select();
+    const done = (v: number | null) => {
+      back.remove();
+      resolve(v);
+    };
+    const accept = () => {
+      const n = Math.round(Number(input.value));
+      done(Number.isFinite(n) && input.value.trim() !== '' ? Math.min(opts.max, Math.max(opts.min, n)) : null);
+    };
+    yes.addEventListener('click', accept);
+    no.addEventListener('click', () => done(null));
+    back.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Escape') done(null);
+      if (e.key === 'Enter') accept();
+    });
+    back.addEventListener('pointerdown', (e) => {
+      if (e.target === back) done(null);
+    });
+  });
+}

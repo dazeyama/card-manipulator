@@ -37,3 +37,27 @@ export function fanLayout(count: number, centre: { x: number; y: number }): Plac
   }
   return out;
 }
+
+/** A hand holds at most this many cards in one fan; more are dealt in several fans (decision 162). */
+export const HAND_ROW = 20;
+/** Distance between the middles of two fans of a big hand, top to bottom, mm. */
+export const HAND_ROW_STEP = CARD_H * 1.9;
+
+/**
+ * A drawn hand (decisions 143, 162): one fan of up to HAND_ROW cards, or for
+ * more, several fans of nearly equal size, one under the next, all centred
+ * on `centre`. Bottom card first, the first fan at the top of the table.
+ */
+export function handLayout(count: number, centre: { x: number; y: number }): Placed[] {
+  if (count <= HAND_ROW) return fanLayout(count, centre);
+  const rows = Math.ceil(count / HAND_ROW);
+  const per = Math.ceil(count / rows);
+  const out: Placed[] = [];
+  for (let r = 0, left = count; r < rows; r++) {
+    const n = Math.min(per, left);
+    left -= n;
+    const y = centre.y + ((rows - 1) / 2 - r) * HAND_ROW_STEP;
+    out.push(...fanLayout(n, { x: centre.x, y }));
+  }
+  return out;
+}
