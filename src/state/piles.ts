@@ -351,6 +351,20 @@ function defaultId(): string {
   return `p${Date.now().toString(36)}${pileCounter.toString(36)}`;
 }
 
+/**
+ * R (decision 102): the next quarter turn clockwise seen from above, so a card
+ * at an odd angle squares up to the quarter turn just past it.
+ */
+export function nextQuarterClockwise(yaw: number): number {
+  const q = Math.PI / 2;
+  return (Math.ceil(yaw / q - 1e-3) - 1) * q;
+}
+
+/** Double-tap R (decision 102): upright, the way the card reads from the default camera, by the shortest turn. */
+export function uprightYaw(yaw: number): number {
+  return Math.round(yaw / (2 * Math.PI)) * 2 * Math.PI;
+}
+
 /** Yaw snapped to the nearest quarter turn (tidy cards are 0 or +-90 degrees, spec 6.1). */
 export function snapYaw(yaw: number): number {
   return Math.round(yaw / (Math.PI / 2)) * (Math.PI / 2);

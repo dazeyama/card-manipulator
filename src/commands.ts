@@ -3,7 +3,7 @@
 
 import type { App } from './app';
 import { CARD_H, CARD_T, CARD_W, type Card } from './state/types';
-import { gridLayout, looseStackLayout, overlaps, snapYaw, spreadLayout, type Footprint, type Placed } from './state/piles';
+import { gridLayout, looseStackLayout, nextQuarterClockwise, overlaps, snapYaw, spreadLayout, uprightYaw, type Footprint, type Placed } from './state/piles';
 import type { Spread } from './state/store';
 
 export interface Landing {
@@ -14,6 +14,9 @@ export interface Landing {
   yaw: number;
   faceUp?: boolean;
 }
+
+/** Two presses of R within this long stand the cards upright (decision 102), ms. */
+const DOUBLE_TAP_MS = 350;
 
 /** Settle timing (spec 15.5: under 300 ms, snappy and light). */
 const SETTLE_MS = 190;
@@ -180,11 +183,20 @@ export class Commands {
     land(this.app, landings);
   }
 
-  /** R: turn each selected card a quarter turn in place (tap it sideways). */
-  rotate(): void {
-    const landings = this.sel.map((u) => {
+  private lastRotate = 0;
+
+  /**
+   * R: turn each card to the next quarter turn clockwise, so it also squares
+   * up a card at an odd angle. Pressed twice quickly: upright (decision 102).
+   */
+  rotate(uids: string[] = this.sel): void {
+    if (!uids.length) return;
+    const now = performance.now();
+    const twice = now - this.lastRotate < DOUBLE_TAP_MS;
+    this.lastRotate = twice ? 0 : now;
+    const landings = uids.map((u) => {
       const c = this.app.store.cards.get(u)!;
-      return { uid: u, x: c.x, y: c.y, z: c.z, yaw: c.yaw - Math.PI / 2 };
+      return { uid: u, x: c.x, y: c.y, z: c.z, yaw: twice ? uprightYaw(c.yaw) : nextQuarterClockwise(c.yaw) };
     });
     land(this.app, landings, { stagger: 0 });
   }

@@ -180,7 +180,8 @@ keyboard.bind('shift+t', () => {
   store.updateSettings({ tidyDrops: on });
   toast(on ? 'Tidy mode on: everything lands squared up at 90°' : 'Tidy mode off: messy and physical', 'info', 1800);
 });
-keyboard.bind('r', () => commands.rotate());
+// R turns the selection, or the card under the cursor when nothing is selected (decision 102).
+keyboard.bind('r', () => commands.rotate(store.selection.size ? [...store.selection] : mouse.hovered ? [mouse.hovered] : []));
 keyboard.bind('z', () => commands.frame());
 keyboard.bind('f', () => commands.flip());
 // N: name the selected pile; with nothing selected, a new empty bin at the cursor (spec 11.3).

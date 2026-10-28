@@ -529,7 +529,7 @@ Available as HUD buttons and keys, acting on the selection:
 | Spread | `X` | Spread the selection in a grid at its centroid. |
 | Tidy | `T` | Square up each pile the selection touches without merging piles. |
 | Flip | `F`, middle-click | See 10.5. |
-| Rotate | `R` | Turn the selection 90° (tap it sideways). Cosmetic in v1; piles stay piles. |
+| Rotate | `R` | Turn the selection, or the card under the cursor when nothing is selected, to the next quarter turn clockwise: a card at an odd angle squares up to the quarter turn just past it, a square card turns a full 90°. Press twice quickly: upright (decision 102). Piles stay piles. |
 
 ### 10.8 Remove
 
@@ -722,7 +722,7 @@ Personality: **snappy and light** (decision 42). Quick follow, short settles, ve
 | X | Spread selection |
 | T | Tidy selection |
 | F | Flip selection |
-| R | Rotate selection 90° |
+| R | Turn the selection (or the card under the cursor) to the next quarter turn clockwise; R twice quickly: upright |
 | N | Name the selected pile |
 | Z | Frame the selection |
 | V | Next camera view preset |
@@ -931,6 +931,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 99 | Owner (2026-10-27): **cards in a fan or messy pile rest naturally**, tilted onto what is under them and touching the table, instead of floating as a flat staircase. **(agent)** Done by geometry when piles change, not physics: the model keeps flat heights (ordering, pile detection and save files are unchanged) and `src/state/rest.ts` works out each card's drawn rest from the corners of its overlaps with the cards beneath (a plane is highest at a corner, so this is exact). A rigid card rests on the hull edge under its centre; a thin card also droops toward a lower side when that takes a slope of 0.2 or less, which is what makes a ribbon spread lie low. Slopes are capped at 0.8. A card rests on at most 20 of the cards beneath it, nearest first. Neat stacks stay flat. Rests are not saved; they are worked out again on load. Measured: about 0.02 ms per card, so a 60-card fan re-rests in about 2 ms and a 1,000-card ribbon from scratch in about 21 ms; a 60-card fan 5 mm apart lies about 2 mm high instead of 18 mm. Picking hits tilted faces; physics slabs tilt to match, and a big loose pile's box reaches its highest drawn point. |
 | 100 | Owner (2026-10-27): decision 99 didn't work: a picked-up and dropped messy stack came to rest mid-air in a tall, unrealistic shape; cards should fall to the lowest place they can, like in real life. **(agent)** Cause: decision 99's droop rule let a card tilt toward its lower side, which lifts its other end into the air; the next card lands on that raised end and it compounds (a 60-card heap stood 70-130 mm tall). Fix: cards rest as rigid cards, as low as their centre can go, with no droop; a 60-card heap is now no taller than its cards stacked flat (18 mm), plus a mm or two where cards cross at angles. Lifting a card (any drag) lets what rested on it fall at once. Tried and dropped: physics bodies as thin as real cards. Rapier lets resting bodies sink 0.2-1 mm into each other at any tolerance, stiffness or iteration count, so 0.3 mm cards passed straight through each other; physics keeps its 2 mm bodies for the motion and resting lays the cards down. Known limit: a rigid card whose centre is supported lies flat, so a tight fan is a low staircase (one card thickness per step); lying a fan flatter needs cards that bend, or a whole-pile settle. |
 | 101 | Owner (2026-10-27): close-up `normal` images went only to the top card of each pile; any card with even 5-10% of its face showing should get one. **(agent)** A card qualifies when at least 5% of its face is not covered by the cards above it in its pile, judged from above on a 7 x 9 grid across the face (`visibleShare` in `piles.ts`). Cards under the top of a neat stack count as hidden without checking. Up to 32 close-ups (was 24) from a pool of 64 textures (was 48, about 80 MB), nearest the middle of the view first. Each close-up is its own draw, so a full set goes past the 20-draw target in Section 17; the owner put image sharpness first. |
+| 102 | Owner (2026-10-27): R didn't seem to work: it acted only on the selection, so with nothing selected it did nothing. R should snap a card to the next 90° clockwise, not turn it 90° from where it is, so it can be used to align cards; double-tapping R stands cards upright. **(agent)** With nothing selected, R acts on the card under the cursor. "Next quarter turn clockwise" is the first multiple of 90° clockwise of the card's angle (a card within 0.06° of a quarter turn counts as on it, so a square card turns a full 90°). A double tap is two presses within 350 ms; upright is 0° by the shortest turn. |
 
 ## Appendix B: Open items
 

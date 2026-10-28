@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { visibleShare } from '../src/state/piles';
+import { nextQuarterClockwise, uprightYaw, visibleShare } from '../src/state/piles';
 import { gridLayout, LOOSE_OFFSET, LOOSE_TURN, looseStackLayout, messyLayout, overlaps, rng, spreadLayout, stackLayout, surfaceTop } from '../src/state/piles';
 import { CARD_T } from '../src/state/types';
 
@@ -211,5 +211,27 @@ describe('visibleShare (decision 101)', () => {
     const share = visibleShare(card, [{ x: 4, y: 6, yaw: 0.3 }]);
     expect(share).toBeGreaterThan(0.05);
     expect(share).toBeLessThan(0.5);
+  });
+});
+
+describe('rotate snapping (decision 102)', () => {
+  const q = Math.PI / 2;
+  it('turns a square card a full quarter clockwise', () => {
+    expect(nextQuarterClockwise(0)).toBeCloseTo(-q, 9);
+    expect(nextQuarterClockwise(-q)).toBeCloseTo(-2 * q, 9);
+    expect(nextQuarterClockwise(q)).toBeCloseTo(0, 9);
+  });
+
+  it('squares a card at an odd angle to the quarter turn just clockwise of it', () => {
+    expect(nextQuarterClockwise(0.3)).toBeCloseTo(0, 9);
+    expect(nextQuarterClockwise(-0.3)).toBeCloseTo(-q, 9);
+    expect(nextQuarterClockwise(2)).toBeCloseTo(q, 9);
+  });
+
+  it('stands a card upright by the shortest turn', () => {
+    expect(uprightYaw(-q)).toBeCloseTo(0, 9);
+    expect(uprightYaw(0.4)).toBeCloseTo(0, 9);
+    expect(uprightYaw(2 * Math.PI - 0.2)).toBeCloseTo(2 * Math.PI, 9);
+    expect(Math.abs(uprightYaw(3) - 3)).toBeLessThanOrEqual(Math.PI);
   });
 });

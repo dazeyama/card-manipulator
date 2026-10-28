@@ -47,7 +47,8 @@ Changes made with you after the overnight build. Each is logged in Appendix A of
 | **Tidy mode** replaces Tidy drops (top bar, `Shift + T`): on, it brings back the pre-messy behaviour and squares everything at quarter turns, held cards and spawns included. | 98 | `8463c05` |
 | **Cards rest naturally** on what is under them: a fanned stack lies low and touches the table instead of floating as a staircase. About 2 ms to re-rest a 60-card fan. | 99 | `92925a3` |
 | **Cards fall to the lowest place they can**: rigid resting replaces decision 99's droop, which built mid-air towers. Lifting a card lets what lay on it fall at once. | 100 | `7d27937` |
-| **Close-ups for every card that shows**: any card with 5% or more of its face visible gets the sharp image, so a whole fan reads, not just its top card. | 101 | this report's commit |
+| **Close-ups for every card that shows**: any card with 5% or more of its face visible gets the sharp image, so a whole fan reads, not just its top card. | 101 | `44cb0bc` |
+| **R snaps** to the next quarter turn clockwise (and acts on the card under the cursor when nothing is selected); double-tap R stands cards upright. | 102 | this report's commit |
 
 The per-phase sections below describe the build as it was overnight. The QA checklist at the end uses the current controls.
 
@@ -282,6 +283,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 - [ ] Shift + drag sweeps up the cards it passes over; lingering over a pile pulls more, then all of it (decision 89).
 - [ ] Double-click spreads; double-click again restacks in the same order.
 - [ ] S, X, T, R, Z, Delete; Removed tray spawns back.
+- [ ] Hover a card at an odd angle and press R: it squares to the next quarter turn clockwise; R again turns it 90°; R twice quickly stands it upright (decision 102).
 - [ ] Refresh restores the table and camera.
 - [x] Does the drag spring feel right (lag, tilt)? Yes (decision 93).
 
