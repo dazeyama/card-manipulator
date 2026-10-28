@@ -20,6 +20,7 @@ const states: [string, string, string, string][] = [
   ['arrow', '', 'Empty table', 'Drag to select'],
   ['arrow', '➕', '+ Ctrl', 'Select, adding'],
   ['arrow', '➖', '+ Shift', 'Select, taking away'],
+  ['arrow', '🔢', '+ Alt', 'Show pile counts'],
   ['open', '', 'Over a card', 'Pick it up'],
   ['open', '🧲', '+ Shift', 'Sweep cards in'],
   ['open', '🔢', '+ Alt', 'Show counts, keep formation'],

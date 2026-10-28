@@ -745,6 +745,7 @@ The cursor shows what the mouse will do, and what a held key changes (owner, 202
 | Arrow with a dashed box | Over empty table | Drag draws a marquee |
 | ... with ➕ | Ctrl held over empty table, or a Ctrl marquee | The marquee adds to the selection |
 | ... with ➖ | Shift held over empty table, or a Shift marquee | The marquee takes from the selection |
+| ... with 🔢 | Alt held over empty table | Every pile shows its count |
 | Open glove | Over a card | Drag picks it up (or the selection) |
 | ... with 🧲 | Shift held over a card | A drag will sweep up cards it passes |
 | ... with 🔢 | Alt (or Ctrl + Shift) held over a card | Every pile shows its count; a drag keeps the formation |
@@ -977,6 +978,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 122 | Owner (2026-10-27): decision 121 brought back the old drawn arrow, which doesn't match the gloves' quality and size; generate a new default cursor with its marquee box in the gloves' style. **(agent)** Generated with gpt-image-2 using the pointing glove as style reference: a chunky white cartoon arrow with the same outline and shading, a dashed box behind its tail. Of two drawings, the one with fatter dashes was chosen so the box survives shrinking. It goes through the same pipeline as the gloves (48 px bold; click point at the arrow tip). Cost about $0.44; the cursor art has cost about $2.41 in all. |
 | 123 | Owner (2026-10-27): the generated arrow wasn't right either. Stop using the image generator; hand-draw a normal pointer as the first cursors were, but at the gloves' 48 px size and style, keeping it pointy. **(agent)** `src/ui/cursorArrow.ts`: the classic arrow shape in SVG, about 36 px tall in the 48 px image, with a 2.8 px black outline mitred to a sharp tip, a white body with soft grey shading along its right side, and a bold dashed marquee box behind its tail (a white halo under the dashes so they show on dark card art). The click point is the tip. The generated arrow (decision 122) is removed. |
 | 124 | Owner (2026-10-27): some emoji on the cursors were cut off at the bottom. **(agent)** They were anchored a little below the image's bottom edge by the font's nominal box, and emoji fonts draw some glyphs lower than that. Each emoji is now placed by its measured outline (`measureText`), one pixel in from the bottom right, and drawn smaller if its outline would not fit the corner (about 46% of the cursor). The preview page does the same. |
+| 125 | Owner (2026-10-27): the 🔢 badge (Alt shows every pile's count) should also show on the arrow over empty table, not only on the glove over a card. **(agent)** Ctrl and Shift still take precedence over empty table, since they change what a drag does there. |
 
 ## Appendix B: Open items
 

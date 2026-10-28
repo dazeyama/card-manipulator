@@ -27,6 +27,7 @@ const STATES = {
   arrow: ['arrow', '', 'default'],
   arrowAdd: ['arrow', '➕', 'copy'],
   arrowSub: ['arrow', '➖', 'default'],
+  arrowCounts: ['arrow', '🔢', 'default'],
   open: ['open', '', 'grab'],
   openSweep: ['open', '🧲', 'grab'],
   openFormation: ['open', '🔢', 'grab'],
@@ -145,6 +146,8 @@ export class Cursors {
     // Empty table: a marquee; Ctrl adds to the selection, Shift takes away (decision 88).
     if (ctrl) return 'arrowAdd';
     if (shift) return 'arrowSub';
+    // Alt shows every pile's count, wherever the mouse is (decision 125).
+    if (alt) return 'arrowCounts';
     return 'arrow';
   }
 
