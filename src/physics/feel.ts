@@ -20,6 +20,8 @@ import { CARD_H, CARD_T, CARD_W } from '../state/types';
 export type DragMode = 'single' | 'gather' | 'formation' | 'rigid';
 
 const LIFT = 10;
+/** Tidy mode (decision 115): a drop cascades only this far (in cascade steps) or more below the top card's centre. */
+const CASCADE_ZONE = 0.75;
 /** Spring rate of the lead card: about 80 ms of visible lag (spec 15.5). */
 const OMEGA_LEAD = 28;
 /**
@@ -907,14 +909,18 @@ export class DragController {
       const top = store.cards.get(target[target.length - 1])!;
       const bottom = store.cards.get(target[0])!;
       if (tidy) {
-        // Two snap points (decision 114): squared on top of the pile, or one cascade
-        // step down from its top card, as in a curve column. The nearer one wins.
+        // Two snap points (decisions 114, 115): squared on top of the pile, or one
+        // cascade step down from its top card, as in a curve column. The stack zone
+        // is the bigger one: anything from 22 mm above the top card's centre down to
+        // three quarters of a step below it stacks; only a drop clearly at the
+        // cascade point (or further down) cascades.
         const yaw = snapYaw(top.yaw);
         const down = { x: Math.sin(yaw), y: -Math.cos(yaw) };
         const lead = held[held.length - 1];
         const ref = mode === 'single' ? { x: this.cursor.x + lead.ox, y: this.cursor.y + lead.oy } : this.cursor;
-        const cascade = { x: top.x + down.x * CASCADE_STEP, y: top.y + down.y * CASCADE_STEP };
-        if (Math.hypot(ref.x - cascade.x, ref.y - cascade.y) < Math.hypot(ref.x - top.x, ref.y - top.y)) {
+        // How far below the top card's centre the drop is, along the card's long side.
+        const below = (ref.x - top.x) * down.x + (ref.y - top.y) * down.y;
+        if (below >= CASCADE_STEP * CASCADE_ZONE) {
           // Each card continues the cascade, one step further down.
           const spots = uids.map((_, i) => ({ x: top.x + down.x * CASCADE_STEP * (i + 1), y: top.y + down.y * CASCADE_STEP * (i + 1), yaw }));
           return placeSequential(app, uids, spots, moving);

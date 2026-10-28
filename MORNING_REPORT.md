@@ -60,7 +60,8 @@ Changes made with you after the overnight build. Each is logged in Appendix A of
 | **Spawn panel trimmed**: Arrival, Face and Where are gone from it (still in the settings panel). | 111 | `1c31a4a` |
 | **Settings panel removed**: Tidy mode, the query cap and the export format each live where they are used. | 112 | `bbc42d1` |
 | **Shift + C in two columns**: W U, B R, G colourless, multicolour and lands. | 113 | `9569577` |
-| **Tidy-mode cascade snap**: drop a card a little below a pile's top card and it snaps one cascade step down, building curve columns by hand. | 114 | this report's commit |
+| **Tidy-mode cascade snap**: drop a card a little below a pile's top card and it snaps one cascade step down, building curve columns by hand. | 114 | `4bd87c1` |
+| **Bigger stack zone in Tidy mode**: a drop stacks unless it is clearly at the cascade point. | 115 | this report's commit |
 
 The per-phase sections below describe the build as it was overnight. The QA checklist at the end uses the current controls.
 
