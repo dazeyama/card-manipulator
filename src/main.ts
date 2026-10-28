@@ -282,21 +282,21 @@ const removeSelection = () => {
 keyboard.bind('delete', removeSelection);
 keyboard.bind('backspace', removeSelection);
 
-hud.addButton('Stack', 'Gather the selection into one stack (S); neat in Tidy mode', () => commands.stack());
-hud.addButton('Spread', 'Spread the selection in a grid (X)', () => commands.spread());
-hud.addButton('Tidy', 'Square up each pile the selection touches (T)', () => commands.tidy());
-hud.addButton('Flip', 'Flip the selection over (F)', () => commands.flip());
-hud.addButton('Curve', 'Curve the selection out by mana value, or stack it back up if it already is (C)', () => commands.toggleCurve([...store.selection], false));
-hud.addButton('By colour', 'Curve everything (or the selection) out by colour, a row per colour (Shift + C)', curveAll);
+hud.addButton('📚 Stack', 'Gather the selection into one stack (S); neat in Tidy mode', () => commands.stack());
+hud.addButton('🪟 Spread', 'Spread the selection in a grid (X)', () => commands.spread());
+hud.addButton('🧹 Tidy', 'Square up each pile the selection touches (T)', () => commands.tidy());
+hud.addButton('🃏 Flip', 'Flip the selection over (F)', () => commands.flip());
+hud.addButton('📊 Curve', 'Curve the selection out by mana value, or stack it back up if it already is (C)', () => commands.toggleCurve([...store.selection], false));
+hud.addButton('🎨 By colour', 'Curve everything (or the selection) out by colour, a row per colour (Shift + C)', curveAll);
 // Split creatures: curves put creatures and non-creatures in separate bands (decision 107).
-const splitBtn = hud.addButton('Split creatures', 'Curves put creatures and non-creatures in separate bands', () => store.updateSettings({ curveSplit: !store.settings.curveSplit }));
+const splitBtn = hud.addButton('🐉 Split creatures', 'Curves put creatures and non-creatures in separate bands', () => store.updateSettings({ curveSplit: !store.settings.curveSplit }));
 const syncSplit = () => {
   splitBtn.classList.toggle('on', store.settings.curveSplit);
   splitBtn.setAttribute('aria-pressed', String(store.settings.curveSplit));
 };
 store.events.on('settings', syncSplit);
 syncSplit();
-const exportBtn = hud.addButton('Export', 'Export the selection as a decklist or CSV (Ctrl + E)', () => exportSelection());
+const exportBtn = hud.addButton('📤 Export', 'Export the selection as a decklist or CSV (Ctrl + E)', () => exportSelection());
 exportBtn.classList.add('export-trigger');
 function exportSelection(): void {
   const r = exportBtn.getBoundingClientRect();
