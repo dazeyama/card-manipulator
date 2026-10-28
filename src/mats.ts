@@ -14,8 +14,15 @@ import { newUid } from './state/store';
 
 /** Mats lie just above the table and below every card and its contact shadow (at 0.03). */
 const MAT_Z = 0.01;
-/** Each later mat lies this much higher, so overlapping mats don't flicker. */
-const MAT_STEP = 0.0005;
+/**
+ * Mats are drawn by order, not by depth (decision 145): after the table
+ * (render order -1), before the cards (0), each later mat over earlier ones.
+ * They skip the depth test, which also leaves the depth buffer holding the
+ * table, so nothing just above the table can flicker against a mat at any
+ * zoom or angle.
+ */
+const MAT_ORDER = -0.9;
+const MAT_ORDER_STEP = 0.0001;
 /** The art crop is loaded at about Scryfall's size; it is the most detail there is. */
 const ART_W = 626;
 const ART_H = 457;
@@ -56,7 +63,6 @@ export class Mats {
   private readonly mirrorCam = new THREE.OrthographicCamera(-MAT_W / 2, MAT_W / 2, MAT_H / 2, -MAT_H / 2, 1, 5000);
 
   constructor(private readonly app: App) {
-    this.group.renderOrder = -1;
     app.view.scene.add(this.group);
     app.store.events.on('mats', () => this.sync());
     app.store.events.on('reset', () => this.sync());
@@ -122,7 +128,7 @@ export class Mats {
     for (const m of mats.values()) {
       let d = this.drawn.get(m.uid);
       if (!d) {
-        const material = new THREE.MeshLambertMaterial({ color: 0x3a3a3a });
+        const material = new THREE.MeshLambertMaterial({ color: 0x3a3a3a, depthTest: false, depthWrite: false });
         const mesh = new THREE.Mesh(this.geometry, material);
         mesh.receiveShadow = true;
         this.group.add(mesh);
@@ -138,8 +144,9 @@ export class Mats {
           d.material.needsUpdate = true;
         });
       }
-      // Later mats lie a hair above earlier ones where they overlap.
-      d.mesh.position.set(m.x, m.y, Math.min(0.025, MAT_Z + order++ * MAT_STEP));
+      // Later mats are drawn over earlier ones where they overlap.
+      d.mesh.renderOrder = MAT_ORDER + order++ * MAT_ORDER_STEP;
+      d.mesh.position.set(m.x, m.y, MAT_Z);
       d.mesh.rotation.set(0, 0, m.yaw);
     }
   }
