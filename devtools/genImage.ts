@@ -9,7 +9,7 @@
 //   node --experimental-transform-types devtools/genImage.ts --list
 //
 // Options: --model (default openai/gpt-image-2), --aspect (1:1), --size (if the model takes it),
-// --background (transparent), --quality (high), --n (1), --out (required).
+// --background (transparent), --quality (high), --n (1), --ref (a style reference image), --out (required).
 
 import { mkdirSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { dirname, extname } from 'node:path';
@@ -68,6 +68,10 @@ async function main(): Promise<void> {
     quality: opts.quality ?? 'high',
     n: Number(opts.n ?? 1),
     output_format: 'png',
+    // --ref <file.png>: an image to follow for style (sent as a data URL).
+    ...(opts.ref
+      ? { input_references: [{ type: 'image_url', image_url: { url: `data:image/png;base64,${readFileSync(opts.ref).toString('base64')}` } }] }
+      : {}),
   };
   const res = await fetch(`${API}/images`, { method: 'POST', headers, body: JSON.stringify(request) });
   const text = await res.text();
