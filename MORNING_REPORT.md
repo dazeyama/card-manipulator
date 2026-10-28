@@ -329,6 +329,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 
 ### Phase 7
 - [ ] Hover shows a big readable image; a DFC shows both faces; click to pin.
+- [ ] The foot of the inspect panel lists the controls with their emoji; it stays readable with a card shown above it (decision 132).
 - [x] Export Keep (⤓ on its badge) and paste it into Moxfield. Works (decision 93).
 - [x] Save a file (Ctrl + S), New table, Open it back. Works (decision 93).
 - [ ] Spawn `set:ltr r:rare` from the Query tab: the preview count comes first.
