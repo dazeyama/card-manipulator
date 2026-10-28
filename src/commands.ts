@@ -3,7 +3,7 @@
 
 import type { App } from './app';
 import { CARD_H, CARD_T, CARD_W, type Card } from './state/types';
-import { gridLayout, overlaps, snapYaw, spreadLayout, type Footprint, type Placed } from './state/piles';
+import { gridLayout, looseStackLayout, overlaps, snapYaw, spreadLayout, type Footprint, type Placed } from './state/piles';
 import type { Spread } from './state/store';
 
 export interface Landing {
@@ -86,6 +86,15 @@ export function stackAt(app: App, uids: string[], at: Footprint, exclude = new S
   return uids.map((uid, i) => ({ uid, x: at.x, y: at.y, yaw: at.yaw, z: base + CARD_T / 2 + i * CARD_T }));
 }
 
+/**
+ * Cards gathered onto one spot: a loose, hand-made stack, or a neat one when
+ * Tidy drops is on (decision 94). Only Tidy squares a loose stack up.
+ */
+export function pileAt(app: App, uids: string[], at: Footprint, exclude = new Set(uids)): Landing[] {
+  if (app.store.settings.tidyDrops) return stackAt(app, uids, at, exclude);
+  return placeSequential(app, uids, looseStackLayout(uids.length, at), exclude);
+}
+
 /** Selected cards ordered bottom to top. */
 export function byHeight(app: App, uids: Iterable<string>): string[] {
   return [...uids].map((u) => app.store.cards.get(u)!).filter(Boolean).sort((a, b) => a.z - b.z).map((c) => c.uid);
@@ -125,13 +134,13 @@ export class Commands {
     return [...this.app.store.selection];
   }
 
-  /** S: gather the selection into one neat stack at its centroid. */
+  /** S: gather the selection into one stack at its centroid, loose unless Tidy drops is on. */
   stack(): void {
     const uids = byHeight(this.app, this.sel);
     if (uids.length < 1) return;
     leaveSpreads(this.app, uids);
     const c = centroid(this.app, uids);
-    land(this.app, stackAt(this.app, uids, { x: c.x, y: c.y, yaw: 0 }));
+    land(this.app, pileAt(this.app, uids, { x: c.x, y: c.y, yaw: 0 }));
   }
 
   /** X: spread the selection in a grid at its centroid. A selection that is exactly one stack spreads beside it instead. */
@@ -252,7 +261,7 @@ export class Commands {
     land(this.app, placeSequential(this.app, topFirst, spots), { stagger: Math.min(4, 300 / topFirst.length), arc: 6 });
   }
 
-  /** Put a spread back into a stack at its anchor, in the same order. */
+  /** Put a spread back into a (loose) stack at its anchor, in the same order. */
   restack(spreadId: string): void {
     const store = this.app.store;
     const sp = store.spreads.get(spreadId);
@@ -261,6 +270,6 @@ export class Commands {
     store.spreads.delete(spreadId);
     for (const u of uids) store.cards.get(u)!.spreadOf = null;
     const bottomFirst = [...uids].reverse();
-    land(this.app, stackAt(this.app, bottomFirst, { x: sp.anchor.x, y: sp.anchor.y, yaw: sp.yaw }), { stagger: Math.min(4, 300 / Math.max(1, uids.length)), arc: 6 });
+    land(this.app, pileAt(this.app, bottomFirst, { x: sp.anchor.x, y: sp.anchor.y, yaw: sp.yaw }), { stagger: Math.min(4, 300 / Math.max(1, uids.length)), arc: 6 });
   }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gridLayout, messyLayout, overlaps, rng, spreadLayout, stackLayout, surfaceTop } from '../src/state/piles';
+import { gridLayout, LOOSE_OFFSET, LOOSE_TURN, looseStackLayout, messyLayout, overlaps, rng, spreadLayout, stackLayout, surfaceTop } from '../src/state/piles';
 import { CARD_T } from '../src/state/types';
 
 describe('overlaps', () => {
@@ -165,5 +165,29 @@ describe('detectPiles with named piles (spec 11.3, 11.4)', () => {
     const prev = new Map([['keep', ['a']]]);
     const piles = detectPiles([card('x', 0, 0)], prev, id, { named: new Set(['keep']) });
     expect(piles).toHaveLength(0);
+  });
+});
+
+describe('looseStackLayout (decision 94)', () => {
+  it('keeps every card near the spot, a little turned, stacked bottom first', () => {
+    const at = { x: 100, y: -50, yaw: 0.3 };
+    const cards = looseStackLayout(40, at, 2, rng(11));
+    expect(cards).toHaveLength(40);
+    for (const [i, c] of cards.entries()) {
+      expect(Math.hypot(c.x - at.x, c.y - at.y)).toBeLessThanOrEqual(LOOSE_OFFSET + 1e-9);
+      expect(Math.abs(c.yaw - at.yaw)).toBeLessThanOrEqual(LOOSE_TURN + 1e-9);
+      expect(c.z).toBeCloseTo(2 + 0.15 + i * 0.3, 6);
+    }
+  });
+
+  it('is visibly loose: not every card is squared up', () => {
+    const cards = looseStackLayout(20, { x: 0, y: 0, yaw: 0 }, 0, rng(5));
+    expect(cards.some((c) => Math.hypot(c.x, c.y) > 2)).toBe(true);
+    expect(cards.some((c) => Math.abs(c.yaw) > 0.02)).toBe(true);
+  });
+
+  it('overlaps as one pile', () => {
+    const cards = looseStackLayout(30, { x: 0, y: 0, yaw: 0 }, 0, rng(9));
+    expect(cards.every((c) => overlaps(c, cards[0]))).toBe(true);
   });
 });

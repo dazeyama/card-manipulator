@@ -38,8 +38,9 @@ Changes made with you after the overnight build. Each is logged in Appendix A of
 | A double right-click straightens the angle back to the current preset without moving the camera. Home still does the full reset. | 87 | `c6ff55b` |
 | **Ctrl and Shift swapped on every mouse action** (Ctrl + click toggles, Ctrl adds to a marquee, Shift subtracts). **Right and middle buttons swapped** (right-drag pans, middle-click flips, middle-drag orbits). Keyboard shortcuts keep Ctrl. | 88 | `f686e70` |
 | **Shift + drag sweeps.** Cards the cursor passes over are pulled into the clump. Lingering over a pile pulls more, then all of it after about 1.6 s. Whole-stack lift is now badge drag only. | 89 | `6e78d89` |
-| Morning QA fixes: flicks are easier (Normal 1,600 px/s, was 2,300), the foil sheen is stronger, and close-ups switch to `normal` images at 160 px (was 250). | 90–92 | this report's commit |
-| Morning QA results: Alt-drag, Save/Open, Moxfield paste, 2,000-card smoothness and drag feel all confirmed. | 93 | this report's commit |
+| Morning QA fixes: flicks are easier (Normal 1,600 px/s, was 2,300), the foil sheen is stronger, and close-ups switch to `normal` images at 160 px (was 250). | 90–92 | `f2b2870` |
+| Morning QA results: Alt-drag, Save/Open, Moxfield paste, 2,000-card smoothness and drag feel all confirmed. | 93 | `f2b2870` |
+| **Messier and more physical by default.** Drops, gathers, Stack (`S`) and restacks make loose stacks; only Tidy (`T`) or Tidy drops square up. Every drop of up to 80 cards falls through physics. A little more lean, turn about the grab point, turn on landing and tumble. | 94 | this report's commit |
 
 The per-phase sections below describe the build as it was overnight. The QA checklist at the end uses the current controls.
 
@@ -262,8 +263,9 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 - [ ] Chips append and apply; Ctrl-click excludes (decision 88).
 
 ### Phase 4
-- [ ] Drag one card onto another: badge reads 2.
-- [ ] Select thirty, drag: they clump behind the cursor and stack on release.
+- [ ] Drag one card onto another: badge reads 2, and the top card sits a little off and turned (decision 94).
+- [ ] Select thirty, drag: they clump behind the cursor and fall into a loose stack on release; `T` squares it up (decision 94).
+- [ ] Drag a single card by its corner in a curve: it turns a little about where you hold it.
 - [x] **Alt-drag keeps formation, and releasing Alt does not focus the browser menu (decision 29).** Confirmed (decision 93).
 - [ ] A plain drag peels the top card; dragging a badge lifts the pile.
 - [ ] Shift + drag sweeps up the cards it passes over; lingering over a pile pulls more, then all of it (decision 89).

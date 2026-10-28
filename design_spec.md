@@ -471,7 +471,7 @@ When zoomed out, a highlighted card is a few pixels. Selected cards therefore al
 
 ### 10.1 Single card drag
 
-Left-press on a card and move. The card lifts about 10 mm, tilts slightly in the direction of motion, and follows the cursor with a short spring so it feels like it has mass. Releasing drops it. If it lands on a stack, it joins the top of that stack and squares up. If it lands on a messy pile, it lands messily unless **Tidy drops** is on.
+Left-press on a card and move. The card lifts about 10 mm, leans into its motion, and follows the cursor with a short spring so it feels like it has mass. Held by a point off its centre, it also turns a little about that point, the way a real card pulled by its corner swings round (decision 94). Releasing drops it through physics. Wherever it lands it stays a little off and turned; only **Tidy drops** or the Tidy command square it up (decision 94).
 
 Dragging a card that is in the selection drags the whole selection. Dragging a card that is not in the selection first selects only that card.
 
@@ -486,16 +486,18 @@ Owner's decision (2026-10-27): **a plain drag on a stack peels the top card; dra
 
 Owner's decision (2026-10-27): **gather by default; a modifier keeps the formation.**
 
-- **Gather**: as the drag begins, every selected card flows toward the cursor along a spring and trails behind it in a loose clump. On release the clump squares up into one stack at the drop point (Section 10.4).
+- **Gather**: as the drag begins, every selected card flows toward the cursor along a spring and trails behind it in a loose clump. On release the clump falls into one loose stack at the drop point (Section 10.4).
 - **Sweep** (hold **Shift** while dragging a card, decision 89): a gather that keeps collecting. The selection (or just the pressed card, if it was not selected) gathers to the cursor, and every card the cursor passes over is pulled into the clump and selected. A quick pass over a pile takes only its top card; lingering over it pulls more, slowly at first and then faster, until after about 1.6 s the whole pile comes. On release the clump lands like any gather.
 - **Formation** (hold **Alt** while dragging): cards keep their relative positions and move as a rigid group. On release they drop in place, each landing on whatever is beneath it. On Windows, releasing Alt can focus the browser's menu bar; the app swallows Alt's `keyup` with `preventDefault`. If that still misfires in testing, the fallback is Ctrl + Shift + drag (decision 29).
 - Cards in the clump are drawn with a small per-card offset so the clump reads as "many cards", with the count in a label beside the cursor.
 
 ### 10.4 Release and landing
 
-- A gathered group released on empty table becomes a **neat stack** (owner, 2026-10-27: stacks by default).
-- Released over an existing stack, the group joins the top of it.
-- Released over a messy pile, the group joins the pile. Messy if the global **Tidy drops** toggle is off, squared up on top if it is on.
+- **Messy by default** (owner, 2026-10-27, decision 94): cards land as a **loose stack**, each a few millimetres to about a centimetre off centre and turned up to about 8°. It is still clearly one pile. Only the Tidy command (`T`) or the **Tidy drops** toggle make a neat, squared stack.
+- A gathered group released on empty table becomes a loose stack at the drop point (decision 5: stacks by default; decision 94: loose).
+- Released over an existing stack or a single card, the group joins the top of it as a loose stack.
+- Released over a messy pile, the group joins the pile messily. With **Tidy drops** on, every one of these lands squared up instead.
+- Every drop of up to 80 cards falls through physics: each card is tossed in a low arc toward its spot in the layout, with a little tumble and twist, and rests where it really lands. Formation and badge (whole-pile) drags keep their shape and land by layout, as do bigger drops.
 - Landing plays a short settle: a few millimetres of drop, a soft bounce, and shadows pooling. It must finish within about 300 ms so fast work never waits on animation.
 
 ### 10.5 Flip
@@ -522,7 +524,7 @@ Available as HUD buttons and keys, acting on the selection:
 
 | Command | Key | Effect |
 |---|---|---|
-| Stack | `S` | Gather the selection into one neat stack at its centroid. |
+| Stack | `S` | Gather the selection into one loose stack at its centroid (neat with Tidy drops on, decision 94). |
 | Spread | `X` | Spread the selection in a grid at its centroid. |
 | Tidy | `T` | Square up each pile the selection touches without merging piles. |
 | Flip | `F`, middle-click | See 10.5. |
@@ -659,11 +661,11 @@ A Held card or clump passes over settled cards without disturbing them; shoving 
 
 ### 15.3 Thickness
 
-Real cards are 0.3 mm thick, which makes stacks of thin boxes jitter in any engine. The physics body is 2 mm thick while the rendered card stays thin, and stacks are authored by the model rather than simulated: a stack of 40 is one static collider the height of 40 cards, not 40 bodies.
+Real cards are 0.3 mm thick, which makes stacks of thin boxes jitter in any engine. The physics body is 2 mm thick while the rendered card stays thin, and stacks are authored by the model rather than simulated: a stack of 40 is one static collider the height of 40 cards, not 40 bodies. A loose pile of 12 or more cards is one box too, shaped like its top card (decision 94).
 
 ### 15.4 Messy versus tidy
 
-Owner's decision (2026-10-27): hybrid with a toggle. The global **Tidy drops** setting (top bar, default off) decides whether releases land messy or squared up. The `Tidy` command (Section 10.7) squares up on demand. Spawn's Arrival control is the same idea for new cards.
+Owner's decision (2026-10-27): hybrid with a toggle. The global **Tidy drops** setting (top bar, default off) decides whether releases land messy or squared up. With it off, everything lands messy, even onto a neat stack, and Stack (`S`) and restacking a spread make loose stacks too (decision 94). The `Tidy` command (Section 10.7) squares up on demand. Spawn's Arrival control is the same idea for new cards.
 
 ### 15.5 Feel targets
 
@@ -907,6 +909,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 91 | Owner (2026-10-27, morning QA): the foil sheen was too subtle. **(agent)** The rainbow band is wider (smoothstep from 0.35 instead of 0.55) and about twice as bright (0.30 instead of 0.16), with a faint 0.05 rainbow wash over the whole face so a foil reads between bands. |
 | 92 | Owner (2026-10-27, morning QA): switch to the `normal` image sooner. **(agent)** Close-ups start once a card is over 160 px tall on screen (was 250), with up to 24 overlays (was 12) and a pool of 48 textures (was 32, about 60 MB). Supersedes those numbers in decision 82. |
 | 93 | Owner (2026-10-27, morning QA): Alt-drag works on Windows (releasing Alt does not focus the menu bar), Save and Open work, an exported decklist pastes into Moxfield, 2,000 cards run smoothly in Chrome, and the drag spring, tilt and settle hop feel right. These close the open hand checks from the overnight build. |
+| 94 | Owner (2026-10-27): **messier and more physical by default.** Drops, gathers, Stack (`S`) and restacks make a **loose stack** (a few mm to about 1 cm off centre, turned up to about 8°); only Tidy (`T`) and the Tidy drops toggle square up. Every drop falls through physics up to the 80-card limit. A little more of each: lean while dragging, a single card turning about its grab point, turn on landing, and tumble in physics. Supersedes the "neat stack" parts of decisions 5 and 66. **(agent)** numbers: loose stack offset up to 9 mm (weighted toward the middle) and turn up to 0.14 rad; drag lean 0.2 rad maximum (was 0.14) at 0.0012 rad per mm/s (was 0.0009); grab-point turn at most 0.35 rad (20°), and only when grabbed more than 8 mm from the centre; tossed cards arc up at 250 mm/s with up to 1.2 rad/s of tumble and 1.5 rad/s of twist, their bodies spaced 2.4 mm apart as spawns are; a loose pile of 12 or more cards collides as one box shaped like its top card, so a loose cube stays cheap; formation and badge drags keep their shape and land by layout; spawning as a "Neat stack" stays neat because it is an explicit choice. |
 
 ## Appendix B: Open items
 

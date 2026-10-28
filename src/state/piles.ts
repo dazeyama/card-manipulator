@@ -71,6 +71,31 @@ export function rng(seed: number): () => number {
 }
 
 /** A messy pile: small random offsets and angles, each card above the last (spec 2). */
+/** A loose stack (decision 94): each card up to this far off the centre, in mm... */
+export const LOOSE_OFFSET = 9;
+/** ...and turned up to this much either way, in radians (about 8 degrees). */
+export const LOOSE_TURN = 0.14;
+
+/**
+ * A hand-made stack: every card roughly on the same spot, a little off centre
+ * and a little turned, bottom card first. Tidy squares it up.
+ */
+export function looseStackLayout(count: number, at: Footprint, baseTop = 0, random: () => number = Math.random): Placed[] {
+  const out: Placed[] = [];
+  for (let i = 0; i < count; i++) {
+    const a = random() * Math.PI * 2;
+    // Most cards sit near the middle; a few stray towards the edge.
+    const r = LOOSE_OFFSET * random() ** 1.5;
+    out.push({
+      x: at.x + Math.cos(a) * r,
+      y: at.y + Math.sin(a) * r,
+      yaw: at.yaw + (random() * 2 - 1) * LOOSE_TURN,
+      z: baseTop + CARD_T / 2 + i * CARD_T,
+    });
+  }
+  return out;
+}
+
 export function messyLayout(count: number, at: Footprint, baseTop = 0, random: () => number = Math.random): Placed[] {
   const out: Placed[] = [];
   // Bigger piles spread a little wider, as a dropped handful does.

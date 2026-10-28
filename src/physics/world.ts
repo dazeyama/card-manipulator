@@ -34,6 +34,8 @@ export const MAX_BODIES = 180;
  * 40 ms spikes, so bigger drops land by layout instead to keep frames smooth.
  */
 export const MAX_DROP = 80;
+/** A loose pile of at least this many cards collides as one box. */
+const BOX_PILE = 12;
 
 export interface LooseCard {
   uid: string;
@@ -107,12 +109,16 @@ export class Physics {
     }
     const doneCards = new Set<string>();
     for (const pile of app.store.piles.values()) {
-      if (pile.kind !== 'stack') continue;
+      // A stack is one box; so is a big loose pile (decision 94), shaped like
+      // its top card, so a loose cube doesn't become a thousand colliders.
+      if (pile.kind !== 'stack' && pile.cardUids.length < BOX_PILE) continue;
       const bottom = app.store.cards.get(pile.cardUids[0]);
       if (!bottom || pile.cardUids.some((u) => loose.has(u))) continue;
-      if (bottom.x < minX || bottom.x > maxX || bottom.y < minY || bottom.y > maxY) continue;
-      const top = app.store.cards.get(pile.cardUids[pile.cardUids.length - 1])!.z + CARD_T / 2;
-      session.statics.push(this.staticBox(bottom.x, bottom.y, top / 2, bottom.yaw, top / 2));
+      const topCard = app.store.cards.get(pile.cardUids[pile.cardUids.length - 1])!;
+      const base = pile.kind === 'stack' ? bottom : topCard;
+      if (base.x < minX || base.x > maxX || base.y < minY || base.y > maxY) continue;
+      const top = topCard.z + CARD_T / 2;
+      session.statics.push(this.staticBox(base.x, base.y, top / 2, base.yaw, top / 2));
       pile.cardUids.forEach((u) => doneCards.add(u));
     }
     for (const c of app.store.cards.values()) {

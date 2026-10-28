@@ -109,7 +109,9 @@ export function installRegression(app: App, ui: Ui): void {
     const lead = spreadUids[20];
     const empty = tableAt(0, -600);
     await drag(screenOf(lead), empty);
-    check(4, 'a gathered group stacks on release', piles().some((p) => p.kind === 'stack' && p.cardUids.length === 30));
+    while (ui.physics.bodyCount) await wait(20);
+    await wait(200);
+    check(4, 'a gathered group lands as one loose stack', piles().some((p) => p.cardUids.length === 30));
     const five = spreadUids.slice(4, 9);
     store.setSelection(five);
     const before5 = five.map((u) => ({ ...store.cards.get(u)! }));

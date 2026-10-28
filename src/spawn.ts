@@ -62,6 +62,8 @@ export function spawnCards(app: App, items: SpawnItem[], opts: SpawnOptions): st
       vx: (Math.random() - 0.5) * 160,
       vy: (Math.random() - 0.5) * 160,
       vz: -200,
+      wx: (Math.random() - 0.5) * 2,
+      wy: (Math.random() - 0.5) * 2,
       wz: (Math.random() - 0.5) * 3,
     })));
     if (ok) return cards.map((c) => c.uid);

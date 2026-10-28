@@ -5,7 +5,7 @@
 // drag sweeps: cards the cursor passes over are pulled into the clump.
 
 import type { App } from '../app';
-import { land, leaveSpreads, placeSequential, stackAt, type Landing } from '../commands';
+import { land, leaveSpreads, pileAt, placeSequential, stackAt, type Landing } from '../commands';
 import type { CustomGesture } from '../input/mouse';
 import { pickCard } from '../render/picking';
 import { messyLayout, snapYaw } from '../state/piles';
@@ -17,7 +17,14 @@ const LIFT = 10;
 /** Spring rate of the lead card: about 80 ms of visible lag (spec 15.5). */
 const OMEGA_LEAD = 28;
 const OMEGA_TAIL = 13;
-const MAX_TILT = 0.14;
+const MAX_TILT = 0.2;
+const TILT_PER_SPEED = 0.0012;
+/** A single card turns about the point it was grabbed by (decision 94): gain, damping, limit. */
+const TURN_GAIN = 0.02;
+const TURN_DAMP = 10;
+const TURN_MAX = 0.35;
+/** Gravity in the physics world, mm/s^2, for aiming tosses. */
+const GRAVITY = 9810;
 
 interface Held {
   uid: string;
@@ -32,6 +39,9 @@ interface Held {
   vz: number;
   /** Where it was before the drag, for Esc. */
   home: { x: number; y: number; z: number; yaw: number };
+  /** Offset from the grab point at the start, before any turn (single drags). */
+  bx: number;
+  by: number;
 }
 
 /** Sweep (decision 89): a pile gives up its top card at once, more after this long... */
@@ -78,6 +88,12 @@ export class DragController {
   private dwell: Dwell | null = null;
   /** Latest cursor position on screen, for the sweep's pick. */
   private screen = { x: 0, y: 0 };
+  /** Single drags: how far the card has turned about the grab point, and how fast. */
+  private turn = 0;
+  private turnVel = 0;
+  /** Cursor on the table last frame and its smoothed velocity, mm/s. */
+  private lastCursor = { x: 0, y: 0 };
+  private cursorVel = { x: 0, y: 0 };
 
   constructor(private readonly app: App) {
     this.label = document.createElement('div');
@@ -133,7 +149,7 @@ export class DragController {
       } else if (mode === 'single') {
         dz = 0;
       }
-      return { uid: c.uid, ox, oy, dz, omega, vx: 0, vy: 0, vz: 0, home: { x: c.x, y: c.y, z: c.z, yaw: c.yaw } };
+      return { uid: c.uid, ox, oy, dz, omega, vx: 0, vy: 0, vz: 0, home: { x: c.x, y: c.y, z: c.z, yaw: c.yaw }, bx: ox, by: oy };
     });
     for (const h of this.held) {
       this.app.motion.cancel(h.uid);
@@ -143,6 +159,10 @@ export class DragController {
     this.flicked = false;
     this.vel = { x: 0, y: 0 };
     this.screen = { x: sx, y: sy };
+    this.turn = 0;
+    this.turnVel = 0;
+    this.lastCursor = { ...this.cursor };
+    this.cursorVel = { x: 0, y: 0 };
     this.sweeping = !!sweepFrom && mode === 'gather';
     this.dwell = null;
     if (sweepFrom && this.sweeping) {
@@ -278,7 +298,7 @@ export class DragController {
     const top = this.held.reduce((m, c) => Math.max(m, c.dz), -CARD_T);
     this.held.push({
       uid, ox: Math.cos(a) * r, oy: Math.sin(a) * r, dz: top + CARD_T, omega: OMEGA_TAIL,
-      vx: 0, vy: 0, vz: 0, home: { x: card.x, y: card.y, z: card.z, yaw: card.yaw },
+      vx: 0, vy: 0, vz: 0, home: { x: card.x, y: card.y, z: card.z, yaw: card.yaw }, bx: 0, by: 0,
     });
     app.motion.cancel(uid);
     app.motion.held.add(uid);
@@ -286,10 +306,38 @@ export class DragController {
     this.showLabel(this.screen.x, this.screen.y);
   }
 
+  /**
+   * A card pulled by a point off its centre swings so the centre trails behind
+   * the motion, like dragging a real card by its corner. Only a little.
+   */
+  private turnSingle(dt: number): void {
+    const c = this.held[0];
+    const k = Math.min(1, dt * 12);
+    const vx = (this.cursor.x - this.lastCursor.x) / Math.max(dt, 1e-3);
+    const vy = (this.cursor.y - this.lastCursor.y) / Math.max(dt, 1e-3);
+    this.cursorVel = { x: this.cursorVel.x + (vx - this.cursorVel.x) * k, y: this.cursorVel.y + (vy - this.cursorVel.y) * k };
+    this.lastCursor = { ...this.cursor };
+    const lever = Math.hypot(c.ox, c.oy);
+    if (lever > 8) {
+      // Torque of the drag on the centre: turns it to point away from the motion.
+      const torque = (c.ox * -this.cursorVel.y - c.oy * -this.cursorVel.x) / lever;
+      this.turnVel += (torque * TURN_GAIN * Math.min(1, lever / 40) - this.turnVel * TURN_DAMP) * dt;
+    } else {
+      this.turnVel -= this.turnVel * TURN_DAMP * dt;
+    }
+    this.turn = clamp(this.turn + this.turnVel * dt, -TURN_MAX, TURN_MAX);
+    const cos = Math.cos(this.turn), sin = Math.sin(this.turn);
+    c.ox = c.bx * cos - c.by * sin;
+    c.oy = c.bx * sin + c.by * cos;
+    const pose = this.app.layer.pose(c.uid);
+    if (pose) pose.yaw = c.home.yaw + this.turn;
+  }
+
   /** Spring every held card toward its target. */
   private step(dt: number): void {
     if (!this.active) return;
     if (this.sweeping) this.sweep(performance.now());
+    if (this.mode === 'single' && this.held.length === 1 && dt > 0) this.turnSingle(dt);
     const layer = this.app.layer;
     const steps = 2;
     const h = Math.min(dt, 1 / 30) / steps;
@@ -309,8 +357,8 @@ export class DragController {
         pose.z += c.vz * h;
       }
       // Lean into the motion: the leading edge dips a little.
-      pose.tiltX = clamp(c.vy * 0.0009, -MAX_TILT, MAX_TILT);
-      pose.tiltY = clamp(-c.vx * 0.0009, -MAX_TILT, MAX_TILT);
+      pose.tiltX = clamp(c.vy * TILT_PER_SPEED, -MAX_TILT, MAX_TILT);
+      pose.tiltY = clamp(-c.vx * TILT_PER_SPEED, -MAX_TILT, MAX_TILT);
       layer.touch(c.uid);
     }
   }
@@ -454,17 +502,34 @@ export class DragController {
    * open table, or any group dropped on a messy pile, when Tidy drops is off
    * (spec 10.4, 15.4). Returns false when the landing is a tidy one.
    */
+  /**
+   * Every drop falls through physics when Tidy drops is off (decision 94):
+   * each card is tossed in a low arc toward where the layout would put it, with
+   * a little tumble and twist, and comes to rest wherever it really lands.
+   * Formation and whole-pile drags keep their shape and land by layout.
+   */
   private dropLoose(held: Held[], mode: DragMode, sx: number, sy: number): boolean {
     const app = this.app;
     const physics = app.physics;
-    if (!physics || app.store.settings.tidyDrops || mode === 'formation') return false;
-    const moving = new Set(held.map((c) => c.uid));
-    const hit = pickCard(app.rig, app.layer, sx, sy, moving);
-    const pile = hit ? [...app.store.piles.values()].find((p) => p.cardUids.includes(hit)) : undefined;
-    const ontoMessy = !!pile && pile.kind === 'messy';
-    const singleOnTable = !hit && mode === 'single' && !app.named.outlineAt(this.cursor.x, this.cursor.y);
-    if (!ontoMessy && !singleOnTable) return false;
-    return physics.drop(held.map((c) => ({ uid: c.uid, vx: c.vx * 0.6, vy: c.vy * 0.6, vz: 0, wz: (Math.random() - 0.5) * 2 })));
+    if (!physics || app.store.settings.tidyDrops || mode === 'formation' || mode === 'rigid') return false;
+    const spots = this.landings(held, mode, sx, sy);
+    const byUid = new Map(held.map((c) => [c.uid, c]));
+    const tosses = spots.map((l, i) => {
+      const c = byUid.get(l.uid)!;
+      const pose = app.layer.pose(l.uid)!;
+      if (mode === 'single') {
+        // A single card just lets go, carrying a little of the drag's speed.
+        return { uid: l.uid, vx: c.vx * 0.6, vy: c.vy * 0.6, vz: 0, wx: jitter(1), wy: jitter(1), wz: jitter(1.5) };
+      }
+      // Space the bodies (2 mm thick) so they don't start inside each other.
+      pose.z = Math.max(pose.z, l.z + 4) + i * 2.4;
+      const vz = 250;
+      const h = pose.z - l.z;
+      const t = (vz + Math.sqrt(vz * vz + 2 * GRAVITY * h)) / GRAVITY;
+      // A little extra to make up for the bodies' air damping.
+      return { uid: l.uid, vx: ((l.x - pose.x) / t) * 1.15, vy: ((l.y - pose.y) / t) * 1.15, vz, wx: jitter(1.2), wy: jitter(1.2), wz: jitter(1.5) };
+    });
+    return physics.drop(tosses);
   }
 
   /** Where released cards come to rest (spec 10.4). */
@@ -489,11 +554,14 @@ export class DragController {
       const target = rest.length ? rest : [hit];
       const top = store.cards.get(target[target.length - 1])!;
       const bottom = store.cards.get(target[0])!;
-      const squared = !pile || pile.kind === 'stack' || tidy;
-      if (squared) {
+      if (tidy) {
         // Join the top, squared up on the pile (spec 10.4).
         const base = pile && pile.kind === 'stack' ? bottom : top;
         return stackAt(app, uids, { x: base.x, y: base.y, yaw: base.yaw }, moving);
+      }
+      if (!pile || pile.kind === 'stack' || uids.length === 1 || mode !== 'gather') {
+        // Join the top as a loose stack (decision 94).
+        return pileAt(app, uids, { x: top.x, y: top.y, yaw: top.yaw }, moving);
       }
       // A messy pile takes the cards messily (Tidy drops off).
       const spots = messyLayout(uids.length, { x: this.cursor.x, y: this.cursor.y, yaw: top.yaw }).map((p) => ({ x: p.x, y: p.y, yaw: p.yaw }));
@@ -502,12 +570,14 @@ export class DragController {
 
     // An empty named pile's outline takes the cards as a neat stack (a prepared bin, decision 27).
     const bin = app.named.outlineAt(this.cursor.x, this.cursor.y);
-    if (bin) return stackAt(app, uids, { x: bin.anchor.x, y: bin.anchor.y, yaw: bin.yaw }, moving);
+    if (bin) return pileAt(app, uids, { x: bin.anchor.x, y: bin.anchor.y, yaw: bin.yaw }, moving);
 
     // Empty table.
     if (mode === 'single') {
       const c = held[0];
-      const yaw = tidy ? snapYaw(c.home.yaw) : c.home.yaw;
+      // Keeps the turn it picked up while dragged.
+      const turned = app.layer.pose(c.uid)?.yaw ?? c.home.yaw;
+      const yaw = tidy ? snapYaw(turned) : turned;
       return placeSequential(app, uids, [{ x: this.cursor.x + c.ox, y: this.cursor.y + c.oy, yaw }], moving);
     }
     if (mode === 'rigid') {
@@ -515,8 +585,8 @@ export class DragController {
       const b = held[0];
       return stackAt(app, uids, { x: this.cursor.x + b.ox, y: this.cursor.y + b.oy, yaw: b.home.yaw }, moving);
     }
-    // A gathered group becomes a neat stack at the drop point (decision 5).
-    return stackAt(app, uids, { x: this.cursor.x, y: this.cursor.y, yaw: 0 }, moving);
+    // A gathered group becomes a stack at the drop point (decision 5), loose unless Tidy drops is on (decision 94).
+    return pileAt(app, uids, { x: this.cursor.x, y: this.cursor.y, yaw: 0 }, moving);
   }
 }
 
@@ -525,6 +595,11 @@ export class DragController {
  * smoothed velocity before this move and the new one (px/s), returns the
  * unit direction to toss in, or null.
  */
+/** A random value between -a and a. */
+function jitter(a: number): number {
+  return (Math.random() * 2 - 1) * a;
+}
+
 export function flickDirection(prev: { x: number; y: number }, v: { x: number; y: number }, threshold: number): { x: number; y: number } | null {
   const prevSpeed = Math.hypot(prev.x, prev.y);
   const speed = Math.hypot(v.x, v.y);
