@@ -176,11 +176,9 @@ code { font-family: var(--mono); font-size: 0.95em; background: rgba(0, 0, 0, 0.
 .help-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
 .help-group { margin-top: 8px; }
 .help-group-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-2); margin-bottom: 2px; }
-.help-line { display: grid; grid-template-columns: 22px 150px 1fr; align-items: baseline; gap: 6px; font-size: 12.5px; line-height: 1.9; }
+.help-line { display: grid; grid-template-columns: 22px 118px 1fr; align-items: baseline; gap: 6px; font-size: 12.5px; line-height: 1.6; }
 .help-icon { text-align: center; }
 .help-keys { font-weight: 600; }
-/* A key or mouse button, as a keycap chip (decision 136). */
-.keycap { display: inline-block; font: 600 11.5px/1.35 var(--mono, ui-monospace, monospace); color: #333; background: #fbfaf8; border: 1px solid #cfccc6; border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; margin: 0 1px; white-space: nowrap; }
 .help-what { color: var(--text-2); }
 /* The context hint line in the play space (decision 134). */
 .context-hints { position: absolute; left: 10px; bottom: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 4px; pointer-events: none; z-index: 3; }
