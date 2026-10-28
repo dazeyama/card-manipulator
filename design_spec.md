@@ -718,11 +718,11 @@ Personality: **snappy and light** (decision 42). Quick follow, short settles, ve
 | Ctrl + A | Select all |
 | Ctrl + F, `/` | Focus the filter box |
 | Enter (in filter box) | Apply refine or table search |
-| S | Stack selection |
-| X | Spread selection |
-| T | Tidy selection |
-| F | Flip selection |
-| R | Turn the selection (or the card under the cursor) to the next quarter turn clockwise; R twice quickly: upright |
+| S | Stack the selection, or the pile under the cursor when nothing is selected |
+| X | Spread the selection; with nothing selected, spread or restack the pile under the cursor (like a double-click) |
+| T | Tidy the selection, or the pile under the cursor |
+| F | Flip the selection, or the card under the cursor |
+| R | Turn the selection (or the card under the cursor) to the next quarter turn clockwise; R twice quickly: upright. While dragging, R turns the held cards |
 | N | Name the selected pile |
 | Z | Frame the selection |
 | V | Next camera view preset |
@@ -932,6 +932,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 100 | Owner (2026-10-27): decision 99 didn't work: a picked-up and dropped messy stack came to rest mid-air in a tall, unrealistic shape; cards should fall to the lowest place they can, like in real life. **(agent)** Cause: decision 99's droop rule let a card tilt toward its lower side, which lifts its other end into the air; the next card lands on that raised end and it compounds (a 60-card heap stood 70-130 mm tall). Fix: cards rest as rigid cards, as low as their centre can go, with no droop; a 60-card heap is now no taller than its cards stacked flat (18 mm), plus a mm or two where cards cross at angles. Lifting a card (any drag) lets what rested on it fall at once. Tried and dropped: physics bodies as thin as real cards. Rapier lets resting bodies sink 0.2-1 mm into each other at any tolerance, stiffness or iteration count, so 0.3 mm cards passed straight through each other; physics keeps its 2 mm bodies for the motion and resting lays the cards down. Known limit: a rigid card whose centre is supported lies flat, so a tight fan is a low staircase (one card thickness per step); lying a fan flatter needs cards that bend, or a whole-pile settle. |
 | 101 | Owner (2026-10-27): close-up `normal` images went only to the top card of each pile; any card with even 5-10% of its face showing should get one. **(agent)** A card qualifies when at least 5% of its face is not covered by the cards above it in its pile, judged from above on a 7 x 9 grid across the face (`visibleShare` in `piles.ts`). Cards under the top of a neat stack count as hidden without checking. Up to 32 close-ups (was 24) from a pool of 64 textures (was 48, about 80 MB), nearest the middle of the view first. Each close-up is its own draw, so a full set goes past the 20-draw target in Section 17; the owner put image sharpness first. |
 | 102 | Owner (2026-10-27): R didn't seem to work: it acted only on the selection, so with nothing selected it did nothing. R should snap a card to the next 90° clockwise, not turn it 90° from where it is, so it can be used to align cards; double-tapping R stands cards upright. **(agent)** With nothing selected, R acts on the card under the cursor. "Next quarter turn clockwise" is the first multiple of 90° clockwise of the card's angle (a card within 0.06° of a quarter turn counts as on it, so a square card turns a full 90°). A double tap is two presses within 350 ms; upright is 0° by the shortest turn. |
+| 103 | Owner (2026-10-27): F, S, X and T act on what is under the cursor when nothing is selected, like R; and R while dragging a stack must turn the held cards (it did nothing). **(agent)** F and R act on the hovered card; S and T on the whole pile it is in (stacking or tidying one card means nothing); X toggles the hovered pile's spread exactly as a double-click does, so a second X on a spread card restacks it. With cards selected every key acts on the selection, as before. While dragging, R turns each held card to its next quarter turn clockwise (double tap: upright) and turns the group about the cursor with the top card, swinging there at the Tidy-mode turn rate; the cards land keeping that turn, a gathered group included. |
 
 ## Appendix B: Open items
 

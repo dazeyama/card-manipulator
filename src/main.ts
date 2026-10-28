@@ -13,7 +13,7 @@ import { Hud } from './ui/hud';
 import { selectAll, toggle } from './state/selection';
 import { installPileSync } from './state/pileSync';
 import { RestSync } from './physics/restSync';
-import { Commands } from './commands';
+import { Commands, DOUBLE_TAP_MS } from './commands';
 import { DragController } from './physics/feel';
 import { Badges } from './render/badges';
 import { RemovedTray } from './ui/tray';
@@ -171,9 +171,17 @@ keyboard.bind('escape', () => {
 });
 keyboard.bind('ctrl+f', () => hud.focus());
 keyboard.bind('/', () => hud.focus());
-keyboard.bind('s', () => commands.stack());
-keyboard.bind('x', () => commands.spread());
-keyboard.bind('t', () => commands.tidy());
+// With nothing selected, the keys act on what is under the cursor (decisions 102, 103):
+// F and R on that card, S, X and T on the whole pile it is in.
+const hoveredCard = (): string[] => (store.selection.size ? [...store.selection] : mouse.hovered ? [mouse.hovered] : []);
+const hoveredPile = (): string[] => {
+  if (store.selection.size || !mouse.hovered) return [...store.selection];
+  return store.pileOf(mouse.hovered)?.cardUids.slice() ?? [mouse.hovered];
+};
+keyboard.bind('s', () => commands.stack(hoveredPile()));
+// X on a hovered card toggles its pile's spread, as a double-click does: spread it, or restack it.
+keyboard.bind('x', () => (!store.selection.size && mouse.hovered ? commands.toggleSpread(mouse.hovered) : commands.spread()));
+keyboard.bind('t', () => commands.tidy(hoveredPile()));
 // Shift + T: Tidy mode on or off (decision 98).
 keyboard.bind('shift+t', () => {
   const on = !store.settings.tidyDrops;
@@ -181,9 +189,17 @@ keyboard.bind('shift+t', () => {
   toast(on ? 'Tidy mode on: everything lands squared up at 90°' : 'Tidy mode off: messy and physical', 'info', 1800);
 });
 // R turns the selection, or the card under the cursor when nothing is selected (decision 102).
-keyboard.bind('r', () => commands.rotate(store.selection.size ? [...store.selection] : mouse.hovered ? [mouse.hovered] : []));
+// R twice quickly stands cards upright; while dragging, R turns the held cards (decision 103).
+let lastR = 0;
+keyboard.bind('r', () => {
+  const now = performance.now();
+  const twice = now - lastR < DOUBLE_TAP_MS;
+  lastR = twice ? 0 : now;
+  if (drag.dragging) drag.rotate(twice);
+  else commands.rotate(hoveredCard(), twice);
+});
 keyboard.bind('z', () => commands.frame());
-keyboard.bind('f', () => commands.flip());
+keyboard.bind('f', () => commands.flip(hoveredCard()));
 // N: name the selected pile; with nothing selected, a new empty bin at the cursor (spec 11.3).
 keyboard.bind('n', () => {
   const near = { x: app.pointer.x + app.canvas.getBoundingClientRect().left, y: app.pointer.y + app.canvas.getBoundingClientRect().top };

@@ -16,7 +16,7 @@ export interface Landing {
 }
 
 /** Two presses of R within this long stand the cards upright (decision 102), ms. */
-const DOUBLE_TAP_MS = 350;
+export const DOUBLE_TAP_MS = 350;
 
 /** Settle timing (spec 15.5: under 300 ms, snappy and light). */
 const SETTLE_MS = 190;
@@ -138,8 +138,8 @@ export class Commands {
   }
 
   /** S: gather the selection into one stack at its centroid, loose unless Tidy mode is on. */
-  stack(): void {
-    const uids = byHeight(this.app, this.sel);
+  stack(cards: string[] = this.sel): void {
+    const uids = byHeight(this.app, cards);
     if (uids.length < 1) return;
     leaveSpreads(this.app, uids);
     const c = centroid(this.app, uids);
@@ -147,8 +147,8 @@ export class Commands {
   }
 
   /** X: spread the selection in a grid at its centroid. A selection that is exactly one stack spreads beside it instead. */
-  spread(): void {
-    const uids = this.sel;
+  spread(cards: string[] = this.sel): void {
+    const uids = cards;
     if (!uids.length) return;
     const pile = this.app.store.pileOf(uids[0]);
     if (pile && pile.cardUids.length === uids.length && uids.every((u) => this.app.store.pileOf(u) === pile)) {
@@ -162,11 +162,11 @@ export class Commands {
   }
 
   /** T: square up each pile the selection touches, without merging piles. Loose cards snap to a quarter turn. */
-  tidy(): void {
+  tidy(cards: string[] = this.sel): void {
     const store = this.app.store;
     const landings: Landing[] = [];
     const done = new Set<string>();
-    for (const u of this.sel) {
+    for (const u of cards) {
       if (done.has(u)) continue;
       const pile = store.pileOf(u);
       if (pile) {
@@ -183,20 +183,15 @@ export class Commands {
     land(this.app, landings);
   }
 
-  private lastRotate = 0;
-
   /**
    * R: turn each card to the next quarter turn clockwise, so it also squares
-   * up a card at an odd angle. Pressed twice quickly: upright (decision 102).
+   * up a card at an odd angle; `upright` (R twice quickly) stands them upright (decision 102).
    */
-  rotate(uids: string[] = this.sel): void {
+  rotate(uids: string[] = this.sel, upright = false): void {
     if (!uids.length) return;
-    const now = performance.now();
-    const twice = now - this.lastRotate < DOUBLE_TAP_MS;
-    this.lastRotate = twice ? 0 : now;
     const landings = uids.map((u) => {
       const c = this.app.store.cards.get(u)!;
-      return { uid: u, x: c.x, y: c.y, z: c.z, yaw: twice ? uprightYaw(c.yaw) : nextQuarterClockwise(c.yaw) };
+      return { uid: u, x: c.x, y: c.y, z: c.z, yaw: upright ? uprightYaw(c.yaw) : nextQuarterClockwise(c.yaw) };
     });
     land(this.app, landings, { stagger: 0 });
   }

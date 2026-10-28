@@ -11,7 +11,7 @@ import { restPose, type App } from '../app';
 import { land, leaveSpreads, pileAt, placeSequential, stackAt, type Landing } from '../commands';
 import type { CustomGesture } from '../input/mouse';
 import { pickCard } from '../render/picking';
-import { messyLayout, overlaps, snapYaw, type Footprint } from '../state/piles';
+import { messyLayout, nextQuarterClockwise, overlaps, snapYaw, uprightYaw, type Footprint } from '../state/piles';
 import { shortAngle } from './motion';
 import { restingTop } from './restSync';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
@@ -80,6 +80,8 @@ interface Held {
   yaw: number;
   /** The turn it is heading for: its own, or the nearest quarter turn in Tidy mode. */
   yawTo: number;
+  /** Its turn before any swing about the grab point; R while held turns this (decision 103). */
+  base: number;
   /** Height still to close to the group's plane after pick-up (NaN until the first frame). */
   ez: number;
 }
@@ -131,6 +133,8 @@ export class DragController {
   /** Single drags: how far the card has turned about the grab point, and how fast. */
   private turn = 0;
   private turnVel = 0;
+  /** How far R has turned a held group, so a gathered group lands turned too. */
+  private groupTurn = 0;
   /** Cursor on the table last frame and its smoothed velocity, mm/s. */
   private lastCursor = { x: 0, y: 0 };
   private cursorVel = { x: 0, y: 0 };
@@ -205,7 +209,7 @@ export class DragController {
         // A messy stack: top card leads, lower cards trail, heavier (decisions 95, 96).
         omega = OMEGA_TAIL + (OMEGA_MESSY_LEAD - OMEGA_TAIL) * rank;
       }
-      return { uid: c.uid, ox, oy, dz, omega, vx: 0, vy: 0, vz: 0, home: { x: c.x, y: c.y, z: c.z, yaw: c.yaw }, bx: ox, by: oy, yaw: c.yaw, yawTo: tidy ? snapYaw(c.yaw) : c.yaw, ez: NaN };
+      return { uid: c.uid, ox, oy, dz, omega, vx: 0, vy: 0, vz: 0, home: { x: c.x, y: c.y, z: c.z, yaw: c.yaw }, bx: ox, by: oy, yaw: c.yaw, yawTo: tidy ? snapYaw(c.yaw) : c.yaw, base: c.yaw, ez: NaN };
     });
     for (const h of this.held) {
       this.app.motion.cancel(h.uid);
@@ -219,6 +223,7 @@ export class DragController {
     this.screen = { x: sx, y: sy };
     this.turn = 0;
     this.turnVel = 0;
+    this.groupTurn = 0;
     this.base = NaN;
     this.lastCursor = { ...this.cursor };
     this.cursorVel = { x: 0, y: 0 };
@@ -358,7 +363,7 @@ export class DragController {
     this.held.push({
       uid, ox: Math.cos(a) * r, oy: Math.sin(a) * r, dz: top + CARD_T, omega: this.tidy ? OMEGA_TIDY_TAIL : OMEGA_TAIL,
       vx: 0, vy: 0, vz: 0, home: { x: card.x, y: card.y, z: card.z, yaw: card.yaw }, bx: 0, by: 0,
-      yaw: card.yaw, yawTo: this.tidy ? snapYaw(card.yaw) : card.yaw, ez: NaN,
+      yaw: card.yaw, yawTo: this.tidy ? snapYaw(card.yaw) : card.yaw, base: card.yaw, ez: NaN,
     });
     app.motion.cancel(uid);
     app.motion.held.add(uid);
@@ -390,8 +395,28 @@ export class DragController {
     const cos = Math.cos(this.turn), sin = Math.sin(this.turn);
     c.ox = c.bx * cos - c.by * sin;
     c.oy = c.bx * sin + c.by * cos;
-    c.yaw = c.home.yaw + this.turn;
-    c.yawTo = c.yaw;
+    c.yawTo = c.base + this.turn;
+    c.yaw = c.yawTo;
+  }
+
+  /**
+   * R while dragging (decision 103): every held card turns to its next quarter
+   * turn clockwise, or upright on a double tap, and the group turns with the
+   * top card about the cursor, so a held stack turns as one.
+   */
+  rotate(upright: boolean): void {
+    if (!this.active || !this.held.length) return;
+    const lead = this.held[this.held.length - 1];
+    const turnTo = (yaw: number) => (upright ? uprightYaw(yaw) : nextQuarterClockwise(yaw));
+    const delta = turnTo(lead.base) - lead.base;
+    const cos = Math.cos(delta), sin = Math.sin(delta);
+    for (const c of this.held) {
+      c.base = turnTo(c.base);
+      c.yawTo = c.base + (this.mode === 'single' ? this.turn : 0);
+      [c.ox, c.oy] = [c.ox * cos - c.oy * sin, c.ox * sin + c.oy * cos];
+      [c.bx, c.by] = [c.bx * cos - c.by * sin, c.bx * sin + c.by * cos];
+    }
+    this.groupTurn += delta;
   }
 
   /** Tidy mode (decision 98): everything squared up at quarter turns, with the drag feel from before the messy changes. */
@@ -462,9 +487,11 @@ export class DragController {
       const pose = layer.pose(c.uid);
       if (!pose) continue;
       // Tidy mode: a card held at an angle turns to the nearest quarter turn as it goes.
-      if (tidy) {
-        if (c.yawTo !== snapYaw(c.yawTo)) c.yawTo = snapYaw(c.yawTo);
-        c.yaw += shortAngle(c.yawTo - c.yaw) * square;
+      // A card heading for another turn (R while held, or a quarter turn in Tidy mode) swings there.
+      if (tidy && c.yawTo !== snapYaw(c.yawTo)) c.yawTo = snapYaw(c.yawTo);
+      if (c.yaw !== c.yawTo) {
+        const d = shortAngle(c.yawTo - c.yaw);
+        c.yaw = Math.abs(d) < 1e-4 ? c.yawTo : c.yaw + d * square;
       }
       const planeZ = this.base + c.dz + sx * (pose.x - cx) + sy * (pose.y - cy);
       // Picked-up cards close the gap to the plane quickly, then ride on it.
@@ -711,7 +738,7 @@ export class DragController {
 
     if (mode === 'formation') {
       // Each card drops where it is, on whatever is beneath it.
-      const spots = held.map((c) => ({ x: this.cursor.x + c.ox, y: this.cursor.y + c.oy, yaw: tidy ? snapYaw(c.home.yaw) : c.home.yaw }));
+      const spots = held.map((c) => ({ x: this.cursor.x + c.ox, y: this.cursor.y + c.oy, yaw: tidy ? snapYaw(c.base) : c.base }));
       return placeSequential(app, uids, spots, moving);
     }
 
@@ -752,12 +779,12 @@ export class DragController {
     if (mode === 'rigid') {
       const b = held[0];
       // Tidy mode squares the lifted pile up at a quarter turn where it is drawn.
-      if (tidy) return stackAt(app, uids, { x: this.cursor.x + b.ox, y: this.cursor.y + b.oy, yaw: snapYaw(b.home.yaw) }, moving);
+      if (tidy) return stackAt(app, uids, { x: this.cursor.x + b.ox, y: this.cursor.y + b.oy, yaw: snapYaw(b.base) }, moving);
       // Otherwise it lands as the pile it was, a loose one staying loose (decision 98).
-      return placeSequential(app, uids, held.map((c) => ({ x: this.cursor.x + c.ox, y: this.cursor.y + c.oy, yaw: c.home.yaw })), moving);
+      return placeSequential(app, uids, held.map((c) => ({ x: this.cursor.x + c.ox, y: this.cursor.y + c.oy, yaw: c.base })), moving);
     }
     // A gathered group becomes a stack at the drop point (decision 5), loose unless Tidy mode is on (decisions 94, 98).
-    return pileAt(app, uids, { x: this.cursor.x, y: this.cursor.y, yaw: 0 }, moving);
+    return pileAt(app, uids, { x: this.cursor.x, y: this.cursor.y, yaw: this.groupTurn }, moving);
   }
 }
 
