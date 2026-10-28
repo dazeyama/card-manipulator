@@ -6,12 +6,13 @@
 // fast, so letting go mid-swing fans it out. A Shift
 // drag sweeps: cards the cursor passes over are pulled into the clump.
 
+import * as THREE from 'three';
 import type { App } from '../app';
 import { land, leaveSpreads, pileAt, placeSequential, stackAt, type Landing } from '../commands';
 import type { CustomGesture } from '../input/mouse';
 import { pickCard } from '../render/picking';
-import { messyLayout, snapYaw } from '../state/piles';
-import { CARD_T, CARD_W } from '../state/types';
+import { messyLayout, overlaps, snapYaw, type Footprint } from '../state/piles';
+import { CARD_H, CARD_T, CARD_W } from '../state/types';
 
 export type DragMode = 'single' | 'gather' | 'formation' | 'rigid';
 
@@ -35,6 +36,18 @@ const TURN_MAX = 0.35;
 export const MOVING_SPEED = 150;
 /** ...sliding on for this long at their speed, as if friction caught them. */
 export const CARRY_S = 0.03;
+/** No clipping (decision 97): a tilted card's corner can dip this far below its centre per unit of slope. */
+const HALF_DIAG = Math.hypot(CARD_W, CARD_H) / 2;
+/** The least gap kept between a held card's lowest corner and the cards under it, mm. */
+const MIN_CLEAR = 1.5;
+/** How far ahead (seconds of motion) held cards look for stacks to rise over. */
+const LOOK_AHEAD_S = 0.12;
+/** Rates (1/s) at which the held group rises over a stack, settles back down, and picked-up cards reach the group. */
+const RISE_RATE = 30;
+const FALL_RATE = 8;
+const JOIN_RATE = 18;
+/** A held group wider than this (mm) leans less, so a wide formation doesn't seesaw. */
+const LEAN_SPAN = 300;
 /** Gravity in the physics world, mm/s^2, for aiming tosses. */
 const GRAVITY = 9810;
 
@@ -54,6 +67,10 @@ interface Held {
   /** Offset from the grab point at the start, before any turn (single drags). */
   bx: number;
   by: number;
+  /** Its own turn on the table while held; the group's lean is added on top. */
+  yaw: number;
+  /** Height still to close to the group's plane after pick-up (NaN until the first frame). */
+  ez: number;
 }
 
 /** Sweep (decision 89): a pile gives up its top card at once, more after this long... */
@@ -106,6 +123,15 @@ export class DragController {
   /** Cursor on the table last frame and its smoothed velocity, mm/s. */
   private lastCursor = { x: 0, y: 0 };
   private cursorVel = { x: 0, y: 0 };
+  /** Height of the held group's shared plane at the cursor (NaN until the first frame). */
+  private base = NaN;
+  private readonly qTilt = new THREE.Quaternion();
+  private readonly qCard = new THREE.Quaternion();
+  private readonly qPart = new THREE.Quaternion();
+  private readonly euler = new THREE.Euler(0, 0, 0, 'ZXY');
+  private static readonly UP = new THREE.Vector3(0, 0, 1);
+  private static readonly AXIS_Y = new THREE.Vector3(0, 1, 0);
+  private readonly normal = new THREE.Vector3();
 
   constructor(private readonly app: App) {
     this.label = document.createElement('div');
@@ -167,7 +193,7 @@ export class DragController {
         // A messy stack: top card leads, lower cards trail, heavier (decisions 95, 96).
         omega = OMEGA_TAIL + (OMEGA_MESSY_LEAD - OMEGA_TAIL) * rank;
       }
-      return { uid: c.uid, ox, oy, dz, omega, vx: 0, vy: 0, vz: 0, home: { x: c.x, y: c.y, z: c.z, yaw: c.yaw }, bx: ox, by: oy };
+      return { uid: c.uid, ox, oy, dz, omega, vx: 0, vy: 0, vz: 0, home: { x: c.x, y: c.y, z: c.z, yaw: c.yaw }, bx: ox, by: oy, yaw: c.yaw, ez: NaN };
     });
     for (const h of this.held) {
       this.app.motion.cancel(h.uid);
@@ -179,6 +205,7 @@ export class DragController {
     this.screen = { x: sx, y: sy };
     this.turn = 0;
     this.turnVel = 0;
+    this.base = NaN;
     this.lastCursor = { ...this.cursor };
     this.cursorVel = { x: 0, y: 0 };
     this.sweeping = !!sweepFrom && mode === 'gather';
@@ -316,7 +343,7 @@ export class DragController {
     const top = this.held.reduce((m, c) => Math.max(m, c.dz), -CARD_T);
     this.held.push({
       uid, ox: Math.cos(a) * r, oy: Math.sin(a) * r, dz: top + CARD_T, omega: OMEGA_TAIL,
-      vx: 0, vy: 0, vz: 0, home: { x: card.x, y: card.y, z: card.z, yaw: card.yaw }, bx: 0, by: 0,
+      vx: 0, vy: 0, vz: 0, home: { x: card.x, y: card.y, z: card.z, yaw: card.yaw }, bx: 0, by: 0, yaw: card.yaw, ez: NaN,
     });
     app.motion.cancel(uid);
     app.motion.held.add(uid);
@@ -347,11 +374,16 @@ export class DragController {
     const cos = Math.cos(this.turn), sin = Math.sin(this.turn);
     c.ox = c.bx * cos - c.by * sin;
     c.oy = c.bx * sin + c.by * cos;
-    const pose = this.app.layer.pose(c.uid);
-    if (pose) pose.yaw = c.home.yaw + this.turn;
+    c.yaw = c.home.yaw + this.turn;
   }
 
-  /** Spring every held card toward its target. */
+  /**
+   * Spring every held card toward its spot under the cursor. So that held
+   * cards never pass through each other or through the table's piles
+   * (decision 97), the whole group leans as one: every card lies parallel to
+   * one tilted plane, stacked along it in its own order, and the plane rises
+   * over whatever is beneath any of the cards.
+   */
   private step(dt: number): void {
     if (!this.active) return;
     if (this.sweeping) this.sweep(performance.now());
@@ -359,26 +391,101 @@ export class DragController {
     const layer = this.app.layer;
     const steps = 2;
     const h = Math.min(dt, 1 / 30) / steps;
+    let avx = 0, avy = 0, n = 0;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const c of this.held) {
       const pose = layer.pose(c.uid);
       if (!pose) continue;
       const tx = this.cursor.x + c.ox;
       const ty = this.cursor.y + c.oy;
-      const tz = LIFT + CARD_T / 2 + c.dz;
       for (let s = 0; s < steps; s++) {
         const w = c.omega;
         c.vx += (w * w * (tx - pose.x) - 2 * w * c.vx) * h;
         c.vy += (w * w * (ty - pose.y) - 2 * w * c.vy) * h;
-        c.vz += (w * w * (tz - pose.z) - 2 * w * c.vz) * h;
         pose.x += c.vx * h;
         pose.y += c.vy * h;
-        pose.z += c.vz * h;
       }
-      // Lean into the motion: the leading edge dips a little.
-      pose.tiltX = clamp(c.vy * TILT_PER_SPEED, -MAX_TILT, MAX_TILT);
-      pose.tiltY = clamp(-c.vx * TILT_PER_SPEED, -MAX_TILT, MAX_TILT);
+      avx += c.vx;
+      avy += c.vy;
+      n++;
+      minX = Math.min(minX, pose.x);
+      maxX = Math.max(maxX, pose.x);
+      minY = Math.min(minY, pose.y);
+      maxY = Math.max(maxY, pose.y);
+    }
+    if (!n) return;
+    // One lean for the group: the leading edge rises a little, as before.
+    const span = Math.max(LEAN_SPAN, maxX - minX, maxY - minY);
+    const lean = LEAN_SPAN / span;
+    const sx = Math.tan(clamp((avx / n) * TILT_PER_SPEED, -MAX_TILT, MAX_TILT) * lean);
+    const sy = Math.tan(clamp((avy / n) * TILT_PER_SPEED, -MAX_TILT, MAX_TILT) * lean);
+    const cx = this.cursor.x, cy = this.cursor.y;
+
+    // Rise over what lies under (or just ahead of) any held card.
+    const spots = this.surfaces();
+    const want = planeBase(spots, cx, cy, sx, sy, LIFT);
+    const floor = planeBase(spots, cx, cy, sx, sy, 0);
+    if (Number.isNaN(this.base)) this.base = want;
+    else this.base += (want - this.base) * Math.min(1, dt * (want > this.base ? RISE_RATE : FALL_RATE));
+    this.base = Math.max(this.base, floor);
+
+    this.normal.set(-sx, -sy, 1).normalize();
+    this.qTilt.setFromUnitVectors(DragController.UP, this.normal);
+    const join = Math.exp(-JOIN_RATE * dt);
+    for (const c of this.held) {
+      const pose = layer.pose(c.uid);
+      if (!pose) continue;
+      const planeZ = this.base + c.dz + sx * (pose.x - cx) + sy * (pose.y - cy);
+      // Picked-up cards close the gap to the plane quickly, then ride on it.
+      c.ez = Number.isNaN(c.ez) ? pose.z - planeZ : c.ez * join;
+      pose.z = planeZ + c.ez;
+      // The card's own turn and side, then the group's lean.
+      this.euler.set(0, 0, c.yaw, 'ZXY');
+      this.qCard.setFromEuler(this.euler);
+      this.qPart.setFromAxisAngle(DragController.AXIS_Y, pose.roll);
+      this.qCard.premultiply(this.qTilt).multiply(this.qPart);
+      this.euler.setFromQuaternion(this.qCard, 'ZXY');
+      pose.tiltX = this.euler.x;
+      pose.tiltY = wrapAngle(this.euler.y - pose.roll);
+      pose.yaw = c.yaw + wrapAngle(this.euler.z - c.yaw);
       layer.touch(c.uid);
     }
+  }
+
+  /** For every held card, where it is and the top of the table's cards under it now or just ahead of it. */
+  private surfaces(): HeldSpot[] {
+    const layer = this.app.layer;
+    const held = new Set(this.held.map((c) => c.uid));
+    const out: HeldSpot[] = [];
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    const ahead: Footprint[] = [];
+    for (const c of this.held) {
+      const pose = layer.pose(c.uid);
+      if (!pose) continue;
+      const fx = pose.x + c.vx * LOOK_AHEAD_S, fy = pose.y + c.vy * LOOK_AHEAD_S;
+      ahead.push({ x: fx, y: fy, yaw: pose.yaw });
+      out.push({ x: pose.x, y: pose.y, dz: c.dz, surface: 0 });
+      minX = Math.min(minX, pose.x, fx);
+      maxX = Math.max(maxX, pose.x, fx);
+      minY = Math.min(minY, pose.y, fy);
+      maxY = Math.max(maxY, pose.y, fy);
+    }
+    // Only the table's cards near the group can be under it.
+    const pad = HALF_DIAG * 2;
+    const near: { x: number; y: number; yaw: number; top: number }[] = [];
+    layer.forEach((uid, p) => {
+      if (held.has(uid) || p.x < minX - pad || p.x > maxX + pad || p.y < minY - pad || p.y > maxY + pad) return;
+      near.push({ x: p.x, y: p.y, yaw: p.yaw, top: p.z + CARD_T / 2 + Math.abs(Math.sin(p.tiltX)) * HALF_DIAG });
+    });
+    if (!near.length) return out;
+    out.forEach((spot, i) => {
+      const now = { x: spot.x, y: spot.y, yaw: ahead[i].yaw };
+      for (const t of near) {
+        if (t.top <= spot.surface) continue;
+        if (overlaps(t, now) || overlaps(t, ahead[i])) spot.surface = t.top;
+      }
+    });
+    return out;
   }
 
   private finish(): void {
@@ -606,7 +713,7 @@ export class DragController {
     if (mode === 'single') {
       const c = held[0];
       // Keeps the turn it picked up while dragged.
-      const turned = app.layer.pose(c.uid)?.yaw ?? c.home.yaw;
+      const turned = c.yaw;
       const yaw = tidy ? snapYaw(turned) : turned;
       return placeSequential(app, uids, [{ x: this.cursor.x + c.ox, y: this.cursor.y + c.oy, yaw }], moving);
     }
@@ -625,6 +732,35 @@ export class DragController {
  * smoothed velocity before this move and the new one (px/s), returns the
  * unit direction to toss in, or null.
  */
+/** A held card's position on the table, its height in the group, and the top of what is under it. */
+export interface HeldSpot {
+  x: number;
+  y: number;
+  dz: number;
+  surface: number;
+}
+
+/**
+ * Height at the cursor (cx, cy) of the held group's shared plane, which has
+ * slope (sx, sy): just high enough that every card's lowest corner keeps
+ * `lift` above what is under it, and never less than `lift` over bare table
+ * (decision 97). Cards lie on the plane at their own `dz` above it.
+ */
+export function planeBase(cards: HeldSpot[], cx: number, cy: number, sx: number, sy: number, lift: number): number {
+  const corner = HALF_DIAG * Math.hypot(sx, sy);
+  let base = lift + CARD_T / 2;
+  for (const c of cards) {
+    const need = c.surface + CARD_T / 2 + Math.max(lift, MIN_CLEAR + corner) - c.dz - (sx * (c.x - cx) + sy * (c.y - cy));
+    if (need > base) base = need;
+  }
+  return base;
+}
+
+/** An angle brought into -pi..pi. */
+function wrapAngle(a: number): number {
+  return a - 2 * Math.PI * Math.round(a / (2 * Math.PI));
+}
+
 /** True when any held card is still moving fast enough that letting go should stop it in place. */
 export function inMotion(cards: { vx: number; vy: number }[]): boolean {
   return cards.some((c) => Math.hypot(c.vx, c.vy) > MOVING_SPEED);

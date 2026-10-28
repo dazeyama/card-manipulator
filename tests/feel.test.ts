@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CARRY_S, flickDirection, inMotion, MOVING_SPEED, stopWhereTheyAre, sweepCount, SWEEP_ALL_MS, SWEEP_MORE_MS } from '../src/physics/feel';
+import { CARRY_S, flickDirection, inMotion, MOVING_SPEED, planeBase, stopWhereTheyAre, sweepCount, SWEEP_ALL_MS, SWEEP_MORE_MS } from '../src/physics/feel';
 
 describe('flickDirection (spec 10.5)', () => {
   it('fires on a fast move that reverses sharply, tossing the way it was going', () => {
@@ -61,5 +61,28 @@ describe('letting go mid-motion (decision 95)', () => {
     expect(spots[1].x).toBeCloseTo(-60 + 600 * CARRY_S, 9);
     expect(spots[1].y).toBeCloseTo(5 + 200 * CARRY_S, 9);
     expect(spots[1].yaw).toBe(-0.1);
+  });
+});
+
+describe('planeBase: held cards clear what is under them (decision 97)', () => {
+  const LIFT = 10;
+
+  it('holds a level group at the lift height over bare table', () => {
+    expect(planeBase([{ x: 0, y: 0, dz: 0, surface: 0 }], 0, 0, 0, 0, LIFT)).toBeCloseTo(LIFT + 0.15, 9);
+  });
+
+  it('rises over a stack under any one card', () => {
+    const base = planeBase([{ x: 0, y: 0, dz: 0, surface: 0 }, { x: 80, y: 0, dz: 0.3, surface: 30 }], 0, 0, 0, 0, LIFT);
+    expect(base + 0.3 - 0.15).toBeGreaterThanOrEqual(30 + LIFT - 1e-9);
+  });
+
+  it('lifts a tilted group so the low corner of a trailing card still clears', () => {
+    // Slope 0.2 along x: a card 60 mm behind the cursor sits 12 mm lower on the plane.
+    const sx = 0.2;
+    const cards = [{ x: 0, y: 0, dz: 0, surface: 0 }, { x: -60, y: 0, dz: 0.3, surface: 5 }];
+    const base = planeBase(cards, 0, 0, sx, 0, 0);
+    const corner = (Math.hypot(63, 88) / 2) * sx;
+    const trailingCentre = base + 0.3 + sx * -60;
+    expect(trailingCentre - corner - 0.15).toBeGreaterThanOrEqual(5 - 1e-9);
   });
 });
