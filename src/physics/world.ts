@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import type { App } from '../app';
 import { land, placeSequential } from '../commands';
 import { snapYaw } from '../state/piles';
+import { restingTop } from './restSync';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
 import type { Pose } from '../render/cards';
 
@@ -37,6 +38,7 @@ export const MAX_BODIES = 180;
 export const MAX_DROP = 80;
 /** A loose pile of at least this many cards collides as one box. */
 const BOX_PILE = 12;
+const HALF_DIAG = Math.hypot(CARD_W, CARD_H) / 2;
 
 export interface LooseCard {
   uid: string;
@@ -118,15 +120,25 @@ export class Physics {
       const topCard = app.store.cards.get(pile.cardUids[pile.cardUids.length - 1])!;
       const base = pile.kind === 'stack' ? bottom : topCard;
       if (base.x < minX || base.x > maxX || base.y < minY || base.y > maxY) continue;
-      const top = topCard.z + CARD_T / 2;
+      // A loose pile's cards rest tilted (decision 99): the box reaches its highest drawn point.
+      let top = topCard.z + CARD_T / 2;
+      if (pile.kind !== 'stack') {
+        top = 0;
+        for (const u of pile.cardUids) {
+          const p = app.layer.pose(u);
+          if (p) top = Math.max(top, restingTop(p.z, p.tiltX, p.tiltY, HALF_DIAG));
+        }
+      }
       session.statics.push(this.staticBox(base.x, base.y, top / 2, base.yaw, top / 2));
       pile.cardUids.forEach((u) => doneCards.add(u));
     }
     for (const c of app.store.cards.values()) {
       if (loose.has(c.uid) || doneCards.has(c.uid)) continue;
       if (c.x < minX || c.x > maxX || c.y < minY || c.y > maxY) continue;
-      const top = c.z + CARD_T / 2;
-      session.statics.push(this.staticBox(c.x, c.y, top - BODY_HALF_T, c.yaw, BODY_HALF_T));
+      // A slab where the card is drawn, tilted as it rests (decision 99).
+      const p = app.layer.pose(c.uid);
+      const top = (p?.z ?? c.z) + CARD_T / 2;
+      session.statics.push(this.staticBox(p?.x ?? c.x, p?.y ?? c.y, top - BODY_HALF_T, p?.yaw ?? c.yaw, BODY_HALF_T, p?.tiltX ?? 0, p?.tiltY ?? 0));
     }
 
     // A dynamic body for every loose card, at its drawn pose.
@@ -157,8 +169,9 @@ export class Physics {
     return true;
   }
 
-  private staticBox(x: number, y: number, z: number, yaw: number, halfZ: number): RAPIER_NS.Collider {
-    this.q.setFromAxisAngle(new THREE.Vector3(0, 0, 1), yaw);
+  private staticBox(x: number, y: number, z: number, yaw: number, halfZ: number, tiltX = 0, tiltY = 0): RAPIER_NS.Collider {
+    this.e.set(tiltX, tiltY, yaw, 'ZXY');
+    this.q.setFromEuler(this.e);
     return this.world!.createCollider(
       RAPIER.ColliderDesc.cuboid((CARD_W / 2) * MM, (CARD_H / 2) * MM, Math.max(0.05, halfZ) * MM)
         .setTranslation(x * MM, y * MM, z * MM)

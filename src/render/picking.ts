@@ -2,6 +2,7 @@
 // the drawn poses with plain maths, not three.js raycasting, so they stay fast
 // with 2,000 cards.
 
+import { slopesOf } from '../state/rest';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
 import type { CameraRig } from './camera';
 import type { CardLayer } from './cards';
@@ -19,11 +20,22 @@ export function pickCard(rig: CameraRig, layer: CardLayer, sx: number, sy: numbe
   let bestT = Infinity;
   layer.forEach((uid, p) => {
     if (skip?.has(uid)) return;
-    const t = (p.z + CARD_T / 2 - oz) / dz;
+    const c = Math.cos(-p.yaw), s = Math.sin(-p.yaw);
+    let t: number;
+    if (p.tiltX === 0 && p.tiltY === 0) {
+      t = (p.z + CARD_T / 2 - oz) / dz;
+    } else {
+      // A resting card is tilted (decision 99): meet the plane of its top face.
+      const { gs, gt } = slopesOf(p.tiltX, p.tiltY);
+      const ax0 = (ox - p.x) * c - (oy - p.y) * s, ay0 = (ox - p.x) * s + (oy - p.y) * c;
+      const adx = dx * c - dy * s, ady = dx * s + dy * c;
+      const den = dz - gs * adx - gt * ady;
+      if (Math.abs(den) < 1e-9) return;
+      t = (p.z + CARD_T / 2 + gs * ax0 + gt * ay0 - oz) / den;
+    }
     if (t <= 0 || t >= bestT) return;
     const hx = ox + dx * t - p.x;
     const hy = oy + dy * t - p.y;
-    const c = Math.cos(-p.yaw), s = Math.sin(-p.yaw);
     const lx = hx * c - hy * s;
     const ly = hx * s + hy * c;
     if (Math.abs(lx) <= HALF_W && Math.abs(ly) <= HALF_H) {

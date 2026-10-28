@@ -64,6 +64,14 @@ export class Motion {
     this.tweens.delete(uid);
   }
 
+  /** Change where a tween in flight ends (a landing that should come to rest tilted). */
+  retarget(uid: string, to: Partial<Pose>): boolean {
+    const tw = this.tweens.get(uid);
+    if (!tw) return false;
+    Object.assign(tw.to, to);
+    return true;
+  }
+
   /** Where the card will end up (the tween target), or where it is now. */
   targetOf(uid: string): Pose | undefined {
     return this.tweens.get(uid)?.to ?? this.layer.pose(uid);

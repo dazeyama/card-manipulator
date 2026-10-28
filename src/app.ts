@@ -12,6 +12,8 @@ import { CardLayer, type Pose } from './render/cards';
 import { Motion } from './physics/motion';
 import type { Physics } from './physics/world';
 import type { NamedPiles } from './named';
+import type { RestSync } from './physics/restSync';
+import type { Rest } from './state/rest';
 
 export const ACCENT = new THREE.Color('#2563eb');
 
@@ -34,6 +36,8 @@ export class App {
   physics: Physics | null = null;
   /** Named piles (Phase 6), set at boot. */
   named!: NamedPiles;
+  /** Resting tilt of cards on the cards under them (decision 99), set at boot. */
+  rest: RestSync | null = null;
   /** The table point under the cursor the last time it was over the table (spawn "at the cursor"). */
   readonly lastTablePoint = { x: 0, y: 0 };
   /** Last cursor position over the canvas, in canvas pixels. */
@@ -140,6 +144,11 @@ export class App {
 }
 
 /** Height of a card's centre when it is `level` cards up from the table. */
+/** Where a card's drawn pose rests: tilted on what is under it, or flat at its model height. */
+export function restPose(app: App, card: Card): Rest {
+  return app.rest?.restOf(card.uid) ?? { z: card.z, tiltX: 0, tiltY: 0 };
+}
+
 export function levelZ(level: number): number {
   return CARD_T / 2 + level * CARD_T;
 }

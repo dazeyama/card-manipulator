@@ -7,12 +7,13 @@
 // drag sweeps: cards the cursor passes over are pulled into the clump.
 
 import * as THREE from 'three';
-import type { App } from '../app';
+import { restPose, type App } from '../app';
 import { land, leaveSpreads, pileAt, placeSequential, stackAt, type Landing } from '../commands';
 import type { CustomGesture } from '../input/mouse';
 import { pickCard } from '../render/picking';
 import { messyLayout, overlaps, snapYaw, type Footprint } from '../state/piles';
 import { shortAngle } from './motion';
+import { restingTop } from './restSync';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
 
 export type DragMode = 'single' | 'gather' | 'formation' | 'rigid';
@@ -502,7 +503,7 @@ export class DragController {
     const near: { x: number; y: number; yaw: number; top: number }[] = [];
     layer.forEach((uid, p) => {
       if (held.has(uid) || p.x < minX - pad || p.x > maxX + pad || p.y < minY - pad || p.y > maxY + pad) return;
-      near.push({ x: p.x, y: p.y, yaw: p.yaw, top: p.z + CARD_T / 2 + Math.abs(Math.sin(p.tiltX)) * HALF_DIAG });
+      near.push({ x: p.x, y: p.y, yaw: p.yaw, top: restingTop(p.z, p.tiltX, p.tiltY, HALF_DIAG) });
     });
     if (!near.length) return out;
     out.forEach((spot, i) => {
@@ -529,7 +530,8 @@ export class DragController {
     for (const c of held) {
       this.app.motion.held.delete(c.uid);
       const card = this.app.store.cards.get(c.uid);
-      this.app.motion.animate(c.uid, { ...c.home, roll: card?.faceUp === false ? Math.PI : 0 }, { duration: 200 });
+      const rest = card ? restPose(this.app, card) : { z: c.home.z, tiltX: 0, tiltY: 0 };
+      this.app.motion.animate(c.uid, { ...c.home, ...rest, roll: card?.faceUp === false ? Math.PI : 0 }, { duration: 200 });
     }
   }
 
