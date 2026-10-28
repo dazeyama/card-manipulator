@@ -41,7 +41,8 @@ Changes made with you after the overnight build. Each is logged in Appendix A of
 | Morning QA fixes: flicks are easier (Normal 1,600 px/s, was 2,300), the foil sheen is stronger, and close-ups switch to `normal` images at 160 px (was 250). | 90–92 | `f2b2870` |
 | Morning QA results: Alt-drag, Save/Open, Moxfield paste, 2,000-card smoothness and drag feel all confirmed. | 93 | `f2b2870` |
 | **Messier and more physical by default.** Drops, gathers, Stack (`S`) and restacks make loose stacks; only Tidy (`T`) or Tidy drops square up. Every drop of up to 80 cards falls through physics. A little more lean, turn about the grab point, turn on landing and tumble. | 94 | `0895828` |
-| **Letting go mid-motion stops cards where they are**, so a quick drag and release fans a stack out. | 95 | this report's commit |
+| **Letting go mid-motion stops cards where they are**, so a quick drag and release fans a stack out. | 95 | `aca8d75` |
+| Messy stacks and gathered clumps are **a little heavier and slower to follow**; tidy stacks stay snappy and move as one. | 96 | this report's commit |
 
 The per-phase sections below describe the build as it was overnight. The QA checklist at the end uses the current controls.
 
@@ -268,6 +269,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 - [ ] Select thirty, drag: they clump behind the cursor and fall into a loose stack on release; `T` squares it up (decision 94).
 - [ ] Drag a single card by its corner in a curve: it turns a little about where you hold it.
 - [ ] Select a stack, drag it quickly and let go mid-swing: the cards stay strung out where they were, a fan (decision 95).
+- [ ] Drag a messy stack by its badge: it feels a little heavy and trails. Press `T`, drag it again: it moves snappily as one (decision 96).
 - [x] **Alt-drag keeps formation, and releasing Alt does not focus the browser menu (decision 29).** Confirmed (decision 93).
 - [ ] A plain drag peels the top card; dragging a badge lifts the pile.
 - [ ] Shift + drag sweeps up the cards it passes over; lingering over a pile pulls more, then all of it (decision 89).

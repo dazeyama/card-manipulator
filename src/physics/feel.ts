@@ -1,9 +1,9 @@
 // The feel of dragging (spec 10.1–10.4, 15.5): held cards lift about 10 mm,
 // tilt a little toward their motion and follow the cursor through a short
 // spring. Gather drags trail the selection in a clump behind the cursor;
-// formation drags move the cards as a rigid group. A whole stack keeps its
-// shape at rest but its lower cards trail when moved fast, so letting go
-// mid-swing fans it out. A Shift
+// formation drags and tidy stacks move the cards as a rigid group. A messy
+// stack keeps its shape at rest but its lower cards trail, heavier, when moved
+// fast, so letting go mid-swing fans it out. A Shift
 // drag sweeps: cards the cursor passes over are pulled into the clump.
 
 import type { App } from '../app';
@@ -18,7 +18,13 @@ export type DragMode = 'single' | 'gather' | 'formation' | 'rigid';
 const LIFT = 10;
 /** Spring rate of the lead card: about 80 ms of visible lag (spec 15.5). */
 const OMEGA_LEAD = 28;
-const OMEGA_TAIL = 13;
+/**
+ * Messy stacks and gathered clumps are a little heavier (decision 96): their
+ * top card follows at this rate and the bottom of the pile at the tail rate.
+ * A tidy stack moves as one at the lead rate.
+ */
+const OMEGA_MESSY_LEAD = 22;
+const OMEGA_TAIL = 10;
 const MAX_TILT = 0.2;
 const TILT_PER_SPEED = 0.0012;
 /** A single card turns about the point it was grabbed by (decision 94): gain, damping, limit. */
@@ -134,6 +140,9 @@ export class DragController {
     const cards = uids.map((u) => store.cards.get(u)!).filter(Boolean).sort((a, b) => a.z - b.z);
     leaveSpreads(this.app, cards.map((c) => c.uid));
     const minZ = cards[0].z;
+    // A tidy stack dragged whole stays snappy and rigid (decision 96).
+    const pile = mode === 'rigid' ? store.pileOf(cards[0].uid) : undefined;
+    const tidyStack = !!pile && pile.kind === 'stack' && pile.cardUids.length === cards.length;
     const n = cards.length;
     this.mode = mode;
     this.cursor = { x: grab.x, y: grab.y };
@@ -151,12 +160,12 @@ export class DragController {
         ox = Math.cos(a) * r;
         oy = Math.sin(a) * r;
         dz = i * CARD_T;
-        omega = OMEGA_TAIL + (OMEGA_LEAD - OMEGA_TAIL) * rank;
+        omega = OMEGA_TAIL + (OMEGA_MESSY_LEAD - OMEGA_TAIL) * rank;
       } else if (mode === 'single') {
         dz = 0;
-      } else if (mode === 'rigid') {
-        // Top card leads, lower cards trail a little: a quick swing strings the stack out (decision 95).
-        omega = OMEGA_TAIL + (OMEGA_LEAD - OMEGA_TAIL) * rank;
+      } else if (mode === 'rigid' && !tidyStack) {
+        // A messy stack: top card leads, lower cards trail, heavier (decisions 95, 96).
+        omega = OMEGA_TAIL + (OMEGA_MESSY_LEAD - OMEGA_TAIL) * rank;
       }
       return { uid: c.uid, ox, oy, dz, omega, vx: 0, vy: 0, vz: 0, home: { x: c.x, y: c.y, z: c.z, yaw: c.yaw }, bx: ox, by: oy };
     });
