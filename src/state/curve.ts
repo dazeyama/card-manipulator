@@ -140,11 +140,13 @@ export function curveLayout(cards: CurveCard[], centre: { x: number; y: number }
   const lands = cards.filter((c) => c.land);
   const cols = [...new Set(spells.map(columnOf))].sort((a, b) => a - b);
   let width = 0, height = 0;
-  // A full-width row under everything so far, from the left edge.
+  // A full-width row under everything so far. With Shift + C it starts one
+  // column in, under mana value 1, leaving the 0 column empty (decision 151).
+  const indent = opts.byColour && cols[0] === 0 ? CARD_W + COLUMN_GAP : 0;
   const addRow = (row: Block & { width: number }) => {
     const top = placed.length ? -(height + ROW_GAP) : 0;
-    for (const p of row.placed) placed.push({ uid: p.uid, x: p.x, y: top + p.y });
-    width = Math.max(width, row.width);
+    for (const p of row.placed) placed.push({ uid: p.uid, x: indent + p.x, y: top + p.y });
+    width = Math.max(width, indent + row.width);
     height = -top + row.height;
   };
   if (spells.length && !opts.byColour) {

@@ -120,6 +120,21 @@ describe('curve layout (decision 107)', () => {
     expect(at.get('multi')!.y).toBeGreaterThan(at.get('land')!.y);
   });
 
+  it('with Shift + C, starts the multicolour and land rows under mana value 1, not 0 (decision 151)', () => {
+    const cards = [
+      card('mox', 0, { group: 'colourless' }),
+      card('w1', 1, { group: 'W', identity: ['W'] }),
+      card('dovin', 2, { group: 'multi', identity: ['W', 'U'] }),
+      card('tundra', 0, { land: true, group: 'land', identity: ['W', 'U'] }),
+    ];
+    const at = new Map(curveLayout(cards, { x: 0, y: 0 }, { byColour: true, split: false }).map((p) => [p.uid, p.at]));
+    expect(at.get('dovin')!.x).toBeCloseTo(at.get('w1')!.x, 9);
+    expect(at.get('tundra')!.x).toBeCloseTo(at.get('w1')!.x, 9);
+    // Plain C has no colour blocks to line up with: lands start at the left edge.
+    const plain = new Map(curveLayout(cards, { x: 0, y: 0 }, { byColour: false, split: false }).map((p) => [p.uid, p.at]));
+    expect(plain.get('tundra')!.x).toBeCloseTo(plain.get('mox')!.x, 9);
+  });
+
   it('centres the layout on the spot', () => {
     const cards = [card('a', 1), card('b', 3)];
     const xs = curveLayout(cards, { x: 500, y: -200 }, { byColour: false, split: false }).map((p) => p.at.x);
