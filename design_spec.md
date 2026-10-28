@@ -794,7 +794,7 @@ The cursor shows what the mouse will do, and what a held key changes (owner, 202
 | Open glove | Over a card | Drag picks it up (or the selection) |
 | ... with 🧲 | Shift held over a card | A drag will sweep up cards it passes |
 | ... with 🔢 | Alt (or Ctrl + Shift) held over a card | Every pile shows its count; a drag keeps the formation |
-| ... with 📐 | Ctrl held over a card | Tidy mode while Ctrl is held: a drag lands squared; a click still toggles the card in or out of the selection |
+| ... with ☑️ | Ctrl held over a card | A click toggles the card in or out of the selection; a drag lands squared, as Tidy mode is on while Ctrl is held (decision 158) |
 | ... with 📚 | Over a pile's badge | Drag lifts the whole pile |
 | Gloved fist | Holding cards | Release drops them |
 | ... with 🧲 | Holding cards with Shift held | Sweeping up the cards passed over |
@@ -1060,6 +1060,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 155 | Owner (2026-10-28): while a playmat is **locked**, its 🔒 and 📺 buttons show in the mat's **bottom left** corner instead of the top right. **(agent)** Same 22 mm inset, turned with the mat; the lock comes first, nearest the corner, so it sits where the pointer reaches it, with 📺 to its right. Unlocking moves them back to the top right. |
 | 156 | Owner (2026-10-28): the HUD command buttons show their **key in brackets** after the icon, e.g. "📚 (S) Stack". **(agent)** Stack (S), Spread (X), Tidy (T), Flip (F), Fan (H), Curve (C), By colour (Shift + C), Export (Ctrl + E). Split creatures has no key, so it keeps its plain label. |
 | 157 | Owner (2026-10-28): the app needs an **1800 px** wide view to show every button; narrower windows **shrink the interface** to fit, and windows too narrow get a **warning covering the screen** until there is enough width. Owner's answer: the warning starts below **1280 px** (shrinking to about 71%), which still covers a 1920 x 1080 laptop at 150% Windows scaling. **(agent)** Only the top bar, the two side panels and the bottom bar are scaled, through CSS `zoom` set from the window width (`--ui-zoom`); the 3D play space and everything drawn over it (badges, mat buttons, hints) keep their size, so the camera, picking and screen positions are untouched. The width is the browser's own (`innerWidth`), so zooming the browser out also makes room. Popups opened from the bars (export, help, confirm, toasts) are not scaled. `uiScale` in `src/ui/fit.ts` is pure and tested. |
+| 158 | Owner (2026-10-28): with **Ctrl held over a card**, the cursor goes back to the ☑️ badge (Ctrl + click toggles the card) instead of 📐, while the 📐 stays on the fist when Ctrl is held while dragging cards. **(agent)** Only the hover badge changes: Ctrl still means Tidy mode while held (decision 129), so a drag started with Ctrl lands squared and switches to the 📐 fist as soon as the cards are picked up. The hint line over a card reads ☑️ Ctrl + click toggles · drag lands tidy. Partly reverses the hover part of decision 129. |
 
 ## Appendix B: Open items
 

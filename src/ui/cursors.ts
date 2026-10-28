@@ -4,7 +4,8 @@
 // gloves: an open hand over a card, a fist while holding cards. An emoji in the corner shows what a
 // held key adds: a magnet while Shift sweeps, numbers while Alt shows counts,
 // a chain link for a formation drag, plus or minus for marquee add and take, a
-// set square while Ctrl holds Tidy mode on, and the pointing glove on anything clickable, books for a whole pile, arrows to pan and orbit.
+// set square while Ctrl holds Tidy mode on for cards in hand, a tick for Ctrl + click
+// toggling a card (decision 158), and the pointing glove on anything clickable, books for a whole pile, arrows to pan and orbit.
 // The glove art is made by devtools/makeCursors.ts; the emoji is drawn onto it
 // here with a canvas, so it uses the system's emoji font.
 
@@ -32,7 +33,7 @@ const STATES = {
   open: ['open', '', 'grab'],
   openSweep: ['open', '🧲', 'grab'],
   openFormation: ['open', '🔢', 'grab'],
-  openTidy: ['open', '📐', 'pointer'],
+  openToggle: ['open', '☑️', 'pointer'],
   openPile: ['open', '📚', 'grab'],
   fist: ['fist', '', 'grabbing'],
   fistSweep: ['fist', '🧲', 'grabbing'],
@@ -168,8 +169,9 @@ export class Cursors {
     if (this.mouse.hovered) {
       if (alt || (ctrl && shift)) return 'openFormation';
       if (shift) return 'openSweep';
-      // Ctrl held: Tidy mode while held; a click still toggles the card (decisions 88, 129).
-      if (ctrl) return 'openTidy';
+      // Ctrl held over a card: a click toggles it in or out of the selection (decisions 88, 158).
+      // The set square shows once cards are in hand, where Ctrl lands them tidy.
+      if (ctrl) return 'openToggle';
       return 'open';
     }
     // Over a playmat with no card above: the open glove; Alt carries the cards on it.
