@@ -575,7 +575,7 @@ A collapsible panel on the left with three tabs:
 2. **Card**: a search box with autocomplete from the name catalog (fuse.js for typos), an optional set code and collector number, a quantity, a finish, and Spawn.
 3. **Query**: a Scryfall query, a Preview count (runs the search and reports the total before spawning), a cap field (default 500, settings allow up to 2,000) and Spawn. Extras are always excluded (Section 5.1); a small note under the box says so.
 
-Panel-wide controls:
+Spawn settings, in the settings panel (gear) since decision 111; the spawn panel itself shows only the Removed tray below its tabs:
 
 - **Arrival**: Messy pile (default) or Neat stack. Owner's decision (2026-10-27): "dumped in a messy pile, with a toggle somewhere to drop as a neat stack/deck."
 - **Face**: up (default) or down.
