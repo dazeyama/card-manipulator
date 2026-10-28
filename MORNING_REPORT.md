@@ -61,7 +61,8 @@ Changes made with you after the overnight build. Each is logged in Appendix A of
 | **Settings panel removed**: Tidy mode, the query cap and the export format each live where they are used. | 112 | `bbc42d1` |
 | **Shift + C in two columns**: W U, B R, G colourless, multicolour and lands. | 113 | `9569577` |
 | **Tidy-mode cascade snap**: drop a card a little below a pile's top card and it snaps one cascade step down, building curve columns by hand. | 114 | `4bd87c1` |
-| **Bigger stack zone in Tidy mode**: a drop stacks unless it is clearly at the cascade point. | 115 | this report's commit |
+| **Bigger stack zone in Tidy mode**: a drop stacks unless it is clearly at the cascade point. | 115 | `b69de6c` |
+| **Cursors that explain the controls**: arrow, open hand, fist, pan and orbit, with a blue badge for Shift (magnet), Alt (grid), Ctrl (±) and marquee add/take. | 116 | this report's commit |
 
 The per-phase sections below describe the build as it was overnight. The QA checklist at the end uses the current controls.
 
@@ -284,6 +285,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 - [ ] Chips append and apply; Ctrl-click excludes (decision 88).
 
 ### Phase 4
+- [ ] Cursors (spec 16.1, decision 116): move over table and cards with nothing, Shift, Alt and Ctrl held; drag a card with and without Shift; pan with Space, orbit with the middle button. Each shows its own cursor and badge, sharp and readable on the table and on card art.
 - [ ] Unnamed piles show no badge until you hold Alt; named piles always show theirs (decision 109).
 - [ ] Drag one card onto another: with Alt held the badge reads 2, and the top card sits a little off and turned (decision 94).
 - [ ] Select thirty, drag: they clump behind the cursor and fall into a loose stack on release; `T` squares it up (decision 94).

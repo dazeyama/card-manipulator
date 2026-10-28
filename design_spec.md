@@ -736,6 +736,26 @@ Personality: **snappy and light** (decision 42). Quick follow, short settles, ve
 
 All keys are inactive while a text field has focus.
 
+### 16.1 Cursors
+
+The cursor shows what the mouse will do, and what a held key changes (owner, 2026-10-27, decision 116). A small blue badge in the corner marks the key's effect.
+
+| Cursor | When | Means |
+|---|---|---|
+| Arrow with a dashed box | Over empty table | Drag draws a marquee |
+| ... with + | Ctrl held over empty table, or a Ctrl marquee | The marquee adds to the selection |
+| ... with − | Shift held over empty table, or a Shift marquee | The marquee takes from the selection |
+| Open hand | Over a card | Drag picks it up (or the selection) |
+| ... with a magnet | Shift held over a card | A drag will sweep up cards it passes |
+| ... with a grid | Alt (or Ctrl + Shift) held over a card | A drag keeps the formation; Alt also shows every pile's count |
+| ... with ± | Ctrl held over a card | Click toggles it in or out of the selection |
+| ... with a stack | Over a pile's badge | Drag lifts the whole pile |
+| Closed fist | Holding cards | Release drops them |
+| ... with a magnet | Holding cards with Shift held | Sweeping up the cards passed over |
+| ... with a grid | Holding cards in formation | They keep their layout |
+| Four arrows | Space held, or a right-drag | Pan |
+| Circling arrow | Middle-drag | Orbit |
+
 ---
 
 ## 17. Performance budget
@@ -948,6 +968,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 113 | Owner (2026-10-27): `Shift + C` lays the colours out two to a row, using more width: white and blue, then black and red, then green and colourless, then multicolour. **(agent)** Lands share the last row with multicolour, as one neat stack. Every colour block uses the same mana value columns so they line up down each side; blocks sit 60 mm apart, rows 30 mm. A colour with no cards leaves its place empty rather than shifting the others; a row with neither colour is skipped. Supersedes the row-per-colour layout of decision 107. |
 | 114 | Owner (2026-10-27): in Tidy mode, besides snapping squarely onto a pile, a second snap point 22 mm below the top card, where a card lies in curve view, so curve-style cascades can be built by hand. **(agent)** Measured from the pile's top card, "down" along its own long side at its quarter turn. The drop snaps to whichever point is nearer the dropped card's centre (a single card) or the cursor (a group). A group dropped at the cascade point continues the cascade, each card one step further down. Messy mode is unchanged. |
 | 115 | Owner (2026-10-27): drops up to 22 mm above the card should also stack, an extra zone for snapping onto tidy stacks, so it doesn't so often cascade. **(agent)** Instead of whichever point is nearer, the drop's distance below the top card's centre, along its long side, decides: under three quarters of a cascade step (16.5 mm), including anywhere above the card, it stacks; from there down it cascades. The stack zone is now 22 mm-plus above to 16.5 mm below the centre; the cascade zone starts 5.5 mm before the cascade point. |
+| 116 | Owner (2026-10-27): the controls are hard to learn and say nothing about what they do; custom cursors, with different hand gestures, should show holding Alt or Shift and what they do. **(agent)** Section 16.1: an arrow with a marquee box over empty table, an open hand over a card, a closed fist while holding cards, four arrows to pan, a circling arrow to orbit, each with a small blue corner badge for a held key's effect (magnet for Shift's sweep, grid for formation, + and − for marquee add and subtract, ± for Ctrl's toggle, a stack for a badge's whole pile). Drawn as inline SVG data URLs with the browser's own cursors as fallbacks, chosen every frame from the gesture in progress, the drag mode, the card under the mouse and the keys held (`src/ui/cursors.ts`). |
 
 ## Appendix B: Open items
 

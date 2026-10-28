@@ -81,6 +81,16 @@ export class MouseInput {
     return this.gesture.kind !== 'none';
   }
 
+  /** What the mouse is doing now (for the cursor, decision 116). */
+  get gestureKind(): Gesture['kind'] {
+    return this.gesture.kind;
+  }
+
+  /** While a marquee is drawn: whether it replaces, adds to or takes from the selection. */
+  get marqueeMode(): 'replace' | 'add' | 'subtract' | null {
+    return this.gesture.kind === 'marquee' ? this.gesture.mode : null;
+  }
+
   /** Esc: cancel a drag or marquee in progress. Returns true if something was cancelled. */
   cancel(): boolean {
     const g = this.gesture;

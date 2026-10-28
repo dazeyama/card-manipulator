@@ -177,6 +177,11 @@ export class DragController {
     return this.active;
   }
 
+  /** How the held cards move: single, gather, formation or rigid (for the cursor, decision 116). */
+  get heldMode(): DragMode {
+    return this.mode;
+  }
+
   get heldUids(): string[] {
     return this.held.map((h) => h.uid);
   }
