@@ -49,18 +49,40 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+/** Emoji take up to this share of the cursor's width and height. */
+const EMOJI_SHARE = 0.46;
+
+/**
+ * Draw an emoji in the bottom right corner of a square cursor image, placed by
+ * its measured outline so no part of it is cut off (decision 124). Emoji fonts
+ * draw some glyphs below the text baseline, so the font's nominal box isn't
+ * enough; a glyph too big for its corner is drawn smaller.
+ */
+function drawEmoji(g: CanvasRenderingContext2D, emoji: string, size: number): void {
+  let px = Math.round(size * EMOJI_SHARE);
+  const font = (n: number) => `${n}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+  g.textAlign = 'left';
+  g.textBaseline = 'alphabetic';
+  g.font = font(px);
+  let m = g.measureText(emoji);
+  const box = size * EMOJI_SHARE + 2;
+  const w = m.actualBoundingBoxLeft + m.actualBoundingBoxRight, h = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
+  if (w > box || h > box) {
+    px = Math.floor(px * Math.min(box / w, box / h));
+    g.font = font(px);
+    m = g.measureText(emoji);
+  }
+  // One pixel in from the right and bottom edges.
+  g.fillText(emoji, size - 1 - m.actualBoundingBoxRight, size - 1 - m.actualBoundingBoxDescent);
+}
+
 /** The glove with its emoji in the bottom right corner, as a CSS cursor value. */
 function compose(img: HTMLImageElement, hand: Hand, emoji: string, fallback: string): string {
   const c = document.createElement('canvas');
   c.width = c.height = SIZE;
   const g = c.getContext('2d')!;
   g.drawImage(img, 0, 0, SIZE, SIZE);
-  if (emoji) {
-    g.font = `${Math.round(SIZE * 0.46)}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
-    g.textAlign = 'right';
-    g.textBaseline = 'bottom';
-    g.fillText(emoji, SIZE, SIZE + Math.round(SIZE * 0.04));
-  }
+  if (emoji) drawEmoji(g, emoji, SIZE);
   const [hx, hy] = hand === 'arrow' ? ARROW_TIP : (hotspots[hand][VERSION] as [number, number]);
   return `url(${c.toDataURL()}) ${hx} ${hy}, ${fallback}`;
 }

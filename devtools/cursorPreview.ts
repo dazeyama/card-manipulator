@@ -75,10 +75,14 @@ async function compose(hand, emoji, size) {
   const g = c.getContext('2d');
   g.drawImage(img, 0, 0, size, size);
   if (emoji) {
-    const e = Math.round(size * 0.46);
-    g.font = e + 'px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
-    g.textAlign = 'right'; g.textBaseline = 'bottom';
-    g.fillText(emoji, size, size + Math.round(size * 0.04));
+    // As drawEmoji in src/ui/cursors.ts: placed by its measured outline so nothing is cut off.
+    const font = (n) => n + 'px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+    let px = Math.round(size * 0.46);
+    g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.font = font(px);
+    let m = g.measureText(emoji);
+    const box = size * 0.46 + 2, w = m.actualBoundingBoxLeft + m.actualBoundingBoxRight, h = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
+    if (w > box || h > box) { px = Math.floor(px * Math.min(box / w, box / h)); g.font = font(px); m = g.measureText(emoji); }
+    g.fillText(emoji, size - 1 - m.actualBoundingBoxRight, size - 1 - m.actualBoundingBoxDescent);
   }
   return c;
 }
