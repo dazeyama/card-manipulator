@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { visibleShare } from '../src/state/piles';
 import { gridLayout, LOOSE_OFFSET, LOOSE_TURN, looseStackLayout, messyLayout, overlaps, rng, spreadLayout, stackLayout, surfaceTop } from '../src/state/piles';
 import { CARD_T } from '../src/state/types';
 
@@ -189,5 +190,26 @@ describe('looseStackLayout (decision 94)', () => {
   it('overlaps as one pile', () => {
     const cards = looseStackLayout(30, { x: 0, y: 0, yaw: 0 }, 0, rng(9));
     expect(cards.every((c) => overlaps(c, cards[0]))).toBe(true);
+  });
+});
+
+describe('visibleShare (decision 101)', () => {
+  const card = { x: 0, y: 0, yaw: 0 };
+  it('is all of the face with nothing on top, and none under a card squarely on it', () => {
+    expect(visibleShare(card, [])).toBe(1);
+    expect(visibleShare(card, [{ x: 0, y: 0, yaw: 0 }])).toBe(0);
+  });
+
+  it('counts the strip a fan leaves showing', () => {
+    // Shifted 10 mm across a 63 mm card: about a sixth shows.
+    const share = visibleShare(card, [{ x: 10, y: 0, yaw: 0 }]);
+    expect(share).toBeGreaterThan(0.1);
+    expect(share).toBeLessThan(0.2);
+  });
+
+  it('sees a corner peeking out from under a turned card', () => {
+    const share = visibleShare(card, [{ x: 4, y: 6, yaw: 0.3 }]);
+    expect(share).toBeGreaterThan(0.05);
+    expect(share).toBeLessThan(0.5);
   });
 });

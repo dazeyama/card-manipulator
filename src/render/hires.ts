@@ -2,16 +2,21 @@
 // screen, the hovered card and the cards nearest the middle of the view get
 // Scryfall's `normal` image through a small pool of individual textures,
 // drawn as a plane just above the card's face. The plane is inset 2 mm so the
-// instanced card's border, selection rim and rounded corners still show.
+// instanced card's border, selection rim and rounded corners still show. Any
+// card with at least 5% of its face showing qualifies, so every card of a fan
+// sharpens, not just the top one (decision 101).
 
 import * as THREE from 'three';
 import type { App } from '../app';
+import { visibleShare } from '../state/piles';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
 import { ImageLoader } from './images';
 
 const SHOW_ABOVE_PX = 160;
-const MAX_OVERLAYS = 24;
-const TEXTURE_POOL = 48;
+const MAX_OVERLAYS = 32;
+const TEXTURE_POOL = 64;
+/** A card gets a close-up image once at least this share of its face shows (decision 101). */
+const MIN_SHOWING = 0.05;
 const INSET = 2;
 
 interface Overlay {
@@ -95,16 +100,15 @@ export class HiRes {
       if (!pose) continue;
       const s = rig.worldToScreen(pose.x, pose.y, pose.z);
       if (s.x < -100 || s.y < -150 || s.x > width + 100 || s.y > height + 150) continue;
-      // Prefer cards that are on top: a card buried in a stack shows no face.
-      if (this.covered(card.uid)) continue;
       scored.push({ uid: card.uid, d: Math.hypot(s.x - cx, s.y - cy) });
     }
     scored.sort((a, b) => a.d - b.d);
     const want = new Set<string>();
     if (this.hovered && app.store.cards.has(this.hovered)) want.add(this.hovered);
+    // Nearest the middle first; a card whose face is almost all covered is skipped.
     for (const s of scored) {
       if (want.size >= MAX_OVERLAYS) break;
-      want.add(s.uid);
+      if (this.showing(s.uid) >= MIN_SHOWING) want.add(s.uid);
     }
     for (const [uid, o] of this.overlays) {
       if (!want.has(uid)) {
@@ -116,10 +120,23 @@ export class HiRes {
     for (const uid of want) if (!this.overlays.has(uid)) this.attach(uid);
   }
 
-  /** True if another card lies on top of this one (it is in a stack or under a messy pile). */
-  private covered(uid: string): boolean {
+  /** How much of a card's face the cards above it in its pile leave showing (0 to 1). */
+  private showing(uid: string): number {
     const pile = this.app.store.pileOf(uid);
-    return !!pile && pile.cardUids[pile.cardUids.length - 1] !== uid;
+    if (!pile) return 1;
+    const i = pile.cardUids.indexOf(uid);
+    if (i === pile.cardUids.length - 1) return 1;
+    // In a neat stack every card under the top one is hidden.
+    if (pile.kind === 'stack') return 0;
+    const layer = this.app.layer;
+    const me = layer.pose(uid);
+    if (!me) return 0;
+    const above = [];
+    for (let k = i + 1; k < pile.cardUids.length; k++) {
+      const p = layer.pose(pile.cardUids[k]);
+      if (p) above.push(p);
+    }
+    return visibleShare(me, above);
   }
 
   private attach(uid: string): void {

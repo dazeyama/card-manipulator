@@ -46,7 +46,8 @@ Changes made with you after the overnight build. Each is logged in Appendix A of
 | **Held cards no longer clip**: the held group leans as one plane with each card stacked along it, and rises over stacks under or ahead of it. | 97 | `e82364a` |
 | **Tidy mode** replaces Tidy drops (top bar, `Shift + T`): on, it brings back the pre-messy behaviour and squares everything at quarter turns, held cards and spawns included. | 98 | `8463c05` |
 | **Cards rest naturally** on what is under them: a fanned stack lies low and touches the table instead of floating as a staircase. About 2 ms to re-rest a 60-card fan. | 99 | `92925a3` |
-| **Cards fall to the lowest place they can**: rigid resting replaces decision 99's droop, which built mid-air towers. Lifting a card lets what lay on it fall at once. | 100 | this report's commit |
+| **Cards fall to the lowest place they can**: rigid resting replaces decision 99's droop, which built mid-air towers. Lifting a card lets what lay on it fall at once. | 100 | `7d27937` |
+| **Close-ups for every card that shows**: any card with 5% or more of its face visible gets the sharp image, so a whole fan reads, not just its top card. | 101 | this report's commit |
 
 The per-phase sections below describe the build as it was overnight. The QA checklist at the end uses the current controls.
 
@@ -308,6 +309,6 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 
 ### Phase 8
 - [x] 2,000 cards (spawn `test-data/stress-2000.txt`) pan and orbit smoothly. Confirmed in Chrome (decision 93).
-- [ ] Zoom in: cards near the middle sharpen to the big image once they are about 160 px tall (decision 92).
+- [ ] Zoom in: cards near the middle sharpen to the big image once they are about 160 px tall (decision 92), including every card of a fan that shows a strip (decision 101).
 - [ ] Zoom far out with a selection: dots mark the selected cards; badges shorten and don't pile up.
 - [ ] Every checklist above still passes (or run `await __regression()` in the dev console).

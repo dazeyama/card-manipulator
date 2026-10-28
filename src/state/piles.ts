@@ -43,6 +43,45 @@ function extent(yaw: number, ax: number, ay: number, hw: number, hh: number): nu
   return hw * Math.abs(ux * ax + uy * ay) + hh * Math.abs(vx * ax + vy * ay);
 }
 
+/** Points across a card's face, in its own frame, for judging how much of it shows. */
+const SHOW_COLS = 7;
+const SHOW_ROWS = 9;
+const SHOW_POINTS: [number, number][] = [];
+for (let i = 0; i < SHOW_COLS; i++) {
+  for (let j = 0; j < SHOW_ROWS; j++) {
+    SHOW_POINTS.push([-HALF_W + (CARD_W * (i + 0.5)) / SHOW_COLS, -HALF_H + (CARD_H * (j + 0.5)) / SHOW_ROWS]);
+  }
+}
+
+/**
+ * The share of a card's face (0 to 1) that no card above it covers, seen from
+ * above, sampled on a grid across the face (decision 101).
+ */
+export function visibleShare(card: Footprint, above: Footprint[]): number {
+  if (!above.length) return 1;
+  const cos = Math.cos(card.yaw), sin = Math.sin(card.yaw);
+  // Each covering card's frame, once.
+  const covers = above
+    .filter((a) => overlaps(card, a))
+    .map((a) => ({ x: a.x, y: a.y, cos: Math.cos(a.yaw), sin: Math.sin(a.yaw) }));
+  if (!covers.length) return 1;
+  let shown = 0;
+  for (const [s, t] of SHOW_POINTS) {
+    const px = card.x + s * cos - t * sin;
+    const py = card.y + s * sin + t * cos;
+    let hidden = false;
+    for (const c of covers) {
+      const dx = px - c.x, dy = py - c.y;
+      if (Math.abs(dx * c.cos + dy * c.sin) <= HALF_W && Math.abs(-dx * c.sin + dy * c.cos) <= HALF_H) {
+        hidden = true;
+        break;
+      }
+    }
+    if (!hidden) shown++;
+  }
+  return shown / SHOW_POINTS.length;
+}
+
 /** Height of the highest card top under a footprint, or 0 for bare table. */
 export function surfaceTop(cards: Iterable<Placed>, at: Footprint): number {
   let top = 0;
