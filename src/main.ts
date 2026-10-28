@@ -74,19 +74,15 @@ mouse.hooks.hover = (uid) => {
 // ---- mouse grammar (spec 16) ----
 
 mouse.hooks.cardDrag = (uid, x, y, mods) => {
-  // Shift + drag sweeps: the selection (or this card) gathers, and cards the cursor
-  // passes over join it (decision 89). Ctrl + Shift is the formation fallback (decision 29).
-  if (mods.shift && !mods.ctrl) {
-    if (!store.selection.has(uid)) store.setSelection([uid]);
-    return drag.begin([...store.selection], 'gather', x, y, uid);
-  }
+  // Holding Shift at any moment of a drag sweeps up the cards the cursor passes
+  // over (decisions 89, 110). Ctrl + Shift is the formation fallback (decision 29).
   if (store.selection.has(uid) && store.selection.size > 1) {
     const formation = mods.alt || (mods.ctrl && mods.shift);
-    return drag.begin([...store.selection], formation ? 'formation' : 'gather', x, y);
+    return drag.begin([...store.selection], formation ? 'formation' : 'gather', x, y, uid);
   }
   // Dragging an unselected card selects only it; on a stack this peels the top card.
   store.setSelection([uid]);
-  return drag.begin([uid], 'single', x, y);
+  return drag.begin([uid], 'single', x, y, uid);
 };
 mouse.hooks.doubleClickCard = (uid) => commands.toggleSpread(uid);
 // Middle-click flips the card, or the whole selection if the card is in it (spec 10.5).

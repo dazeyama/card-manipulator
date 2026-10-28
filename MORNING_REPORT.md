@@ -55,7 +55,8 @@ Changes made with you after the overnight build. Each is logged in Appendix A of
 | **Double-tap S shuffles**: the stack's cards land in a random order, on the table or in the hand. | 106 | `cf686c2` |
 | **Curve view**: `C` curves a pile out by mana value; `Shift + C` curves everything into a row per colour; **Split creatures** toggle in the HUD. | 107 | `882f9f2` |
 | **C toggles**: on a curve it stacks it back up. Cascades are 22 mm apart (was 11). | 108 | `4740d85` |
-| **Badges only for named piles**, or for every pile while Alt is held. | 109 | this report's commit |
+| **Badges only for named piles**, or for every pile while Alt is held. | 109 | `cd4f93a` |
+| **Shift sweeps only while held**, at any moment of any drag. | 110 | this report's commit |
 
 The per-phase sections below describe the build as it was overnight. The QA checklist at the end uses the current controls.
 
@@ -288,7 +289,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 - [ ] Drag a messy stack by its badge: it feels a little heavy and trails. Press `T`, drag it again: it moves snappily as one (decision 96).
 - [x] **Alt-drag keeps formation, and releasing Alt does not focus the browser menu (decision 29).** Confirmed (decision 93).
 - [ ] A plain drag peels the top card; dragging a badge lifts the pile.
-- [ ] Shift + drag sweeps up the cards it passes over; lingering over a pile pulls more, then all of it (decision 89).
+- [ ] Start a plain drag, then hold Shift partway: cards you pass over are pulled in; let go of Shift and passing over cards does nothing; hold it again and it resumes (decision 110).
 - [ ] Double-click spreads; double-click again restacks in the same order.
 - [ ] S, X, T, R, Z, Delete; Removed tray spawns back.
 - [ ] Hover a card at an odd angle and press R: it squares to the next quarter turn clockwise; R again turns it 90°; R twice quickly stands it upright (decision 102).

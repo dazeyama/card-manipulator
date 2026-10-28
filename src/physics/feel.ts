@@ -130,7 +130,10 @@ export class DragController {
   /** Smoothed cursor velocity on screen, px/s, for flick detection. */
   private vel = { x: 0, y: 0 };
   private flicked = false;
+  /** Shift is held now, without Ctrl: the drag sweeps up cards it passes over (decision 110). */
   private sweeping = false;
+  private shift = false;
+  private ctrl = false;
   private dwell: Dwell | null = null;
   /** Latest cursor position on screen, for the sweep's pick. */
   private screen = { x: 0, y: 0 };
@@ -158,6 +161,13 @@ export class DragController {
     this.label.hidden = true;
     app.overlay.append(this.label);
     app.onFrame((_now, dt) => this.step(dt));
+    const keys = (e: KeyboardEvent) => {
+      this.shift = e.shiftKey;
+      this.ctrl = e.ctrlKey || e.metaKey;
+    };
+    window.addEventListener('keydown', keys);
+    window.addEventListener('keyup', keys);
+    window.addEventListener('blur', () => (this.shift = this.ctrl = false));
   }
 
   get dragging(): boolean {
@@ -175,9 +185,10 @@ export class DragController {
 
   /**
    * Begin a drag of these cards. `sx, sy` is the press point on screen.
-   * `sweepFrom` (the pressed card) turns on the Shift sweep for a gather.
+   * `pressed` is the card the drag began on: if Shift sweeps from the start,
+   * its pile counts as already reached, its top card taken.
    */
-  begin(uids: string[], mode: DragMode, sx: number, sy: number, sweepFrom?: string): CustomGesture | null {
+  begin(uids: string[], mode: DragMode, sx: number, sy: number, pressed?: string): CustomGesture | null {
     const store = this.app.store;
     const grab = this.app.rig.screenToPlane(sx, sy, 0);
     if (!grab || !uids.length) return null;
@@ -231,19 +242,21 @@ export class DragController {
     this.base = NaN;
     this.lastCursor = { ...this.cursor };
     this.cursorVel = { x: 0, y: 0 };
-    this.sweeping = !!sweepFrom && mode === 'gather';
+    this.sweeping = false;
     this.dwell = null;
-    if (sweepFrom && this.sweeping) {
+    if (pressed) {
       // The pile the drag started on counts as already reached, its top card taken.
-      const pile = store.pileOf(sweepFrom);
-      this.dwell = { key: pile?.id ?? sweepFrom, since: performance.now(), taken: 1, size: pile ? pile.cardUids.length : 1, lost: 0 };
+      const pile = store.pileOf(pressed);
+      this.dwell = { key: pile?.id ?? pressed, since: performance.now(), taken: 1, size: pile ? pile.cardUids.length : 1, lost: 0 };
     }
     this.showLabel(sx, sy);
     let last = { x: sx, y: sy, t: performance.now() };
 
     return {
       kind: 'custom',
-      move: (x, y) => {
+      move: (x, y, e) => {
+        this.shift = e.shiftKey;
+        this.ctrl = e.ctrlKey || e.metaKey;
         if (!this.active) return;
         const p = this.app.rig.screenToPlane(x, y, 0);
         if (p) this.cursor = { x: p.x, y: p.y };
@@ -360,6 +373,7 @@ export class DragController {
     const card = app.store.cards.get(uid);
     if (!card) return;
     leaveSpreads(app, [uid]);
+    if (this.mode === 'single') this.mode = 'gather';
     const i = this.held.length;
     const a = i * 2.399963;
     const r = Math.min(6, 1.5 * Math.sqrt(i % 9));
@@ -545,7 +559,16 @@ export class DragController {
    */
   private step(dt: number): void {
     if (!this.active) return;
-    if (this.sweeping) this.sweep(performance.now());
+    // Sweep only while Shift is held (and not Ctrl, which with Shift is the formation fallback).
+    const now = performance.now();
+    const sweep = this.shift && !this.ctrl;
+    if (sweep && !this.sweeping && this.dwell) {
+      // Picking up again where it left off: the pile under the cursor counts from now.
+      this.dwell.since = now;
+      this.dwell.lost = 0;
+    }
+    this.sweeping = sweep;
+    if (sweep) this.sweep(now);
     const tidy = this.tidy;
     if (this.mode === 'single' && this.held.length === 1 && dt > 0 && !tidy) this.turnSingle(dt);
     const layer = this.app.layer;
