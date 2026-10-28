@@ -6,6 +6,7 @@ import { CARD_H, CARD_T, CARD_W, type Card } from './state/types';
 import { gridLayout, looseStackLayout, nextQuarterClockwise, overlaps, shuffled, snapYaw, spreadLayout, uprightYaw, type Footprint, type Placed } from './state/piles';
 import type { Spread } from './state/store';
 import { colourGroup, curveLayout, type CurveCard } from './state/curve';
+import { fanLayout } from './state/fan';
 
 export interface Landing {
   uid: string;
@@ -136,6 +137,8 @@ export class Commands {
 
   /** Which curve each curved-out card belongs to, and where the curve put that curve's cards (decision 108). */
   private readonly curveOf = new Map<string, Map<string, { x: number; y: number }>>();
+  /** The same for fans (decision 141). */
+  private readonly fanOf = new Map<string, Map<string, { x: number; y: number }>>();
 
   private get sel(): string[] {
     return [...this.app.store.selection];
@@ -189,9 +192,14 @@ export class Commands {
    * to, those of its cards still where the curve put them; or null.
    */
   curvedGroup(cards: string[]): string[] | null {
+    return this.laidOutGroup(this.curveOf, cards);
+  }
+
+  /** The group (a curve or a fan) these cards were laid out in, those of its cards still in place; or null. */
+  private laidOutGroup(groups: Map<string, Map<string, { x: number; y: number }>>, cards: string[]): string[] | null {
     const store = this.app.store;
     for (const uid of cards) {
-      const spots = this.curveOf.get(uid);
+      const spots = groups.get(uid);
       if (!spots) continue;
       const still = [...spots].filter(([u, at]) => {
         const c = store.cards.get(u);
@@ -203,6 +211,28 @@ export class Commands {
   }
 
   /** C: curve the cards out, or stack them back up if they already are (decision 108). */
+  /**
+   * H: fan the cards out like a hand of cards (decision 141), bottom card on
+   * the left, top card on the right and on top. On a fan that is still in
+   * place, stack it back up instead, as S would.
+   */
+  toggleFan(cards: string[]): void {
+    cards = [...new Set(cards)];
+    const fanned = this.laidOutGroup(this.fanOf, cards);
+    if (fanned) {
+      for (const u of fanned) this.fanOf.delete(u);
+      this.stack(fanned);
+      return;
+    }
+    if (cards.length < 2) return;
+    const uids = byHeight(this.app, cards);
+    leaveSpreads(this.app, uids);
+    const landings = placeSequential(this.app, uids, fanLayout(uids.length, centroid(this.app, uids)));
+    land(this.app, landings, { stagger: Math.min(3, 300 / uids.length), arc: 6 });
+    const spots = new Map(landings.map((l) => [l.uid, { x: l.x, y: l.y }]));
+    for (const uid of uids) this.fanOf.set(uid, spots);
+  }
+
   toggleCurve(cards: string[], byColour: boolean): void {
     cards = [...new Set(cards)];
     const curved = byColour ? null : this.curvedGroup(cards);

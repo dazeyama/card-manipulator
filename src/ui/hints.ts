@@ -36,6 +36,7 @@ const HINTS: Record<string, Hint[]> = {
     ['🃏', 'Middle-click flips'],
     ['📖', 'Double-click spreads'],
     ['📊', 'C curves'],
+    ['🎴', 'H fans'],
   ],
   table: [
     ['⬚', 'Drag to select'],

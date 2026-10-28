@@ -220,6 +220,10 @@ const curveAll = () => {
   commands.curve(store.selection.size ? [...store.selection] : [...store.cards.keys()], true);
 };
 keyboard.bind('shift+c', curveAll);
+// H: fan the selection or the hovered pile like a hand of cards; H again stacks it back (decision 141).
+keyboard.bind('h', () => {
+  if (!drag.dragging) commands.toggleFan(curveTargets());
+});
 // Shift + T: Tidy mode on or off (decision 98).
 keyboard.bind('shift+t', () => {
   const on = !store.settings.tidyDrops;
@@ -286,6 +290,7 @@ hud.addButton('📚 Stack', 'Gather the selection into one stack (S); neat in Ti
 hud.addButton('🪟 Spread', 'Spread the selection in a grid (X)', () => commands.spread());
 hud.addButton('🧹 Tidy', 'Square up each pile the selection touches (T)', () => commands.tidy());
 hud.addButton('🃏 Flip', 'Flip the selection over (F)', () => commands.flip());
+hud.addButton('🎴 Fan', 'Fan the selection like a hand of cards, or stack a fan back up (H)', () => commands.toggleFan([...store.selection]));
 hud.addButton('📊 Curve', 'Curve the selection out by mana value, or stack it back up if it already is (C)', () => commands.toggleCurve([...store.selection], false));
 hud.addButton('🎨 By colour', 'Curve everything (or the selection) out by colour, a row per colour (Shift + C)', curveAll);
 // Split creatures: curves put creatures and non-creatures in separate bands (decision 107).

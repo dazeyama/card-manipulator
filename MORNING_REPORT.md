@@ -303,6 +303,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 - [ ] Hover a card at an odd angle and press R: it squares to the next quarter turn clockwise; R again turns it 90°; R twice quickly stands it upright (decision 102).
 - [ ] With nothing selected, hover a pile and press T, X, X, S, F; drag a stack and press R mid-drag: it turns in your hand and lands turned (decision 103).
 - [ ] Spawn the cube, press `Shift + C`: colours two to a row (W U, B R, G colourless, multicolour and lands; decision 113), columns by mana value lined up, lands stacked at the start, title bars readable. Hover one colour's pile and press `C`. Toggle **Split creatures** and press `Shift + C` again (decision 107). Press `C` on a curved pile: it stacks back up; cascades show more of each card (decision 108).
+- [ ] Hover a pile and press **H**: it fans like a hand of cards, top card on the right; press H again and it stacks back up. The HUD has 🎴 Fan, and H shows in the hint line and the ? list (decision 141).
 - [ ] Hover a pile (or hold it) and tap S twice: it stacks in a new random order; check the top card changed (decision 106).
 - [ ] Flip a few cards of a pile face down, then hover the pile (or hold it) and tap F twice: every card faces up, in its own order (decision 105).
 - [ ] Drag a messy stack and press T, then F, then X, then S mid-drag: it squares, turns over (bottom card now on top), spreads into a grid, gathers again, and lands as held (decision 104).

@@ -531,6 +531,7 @@ Available as HUD buttons and keys, acting on the selection:
 | Flip | `F`, middle-click | See 10.5. |
 | Rotate | `R` | Turn the selection, or the card under the cursor when nothing is selected, to the next quarter turn clockwise: a card at an odd angle squares up to the quarter turn just past it, a square card turns a full 90°. Press twice quickly: upright (decision 102). Piles stay piles. |
 | Curve | `C`, `Shift + C` | Curve view (decision 107): `C` lays the selection, or the pile under the cursor, out by mana value (pressed on cards that are already curved out, it stacks that curve back up instead, as `S` would), one column per mana value (7+ together) with the cards cascading down it so every title bar shows, lands in a neat stack at the start. `Shift + C` does the same for everything on the table (or the selection), sorted by colour into blocks, two to a row: white and blue, then black and red, then green and colourless, then multicolour and lands (decision 113). The **Split creatures** toggle in the HUD puts creatures and non-creatures in separate bands. |
+| Fan | `H` | Fan the selection, or the pile under the cursor, like a hand of cards: the cards turn about a pivot below the pile, bottom card on the left, top card on the right and on top, each about 7° further round, overlapping so every card's left edge and corner show. `H` on a fan still in place stacks it back up (decision 141). |
 
 ### 10.8 Remove
 
@@ -726,6 +727,7 @@ Personality: **snappy and light** (decision 42). Quick follow, short settles, ve
 | R | Turn the selection (or the card under the cursor) to the next quarter turn clockwise; R twice quickly: upright. While dragging, R turns the held cards |
 | C | Curve the selection, or the pile under the cursor, out by mana value; on a curve, stack it back up |
 | Shift + C | Curve everything (or the selection) out by colour, two colours to a row |
+| H | Fan the selection, or the pile under the cursor, like a hand of cards; on a fan, stack it back up |
 | N | Name the selected pile |
 | Z | Frame the selection |
 | V | Next camera view preset |
@@ -1001,6 +1003,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 138 | Owner (2026-10-28): by default the Inspect panel is pinned open and the Spawn panel is not. **(agent)** A default only: once a pin has been clicked, the remembered choice wins. |
 | 139 | Owner (2026-10-28): hide the panels on the press on the play space, not on release. **(agent)** On the press, the table point under the cursor is noted, the unpinned panels collapse (the table widens at once), and the camera pans so that point is under the cursor again, all before the press itself is handled; so the click lands on what was under the cursor and the view doesn't jump under the pointer. Supersedes the on-release timing of decision 137. |
 | 140 | Owner (2026-10-28): the HUD command buttons get their icons. **(agent)** The same emoji as the hint line and the controls list: 📚 Stack, 🪟 Spread, 🧹 Tidy, 🃏 Flip, 📊 Curve; new ones where none existed: 🎨 By colour, 🐉 Split creatures, 📤 Export. |
+| 141 | Owner (2026-10-28): a new hotkey to **fan** a pile (hovered or selected), displayed as one holds a hand of cards, arching and slightly overlapping. Owner's choices: the key is **H** (F stays Flip); pressing it again on a fan stacks it back up; the layout is a hand of cards. **(agent)** `src/state/fan.ts` (pure, tested): cards on a circle 132 mm round a pivot below the pile's centre, the middle card upright where the pile was, each card turned 0.12 rad (about 7°) further clockwise, the step shrinking so a big pile spreads no more than 2 rad (about 115°). Remembered like curves so H on an unmoved fan stacks it. Added to the HUD (🎴 Fan), the hint line over a card, and the ? list. |
 
 ## Appendix B: Open items
 
