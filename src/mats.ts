@@ -214,7 +214,7 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
   cardsOn(uid: string): string[] {
     const m = this.app.store.mats.get(uid);
     if (!m) return [];
-    return [...this.app.store.cards.values()].filter((c) => onMat(m, c.x, c.y)).map((c) => c.uid);
+    return ridersOf(m, this.app.store.cards.values());
   }
 
   // ---- dragging ----
@@ -424,6 +424,24 @@ function matTop(): THREE.ShapeGeometry {
   const uv = geo.getAttribute('uv');
   for (let i = 0; i < pos.count; i++) uv.setXY(i, pos.getX(i) / MAT_W + 0.5, pos.getY(i) / MAT_H + 0.5);
   return geo;
+}
+
+/**
+ * The cards a mat carries (decision 147): those whose centre lies on it, and
+ * every card in the same pile as one of them, even where it hangs off the
+ * mat, since a pile moves as one.
+ */
+export function ridersOf(m: Mat, cards: Iterable<{ uid: string; x: number; y: number; pileId: string | null }>): string[] {
+  const list = [...cards];
+  const piles = new Set<string>();
+  const out = new Set<string>();
+  for (const c of list) {
+    if (!onMat(m, c.x, c.y)) continue;
+    out.add(c.uid);
+    if (c.pileId) piles.add(c.pileId);
+  }
+  for (const c of list) if (c.pileId && piles.has(c.pileId)) out.add(c.uid);
+  return [...out];
 }
 
 /** True if a table point lies on a mat. */
