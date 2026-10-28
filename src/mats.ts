@@ -1,7 +1,7 @@
 // Playmats (decision 144): a card's art on a 61 x 35 cm mat lying on the
 // table, always under the cards. A mat is dragged like a card (pressed where
 // no card is), moving alone, or carrying the cards on it while Alt is held.
-// R turns it, Delete removes it. Hovering one shows a 🖥 button in its top
+// R turns it, Delete removes it. Hovering one shows a 📺 button in its top
 // right corner that opens a mirror window: the mat and its cards from straight
 // above, live and clean, for screen sharing.
 
@@ -78,10 +78,10 @@ export class Mats {
     app.store.events.on('mats', () => this.sync());
     app.store.events.on('reset', () => this.sync());
 
-    // The 🖥 button, shown in the top right corner of the mat under the mouse.
+    // The 📺 button, shown in the top right corner of the mat under the mouse.
     this.button = document.createElement('button');
     this.button.className = 'mat-mirror-btn';
-    this.button.textContent = '🖥';
+    this.button.textContent = '📺';
     this.button.title = 'Open a top-down mirror of this playmat in its own window, for screen sharing';
     this.button.hidden = true;
     this.button.addEventListener('pointerdown', (e) => e.stopPropagation());
@@ -294,12 +294,12 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
     };
   }
 
-  // ---- every frame: the 🖥 button, Alt counts, mirrors ----
+  // ---- every frame: the 📺 button, Alt counts, mirrors ----
 
   private frame(now: number): void {
     const rig = this.app.rig;
     const store = this.app.store;
-    // The 🖥 button sits just inside the hovered mat's top right corner.
+    // The 📺 button sits just inside the hovered mat's top right corner.
     const m = this.hovered && !this.dragging ? store.mats.get(this.hovered) : undefined;
     this.button.hidden = !m;
     if (m) {

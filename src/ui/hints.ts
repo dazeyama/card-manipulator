@@ -57,7 +57,7 @@ const HINTS: Record<string, Hint[]> = {
   mat: [
     ['🖐️', 'Drag to move the playmat'],
     ['🔗', 'Alt + drag carries its cards', 'alt'],
-    ['🖥', 'Top-right button mirrors it'],
+    ['📺', 'Top-right button mirrors it'],
     ['🔃', 'R turns it'],
     ['🗑️', 'Delete removes it'],
   ],
