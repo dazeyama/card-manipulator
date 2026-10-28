@@ -1,5 +1,6 @@
 // Generate an image through OpenRouter's image API (decision 117), for app art
 // such as the cursor gloves. Dev only: never part of the app or its build.
+// gpt-image-1 is listed but retired upstream; gpt-image-2 does transparent backgrounds.
 //
 // The key is read from the OPENROUTER_API_KEY environment variable, or from a
 // `.env.local` file in the project root (git ignores it). It is never printed.
@@ -7,7 +8,7 @@
 //   node --experimental-transform-types devtools/genImage.ts --out art/cursors/raw/point.png "a cartoon glove pointing up"
 //   node --experimental-transform-types devtools/genImage.ts --list
 //
-// Options: --model (default openai/gpt-image-1), --size (1024x1024),
+// Options: --model (default openai/gpt-image-2), --aspect (1:1), --size (if the model takes it),
 // --background (transparent), --quality (high), --n (1), --out (required).
 
 import { mkdirSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
@@ -46,19 +47,23 @@ async function main(): Promise<void> {
 
   if (list) {
     const res = await fetch(`${API}/images/models`, { headers });
-    const body = (await res.json()) as { data?: { id: string; supported_parameters?: string[] }[] };
-    for (const m of body.data ?? []) console.log(`${m.id}  ${(m.supported_parameters ?? []).join(', ')}`);
+    const body = (await res.json()) as { data?: { id: string; supported_parameters?: unknown }[] };
+    for (const m of body.data ?? []) {
+      const p = m.supported_parameters;
+      console.log(`${m.id}  ${Array.isArray(p) ? p.join(', ') : p && typeof p === 'object' ? Object.keys(p).join(', ') : ''}`);
+    }
     return;
   }
 
   if (!prompt || !opts.out) {
-    console.error('Usage: genImage.ts --out <file.png> [--model id] [--size WxH] [--background transparent] [--quality high] [--n 1] "prompt"');
+    console.error('Usage: genImage.ts --out <file.png> [--model id] [--aspect 1:1] [--background transparent] [--quality high] [--n 1] "prompt"');
     process.exit(1);
   }
   const request = {
-    model: opts.model ?? 'openai/gpt-image-1',
+    model: opts.model ?? 'openai/gpt-image-2',
     prompt,
-    size: opts.size ?? '1024x1024',
+    aspect_ratio: opts.aspect ?? '1:1',
+    ...(opts.size ? { size: opts.size } : {}),
     background: opts.background ?? 'transparent',
     quality: opts.quality ?? 'high',
     n: Number(opts.n ?? 1),
