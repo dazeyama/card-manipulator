@@ -53,7 +53,8 @@ Changes made with you after the overnight build. Each is logged in Appendix A of
 | **T, X, S and F work on a held stack**: tidy, spread, stack and flip in the hand, then land as held. | 104 | `7f7a7bf` |
 | **Double-tap F fronts** a mixed stack: every card faces up, on the table or in the hand. | 105 | `d89e4b9` |
 | **Double-tap S shuffles**: the stack's cards land in a random order, on the table or in the hand. | 106 | `cf686c2` |
-| **Curve view**: `C` curves a pile out by mana value; `Shift + C` curves everything into a row per colour; **Split creatures** toggle in the HUD. | 107 | this report's commit |
+| **Curve view**: `C` curves a pile out by mana value; `Shift + C` curves everything into a row per colour; **Split creatures** toggle in the HUD. | 107 | `882f9f2` |
+| **C toggles**: on a curve it stacks it back up. Cascades are 22 mm apart (was 11). | 108 | this report's commit |
 
 The per-phase sections below describe the build as it was overnight. The QA checklist at the end uses the current controls.
 
@@ -290,7 +291,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 - [ ] S, X, T, R, Z, Delete; Removed tray spawns back.
 - [ ] Hover a card at an odd angle and press R: it squares to the next quarter turn clockwise; R again turns it 90°; R twice quickly stands it upright (decision 102).
 - [ ] With nothing selected, hover a pile and press T, X, X, S, F; drag a stack and press R mid-drag: it turns in your hand and lands turned (decision 103).
-- [ ] Spawn the cube, press `Shift + C`: a row per colour (W, U, B, R, G, multi, colourless, lands), columns by mana value lined up, lands stacked at the start, title bars readable. Hover one colour's pile and press `C`. Toggle **Split creatures** and press `Shift + C` again (decision 107).
+- [ ] Spawn the cube, press `Shift + C`: a row per colour (W, U, B, R, G, multi, colourless, lands), columns by mana value lined up, lands stacked at the start, title bars readable. Hover one colour's pile and press `C`. Toggle **Split creatures** and press `Shift + C` again (decision 107). Press `C` on a curved pile: it stacks back up; cascades show more of each card (decision 108).
 - [ ] Hover a pile (or hold it) and tap S twice: it stacks in a new random order; check the top card changed (decision 106).
 - [ ] Flip a few cards of a pile face down, then hover the pile (or hold it) and tap F twice: every card faces up, in its own order (decision 105).
 - [ ] Drag a messy stack and press T, then F, then X, then S mid-drag: it squares, turns over (bottom card now on top), spreads into a grid, gathers again, and lands as held (decision 104).

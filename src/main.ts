@@ -197,8 +197,11 @@ keyboard.bind('t', () => (drag.dragging ? drag.tidyHeld() : commands.tidy(hovere
 // C: curve out the selection or the hovered pile by mana value; Shift + C: everything
 // (or the selection), sorted into a row per colour (decision 107).
 keyboard.bind('c', () => {
-  if (!drag.dragging) commands.curve(hoveredPile(), false);
+  // C again on a curve stacks it back up, as S would (decision 108).
+  if (!drag.dragging) commands.toggleCurve(curveTargets(), false);
 });
+// C on a hovered card in a curve column is about the whole curve, not just that column.
+const curveTargets = (): string[] => (store.selection.size || !mouse.hovered ? hoveredPile() : [mouse.hovered, ...hoveredPile()]);
 const curveAll = () => {
   if (drag.dragging) return;
   commands.curve(store.selection.size ? [...store.selection] : [...store.cards.keys()], true);
@@ -270,7 +273,7 @@ hud.addButton('Stack', 'Gather the selection into one stack (S); neat in Tidy mo
 hud.addButton('Spread', 'Spread the selection in a grid (X)', () => commands.spread());
 hud.addButton('Tidy', 'Square up each pile the selection touches (T)', () => commands.tidy());
 hud.addButton('Flip', 'Flip the selection over (F)', () => commands.flip());
-hud.addButton('Curve', 'Curve the selection out by mana value (C)', () => commands.curve([...store.selection], false));
+hud.addButton('Curve', 'Curve the selection out by mana value, or stack it back up if it already is (C)', () => commands.toggleCurve([...store.selection], false));
 hud.addButton('By colour', 'Curve everything (or the selection) out by colour, a row per colour (Shift + C)', curveAll);
 // Split creatures: curves put creatures and non-creatures in separate bands (decision 107).
 const splitBtn = hud.addButton('Split creatures', 'Curves put creatures and non-creatures in separate bands', () => store.updateSettings({ curveSplit: !store.settings.curveSplit }));

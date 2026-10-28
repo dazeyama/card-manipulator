@@ -9,7 +9,7 @@ import { CARD_H, CARD_T, CARD_W } from './types';
 import type { Placed } from './piles';
 
 /** How far each card in a cascade sits below the one before: enough to show its title bar and cost. */
-export const CASCADE_STEP = 11;
+export const CASCADE_STEP = 22;
 /** Gap between columns, between the creature and non-creature bands, and between colour rows, mm. */
 const COLUMN_GAP = 8;
 const BAND_GAP = 16;

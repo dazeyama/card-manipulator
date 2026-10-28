@@ -134,6 +134,9 @@ export function leaveSpreads(app: App, uids: Iterable<string>): void {
 export class Commands {
   constructor(private readonly app: App) {}
 
+  /** Which curve each curved-out card belongs to, and where the curve put that curve's cards (decision 108). */
+  private readonly curveOf = new Map<string, Map<string, { x: number; y: number }>>();
+
   private get sel(): string[] {
     return [...this.app.store.selection];
   }
@@ -166,7 +169,47 @@ export class Commands {
     leaveSpreads(this.app, cards);
     const layout = curveLayout(info, centroid(this.app, cards), { byColour, split: store.settings.curveSplit });
     const uids = layout.map((p) => p.uid);
-    land(this.app, placeSequential(this.app, uids, layout.map((p) => p.at)), { stagger: Math.min(2, 400 / uids.length), arc: 10 });
+    const landings = placeSequential(this.app, uids, layout.map((p) => p.at));
+    land(this.app, landings, { stagger: Math.min(2, 400 / uids.length), arc: 10 });
+    // Remember the curve (one per colour row), so C on it stacks it back up.
+    const groupOf = new Map(info.map((c) => [c.uid, byColour ? c.group : 'all']));
+    const groups = new Map<string, Map<string, { x: number; y: number }>>();
+    for (const l of landings) {
+      const key = groupOf.get(l.uid)!;
+      if (!groups.has(key)) groups.set(key, new Map());
+      groups.get(key)!.set(l.uid, { x: l.x, y: l.y });
+    }
+    for (const spots of groups.values()) {
+      for (const uid of spots.keys()) this.curveOf.set(uid, spots);
+    }
+  }
+
+  /**
+   * C on cards that are already curved out (decision 108): the curve they belong
+   * to, those of its cards still where the curve put them; or null.
+   */
+  curvedGroup(cards: string[]): string[] | null {
+    const store = this.app.store;
+    for (const uid of cards) {
+      const spots = this.curveOf.get(uid);
+      if (!spots) continue;
+      const still = [...spots].filter(([u, at]) => {
+        const c = store.cards.get(u);
+        return c && Math.abs(c.x - at.x) < 0.5 && Math.abs(c.y - at.y) < 0.5;
+      });
+      if (still.length >= 2 && still.some(([u]) => u === uid)) return still.map(([u]) => u);
+    }
+    return null;
+  }
+
+  /** C: curve the cards out, or stack them back up if they already are (decision 108). */
+  toggleCurve(cards: string[], byColour: boolean): void {
+    cards = [...new Set(cards)];
+    const curved = byColour ? null : this.curvedGroup(cards);
+    if (curved) {
+      for (const u of curved) this.curveOf.delete(u);
+      this.stack(curved);
+    } else this.curve(cards, byColour);
   }
 
   /** S twice quickly (decision 106): stack the cards in a random order, a shuffle. */
