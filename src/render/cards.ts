@@ -128,8 +128,10 @@ if (vFlags.z > 0.5 && vFace > 0.5) {
   vec3 V = normalize(cameraPosition - vWorldP);
   float facing = dot(normalize(vWorldN), V);
   float band = sin((vLocal.x * 0.035 + vLocal.y * 0.05) + facing * 9.0 + V.x * 4.0 + V.y * 3.0 + uTime * 0.25);
-  float s = smoothstep(0.55, 1.0, band);
-  totalEmissiveRadiance += hue(fract(vLocal.y * 0.006 + facing * 1.4 + V.x * 0.6)) * s * 0.16;
+  float s = smoothstep(0.35, 1.0, band);
+  vec3 tint = hue(fract(vLocal.y * 0.006 + facing * 1.4 + V.x * 0.6));
+  // A moving rainbow band, plus a faint wash so a foil reads even between bands.
+  totalEmissiveRadiance += tint * (s * 0.3 + 0.05);
 }
 `;
 

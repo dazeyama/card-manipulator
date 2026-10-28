@@ -6,17 +6,18 @@
 |---|---|
 | **Phases finished** | All eight (1–8), each through the full gate: typecheck, tests, build, browser check, commit |
 | **BROKEN items** | None |
-| **Tests** | 97 passing (query engine, decklist parser and export, pile detection, layouts, named piles, Scryfall client, camera, flick) |
+| **Tests** | 103 passing after the morning follow-ups (97 at the end of the overnight build) |
 | **Final pass** | `await __regression()` in the dev console: 28 of 28 checklist items pass, no page errors |
 | **Run it** | `npm install` once, then `npm run dev` and open http://localhost:5173, or double-click `start.bat` |
 
 **What works.** Everything in Sections 1–17 that Phases 1–8 list. You can spawn from a decklist, a single card or a Scryfall query; marquee and refine with the local query engine; gather, formation and whole-stack drags; messy drops through Rapier; spread and restack; named piles with filters and empty bins; inspect; decklist and CSV export; save and load files; autosave. Your 1,008-card cube resolves completely; it took 17 s cold and resolves in 50 ms from the cache. 2,000 cards run at a steady 60 fps on your RTX 4070 Ti, and a 1080p frame costs about 0.6 ms.
 
-**What I could not check myself (please do):**
+**What I could not check myself:** all of these were confirmed in your morning QA (decision 93), except where a fix is noted.
 1. **Alt-drag formation on Windows** (decision 29): the browser tool can't hold modifier keys during a drag. Formation, Ctrl whole-stack drags and Shift/Ctrl marquees were checked with synthetic events that carry the modifier flags. I couldn't check whether releasing Alt focuses the browser menu bar. If it does, Ctrl + Shift + drag is already wired as the fallback.
-2. **Save and Open dialogs.** I didn't click them overnight, because that would have written files to your Downloads folder. The same document round trip passes in code.
-3. **Feel and taste:** drag spring and tilt, flick sensitivity, foil sheen, the size of the settle hop, and whether the `small` image is readable mid-zoom. Close-ups switch to `normal` images automatically.
-4. **Pasting an exported decklist into Moxfield.** The export parses back through this tool's own parser exactly.
+   ✅ Works.
+2. **Save and Open dialogs.** I didn't click them overnight, because that would have written files to your Downloads folder. The same document round trip passes in code. ✅ Works.
+3. **Feel and taste:** drag spring and tilt, flick sensitivity, foil sheen, the size of the settle hop, and whether the `small` image is readable mid-zoom. Close-ups switch to `normal` images automatically. ✅ Spring, tilt and hop feel right. Flick was too hard, foil too subtle and mid-zoom images too soft: all three fixed (decisions 90–92).
+4. **Pasting an exported decklist into Moxfield.** The export parses back through this tool's own parser exactly. ✅ Works.
 
 **Things to know:**
 - A spawn at the centre of the view lands on whatever pile is there and joins it, like any drop (decision 78).
@@ -24,6 +25,23 @@
 - A neat stack of the whole 1,008-card cube is a 30 cm tower, as a real one would be.
 - During testing I copied a decklist to your clipboard once (the Keep export check).
 - Your own Chrome starts with an empty table: the autosave, card cache and image cache live in each browser's own storage, and everything above ran in the built-in browser. The first cube paste in Chrome takes the cold times (about 17 s to resolve, about 24 s for images); after that it is fast.
+
+---
+
+## Morning follow-ups (2026-10-27)
+
+Changes made with you after the overnight build. Each is logged in Appendix A of the spec. Every change passed typecheck, tests (103) and build, and was committed locally. Browser checks were yours.
+
+| Change | Decision | Commit |
+|---|---|---|
+| **View** button in the top bar and the `V` key cycle four camera angles: Tilted 55°, Top-down 89°, Low 30°, Corner 45°. Position and zoom stay put. | 86 | `a9e5193` |
+| A double right-click straightens the angle back to the current preset without moving the camera. Home still does the full reset. | 87 | `c6ff55b` |
+| **Ctrl and Shift swapped on every mouse action** (Ctrl + click toggles, Ctrl adds to a marquee, Shift subtracts). **Right and middle buttons swapped** (right-drag pans, middle-click flips, middle-drag orbits). Keyboard shortcuts keep Ctrl. | 88 | `f686e70` |
+| **Shift + drag sweeps.** Cards the cursor passes over are pulled into the clump. Lingering over a pile pulls more, then all of it after about 1.6 s. Whole-stack lift is now badge drag only. | 89 | `6e78d89` |
+| Morning QA fixes: flicks are easier (Normal 1,600 px/s, was 2,300), the foil sheen is stronger, and close-ups switch to `normal` images at 160 px (was 250). | 90–92 | this report's commit |
+| Morning QA results: Alt-drag, Save/Open, Moxfield paste, 2,000-card smoothness and drag feel all confirmed. | 93 | this report's commit |
+
+The per-phase sections below describe the build as it was overnight. The QA checklist at the end uses the current controls.
 
 ---
 
@@ -223,10 +241,10 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 
 ### Phase 1
 - [ ] Page loads (your last table, restored). The Phase 1 numbered placeholder cards were removed in Phase 2 (decision 56).
-- [ ] Middle-drag pans; Space + left-drag pans too.
+- [ ] Right-drag pans; Space + left-drag pans too (decision 88).
 - [ ] Wheel zooms toward the cursor.
-- [ ] Right-drag on empty table orbits and stops at the limits.
-- [ ] Home resets the view.
+- [ ] Middle-drag on empty table orbits and stops at the limits (decision 88).
+- [ ] Home resets the view. The **View** button (or `V`) cycles four angles; a double right-click straightens back to the current one (decisions 86–87).
 - [ ] Shadows under cards; the stack of ten shows thickness.
 
 ### Phase 2
@@ -234,32 +252,33 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 - [ ] Paste `test-data/bad-lines.txt`: five lines in red; fix one and Retry.
 - [ ] Refresh, paste the cube again: it resolves at once and the images come from cache.
 - [ ] Card tab: type a misspelt name, pick from the suggestions, spawn four foils.
-- [ ] Is the `small` image readable enough up close? (decision 33; close-up `normal` images come in Phase 8)
+- [x] Is the `small` image readable enough? It was not at mid zoom, so close-ups now start at 160 px (decision 92).
 
 ### Phase 3
-- [ ] Marquee a crowd; Shift-marquee adds, Ctrl-marquee subtracts (checked only with synthetic events, see above).
+- [ ] Marquee a crowd; Ctrl-marquee adds, Shift-marquee subtracts (decision 88).
 - [ ] Type `t:creature mv<=2`: the live count drops as you type; Enter shrinks the selection.
 - [ ] Esc, Esc, then `/`, `c:r`, Enter: red cards highlight wherever they are.
 - [ ] An unsupported term (`art:x`) shows an error and changes nothing.
-- [ ] Chips append and apply; Shift-click excludes.
+- [ ] Chips append and apply; Ctrl-click excludes (decision 88).
 
 ### Phase 4
 - [ ] Drag one card onto another: badge reads 2.
 - [ ] Select thirty, drag: they clump behind the cursor and stack on release.
-- [ ] **Alt-drag keeps formation, and releasing Alt does not focus the browser menu (decision 29).** If it misfires, Ctrl + Shift + drag is the fallback and already works.
-- [ ] Ctrl-drag a stack lifts it whole; a plain drag peels the top card; dragging a badge lifts the pile.
+- [x] **Alt-drag keeps formation, and releasing Alt does not focus the browser menu (decision 29).** Confirmed (decision 93).
+- [ ] A plain drag peels the top card; dragging a badge lifts the pile.
+- [ ] Shift + drag sweeps up the cards it passes over; lingering over a pile pulls more, then all of it (decision 89).
 - [ ] Double-click spreads; double-click again restacks in the same order.
 - [ ] S, X, T, R, Z, Delete; Removed tray spawns back.
 - [ ] Refresh restores the table and camera.
-- [ ] Does the drag spring feel right (lag, tilt)?
+- [x] Does the drag spring feel right (lag, tilt)? Yes (decision 93).
 
 ### Phase 5
 - [ ] Drop a handful (spawn ~60 as a messy pile, or drag a group onto a messy pile): it looks dropped.
 - [ ] Toggle Tidy drops (top bar) and drop again: it squares up.
-- [ ] Right-click flips with a turn; select forty and press F for a cascade.
-- [ ] **Flick feel:** a quick jerk and reverse during a drag tosses and flips the card. Is Normal too hard or too easy to trigger?
+- [ ] Middle-click flips with a turn; select forty and press F for a cascade.
+- [ ] **Flick feel:** it was too hard to trigger on Normal; it is now easier (decision 90). Check again.
 - [ ] A stack of 100 doesn't jitter.
-- [ ] **Foil sheen taste:** does it read as "that one's a foil", not a disco effect?
+- [ ] **Foil sheen taste:** it was too subtle; it is now stronger (decision 91). Check it is not a disco effect.
 
 ### Phase 6
 - [ ] Name a pile Keep with filter `t:creature` (click its badge, press N, or use the pencil).
@@ -270,13 +289,13 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 
 ### Phase 7
 - [ ] Hover shows a big readable image; a DFC shows both faces; click to pin.
-- [ ] Export Keep (⤓ on its badge) and paste it into Moxfield.
-- [ ] Save a file (Ctrl + S), New table, Open it back. **Not clicked overnight** (it would have written to your Downloads); the same round trip was tested in code.
+- [x] Export Keep (⤓ on its badge) and paste it into Moxfield. Works (decision 93).
+- [x] Save a file (Ctrl + S), New table, Open it back. Works (decision 93).
 - [ ] Spawn `set:ltr r:rare` from the Query tab: the preview count comes first.
 - [ ] Settings: flick sensitivity, query cap, export format.
 
 ### Phase 8
-- [ ] 2,000 cards (spawn `test-data/stress-2000.txt`) pan and orbit smoothly.
-- [ ] Zoom in close: cards in the middle sharpen to the big image.
+- [x] 2,000 cards (spawn `test-data/stress-2000.txt`) pan and orbit smoothly. Confirmed in Chrome (decision 93).
+- [ ] Zoom in: cards near the middle sharpen to the big image once they are about 160 px tall (decision 92).
 - [ ] Zoom far out with a selection: dots mark the selected cards; badges shorten and don't pile up.
 - [ ] Every checklist above still passes (or run `await __regression()` in the dev console).

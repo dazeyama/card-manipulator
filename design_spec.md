@@ -375,13 +375,13 @@ Each card is a thin box, 63 × 88 mm, with rounded corners baked into the textur
 
 ### 8.3 Close-up quality
 
-The `small` image is sharp enough for the table view (decision 33). When the camera zooms close enough that a card exceeds about 250 px on screen, the renderer swaps the hovered card and the nearest cards for `normal` images through a small pool of individual textures. The inspect panel always uses `normal`.
+The `small` image is sharp enough for the table view (decision 33). When the camera zooms close enough that a card exceeds about 160 px on screen (decision 92), the renderer swaps the hovered card and the nearest cards for `normal` images through a small pool of individual textures. The inspect panel always uses `normal`.
 
 ### 8.4 Selection, hover and foil
 
 - Selected cards get an emissive outline in the instanced shader (a rim glow, not a post-process) so 2,000 highlighted cards cost nothing extra.
 - The hovered card lifts 2 mm and brightens slightly.
-- Foil cards get a subtle animated sheen based on view angle. It should read as "that one's a foil", not as a disco effect.
+- Foil cards get an animated sheen based on view angle, strong enough to spot at a glance (decision 91). It should read as "that one's a foil", not as a disco effect.
 
 ### 8.5 Shadows and light
 
@@ -903,6 +903,10 @@ All dated 2026-10-27, from the brainstorming session.
 | 87 | Owner (2026-10-27): a double middle-click only straightens the angle back to the current preset; it no longer moves or zooms the camera, so the view can be fixed at any time while looking at something. Home still does the full reset to the table's centre. Replaces that part of decision 86. |
 | 88 | Owner (2026-10-27): **Ctrl and Shift swap on every mouse action**: Ctrl + click toggles a card or pile, Ctrl + marquee adds, Shift + marquee subtracts, Shift + drag lifts a whole stack, Ctrl-click negates a quick chip; Ctrl + Shift stays the formation fallback. **Right and middle buttons swap**: right-drag pans anywhere, double right-click straightens the view, middle-click flips, middle-drag on empty table orbits. Supersedes the button and modifier parts of decisions 17, 23, 28, 69 and 87. **(agent)** Keyboard shortcuts (Ctrl + A, Ctrl + F, Ctrl + S, Ctrl + E, Ctrl + Enter in the list box) keep Ctrl: they are the standard browser shortcuts, and Shift + a letter would clash with the plain letter keys. The Phase 1, 3, 5 and 6 "Where to look" lists in Section 18 keep their original wording as history. |
 | 89 | Owner (2026-10-27): **Shift + drag on a card sweeps**: the selection (or the pressed card) gathers to the cursor and cards the cursor passes over join the clump, like a magnet. A quick pass takes a pile's top card; lingering takes more, then all of it, so a big pile feels heavy. Whole-stack lift moves to badge drag only. Shift + drag on a selected card starts from the whole selection. **(agent)** timing: the second card comes after 350 ms over a pile, the rest arrive on an accelerating curve (`sweepCount`, exponent 2.2) and the whole pile after 1.6 s; slipping off a pile for under 150 ms keeps its dwell time; the pile the drag started on counts as reached; a swept card springs up from where it lay at the clump's slow tail rate; swept cards join the selection, and Esc sends them all home. |
+| 90 | Owner (2026-10-27, morning QA): flicks were too hard to trigger. **(agent)** Normal drops from 2,300 to 1,600 px/s and Sensitive from 1,400 to 1,000 px/s; the reversal now needs to turn more than about 95° instead of 105°. Supersedes the numbers in decision 68. |
+| 91 | Owner (2026-10-27, morning QA): the foil sheen was too subtle. **(agent)** The rainbow band is wider (smoothstep from 0.35 instead of 0.55) and about twice as bright (0.30 instead of 0.16), with a faint 0.05 rainbow wash over the whole face so a foil reads between bands. |
+| 92 | Owner (2026-10-27, morning QA): switch to the `normal` image sooner. **(agent)** Close-ups start once a card is over 160 px tall on screen (was 250), with up to 24 overlays (was 12) and a pool of 48 textures (was 32, about 60 MB). Supersedes those numbers in decision 82. |
+| 93 | Owner (2026-10-27, morning QA): Alt-drag works on Windows (releasing Alt does not focus the menu bar), Save and Open work, an exported decklist pastes into Moxfield, 2,000 cards run smoothly in Chrome, and the drag spring, tilt and settle hop feel right. These close the open hand checks from the overnight build. |
 
 ## Appendix B: Open items
 

@@ -1,4 +1,4 @@
-// Close-up quality (spec 8.3): when a card is bigger than about 250 px on
+// Close-up quality (spec 8.3): when a card is bigger than about 160 px on
 // screen, the hovered card and the cards nearest the middle of the view get
 // Scryfall's `normal` image through a small pool of individual textures,
 // drawn as a plane just above the card's face. The plane is inset 2 mm so the
@@ -9,9 +9,9 @@ import type { App } from '../app';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
 import { ImageLoader } from './images';
 
-const SHOW_ABOVE_PX = 250;
-const MAX_OVERLAYS = 12;
-const TEXTURE_POOL = 32;
+const SHOW_ABOVE_PX = 160;
+const MAX_OVERLAYS = 24;
+const TEXTURE_POOL = 48;
 const INSET = 2;
 
 interface Overlay {
