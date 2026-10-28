@@ -1,6 +1,6 @@
-// Custom cursors that say what the mouse will do (decisions 116, 118-121).
-// Over empty table, an arrow with a dashed marquee box, the size of an ordinary
-// cursor; over cards, cartoon white gloves: an open hand over a card, a fist
+// Custom cursors that say what the mouse will do (decisions 116, 118-122).
+// Drawn in one cartoon style: over empty table, a chunky arrow with a dashed
+// marquee box; over cards, white gloves: an open hand over a card, a fist
 // while holding cards. An emoji in the corner shows what a
 // held key adds: a magnet while Shift sweeps, numbers while Alt shows counts,
 // a set square for a formation drag, plus or minus for marquee add and take, a
@@ -11,27 +11,13 @@
 import type { App } from '../app';
 import type { DragController } from '../physics/feel';
 import type { MouseInput } from '../input/mouse';
+import arrowUrl from '../../art/cursors/arrow-48-bold.png';
 import openUrl from '../../art/cursors/open-48-bold.png';
 import fistUrl from '../../art/cursors/fist-48-bold.png';
 import hotspots from '../../art/cursors/cursors.json';
 
 const SIZE = 48;
 const VERSION = '48-bold';
-
-/**
- * The empty-table arrow with its dashed marquee box (decision 121), drawn on a
- * 32-unit grid and placed at an ordinary cursor's size in the 48 px image.
- */
-const INK = '#1e293b';
-const ARROW_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <rect x="16" y="17" width="12" height="10" fill="none" stroke="${INK}" stroke-width="1.2" stroke-dasharray="2 1.6"/>
-  <path d="M3 3 V21 L7.4 16.8 L10.6 24 L13.6 22.6 L10.4 15.6 H16.4 Z" fill="#fff" stroke="${INK}" stroke-width="1.5" stroke-linejoin="round"/>
-</svg>`;
-const arrowUrl = `data:image/svg+xml,${encodeURIComponent(ARROW_SVG)}`;
-/** The arrow is drawn this much bigger than its 32-unit grid: about an ordinary cursor's size. */
-const ARROW_SCALE = 1.1;
-/** The arrow's tip, its click point, in the 48 px image. */
-const ARROW_TIP: [number, number] = [Math.round(3 * ARROW_SCALE), Math.round(3 * ARROW_SCALE)];
 
 type Hand = 'arrow' | 'open' | 'fist';
 const ART: Record<Hand, string> = { arrow: arrowUrl, open: openUrl, fist: fistUrl };
@@ -68,15 +54,14 @@ function compose(img: HTMLImageElement, hand: Hand, emoji: string, fallback: str
   const c = document.createElement('canvas');
   c.width = c.height = SIZE;
   const g = c.getContext('2d')!;
-  if (hand === 'arrow') g.drawImage(img, 0, 0, 32 * ARROW_SCALE, 32 * ARROW_SCALE);
-  else g.drawImage(img, 0, 0, SIZE, SIZE);
+  g.drawImage(img, 0, 0, SIZE, SIZE);
   if (emoji) {
     g.font = `${Math.round(SIZE * 0.46)}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
     g.textAlign = 'right';
     g.textBaseline = 'bottom';
     g.fillText(emoji, SIZE, SIZE + Math.round(SIZE * 0.04));
   }
-  const [hx, hy] = hand === 'arrow' ? ARROW_TIP : (hotspots[hand][VERSION] as [number, number]);
+  const [hx, hy] = hotspots[hand][VERSION] as [number, number];
   return `url(${c.toDataURL()}) ${hx} ${hy}, ${fallback}`;
 }
 

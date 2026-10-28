@@ -738,7 +738,7 @@ All keys are inactive while a text field has focus.
 
 ### 16.1 Cursors
 
-The cursor shows what the mouse will do, and what a held key changes (owner, 2026-10-27, decisions 116 and 118–121). Over empty table it is an arrow with a dashed marquee box, the size of an ordinary cursor; over cards the hands are cartoon white gloves in a 1930s rubber-hose style, 48 px. An emoji in the corner marks a held key's effect.
+The cursor shows what the mouse will do, and what a held key changes (owner, 2026-10-27, decisions 116 and 118–122). Everything is drawn in one cartoon style at 48 px, in the 1930s rubber-hose look: over empty table a chunky arrow with a dashed marquee box, over cards white gloves. An emoji in the corner marks a held key's effect.
 
 | Cursor | When | Means |
 |---|---|---|
@@ -974,6 +974,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 119 | Owner (2026-10-27): use the 48 px bold glove cursors in the app. **(agent)** `src/ui/cursors.ts` loads the three gloves (`art/cursors/*-48-bold.png`, which Vite inlines) and draws each state's emoji onto a copy with a canvas at start-up, using the system emoji font at about 22 px in the bottom right corner; click points come from `art/cursors/cursors.json`. Until the art has loaded, the browser's own cursors stand in. The SVG cursors of decision 116 are gone; the choice of cursor is unchanged. |
 | 120 | Owner (2026-10-27): the open glove showed the palm, which felt odd; show the back of the hand instead. **(agent)** Regenerated with the pointer as the style reference; of two drawings, the one with four fingers and a thumb was chosen so it matches the pointer and fist (the other had the classic three-fingered glove). It shows the three stitch lines of the back of a cartoon glove. Cost about $0.44; the cursor art has cost about $1.97 in all. |
 | 121 | Owner (2026-10-27): the gloves are great, but empty table and its Ctrl and Shift versions should go back to the arrow cursor with its dashed marquee box, sized correctly, instead of the pointing glove. **(agent)** The arrow and box from decision 116, drawn at 1.1 times its 32-unit grid in the 48 px cursor image, so the arrow is about 23 px tall like an ordinary cursor; its tip is the click point. Its badges stay emoji (➕, ➖) like the rest of the set. The pointing glove art is kept but unused. |
+| 122 | Owner (2026-10-27): decision 121 brought back the old drawn arrow, which doesn't match the gloves' quality and size; generate a new default cursor with its marquee box in the gloves' style. **(agent)** Generated with gpt-image-2 using the pointing glove as style reference: a chunky white cartoon arrow with the same outline and shading, a dashed box behind its tail. Of two drawings, the one with fatter dashes was chosen so the box survives shrinking. It goes through the same pipeline as the gloves (48 px bold; click point at the arrow tip). Cost about $0.44; the cursor art has cost about $2.41 in all. |
 
 ## Appendix B: Open items
 

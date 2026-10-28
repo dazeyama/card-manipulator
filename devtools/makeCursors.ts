@@ -14,6 +14,7 @@ import { PNG } from 'pngjs';
 /** The source art for each hand, and where its click point is. */
 const HANDS: { name: string; file: string; hotspot: 'fingertip' | 'centre' }[] = [
   { name: 'point', file: 'art/cursors/raw/point2-2.png', hotspot: 'fingertip' },
+  { name: 'arrow', file: 'art/cursors/raw/arrow-1.png', hotspot: 'fingertip' },
   { name: 'open', file: 'art/cursors/raw/open-back-1.png', hotspot: 'centre' },
   { name: 'fist', file: 'art/cursors/raw/fist2.png', hotspot: 'centre' },
 ];

@@ -63,7 +63,7 @@ Changes made with you after the overnight build. Each is logged in Appendix A of
 | **Tidy-mode cascade snap**: drop a card a little below a pile's top card and it snaps one cascade step down, building curve columns by hand. | 114 | `4bd87c1` |
 | **Bigger stack zone in Tidy mode**: a drop stacks unless it is clearly at the cascade point. | 115 | `b69de6c` |
 | **Cursors that explain the controls**: arrow, open hand, fist, pan and orbit, with a blue badge for Shift (magnet), Alt (grid), Ctrl (±) and marquee add/take. | 116 | `54d9e84` |
-| **Glove cursors**: cartoon white gloves (open, fist) with emoji badges, generated with an image model through OpenRouter; the arrow with its marquee box stays for empty table. | 117–121 | this report's commit |
+| **Glove cursors**: cartoon white gloves (open, fist) with emoji badges, generated with an image model through OpenRouter, and a matching cartoon arrow with its marquee box for empty table. | 117–122 | this report's commit |
 
 The per-phase sections below describe the build as it was overnight. The QA checklist at the end uses the current controls.
 
