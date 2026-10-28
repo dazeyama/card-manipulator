@@ -575,7 +575,7 @@ A collapsible panel on the left with three tabs:
 2. **Card**: a search box with autocomplete from the name catalog (fuse.js for typos), an optional set code and collector number, a quantity, a finish, and Spawn.
 3. **Query**: a Scryfall query, a Preview count (runs the search and reports the total before spawning), a cap field (default 500, settings allow up to 2,000) and Spawn. Extras are always excluded (Section 5.1); a small note under the box says so.
 
-Spawn settings, in the settings panel (gear) since decision 111; the spawn panel itself shows only the Removed tray below its tabs:
+Spawn settings, kept at their defaults since decision 112 (no controls for them); the spawn panel shows only the Removed tray below its tabs:
 
 - **Arrival**: Messy pile (default) or Neat stack. Owner's decision (2026-10-27): "dumped in a messy pile, with a toggle somewhere to drop as a neat stack/deck."
 - **Face**: up (default) or down.
@@ -944,6 +944,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 109 | Owner (2026-10-27): pile count badges show only while **Alt** is held, or always for named piles; unnamed piles hide theirs normally. **(agent)** A named pile's spread anchor and its empty outline count as named. Hidden badges take no space when decluttering. Consequence: an unnamed pile's badge is not there to click or drag unless Alt is held, so lifting a whole unnamed pile is Alt + drag on its badge (the keys S, X, T, F, R and C still act on the pile under the cursor). Alt is read from key and pointer events and cleared when the window loses focus. |
 | 110 | Owner (2026-10-27): the sweep worked differently from intended: Shift at the press made the whole drag a sweep, even after Shift was let go. Intended: while dragging, holding Shift at any time gathers the cards passed over; releasing Shift stops it. **(agent)** Any drag (a card, a selection, a pile by its badge, a formation) sweeps exactly while Shift is held without Ctrl, read from pointer and key events, so pressing Shift mid-drag starts it without moving. A press no longer changes mode because of Shift. A single-card drag that sweeps up a card becomes a gather. Pressing Shift again over the same pile resumes its count from then, so a pile is not swallowed at once. Supersedes the press-time part of decision 89. |
 | 111 | Owner (2026-10-27): the spawn panel's Arrival, Face and Where controls are not needed; Tidy mode handles the only important one. **(agent)** They are gone from the spawn panel; the settings panel (gear) still has them, and spawns follow those settings as before (Tidy mode forces a neat stack, decision 98). |
+| 112 | Owner (2026-10-27): hide the settings panel too; nothing in it is needed that can't be done elsewhere, and it looks bad. **(agent)** The gear button and the panel are gone. Where each setting went: Tidy mode is the top bar button and `Shift + T`; the query spawn cap is the box on the Query tab; the decklist export format is chosen (and remembered) in the export panel; spawn arrival, face and where, and flick sensitivity, stay at their defaults (messy, face up, centre of view, Normal), with Tidy mode forcing a neat stack. Saved settings still load. The confirm dialog moved to `src/ui/confirm.ts`. Supersedes decision 80's settings panel. |
 
 ## Appendix B: Open items
 

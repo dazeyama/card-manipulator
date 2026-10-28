@@ -57,7 +57,8 @@ Changes made with you after the overnight build. Each is logged in Appendix A of
 | **C toggles**: on a curve it stacks it back up. Cascades are 22 mm apart (was 11). | 108 | `4740d85` |
 | **Badges only for named piles**, or for every pile while Alt is held. | 109 | `cd4f93a` |
 | **Shift sweeps only while held**, at any moment of any drag. | 110 | `013c41a` |
-| **Spawn panel trimmed**: Arrival, Face and Where are gone from it (still in the settings panel). | 111 | this report's commit |
+| **Spawn panel trimmed**: Arrival, Face and Where are gone from it (still in the settings panel). | 111 | `1c31a4a` |
+| **Settings panel removed**: Tidy mode, the query cap and the export format each live where they are used. | 112 | this report's commit |
 
 The per-phase sections below describe the build as it was overnight. The QA checklist at the end uses the current controls.
 
@@ -322,7 +323,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 - [x] Export Keep (⤓ on its badge) and paste it into Moxfield. Works (decision 93).
 - [x] Save a file (Ctrl + S), New table, Open it back. Works (decision 93).
 - [ ] Spawn `set:ltr r:rare` from the Query tab: the preview count comes first.
-- [ ] Settings: flick sensitivity, query cap, export format.
+- [ ] No gear in the top bar; the query cap is on the Query tab and the export format in the export panel (decision 112).
 
 ### Phase 8
 - [x] 2,000 cards (spawn `test-data/stress-2000.txt`) pan and orbit smoothly. Confirmed in Chrome (decision 93).

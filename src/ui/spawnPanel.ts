@@ -38,7 +38,7 @@ export class SpawnPanel {
     this.tabBar = h('div', { class: 'tabs' });
     this.body = h('div', { class: 'panel-body' });
     this.trayHost = h('div', { class: 'tray-host' });
-    // Arrival, face and where live in the settings panel only; Tidy mode covers arrival (decision 111).
+    // No arrival, face or where controls: spawns use the defaults, and Tidy mode covers arrival (decisions 111, 112).
     this.el.append(head, this.tabBar, this.body, this.trayHost);
     host.append(this.el);
 

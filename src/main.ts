@@ -24,7 +24,7 @@ import { Outlines } from './render/outlines';
 import { PileEditor } from './ui/pileEditor';
 import { InspectPanel } from './ui/inspectPanel';
 import { ExportPanel } from './ui/exportPanel';
-import { SettingsPanel, confirmDialog } from './ui/settings';
+import { confirmDialog } from './ui/confirm';
 import { buildQueryTab } from './ui/queryTab';
 import { HiRes } from './render/hires';
 import { SelectionMarkers } from './render/markers';
@@ -62,7 +62,6 @@ const pileEditor = new PileEditor(app);
 store.events.on('notice', (msg) => toast(msg, 'warn', 4200));
 const inspect = new InspectPanel(app, right);
 const exporter = new ExportPanel(app);
-const settingsPanel = new SettingsPanel(app);
 spawnPanel.addTab('query', 'Query', buildQueryTab(app, () => spawnPanel.options()));
 const hires = new HiRes(app);
 const markers = new SelectionMarkers(app, ACCENT);
@@ -330,8 +329,6 @@ fileBtn('New', 'Clear the table and start a new one', () => void newTable());
 fileBtn('Open…', 'Load a saved table file', () => void openFile());
 fileBtn('Save', 'Save the table as a file (Ctrl + S)', () => saveFile());
 fileBtn('Export', 'Export the whole table as a decklist or CSV', () => exporter.open([...store.cards.keys()], store.name)).classList.add('export-trigger');
-const gear = fileBtn('⚙', 'Settings', () => settingsPanel.toggle(gear));
-gear.classList.add('settings-trigger');
 
 // A 429 pauses the queue; say so while it lasts (spec 5.2).
 let bannerTimer = 0;
@@ -353,7 +350,7 @@ physics
   .then(() => (app.physics = physics))
   .catch((err) => console.warn('Physics failed to load; drops land without it', err));
 
-export const ui = { app, mouse, keyboard, topBar, spawnPanel, hud, commands, drag, badges, tray, autosave, pileSync, physics, outlines, pileEditor, inspect, exporter, settingsPanel, saveFile, openFile, newTable, hires, markers };
+export const ui = { app, mouse, keyboard, topBar, spawnPanel, hud, commands, drag, badges, tray, autosave, pileSync, physics, outlines, pileEditor, inspect, exporter, saveFile, openFile, newTable, hires, markers };
 
 if (import.meta.env.DEV) {
   // The phase gate reads this to confirm the page logged no errors since it loaded.
