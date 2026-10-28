@@ -22,7 +22,6 @@ export class SpawnPanel {
   private listSpawn!: HTMLButtonElement;
   private listText!: HTMLTextAreaElement;
   /** Panel-wide controls. */
-  readonly controls: HTMLElement;
   /** The removed tray lives at the bottom (spec 10.8). */
   readonly trayHost: HTMLElement;
 
@@ -38,9 +37,9 @@ export class SpawnPanel {
     head.append(collapse);
     this.tabBar = h('div', { class: 'tabs' });
     this.body = h('div', { class: 'panel-body' });
-    this.controls = this.buildControls();
     this.trayHost = h('div', { class: 'tray-host' });
-    this.el.append(head, this.tabBar, this.body, this.controls, this.trayHost);
+    // Arrival, face and where live in the settings panel only; Tidy mode covers arrival (decision 111).
+    this.el.append(head, this.tabBar, this.body, this.trayHost);
     host.append(this.el);
 
     this.addTab('list', 'List', this.buildList());
@@ -75,29 +74,6 @@ export class SpawnPanel {
   options(): { arrival: 'messy' | 'stack'; faceUp: boolean; where: 'cursor' | 'center' } {
     const s = this.app.store.settings;
     return { arrival: s.arrival, faceUp: s.spawnFaceUp, where: s.spawnWhere };
-  }
-
-  private buildControls(): HTMLElement {
-    const s = this.app.store.settings;
-    const arrival = h('select', { 'aria-label': 'Arrival' }, h('option', { value: 'messy' }, 'Messy pile'), h('option', { value: 'stack' }, 'Neat stack'));
-    arrival.value = s.arrival;
-    arrival.addEventListener('change', () => this.app.store.updateSettings({ arrival: arrival.value as 'messy' | 'stack' }));
-    const face = h('select', { 'aria-label': 'Face' }, h('option', { value: 'up' }, 'Face up'), h('option', { value: 'down' }, 'Face down'));
-    face.value = s.spawnFaceUp ? 'up' : 'down';
-    face.addEventListener('change', () => this.app.store.updateSettings({ spawnFaceUp: face.value === 'up' }));
-    const where = h('select', { 'aria-label': 'Where' }, h('option', { value: 'center' }, 'Centre of view'), h('option', { value: 'cursor' }, 'Last cursor spot'));
-    where.value = s.spawnWhere;
-    where.addEventListener('change', () => this.app.store.updateSettings({ spawnWhere: where.value as 'cursor' | 'center' }));
-    this.app.store.events.on('settings', () => {
-      arrival.value = this.app.store.settings.arrival;
-      face.value = this.app.store.settings.spawnFaceUp ? 'up' : 'down';
-      where.value = this.app.store.settings.spawnWhere;
-    });
-    return h('div', { class: 'spawn-controls' },
-      h('label', {}, h('span', {}, 'Arrival'), arrival),
-      h('label', {}, h('span', {}, 'Face'), face),
-      h('label', {}, h('span', {}, 'Where'), where),
-    );
   }
 
   // ---- List tab ----

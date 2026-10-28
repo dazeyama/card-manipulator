@@ -56,7 +56,8 @@ Changes made with you after the overnight build. Each is logged in Appendix A of
 | **Curve view**: `C` curves a pile out by mana value; `Shift + C` curves everything into a row per colour; **Split creatures** toggle in the HUD. | 107 | `882f9f2` |
 | **C toggles**: on a curve it stacks it back up. Cascades are 22 mm apart (was 11). | 108 | `4740d85` |
 | **Badges only for named piles**, or for every pile while Alt is held. | 109 | `cd4f93a` |
-| **Shift sweeps only while held**, at any moment of any drag. | 110 | this report's commit |
+| **Shift sweeps only while held**, at any moment of any drag. | 110 | `013c41a` |
+| **Spawn panel trimmed**: Arrival, Face and Where are gone from it (still in the settings panel). | 111 | this report's commit |
 
 The per-phase sections below describe the build as it was overnight. The QA checklist at the end uses the current controls.
 
