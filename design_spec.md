@@ -738,23 +738,23 @@ All keys are inactive while a text field has focus.
 
 ### 16.1 Cursors
 
-The cursor shows what the mouse will do, and what a held key changes (owner, 2026-10-27, decision 116). A small blue badge in the corner marks the key's effect.
+The cursor shows what the mouse will do, and what a held key changes (owner, 2026-10-27, decisions 116, 118 and 119). The hands are cartoon white gloves in a 1930s rubber-hose style, 48 px; an emoji in the corner marks a held key's effect.
 
 | Cursor | When | Means |
 |---|---|---|
-| Arrow with a dashed box | Over empty table | Drag draws a marquee |
-| ... with + | Ctrl held over empty table, or a Ctrl marquee | The marquee adds to the selection |
-| ... with − | Shift held over empty table, or a Shift marquee | The marquee takes from the selection |
-| Open hand | Over a card | Drag picks it up (or the selection) |
-| ... with a magnet | Shift held over a card | A drag will sweep up cards it passes |
-| ... with a grid | Alt (or Ctrl + Shift) held over a card | A drag keeps the formation; Alt also shows every pile's count |
-| ... with ± | Ctrl held over a card | Click toggles it in or out of the selection |
-| ... with a stack | Over a pile's badge | Drag lifts the whole pile |
-| Closed fist | Holding cards | Release drops them |
-| ... with a magnet | Holding cards with Shift held | Sweeping up the cards passed over |
-| ... with a grid | Holding cards in formation | They keep their layout |
-| Four arrows | Space held, or a right-drag | Pan |
-| Circling arrow | Middle-drag | Orbit |
+| Pointing glove | Over empty table | Drag draws a marquee |
+| ... with ➕ | Ctrl held over empty table, or a Ctrl marquee | The marquee adds to the selection |
+| ... with ➖ | Shift held over empty table, or a Shift marquee | The marquee takes from the selection |
+| Open glove | Over a card | Drag picks it up (or the selection) |
+| ... with 🧲 | Shift held over a card | A drag will sweep up cards it passes |
+| ... with 🔢 | Alt (or Ctrl + Shift) held over a card | Every pile shows its count; a drag keeps the formation |
+| ... with ☑️ | Ctrl held over a card | Click toggles it in or out of the selection |
+| ... with 📚 | Over a pile's badge | Drag lifts the whole pile |
+| Gloved fist | Holding cards | Release drops them |
+| ... with 🧲 | Holding cards with Shift held | Sweeping up the cards passed over |
+| ... with 📐 | Holding cards in formation | They keep their layout |
+| Open glove with ↔️ | Space held, or a right-drag | Pan |
+| Gloved fist with 🔄 | Middle-drag | Orbit |
 
 ---
 
@@ -971,6 +971,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 116 | Owner (2026-10-27): the controls are hard to learn and say nothing about what they do; custom cursors, with different hand gestures, should show holding Alt or Shift and what they do. **(agent)** Section 16.1: an arrow with a marquee box over empty table, an open hand over a card, a closed fist while holding cards, four arrows to pan, a circling arrow to orbit, each with a small blue corner badge for a held key's effect (magnet for Shift's sweep, grid for formation, + and − for marquee add and subtract, ± for Ctrl's toggle, a stack for a badge's whole pile). Drawn as inline SVG data URLs with the browser's own cursors as fallbacks, chosen every frame from the gesture in progress, the drag mode, the card under the mouse and the keys held (`src/ui/cursors.ts`). |
 | 117 | Owner (2026-10-27): generate app art (the cartoon glove cursors) with an image model on OpenRouter, where the owner has credit. **(agent)** `devtools/genImage.ts` (dev only, never in the build) posts a prompt to OpenRouter's image API (`/api/v1/images`) and saves the PNGs; default model `openai/gpt-image-1` because it can return a transparent background. The key comes from `OPENROUTER_API_KEY` or a git-ignored `.env.local`, and is never printed. A second allowed network destination besides Scryfall, for development only; the app itself still talks only to Scryfall. |
 | 118 | Owner (2026-10-27): the cursors become cartoon white gloves in a 1930s rubber-hose style (like Cuphead or early Disney), generated with an image model, with emoji badges instead of the blue ones; the open hand and fist redrawn to match the chosen pointing glove. **(agent)** Generated with `openai/gpt-image-2` on OpenRouter on flat green (it won't do transparent backgrounds there), the open hand and fist with the pointer as a style reference; the chosen source art is in `art/cursors/raw/`. `devtools/makeCursors.ts` keys out the green, trims, optionally thickens the outline so it survives shrinking, scales by area averaging to 32 and 48 px, and finds the click points (the pointing fingertip, the middle of the others) into `art/cursors/cursors.json`. `devtools/cursorPreview.ts` builds `art/cursors/preview.html` with each state live. Emoji badges are drawn onto the hand with a canvas at runtime, so they use the system's emoji font. New dev dependency: `pngjs` (pure JavaScript PNG reading and writing, no native parts). Not wired into the app yet. |
+| 119 | Owner (2026-10-27): use the 48 px bold glove cursors in the app. **(agent)** `src/ui/cursors.ts` loads the three gloves (`art/cursors/*-48-bold.png`, which Vite inlines) and draws each state's emoji onto a copy with a canvas at start-up, using the system emoji font at about 22 px in the bottom right corner; click points come from `art/cursors/cursors.json`. Until the art has loaded, the browser's own cursors stand in. The SVG cursors of decision 116 are gone; the choice of cursor is unchanged. |
 
 ## Appendix B: Open items
 
