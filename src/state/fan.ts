@@ -6,12 +6,12 @@
 import { CARD_H, CARD_T } from './types';
 import type { Placed } from './piles';
 
-/** How far each card turns past the one before, radians (about 7 degrees)... */
-export const FAN_STEP = 0.12;
-/** ...unless the whole fan would turn further than this (about 115 degrees), when the step shrinks. */
-export const FAN_MAX_SPREAD = 2;
+/** How far each card turns past the one before, radians (about 8.6 degrees)... */
+export const FAN_STEP = 0.15;
+/** ...unless the whole fan would turn further than this (about 126 degrees), when the step shrinks. */
+export const FAN_MAX_SPREAD = 2.2;
 /** Distance from the pivot to each card's centre, mm. */
-export const FAN_RADIUS = CARD_H * 1.5;
+export const FAN_RADIUS = CARD_H * 1.8;
 
 /**
  * Where each of `count` cards goes, bottom card first, in a fan whose middle
