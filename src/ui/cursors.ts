@@ -51,7 +51,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 /** Emoji take up to this share of the cursor's width and height. */
-const EMOJI_SHARE = 0.46;
+const EMOJI_SHARE = 0.48;
 /** Gaps between the emoji's outline and the image's right and bottom edges, px. */
 const EMOJI_RIGHT = 3;
 const EMOJI_BOTTOM = 0;
