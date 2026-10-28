@@ -1,7 +1,9 @@
 // The feel of dragging (spec 10.1–10.4, 15.5): held cards lift about 10 mm,
 // tilt a little toward their motion and follow the cursor through a short
 // spring. Gather drags trail the selection in a clump behind the cursor;
-// formation and whole-stack drags move the cards as a rigid group. A Shift
+// formation drags move the cards as a rigid group. A whole stack keeps its
+// shape at rest but its lower cards trail when moved fast, so letting go
+// mid-swing fans it out. A Shift
 // drag sweeps: cards the cursor passes over are pulled into the clump.
 
 import type { App } from '../app';
@@ -23,6 +25,10 @@ const TILT_PER_SPEED = 0.0012;
 const TURN_GAIN = 0.02;
 const TURN_DAMP = 10;
 const TURN_MAX = 0.35;
+/** Released while any held card moves faster than this (mm/s), the cards stop where they are (decision 95). */
+export const MOVING_SPEED = 150;
+/** ...sliding on for this long at their speed, as if friction caught them. */
+export const CARRY_S = 0.03;
 /** Gravity in the physics world, mm/s^2, for aiming tosses. */
 const GRAVITY = 9810;
 
@@ -148,6 +154,9 @@ export class DragController {
         omega = OMEGA_TAIL + (OMEGA_LEAD - OMEGA_TAIL) * rank;
       } else if (mode === 'single') {
         dz = 0;
+      } else if (mode === 'rigid') {
+        // Top card leads, lower cards trail a little: a quick swing strings the stack out (decision 95).
+        omega = OMEGA_TAIL + (OMEGA_LEAD - OMEGA_TAIL) * rank;
       }
       return { uid: c.uid, ox, oy, dz, omega, vx: 0, vy: 0, vz: 0, home: { x: c.x, y: c.y, z: c.z, yaw: c.yaw }, bx: ox, by: oy };
     });
@@ -385,6 +394,18 @@ export class DragController {
     let held = this.held;
     const mode = this.mode;
     this.finish();
+    // Let go mid-motion: the cards drop where they are drawn, strung out along
+    // the drag, instead of finishing the planned landing (decision 95). A quick
+    // drag of a gathered stack fans it out this way.
+    if (!this.app.store.settings.tidyDrops && inMotion(held)) {
+      const ordered = held
+        .map((c) => ({ c, pose: this.app.layer.pose(c.uid) }))
+        .filter((e) => e.pose)
+        .sort((a, b) => a.pose!.z - b.pose!.z);
+      const spots = stopWhereTheyAre(ordered.map(({ c, pose }) => ({ x: pose!.x, y: pose!.y, yaw: pose!.yaw, vx: c.vx, vy: c.vy })));
+      land(this.app, placeSequential(this.app, ordered.map((e) => e.c.uid), spots), { duration: 150, stagger: 0 });
+      return;
+    }
     if (mode !== 'formation') {
       const target = this.target(held, sx, sy);
       if (target) {
@@ -595,6 +616,16 @@ export class DragController {
  * smoothed velocity before this move and the new one (px/s), returns the
  * unit direction to toss in, or null.
  */
+/** True when any held card is still moving fast enough that letting go should stop it in place. */
+export function inMotion(cards: { vx: number; vy: number }[]): boolean {
+  return cards.some((c) => Math.hypot(c.vx, c.vy) > MOVING_SPEED);
+}
+
+/** Where cards let go mid-motion come to rest: where they are, slid on a little. */
+export function stopWhereTheyAre(cards: { x: number; y: number; yaw: number; vx: number; vy: number }[]): { x: number; y: number; yaw: number }[] {
+  return cards.map((c) => ({ x: c.x + c.vx * CARRY_S, y: c.y + c.vy * CARRY_S, yaw: c.yaw }));
+}
+
 /** A random value between -a and a. */
 function jitter(a: number): number {
   return (Math.random() * 2 - 1) * a;

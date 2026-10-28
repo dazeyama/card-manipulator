@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { flickDirection, sweepCount, SWEEP_ALL_MS, SWEEP_MORE_MS } from '../src/physics/feel';
+import { CARRY_S, flickDirection, inMotion, MOVING_SPEED, stopWhereTheyAre, sweepCount, SWEEP_ALL_MS, SWEEP_MORE_MS } from '../src/physics/feel';
 
 describe('flickDirection (spec 10.5)', () => {
   it('fires on a fast move that reverses sharply, tossing the way it was going', () => {
@@ -43,5 +43,23 @@ describe('sweepCount (decision 89)', () => {
     }
     expect(sweepCount(5000, 1)).toBe(1);
     expect(sweepCount(5000, 0)).toBe(0);
+  });
+});
+
+describe('letting go mid-motion (decision 95)', () => {
+  it('counts as moving only when some card is faster than the threshold', () => {
+    expect(inMotion([{ vx: 0, vy: 0 }, { vx: 10, vy: -20 }])).toBe(false);
+    expect(inMotion([{ vx: 0, vy: 0 }, { vx: MOVING_SPEED + 1, vy: 0 }])).toBe(true);
+  });
+
+  it('leaves each card where it is, slid on a little, keeping its turn', () => {
+    const spots = stopWhereTheyAre([
+      { x: 0, y: 0, yaw: 0.2, vx: 1000, vy: 0 },
+      { x: -60, y: 5, yaw: -0.1, vx: 600, vy: 200 },
+    ]);
+    expect(spots[0]).toEqual({ x: 1000 * CARRY_S, y: 0, yaw: 0.2 });
+    expect(spots[1].x).toBeCloseTo(-60 + 600 * CARRY_S, 9);
+    expect(spots[1].y).toBeCloseTo(5 + 200 * CARRY_S, 9);
+    expect(spots[1].yaw).toBe(-0.1);
   });
 });
