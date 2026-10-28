@@ -415,7 +415,23 @@ scryfall.onStatus((s) => {
 });
 
 app.start();
-void autosave.restore();
+void autosave.restore().then((had) => {
+  if (!had) void loadWelcome();
+});
+
+/** A first visit, with no table saved in this browser, opens a table with cards on it to play with (decision 153). */
+async function loadWelcome(): Promise<void> {
+  try {
+    const res = await fetch(`${import.meta.env.BASE_URL}welcome-table.json`);
+    if (!res.ok) return;
+    const doc: unknown = await res.json();
+    // Something may have been spawned while it loaded: leave that alone.
+    if (validateDoc(doc) || store.cards.size || store.mats.size) return;
+    await loadDoc(app, doc as TableDoc);
+  } catch {
+    // No welcome table: start empty.
+  }
+}
 
 const physics = new Physics(app);
 physics
