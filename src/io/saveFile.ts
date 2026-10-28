@@ -13,6 +13,8 @@ export function toDoc(app: App, withCardData: boolean): TableDoc {
     x: round(c.x), y: round(c.y), z: round(c.z), yaw: round(c.yaw, 5), faceUp: c.faceUp,
     pileId: c.pileId && store.named.has(c.pileId) ? c.pileId : null,
     spreadOf: c.spreadOf,
+    // Rounded like x and y, so a card still where an X spread laid it stays flat after loading (decision 160).
+    ...(c.laidAt ? { laidAt: { x: round(c.laidAt.x), y: round(c.laidAt.y) } } : {}),
   }));
   const cardData: Record<string, CardRecord> = {};
   if (withCardData) {

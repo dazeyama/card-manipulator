@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { rng } from '../src/state/piles';
 import { messyLayout } from '../src/state/piles';
-import { bottomAt, MAX_SLOPE, restOn, restSlope, slopesOf, tiltFor, type Resting } from '../src/state/rest';
+import { bottomAt, laidFlat, MAX_SLOPE, restOn, restSlope, slopesOf, tiltFor, type Resting } from '../src/state/rest';
 import { CARD_H, CARD_T, CARD_W } from '../src/state/types';
 
 const flat = (x: number, y: number, z: number, yaw = 0): Resting => ({ x, y, z, yaw, tiltX: 0, tiltY: 0 });
@@ -106,5 +106,18 @@ describe('resting as rigid cards (decisions 99, 100)', () => {
   it('balanced on a ridge, tips the gentler way; caps the slope', () => {
     expect(restSlope([{ u: -44, z: 0 }, { u: 0, z: 5 }, { u: 44, z: 1 }])).toBeCloseTo(-4 / 44, 9);
     expect(Math.abs(restSlope([{ u: -44, z: 200 }, { u: 44, z: 0 }]))).toBe(MAX_SLOPE);
+  });
+});
+
+describe('cards laid by an X spread (decision 160)', () => {
+  it('lie flat while they stay where they were laid', () => {
+    expect(laidFlat({ x: 10, y: 20, laidAt: { x: 10, y: 20 } })).toBe(true);
+    // Saved and loaded: both rounded to the same thousandth.
+    expect(laidFlat({ x: 10.0004, y: 20, laidAt: { x: 10, y: 20 } })).toBe(true);
+  });
+
+  it('rest normally once moved, or when never laid', () => {
+    expect(laidFlat({ x: 15, y: 20, laidAt: { x: 10, y: 20 } })).toBe(false);
+    expect(laidFlat({ x: 10, y: 20 })).toBe(false);
   });
 });

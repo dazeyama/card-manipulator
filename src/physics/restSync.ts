@@ -8,7 +8,7 @@
 
 import type { App } from '../app';
 import { overlaps } from '../state/piles';
-import { restOn, type Rest, type Resting } from '../state/rest';
+import { laidFlat, restOn, type Rest, type Resting } from '../state/rest';
 import { CARD_T, type Pile } from '../state/types';
 
 /** A card rests on at most this many of the cards under it, nearest first. */
@@ -133,6 +133,12 @@ export class RestSync {
     for (let k = 0; k < cards.length; k++) {
       const c = cards[k];
       if (c.z < fromZ - 1e-6) continue;
+      // Laid out by an X spread and not moved since: flat at its model height (decision 160).
+      if (laidFlat(c)) {
+        resting[k] = { x: c.x, y: c.y, yaw: c.yaw, z: c.z, tiltX: 0, tiltY: 0 };
+        this.apply(c.uid, null);
+        continue;
+      }
       const supports: Resting[] = [];
       for (let j = k - 1; j >= 0 && supports.length < MAX_SUPPORTS; j--) {
         if (held.has(cards[j].uid)) continue;

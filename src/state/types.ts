@@ -23,6 +23,11 @@ export interface Card {
   pileId: string | null;
   /** Set while the card is part of a spread: the id of the stack it came from. */
   spreadOf: string | null;
+  /**
+   * Where an X spread laid the card (decision 160). While it stays there it lies
+   * flat, even over other cards, instead of tipping to rest on them.
+   */
+  laidAt?: { x: number; y: number };
 }
 
 export type PileKind = 'stack' | 'messy';

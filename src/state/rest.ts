@@ -30,6 +30,12 @@ export interface Rest {
   tiltY: number;
 }
 
+/** True while a card is still where an X spread laid it, so it lies flat (decision 160). */
+export function laidFlat(card: { x: number; y: number; laidAt?: { x: number; y: number } }): boolean {
+  const at = card.laidAt;
+  return !!at && Math.abs(at.x - card.x) < 0.01 && Math.abs(at.y - card.y) < 0.01;
+}
+
 /** A point under the card, in its own frame: s across the short side, t along the long side. */
 interface Point {
   s: number;

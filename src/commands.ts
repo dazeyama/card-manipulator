@@ -303,7 +303,10 @@ export class Commands {
       store.spreads.set(spread.id, spread);
       for (const u of ordered) store.cards.get(u)!.spreadOf = spread.id;
     }
-    land(this.app, placeSequential(this.app, ordered, layout(ordered.length)), { stagger: Math.min(4, 300 / ordered.length), arc: 6 });
+    const landings = placeSequential(this.app, ordered, layout(ordered.length));
+    // Overlapping cards would tip to rest on each other; these stay flat where they are laid (decision 160).
+    for (const l of landings) store.cards.get(l.uid)!.laidAt = { x: l.x, y: l.y };
+    land(this.app, landings, { stagger: Math.min(4, 300 / ordered.length), arc: 6 });
   }
 
   /** T: square up each pile the selection touches, without merging piles. Loose cards snap to a quarter turn. */
