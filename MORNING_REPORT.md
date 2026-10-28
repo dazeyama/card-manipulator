@@ -54,7 +54,8 @@ Changes made with you after the overnight build. Each is logged in Appendix A of
 | **Double-tap F fronts** a mixed stack: every card faces up, on the table or in the hand. | 105 | `d89e4b9` |
 | **Double-tap S shuffles**: the stack's cards land in a random order, on the table or in the hand. | 106 | `cf686c2` |
 | **Curve view**: `C` curves a pile out by mana value; `Shift + C` curves everything into a row per colour; **Split creatures** toggle in the HUD. | 107 | `882f9f2` |
-| **C toggles**: on a curve it stacks it back up. Cascades are 22 mm apart (was 11). | 108 | this report's commit |
+| **C toggles**: on a curve it stacks it back up. Cascades are 22 mm apart (was 11). | 108 | `4740d85` |
+| **Badges only for named piles**, or for every pile while Alt is held. | 109 | this report's commit |
 
 The per-phase sections below describe the build as it was overnight. The QA checklist at the end uses the current controls.
 
@@ -277,7 +278,8 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 - [ ] Chips append and apply; Ctrl-click excludes (decision 88).
 
 ### Phase 4
-- [ ] Drag one card onto another: badge reads 2, and the top card sits a little off and turned (decision 94).
+- [ ] Unnamed piles show no badge until you hold Alt; named piles always show theirs (decision 109).
+- [ ] Drag one card onto another: with Alt held the badge reads 2, and the top card sits a little off and turned (decision 94).
 - [ ] Select thirty, drag: they clump behind the cursor and fall into a loose stack on release; `T` squares it up (decision 94).
 - [ ] Drag a single card by its corner in a curve: it turns a little about where you hold it.
 - [ ] Select a stack, drag it quickly and let go mid-swing: the cards stay strung out where they were, a fan (decision 95).

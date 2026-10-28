@@ -1,7 +1,8 @@
 // Pile badges (spec 11.2, 9.7): a count pill above every pile of two or more
 // cards, facing the camera at a constant size. Click selects the pile, Ctrl
 // toggles it, dragging lifts it, double-click spreads it. Open spreads keep a
-// badge at their anchor. One HTML layer, culled to the view.
+// badge at their anchor. One HTML layer, culled to the view. Only named piles
+// show their badge all the time; the rest show while Alt is held (decision 109).
 
 import type { App } from '../app';
 
@@ -25,6 +26,8 @@ interface Badge {
   h: number;
   /** Higher wins a crowded spot: named piles, selected piles, bigger piles. */
   prio: number;
+  /** A named pile's badge (or its spread's, or its empty outline's): always shown. */
+  named: boolean;
 }
 
 export class Badges {
@@ -33,6 +36,8 @@ export class Badges {
   private dirty = true;
   /** Zoomed far out: shorter badge text so more fit. */
   private compact = false;
+  /** Alt is held: every pile shows its badge (decision 109). */
+  private alt = false;
 
   constructor(private readonly app: App, private readonly handlers: BadgeHandlers) {
     this.layer = document.createElement('div');
@@ -44,6 +49,11 @@ export class Badges {
     app.store.events.on('reset', mark);
     app.store.events.on('removed', mark);
     app.onFrame(() => this.update());
+    const setAlt = (on: boolean) => (this.alt = on);
+    window.addEventListener('keydown', (e) => setAlt(e.altKey));
+    window.addEventListener('keyup', (e) => setAlt(e.altKey));
+    window.addEventListener('pointermove', (e) => setAlt(e.altKey));
+    window.addEventListener('blur', () => setAlt(false));
   }
 
   refresh(): void {
@@ -112,7 +122,7 @@ export class Badges {
       });
       this.handlers.decorate?.(pileId, el, spread);
       this.layer.append(el);
-      b = { el, text: t, x: NaN, y: NaN, shown: true, key: '', w: 0, h: 0, prio: 0 };
+      b = { el, text: t, x: NaN, y: NaN, shown: true, key: '', w: 0, h: 0, prio: 0, named: false };
       this.badges.set(id, b);
     }
     const key = `${text}|${selState}|${spread}|${outline}`;
@@ -123,7 +133,8 @@ export class Badges {
       b.el.classList.toggle('sel-some', selState === 'some');
       b.el.classList.toggle('spread', spread);
       b.el.classList.toggle('outline', outline);
-      b.el.classList.toggle('named', !!this.app.store.named.get(spread || outline ? id.slice(id.indexOf(':') + 1) : id));
+      b.named = !!this.app.store.named.get(spread || outline ? id.slice(id.indexOf(':') + 1) : id);
+      b.el.classList.toggle('named', b.named);
       b.w = 0;
     }
     const n = parseInt(text.replace(/^.*?(\d+)[^\d]*$/, '$1'), 10) || 0;
@@ -185,7 +196,8 @@ export class Badges {
         px = s.x;
         py = s.y;
       }
-      const on = visible && px > -60 && py > -30 && px < width + 60 && py < height + 30;
+      // Unnamed piles show their badge only while Alt is held (decision 109).
+      const on = visible && (b.named || this.alt) && px > -60 && py > -30 && px < width + 60 && py < height + 30;
       placed.push({ b, px, py, on });
     }
     // Declutter: when badges overlap (zoomed out), the more important one stays.
