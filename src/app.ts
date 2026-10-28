@@ -49,6 +49,8 @@ export class App {
   ctrlHeld = false;
   /** A number was pressed over a pile: the next click deals that many of its top cards as a hand (decision 143). */
   drawing: { count: number; source: string[] } | null = null;
+  /** X was pressed: the next click or dragged box on the table spreads these cards there (decision 159). */
+  spreading: { source: string[] } | null = null;
   /** Per-frame hooks run before rendering. */
   private readonly frameHooks: ((now: number, dt: number) => void)[] = [];
   private lastFrame = performance.now();

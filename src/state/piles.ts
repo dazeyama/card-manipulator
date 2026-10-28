@@ -185,6 +185,47 @@ export function gridLayout(count: number, centre: { x: number; y: number }, gap 
   return out;
 }
 
+/**
+ * A grid that fits inside a box on the table (decision 159), top card first,
+ * left to right and rows top to bottom. With room to spare the cards keep the
+ * usual gap, centred in the box; short of room they overlap evenly, so they
+ * stay inside the box however small it is (cards don't shrink, so a box
+ * narrower or shorter than one card holds them centred on it). Of the grid
+ * shapes, the one that leaves the most of each card showing wins; among
+ * shapes that show every card whole, the one closest to the box's shape.
+ */
+export function fitLayout(count: number, box: { minX: number; minY: number; maxX: number; maxY: number }, gap = 6): Placed[] {
+  if (count < 1) return [];
+  const w = Math.max(0, box.maxX - box.minX);
+  const h = Math.max(0, box.maxY - box.minY);
+  const pitchX = CARD_W + gap, pitchY = CARD_H + gap;
+  const boxShape = Math.log(Math.max(1, w) / Math.max(1, h));
+  let best = { cols: 1, rows: count, stepX: 0, stepY: 0, score: -1, shape: Infinity };
+  for (let cols = 1; cols <= count; cols++) {
+    const rows = Math.ceil(count / cols);
+    const stepX = cols > 1 ? Math.min(pitchX, Math.max(0, (w - CARD_W) / (cols - 1))) : 0;
+    const stepY = rows > 1 ? Math.min(pitchY, Math.max(0, (h - CARD_H) / (rows - 1))) : 0;
+    // How much of each card the next one along leaves showing, across and down.
+    const showX = cols > 1 ? Math.min(1, stepX / CARD_W) : 1;
+    const showY = rows > 1 ? Math.min(1, stepY / CARD_H) : 1;
+    const score = showX * showY;
+    const shape = Math.abs(Math.log((cols * pitchX) / (rows * pitchY)) - boxShape);
+    if (score > best.score + 1e-9 || (Math.abs(score - best.score) <= 1e-9 && shape < best.shape)) {
+      best = { cols, rows, stepX, stepY, score, shape };
+    }
+  }
+  const { cols, rows, stepX, stepY } = best;
+  const usedW = CARD_W + (cols - 1) * stepX;
+  const usedH = CARD_H + (rows - 1) * stepY;
+  const left = (box.minX + box.maxX) / 2 - usedW / 2 + CARD_W / 2;
+  const top = (box.minY + box.maxY) / 2 + usedH / 2 - CARD_H / 2;
+  const out: Placed[] = [];
+  for (let i = 0; i < count; i++) {
+    out.push({ x: left + (i % cols) * stepX, y: top - Math.floor(i / cols) * stepY, yaw: 0, z: CARD_T / 2 });
+  }
+  return out;
+}
+
 // ---- detection (spec 11.1) ----
 
 export interface PileCard extends Placed {

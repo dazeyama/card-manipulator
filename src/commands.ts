@@ -285,6 +285,27 @@ export class Commands {
     land(this.app, placeSequential(this.app, ordered, grid));
   }
 
+  /**
+   * X, then a click or a dragged box (decision 159): spread the cards in a
+   * grid there, top card first. A whole pile remembers where it came from,
+   * so a double-click or X on it stacks it back there.
+   */
+  spreadTo(cards: string[], layout: (count: number) => Placed[]): void {
+    const store = this.app.store;
+    if (!cards.length) return;
+    const pile = store.pileOf(cards[0]);
+    const whole = !!pile && pile.cardUids.length === cards.length && cards.every((u) => store.pileOf(u) === pile);
+    const ordered = whole ? [...pile!.cardUids].reverse() : byHeight(this.app, cards).reverse();
+    leaveSpreads(this.app, ordered);
+    if (whole) {
+      const bottom = store.cards.get(pile!.cardUids[0])!;
+      const spread: Spread = { id: pile!.id, anchor: { ...pile!.anchor }, yaw: snapYaw(bottom.yaw), uids: ordered, pileId: pile!.name ? pile!.id : null };
+      store.spreads.set(spread.id, spread);
+      for (const u of ordered) store.cards.get(u)!.spreadOf = spread.id;
+    }
+    land(this.app, placeSequential(this.app, ordered, layout(ordered.length)), { stagger: Math.min(4, 300 / ordered.length), arc: 6 });
+  }
+
   /** T: square up each pile the selection touches, without merging piles. Loose cards snap to a quarter turn. */
   tidy(cards: string[] = this.sel): void {
     const store = this.app.store;

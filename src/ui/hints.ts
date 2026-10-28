@@ -102,6 +102,7 @@ export class ContextHints {
   /** Which set of hints fits what the mouse is doing. */
   private context(): string {
     if (this.app.drawing) return 'draw';
+    if (this.app.spreading) return 'spread';
     const gesture = this.mouse.gestureKind;
     if (gesture === 'pan' || (this.mouse.spaceDown && !this.drag.dragging)) return 'pan';
     if (gesture === 'orbit') return 'orbit';
@@ -118,10 +119,13 @@ export class ContextHints {
     const lit = (key?: Key) => !!key && this.keys[key];
     // Drawing a hand (decision 143): what the next click does.
     const n = this.app.drawing?.count ?? 0;
+    const spreadCount = this.app.spreading?.source.length ?? 0;
     const hints: Hint[] = context === 'draw'
       ? [['👆', `Click the table to lay out a hand of ${n}`], ['🃏', 'They land face up'], ['⎋', 'Esc cancels']]
-      : HINTS[context];
-    const signature = context + n + hints.map((hint) => (lit(hint[2]) ? '1' : '0')).join('');
+      : context === 'spread'
+        ? [['👆', `Click to spread ${spreadCount} card${spreadCount === 1 ? '' : 's'} there`], ['🔲', 'Drag a box to fit them inside it'], ['🪟', 'X again spreads them in place'], ['⎋', 'Esc cancels']]
+        : HINTS[context];
+    const signature = context + n + spreadCount + hints.map((hint) => (lit(hint[2]) ? '1' : '0')).join('');
     if (signature === this.shown) return;
     this.shown = signature;
     this.el.replaceChildren(

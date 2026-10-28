@@ -33,6 +33,7 @@ import { HelpPanel } from './ui/helpPanel';
 import { buildQueryTab } from './ui/queryTab';
 import { HiRes } from './render/hires';
 import { installFit } from './ui/fit';
+import { fitLayout, gridLayout } from './state/piles';
 import { Graphics } from './graphics';
 import { SelectionMarkers } from './render/markers';
 import { ACCENT } from './app';
@@ -223,8 +224,28 @@ keyboard.bind('s', () => {
   } else if (twice) commands.shuffle(hoveredPile());
   else commands.stack(hoveredPile());
 });
-// X on a hovered card toggles its pile's spread, as a double-click does: spread it, or restack it.
-keyboard.bind('x', () => (drag.dragging ? drag.spreadHeld() : !store.selection.size && mouse.hovered ? commands.toggleSpread(mouse.hovered) : commands.spread()));
+// X (decision 159): the pointing glove; the next click spreads the selection (or the hovered
+// pile) centred there, or a dragged box spreads it to fit inside the box. X on a spread
+// restacks it at once; X twice quickly spreads in place, as X used to. Esc cancels.
+let lastX = 0;
+const startSpread = (source: string[]) => {
+  app.drawing = null;
+  app.spreading = source.length ? { source } : null;
+};
+keyboard.bind('x', () => {
+  if (drag.dragging) return drag.spreadHeld();
+  const now = performance.now();
+  const twice = now - lastX < 400;
+  lastX = now;
+  if (twice && app.spreading) {
+    const { source } = app.spreading;
+    app.spreading = null;
+    return commands.spread(source);
+  }
+  const card = !store.selection.size && mouse.hovered ? store.cards.get(mouse.hovered) : undefined;
+  if (card?.spreadOf && store.spreads.has(card.spreadOf)) return commands.restack(card.spreadOf);
+  startSpread(hoveredPile());
+});
 keyboard.bind('t', () => (drag.dragging ? drag.tidyHeld() : commands.tidy(hoveredPile())));
 // C: curve out the selection or the hovered pile by mana value; Shift + C: everything
 // (or the selection), sorted into a row per colour (decision 107).
@@ -245,6 +266,7 @@ for (let n = 1; n <= 9; n++) {
   keyboard.bind(String(n), () => {
     if (drag.dragging) return;
     const source = hoveredPile();
+    app.spreading = null;
     app.drawing = source.length ? { count: n, source } : null;
   });
 }
@@ -258,11 +280,86 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
   const at = app.rig.screenToPlane(e.clientX - r.left, e.clientY - r.top, 0);
   if (at) commands.dealHand(draw.source, draw.count, at);
 }, true);
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && app.drawing) {
-    e.stopImmediatePropagation();
-    app.drawing = null;
+// Spreading (decision 159): a click spreads the cards centred there; a drag draws a box they fit inside.
+const spreadBox = h('div', { class: 'marquee' });
+spreadBox.hidden = true;
+app.overlay.append(spreadBox);
+let endSpreadGesture: (() => void) | null = null;
+app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
+  const spreading = app.spreading;
+  if (!spreading || e.button !== 0) return;
+  e.stopImmediatePropagation();
+  e.preventDefault();
+  const r = app.canvas.getBoundingClientRect();
+  const x0 = e.clientX - r.left, y0 = e.clientY - r.top;
+  let x1 = x0, y1 = y0, boxed = false;
+  const move = (ev: PointerEvent) => {
+    x1 = ev.clientX - r.left;
+    y1 = ev.clientY - r.top;
+    if (!boxed && Math.hypot(x1 - x0, y1 - y0) > 4) boxed = true;
+    if (!boxed) return;
+    spreadBox.hidden = false;
+    Object.assign(spreadBox.style, {
+      left: `${Math.min(x0, x1)}px`,
+      top: `${Math.min(y0, y1)}px`,
+      width: `${Math.abs(x1 - x0)}px`,
+      height: `${Math.abs(y1 - y0)}px`,
+    });
+  };
+  const end = () => {
+    window.removeEventListener('pointermove', move, true);
+    window.removeEventListener('pointerup', up, true);
+    spreadBox.hidden = true;
+    endSpreadGesture = null;
+  };
+  const up = (ev: PointerEvent) => {
+    if (ev.button !== 0) return;
+    end();
+    app.spreading = null;
+    if (boxed) {
+      const box = tableBox(x0, y0, x1, y1);
+      if (box) commands.spreadTo(spreading.source, (n) => fitLayout(n, box));
+      return;
+    }
+    const at = app.rig.screenToPlane(x0, y0, 0);
+    if (at) commands.spreadTo(spreading.source, (n) => gridLayout(n, at));
+  };
+  endSpreadGesture = end;
+  window.addEventListener('pointermove', move, true);
+  window.addEventListener('pointerup', up, true);
+}, true);
+/**
+ * The part of the table inside a box drawn on screen: the biggest table-aligned
+ * rectangle about the box's centre whose corners all land inside it, since a
+ * tilted camera turns the screen box into a trapezoid on the table.
+ */
+function tableBox(x0: number, y0: number, x1: number, y1: number): { minX: number; minY: number; maxX: number; maxY: number } | null {
+  const l = Math.min(x0, x1), rgt = Math.max(x0, x1), t = Math.min(y0, y1), b = Math.max(y0, y1);
+  const rig = app.rig;
+  const centre = rig.screenToPlane((l + rgt) / 2, (t + b) / 2, 0);
+  const corners = [[l, t], [rgt, t], [rgt, b], [l, b]].map(([sx, sy]) => rig.screenToPlane(sx, sy, 0));
+  if (!centre || corners.some((c) => !c)) return null;
+  const c = { x: centre.x, y: centre.y };
+  const hx = Math.max(...corners.map((p) => Math.abs(p!.x - c.x)));
+  const hy = Math.max(...corners.map((p) => Math.abs(p!.y - c.y)));
+  const fits = (s: number) => [[-1, -1], [1, -1], [1, 1], [-1, 1]].every(([dx, dy]) => {
+    const p = rig.worldToScreen(c.x + dx * hx * s, c.y + dy * hy * s, 0);
+    return p.x >= l - 0.5 && p.x <= rgt + 0.5 && p.y >= t - 0.5 && p.y <= b + 0.5;
+  });
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) / 2;
+    if (fits(mid)) lo = mid;
+    else hi = mid;
   }
+  return { minX: c.x - hx * lo, minY: c.y - hy * lo, maxX: c.x + hx * lo, maxY: c.y + hy * lo };
+}
+window.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || !(app.drawing || app.spreading)) return;
+  e.stopImmediatePropagation();
+  app.drawing = null;
+  app.spreading = null;
+  endSpreadGesture?.();
 }, true);
 // H: fan the selection or the hovered pile like a hand of cards; H again stacks it back (decision 141).
 keyboard.bind('h', () => {
@@ -338,7 +435,7 @@ keyboard.bind('backspace', removeSelection);
 
 // Each button shows its key in brackets after the icon (decision 156).
 hud.addButton('📚 (S) Stack', 'Gather the selection into one stack (S); neat in Tidy mode', () => commands.stack());
-hud.addButton('🪟 (X) Spread', 'Spread the selection in a grid (X)', () => commands.spread());
+hud.addButton('🪟 (X) Spread', 'Spread the selection (X): then click the table to spread it there, or drag a box to fit it inside', () => startSpread([...store.selection]));
 hud.addButton('🧹 (T) Tidy', 'Square up each pile the selection touches (T)', () => commands.tidy());
 hud.addButton('🃏 (F) Flip', 'Flip the selection over (F)', () => commands.flip());
 hud.addButton('🎴 (H) Fan', 'Fan the selection like a hand of cards, or stack a fan back up (H)', () => commands.toggleFan([...store.selection]));
