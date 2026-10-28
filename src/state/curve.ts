@@ -1,10 +1,12 @@
 // Curve view (decision 107): cards laid out by mana value, the way deckbuilders
 // and cube lists show them. Each mana value is a column of cards cascading
-// down the table with every card's title bar showing; lands sit in a neat
-// stack at the start. Optionally creatures and non-creatures cascade in two
-// bands. Sorted by colour, each colour group is its own block of columns, two
-// blocks to a row: white and blue, black and red, green and colourless, then
-// multicolour and lands (decision 113). Pure geometry, tested without a browser.
+// down the table with every card's title bar showing. Optionally creatures and
+// non-creatures cascade in two bands. Sorted by colour, each colour group is
+// its own block of columns, two blocks to a row: white and blue, black and
+// red, green and colourless, then multicolour (decision 113). Lands get their
+// own row underneath, cascading in a column per colour identity: the ten
+// guilds, then three or more colours, then one colour and colourless together
+// (decision 149). Pure geometry, tested without a browser.
 
 import { CARD_H, CARD_T, CARD_W } from './types';
 import type { Placed } from './piles';
@@ -30,11 +32,27 @@ export interface CurveCard {
   creature: boolean;
   /** Colour group, for sorting by colour: see COLOUR_GRID. */
   group: ColourGroup;
+  /** Colour identity (Scryfall's ci), which picks a land's column. */
+  identity: string[];
 }
 
 export type ColourGroup = 'W' | 'U' | 'B' | 'R' | 'G' | 'multi' | 'colourless' | 'land';
-/** Where each colour block goes when sorted by colour: two to a row, top to bottom (decision 113). */
-export const COLOUR_GRID: ColourGroup[][] = [['W', 'U'], ['B', 'R'], ['G', 'colourless'], ['multi', 'land']];
+/** Where each colour block goes when sorted by colour: two to a row, top to bottom (decision 113). Lands have their own row below. */
+export const COLOUR_GRID: ColourGroup[][] = [['W', 'U'], ['B', 'R'], ['G', 'colourless'], ['multi']];
+
+/** The guilds in their usual order: Azorius, Orzhov, Dimir, Izzet, Rakdos, Golgari, Gruul, Boros, Selesnya, Simic. */
+export const GUILDS = ['WU', 'WB', 'UB', 'UR', 'BR', 'BG', 'RG', 'RW', 'GW', 'GU'];
+
+/**
+ * A land's column in the land row (decision 149): 0 to 9 for the guilds,
+ * 10 for three or more colours, 11 for one colour or none.
+ */
+export function landColumn(identity: string[]): number {
+  if (identity.length >= 3) return GUILDS.length;
+  if (identity.length < 2) return GUILDS.length + 1;
+  const i = GUILDS.findIndex((g) => identity.includes(g[0]) && identity.includes(g[1]));
+  return i < 0 ? GUILDS.length + 1 : i;
+}
 
 /** A card's colour group from its colours and type: lands first, then by colour count. */
 export function colourGroup(colours: string[], land: boolean): ColourGroup {
@@ -45,33 +63,34 @@ export function colourGroup(colours: string[], land: boolean): ColourGroup {
   return c === 'W' || c === 'U' || c === 'B' || c === 'R' || c === 'G' ? c : 'colourless';
 }
 
-/** The column a card goes in: 0 for lands, 1 + mana value (7+ together) for the rest. */
+/** The column a spell goes in: its mana value, 7 and up together. */
 function columnOf(card: CurveCard): number {
-  return card.land ? 0 : 1 + Math.min(MAX_MV, Math.max(0, Math.floor(card.mv)));
+  return Math.min(MAX_MV, Math.max(0, Math.floor(card.mv)));
 }
 
+interface Block {
+  placed: { uid: string; x: number; y: number }[];
+  height: number;
+}
+
+const byName = (a: CurveCard, b: CurveCard) => a.name.localeCompare(b.name);
+
 /**
- * One curve: a column per mana value in `cols`, cascading down from y = 0
- * (negative y is down the table), lands stacked in column 0. Returns the
- * placements, x from the block's left edge, and the block's height.
+ * One curve: a column per value of `column` in `cols`, cascading down from
+ * y = 0 (negative y is down the table). Returns the placements, x from the
+ * block's left edge, and the block's height.
  */
-function block(cards: CurveCard[], cols: number[], split: boolean): { placed: { uid: string; x: number; y: number }[]; height: number } {
-  const byName = (a: CurveCard, b: CurveCard) => a.name.localeCompare(b.name);
+function block(cards: CurveCard[], cols: number[], split: boolean, column: (c: CurveCard) => number = columnOf): Block {
   const placed: { uid: string; x: number; y: number }[] = [];
   let top = 0;
-  const bands = split ? [cards.filter((c) => c.creature || c.land), cards.filter((c) => !c.creature && !c.land)] : [cards];
+  const bands = split ? [cards.filter((c) => c.creature), cards.filter((c) => !c.creature)] : [cards];
   for (const band of bands) {
     if (!band.length) continue;
     let tallest = CARD_H;
     cols.forEach((col, k) => {
-      const inCol = band.filter((c) => columnOf(c) === col).sort(byName);
+      const inCol = band.filter((c) => column(c) === col).sort(byName);
       if (!inCol.length) return;
       const x = k * (CARD_W + COLUMN_GAP) + CARD_W / 2;
-      if (col === 0) {
-        // Lands: one neat stack at the start.
-        for (const c of inCol) placed.push({ uid: c.uid, x, y: top - CARD_H / 2 });
-        return;
-      }
       inCol.forEach((c, i) => placed.push({ uid: c.uid, x, y: top - CARD_H / 2 - i * CASCADE_STEP }));
       tallest = Math.max(tallest, CARD_H + (inCol.length - 1) * CASCADE_STEP);
     });
@@ -82,42 +101,62 @@ function block(cards: CurveCard[], cols: number[], split: boolean): { placed: { 
 
 const widthOf = (cols: number) => cols * CARD_W + (cols - 1) * COLUMN_GAP;
 
+/** The land row (decision 149): a cascading column per colour identity that has lands, in landColumn order. */
+function landRow(lands: CurveCard[]): Block & { width: number } {
+  const column = (c: CurveCard) => landColumn(c.identity);
+  const cols = [...new Set(lands.map(column))].sort((a, b) => a - b);
+  return { ...block(lands, cols, false, column), width: widthOf(cols.length) };
+}
+
 /**
  * Lay cards out as a curve. Returns where each card goes, in the order to
  * place them (each cascade top card first, so later cards lie over the one
  * above and leave its title bar showing). The whole layout is centred on
  * `centre`. `byColour` gives each colour group its own block, two to a row
  * (COLOUR_GRID), with the mana value columns lined up across blocks; `split`
- * puts creatures and non-creatures in separate bands.
+ * puts creatures and non-creatures in separate bands. Lands always go in
+ * their own row underneath, a column per colour identity.
  */
 export function curveLayout(cards: CurveCard[], centre: { x: number; y: number }, opts: { byColour: boolean; split: boolean }): { uid: string; at: Placed }[] {
   const placed: { uid: string; x: number; y: number }[] = [];
-  let width: number, height: number;
-  if (!opts.byColour) {
-    const cols = [...new Set(cards.map(columnOf))].sort((a, b) => a - b);
-    const b = block(cards, cols, opts.split);
+  const spells = cards.filter((c) => !c.land);
+  const lands = cards.filter((c) => c.land);
+  const cols = [...new Set(spells.map(columnOf))].sort((a, b) => a - b);
+  let width = 0, height = 0;
+  if (spells.length && !opts.byColour) {
+    const b = block(spells, cols, opts.split);
     placed.push(...b.placed);
     width = widthOf(cols.length);
     height = b.height;
-  } else {
-    // Every colour block uses the same mana value columns, so they line up; lands are their own block.
-    const cols = [...new Set(cards.filter((c) => !c.land).map(columnOf))].sort((a, b) => a - b);
+  } else if (spells.length) {
+    // Every colour block uses the same mana value columns, so they line up.
     const blockWidth = Math.max(CARD_W, widthOf(cols.length));
     let top = 0;
+    let used = 0;
     for (const row of COLOUR_GRID) {
       let tallest = 0;
       row.forEach((g, k) => {
-        const group = cards.filter((c) => c.group === g);
+        const group = spells.filter((c) => c.group === g);
         if (!group.length) return;
-        const b = block(group, g === 'land' ? [0] : cols, opts.split);
+        used = Math.max(used, k + 1);
+        const b = block(group, cols, opts.split);
         const left = k * (blockWidth + BLOCK_GAP);
         for (const p of b.placed) placed.push({ uid: p.uid, x: left + p.x, y: top + p.y });
         tallest = Math.max(tallest, b.height);
       });
       if (tallest) top -= tallest + ROW_GAP;
     }
-    width = 2 * blockWidth + BLOCK_GAP;
+    width = used * blockWidth + (used - 1) * BLOCK_GAP;
     height = -top - ROW_GAP;
+  }
+
+  // Lands: their own row underneath, from the left edge.
+  if (lands.length) {
+    const row = landRow(lands);
+    const top = spells.length ? -(height + ROW_GAP) : 0;
+    for (const p of row.placed) placed.push({ uid: p.uid, x: p.x, y: top + p.y });
+    width = Math.max(width, row.width);
+    height = -top + row.height;
   }
 
   // Centre the whole layout on the spot.

@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { CASCADE_STEP, colourGroup, curveLayout, type CurveCard } from '../src/state/curve';
+import { CASCADE_STEP, colourGroup, curveLayout, GUILDS, landColumn, type CurveCard } from '../src/state/curve';
 
-const card = (uid: string, mv: number, extra: Partial<CurveCard> = {}): CurveCard => ({ uid, name: uid, mv, land: false, creature: false, group: 'R', ...extra });
+const card = (uid: string, mv: number, extra: Partial<CurveCard> = {}): CurveCard => ({ uid, name: uid, mv, land: false, creature: false, group: 'R', identity: [], ...extra });
+const land = (uid: string, identity: string[]): CurveCard => card(uid, 0, { land: true, group: 'land', identity });
 
 describe('curve layout (decision 107)', () => {
-  it('puts each mana value in its own column, left to right, lands first', () => {
-    const cards = [card('bolt', 1), card('helix', 2), card('wall', 2), card('mountain', 0, { land: true }), card('dragon', 9)];
+  it('puts each mana value in its own column, left to right', () => {
+    const cards = [card('bolt', 1), card('helix', 2), card('wall', 2), card('dragon', 9)];
     const at = new Map(curveLayout(cards, { x: 0, y: 0 }, { byColour: false, split: false }).map((p) => [p.uid, p.at]));
-    expect(at.get('mountain')!.x).toBeLessThan(at.get('bolt')!.x);
     expect(at.get('bolt')!.x).toBeLessThan(at.get('helix')!.x);
     expect(at.get('helix')!.x).toBe(at.get('wall')!.x);
     // 9 shares the 7+ column, which comes last.
@@ -22,10 +22,40 @@ describe('curve layout (decision 107)', () => {
     expect(order[1].at.y - order[2].at.y).toBeCloseTo(CASCADE_STEP, 9);
   });
 
-  it('stacks lands neatly on one spot', () => {
-    const cards = [card('m1', 0, { land: true }), card('m2', 0, { land: true }), card('m3', 0, { land: true })];
-    const spots = curveLayout(cards, { x: 0, y: 0 }, { byColour: false, split: false }).map((p) => `${p.at.x},${p.at.y}`);
-    expect(new Set(spots).size).toBe(1);
+  it('puts lands in a row underneath, a cascading column per colour identity (decision 149)', () => {
+    const cards = [
+      card('bolt', 1),
+      land('temple', ['U', 'W']),
+      land('tundra', ['W', 'U']),
+      land('godless', ['W', 'B']),
+      land('breeding', ['G', 'U']),
+      land('triome', ['W', 'U', 'B']),
+      land('mountain', ['R']),
+      land('wastes', []),
+    ];
+    for (const split of [false, true]) {
+      for (const byColour of [false, true]) {
+        const at = new Map(curveLayout(cards, { x: 0, y: 0 }, { byColour, split }).map((p) => [p.uid, p.at]));
+        // Under every spell.
+        for (const l of cards.filter((c) => c.land)) expect(at.get(l.uid)!.y).toBeLessThan(at.get('bolt')!.y - 88);
+        // Azorius (one column, cascading by name), Orzhov, Simic, three colours, then one colour and colourless together.
+        expect(at.get('temple')!.x).toBe(at.get('tundra')!.x);
+        expect(at.get('temple')!.y - at.get('tundra')!.y).toBeCloseTo(CASCADE_STEP, 9);
+        expect(at.get('tundra')!.x).toBeLessThan(at.get('godless')!.x);
+        expect(at.get('godless')!.x).toBeLessThan(at.get('breeding')!.x);
+        expect(at.get('breeding')!.x).toBeLessThan(at.get('triome')!.x);
+        expect(at.get('triome')!.x).toBeLessThan(at.get('mountain')!.x);
+        expect(at.get('mountain')!.x).toBe(at.get('wastes')!.x);
+      }
+    }
+  });
+
+  it('gives each land a column: the guilds in order, then 3+ colours, then one colour or none', () => {
+    expect(GUILDS.map((g) => landColumn(g.split('')))).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(landColumn(['U', 'G'])).toBe(9);
+    expect(landColumn(['W', 'U', 'B', 'R', 'G'])).toBe(10);
+    expect(landColumn(['G'])).toBe(11);
+    expect(landColumn([])).toBe(11);
   });
 
   it('splits creatures above non-creatures when asked', () => {
@@ -44,7 +74,7 @@ describe('curve layout (decision 107)', () => {
     expect(at.get('w3')!.x).toBeGreaterThan(at.get('w2')!.x);
   });
 
-  it('lays colours out two to a row: W U, then B R, then G colourless, then multicolour and lands', () => {
+  it('lays colours out two to a row: W U, then B R, then G colourless, then multicolour, then lands', () => {
     const groups = ['W', 'U', 'B', 'R', 'G', 'colourless', 'multi', 'land'] as const;
     const cards = groups.map((g) => card(g, 2, { group: g, land: g === 'land' }));
     const at = new Map(curveLayout(cards, { x: 0, y: 0 }, { byColour: true, split: false }).map((p) => [p.uid, p.at]));
@@ -59,6 +89,7 @@ describe('curve layout (decision 107)', () => {
     expect(at.get('B')!.y).toBeGreaterThan(at.get('G')!.y);
     expect(at.get('G')!.y).toBeGreaterThan(at.get('multi')!.y);
     expect(at.get('multi')!.x).toBeCloseTo(left, 9);
+    expect(at.get('multi')!.y).toBeGreaterThan(at.get('land')!.y);
   });
 
   it('centres the layout on the spot', () => {

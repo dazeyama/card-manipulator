@@ -154,8 +154,9 @@ export class Commands {
   }
 
   /**
-   * C: curve the cards out by mana value, a column each, lands in a stack at
-   * the start; Shift + C also sorts them into a row per colour (decision 107).
+   * C: curve the cards out by mana value, a column each, lands in a row
+   * underneath by colour identity (decision 149); Shift + C also sorts them
+   * into a row per colour (decision 107).
    */
   curve(cards: string[], byColour: boolean): void {
     const store = this.app.store;
@@ -167,7 +168,7 @@ export class Commands {
       const type = (r?.type_line ?? '').split('//')[0];
       const isLand = /\bLand\b/.test(type);
       const colours = r ? (r.colors.length ? r.colors : front?.colors ?? []) : [];
-      return { uid, name: r?.name ?? '', mv: r?.cmc ?? 0, land: isLand, creature: /\bCreature\b/.test(type), group: colourGroup(colours, isLand) };
+      return { uid, name: r?.name ?? '', mv: r?.cmc ?? 0, land: isLand, creature: /\bCreature\b/.test(type), group: colourGroup(colours, isLand), identity: r?.color_identity ?? [] };
     });
     leaveSpreads(this.app, cards);
     const layout = curveLayout(info, centroid(this.app, cards), { byColour, split: store.settings.curveSplit });
