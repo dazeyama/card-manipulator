@@ -28,7 +28,7 @@ const states: [string, string, string, string][] = [
   ['open', '📚', 'Pile badge', 'Lift whole pile'],
   ['fist', '', 'Holding cards', 'Release to drop'],
   ['fist', '🧲', 'Holding + Shift', 'Sweeping'],
-  ['fist', '📐', 'Formation drag', 'Layout kept'],
+  ['fist', '🔗', 'Formation drag', 'Layout kept'],
   ['open', '↔️', 'Space or right-drag', 'Pan'],
   ['fist', '🔄', 'Middle-drag', 'Orbit'],
 ];

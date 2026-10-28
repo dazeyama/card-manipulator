@@ -753,7 +753,7 @@ The cursor shows what the mouse will do, and what a held key changes (owner, 202
 | ... with 📚 | Over a pile's badge | Drag lifts the whole pile |
 | Gloved fist | Holding cards | Release drops them |
 | ... with 🧲 | Holding cards with Shift held | Sweeping up the cards passed over |
-| ... with 📐 | Holding cards in formation | They keep their layout |
+| ... with 🔗 | Holding cards in formation | They move linked together and keep their layout |
 | Open glove with ↔️ | Space held, or a right-drag | Pan |
 | Gloved fist with 🔄 | Middle-drag | Orbit |
 
@@ -979,6 +979,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 123 | Owner (2026-10-27): the generated arrow wasn't right either. Stop using the image generator; hand-draw a normal pointer as the first cursors were, but at the gloves' 48 px size and style, keeping it pointy. **(agent)** `src/ui/cursorArrow.ts`: the classic arrow shape in SVG, about 36 px tall in the 48 px image, with a 2.8 px black outline mitred to a sharp tip, a white body with soft grey shading along its right side, and a bold dashed marquee box behind its tail (a white halo under the dashes so they show on dark card art). The click point is the tip. The generated arrow (decision 122) is removed. |
 | 124 | Owner (2026-10-27): some emoji on the cursors were cut off at the bottom. **(agent)** They were anchored a little below the image's bottom edge by the font's nominal box, and emoji fonts draw some glyphs lower than that. Each emoji is now placed by its measured outline (`measureText`), one pixel in from the bottom right, and drawn smaller if its outline would not fit the corner (about 46% of the cursor). The preview page does the same. |
 | 125 | Owner (2026-10-27): the 🔢 badge (Alt shows every pile's count) should also show on the arrow over empty table, not only on the glove over a card. **(agent)** Ctrl and Shift still take precedence over empty table, since they change what a drag does there. |
+| 126 | Owner (2026-10-27): the formation-drag badge becomes 🔗 (linked together) instead of 📐. |
 
 ## Appendix B: Open items
 

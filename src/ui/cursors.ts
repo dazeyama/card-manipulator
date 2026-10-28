@@ -3,7 +3,7 @@
 // the gloves' size and style (cursorArrow.ts); over cards, cartoon white
 // gloves: an open hand over a card, a fist while holding cards. An emoji in the corner shows what a
 // held key adds: a magnet while Shift sweeps, numbers while Alt shows counts,
-// a set square for a formation drag, plus or minus for marquee add and take, a
+// a chain link for a formation drag, plus or minus for marquee add and take, a
 // tick for Ctrl's toggle, books for a whole pile, arrows to pan and orbit.
 // The glove art is made by devtools/makeCursors.ts; the emoji is drawn onto it
 // here with a canvas, so it uses the system's emoji font.
@@ -35,7 +35,7 @@ const STATES = {
   openPile: ['open', '📚', 'grab'],
   fist: ['fist', '', 'grabbing'],
   fistSweep: ['fist', '🧲', 'grabbing'],
-  fistFormation: ['fist', '📐', 'grabbing'],
+  fistFormation: ['fist', '🔗', 'grabbing'],
   pan: ['open', '↔️', 'move'],
   orbit: ['fist', '🔄', 'all-scroll'],
 } satisfies Record<string, [Hand, string, string]>;
