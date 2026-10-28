@@ -107,6 +107,8 @@ export interface Settings {
   flick: FlickSetting;
   /** Decklist export includes set code and collector number. */
   exportWithSet: boolean;
+  /** Curve view puts creatures and non-creatures in separate bands (decision 107). */
+  curveSplit: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -117,6 +119,7 @@ export const DEFAULT_SETTINGS: Settings = {
   queryCap: 500,
   flick: 'normal',
   exportWithSet: false,
+  curveSplit: false,
 };
 
 export interface CameraState {

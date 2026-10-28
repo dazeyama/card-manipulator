@@ -530,6 +530,7 @@ Available as HUD buttons and keys, acting on the selection:
 | Tidy | `T` | Square up each pile the selection touches without merging piles. |
 | Flip | `F`, middle-click | See 10.5. |
 | Rotate | `R` | Turn the selection, or the card under the cursor when nothing is selected, to the next quarter turn clockwise: a card at an odd angle squares up to the quarter turn just past it, a square card turns a full 90°. Press twice quickly: upright (decision 102). Piles stay piles. |
+| Curve | `C`, `Shift + C` | Curve view (decision 107): `C` lays the selection, or the pile under the cursor, out by mana value, one column per mana value (7+ together) with the cards cascading down it so every title bar shows, lands in a neat stack at the start. `Shift + C` does the same for everything on the table (or the selection), sorted into one row per colour, top to bottom: W, U, B, R, G, multicolour, colourless, lands. The **Split creatures** toggle in the HUD puts creatures and non-creatures in separate bands. |
 
 ### 10.8 Remove
 
@@ -723,6 +724,8 @@ Personality: **snappy and light** (decision 42). Quick follow, short settles, ve
 | T | Tidy the selection, or the pile under the cursor. While dragging: square the held cards into a neat stack in the hand |
 | F | Flip the selection, or the card under the cursor. While dragging: turn the held cards over in the hand. F twice quickly: every card faces up, so a mixed stack is fronted |
 | R | Turn the selection (or the card under the cursor) to the next quarter turn clockwise; R twice quickly: upright. While dragging, R turns the held cards |
+| C | Curve the selection, or the pile under the cursor, out by mana value |
+| Shift + C | Curve everything (or the selection) out by colour, a row per colour |
 | N | Name the selected pile |
 | Z | Frame the selection |
 | V | Next camera view preset |
@@ -936,6 +939,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 104 | Owner (2026-10-27): T, X, S and F should work on a stack while it is being held, as R does. **(agent)** While dragging they act on the held cards and the cards land as held. F turns them over in the hand (about 0.1 s); a held stack turns over as a whole, so its order reverses and the bottom card comes out on top. T squares them into a neat stack under the top card at a quarter turn and they then move as one. S gathers them into a clump under the cursor that lands as one stack (loose, or neat in Tidy mode). X spreads them in a grid around the cursor, top card first, and each lands where it is held, as in a formation drag. Esc after F in the hand returns the cards home still flipped. |
 | 105 | Owner (2026-10-27): double-tapping F makes cards face front, so a mixed stack can be fronted. **(agent)** Two presses within 350 ms, the same window as R. On the table: the cards the first F turned face down turn back the short way, and the rest stay up, so every card ends face up in its own place. In the hand: the first F turned the whole stack over, so its order is put back and every card faces up. A plain F always turns the same way round, now aimed at the new side's exact angle so a flip begun mid-turn ends without a snap. |
 | 106 | Owner (2026-10-27): double-tapping S not only stacks the cards but shuffles them into a random order. **(agent)** Two presses within 350 ms, like R and F. On the table the cards (the selection, or the hovered pile) land as one stack at their centre in a uniformly random order (Fisher-Yates), with a small arc and stagger so the reordering shows; loose in messy mode, neat in Tidy mode. In the hand the held cards gather in a random order and land that way. There is no undo yet. |
+| 107 | Owner (2026-10-27): **curve view**, as on Cube Cobra's curve display. `C` curves the selected pile, or the one under the cursor, out by mana value; `Shift + C` sorts everything by colour and curves out each colour, like sorting a cube. Owner's choices: columns cascade with title bars showing; splitting creatures from non-creatures is a separate toggle (a HUD button, **Split creatures**, remembered in settings); lands go in a neat stack at the start; colour groups are rows top to bottom. **(agent)** Columns 0 to 7+ by mana value, only those in use, lined up across all rows; cards in a column in name order, 11 mm apart; colour groups by the card's colours (front face for double-faced cards): one colour, multicolour, colourless, with lands first in their own row; with Split on, lands sit in the creature band. The layout is centred where the cards were. `Shift + C` acts on the selection when there is one, otherwise on every card. Cards land by layout (no physics), and a cascade is a messy pile, so it keeps its shape. `curveLayout` in `src/state/curve.ts` is pure and tested. |
 
 ## Appendix B: Open items
 

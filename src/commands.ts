@@ -5,6 +5,7 @@ import type { App } from './app';
 import { CARD_H, CARD_T, CARD_W, type Card } from './state/types';
 import { gridLayout, looseStackLayout, nextQuarterClockwise, overlaps, shuffled, snapYaw, spreadLayout, uprightYaw, type Footprint, type Placed } from './state/piles';
 import type { Spread } from './state/store';
+import { colourGroup, curveLayout, type CurveCard } from './state/curve';
 
 export interface Landing {
   uid: string;
@@ -144,6 +145,28 @@ export class Commands {
     leaveSpreads(this.app, uids);
     const c = centroid(this.app, uids);
     land(this.app, pileAt(this.app, uids, { x: c.x, y: c.y, yaw: 0 }));
+  }
+
+  /**
+   * C: curve the cards out by mana value, a column each, lands in a stack at
+   * the start; Shift + C also sorts them into a row per colour (decision 107).
+   */
+  curve(cards: string[], byColour: boolean): void {
+    const store = this.app.store;
+    if (!cards.length) return;
+    const info: CurveCard[] = cards.map((uid) => {
+      const r = store.records.get(store.cards.get(uid)!.scryfallId);
+      // Double-faced cards sort by their front face.
+      const front = r?.faces[0];
+      const type = (r?.type_line ?? '').split('//')[0];
+      const isLand = /\bLand\b/.test(type);
+      const colours = r ? (r.colors.length ? r.colors : front?.colors ?? []) : [];
+      return { uid, name: r?.name ?? '', mv: r?.cmc ?? 0, land: isLand, creature: /\bCreature\b/.test(type), group: colourGroup(colours, isLand) };
+    });
+    leaveSpreads(this.app, cards);
+    const layout = curveLayout(info, centroid(this.app, cards), { byColour, split: store.settings.curveSplit });
+    const uids = layout.map((p) => p.uid);
+    land(this.app, placeSequential(this.app, uids, layout.map((p) => p.at)), { stagger: Math.min(2, 400 / uids.length), arc: 10 });
   }
 
   /** S twice quickly (decision 106): stack the cards in a random order, a shuffle. */

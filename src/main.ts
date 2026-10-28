@@ -194,6 +194,16 @@ keyboard.bind('s', () => {
 // X on a hovered card toggles its pile's spread, as a double-click does: spread it, or restack it.
 keyboard.bind('x', () => (drag.dragging ? drag.spreadHeld() : !store.selection.size && mouse.hovered ? commands.toggleSpread(mouse.hovered) : commands.spread()));
 keyboard.bind('t', () => (drag.dragging ? drag.tidyHeld() : commands.tidy(hoveredPile())));
+// C: curve out the selection or the hovered pile by mana value; Shift + C: everything
+// (or the selection), sorted into a row per colour (decision 107).
+keyboard.bind('c', () => {
+  if (!drag.dragging) commands.curve(hoveredPile(), false);
+});
+const curveAll = () => {
+  if (drag.dragging) return;
+  commands.curve(store.selection.size ? [...store.selection] : [...store.cards.keys()], true);
+};
+keyboard.bind('shift+c', curveAll);
 // Shift + T: Tidy mode on or off (decision 98).
 keyboard.bind('shift+t', () => {
   const on = !store.settings.tidyDrops;
@@ -260,6 +270,16 @@ hud.addButton('Stack', 'Gather the selection into one stack (S); neat in Tidy mo
 hud.addButton('Spread', 'Spread the selection in a grid (X)', () => commands.spread());
 hud.addButton('Tidy', 'Square up each pile the selection touches (T)', () => commands.tidy());
 hud.addButton('Flip', 'Flip the selection over (F)', () => commands.flip());
+hud.addButton('Curve', 'Curve the selection out by mana value (C)', () => commands.curve([...store.selection], false));
+hud.addButton('By colour', 'Curve everything (or the selection) out by colour, a row per colour (Shift + C)', curveAll);
+// Split creatures: curves put creatures and non-creatures in separate bands (decision 107).
+const splitBtn = hud.addButton('Split creatures', 'Curves put creatures and non-creatures in separate bands', () => store.updateSettings({ curveSplit: !store.settings.curveSplit }));
+const syncSplit = () => {
+  splitBtn.classList.toggle('on', store.settings.curveSplit);
+  splitBtn.setAttribute('aria-pressed', String(store.settings.curveSplit));
+};
+store.events.on('settings', syncSplit);
+syncSplit();
 const exportBtn = hud.addButton('Export', 'Export the selection as a decklist or CSV (Ctrl + E)', () => exportSelection());
 exportBtn.classList.add('export-trigger');
 function exportSelection(): void {
