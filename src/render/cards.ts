@@ -39,6 +39,7 @@ const vertexHead = /* glsl */ `
 attribute vec3 aFront;
 attribute vec3 aBack;
 attribute vec4 aFlags;
+uniform float uPlain;
 varying vec3 vFront;
 varying vec3 vBack;
 varying vec4 vFlags;
@@ -51,7 +52,8 @@ varying vec3 vWorldP;
 const vertexBody = /* glsl */ `
 vFront = aFront;
 vBack = aBack;
-vFlags = aFlags;
+// The mirror window draws cards plainly: no selection rim, no hover glow (decision 144).
+vFlags = vec4(aFlags.x * (1.0 - uPlain), aFlags.y * (1.0 - uPlain), aFlags.z, aFlags.w);
 vLocal = position;
 vFace = normal.z > 0.5 ? 1.0 : (normal.z < -0.5 ? -1.0 : 0.0);
 vec4 wp = modelMatrix * instanceMatrix * vec4(position, 1.0);
@@ -185,6 +187,7 @@ export class CardLayer {
     uSlotUV: { value: THREE.Vector2 };
     uAccent: { value: THREE.Color };
     uTime: { value: number };
+    uPlain: { value: number };
   };
   private readonly m = new THREE.Matrix4();
   private readonly q = new THREE.Quaternion();
@@ -200,6 +203,7 @@ export class CardLayer {
       uSlotUV: { value: SLOT_UV },
       uAccent: { value: accent },
       uTime: { value: 0 },
+      uPlain: { value: 0 },
     };
     atlas.onTextureChanged = (tex) => {
       this.uniforms.uAtlas.value = tex;
@@ -264,6 +268,11 @@ export class CardLayer {
 
   get count(): number {
     return this.byIndex.length;
+  }
+
+  /** Draw without selection rims or hover glow (for the mirror window). */
+  setPlain(on: boolean): void {
+    this.uniforms.uPlain.value = on ? 1 : 0;
   }
 
   setTime(t: number): void {

@@ -26,6 +26,8 @@ import { InspectPanel } from './ui/inspectPanel';
 import { ExportPanel } from './ui/exportPanel';
 import { confirmDialog } from './ui/confirm';
 import { Cursors } from './ui/cursors';
+import { Mats } from './mats';
+import { buildPlaymatTab } from './ui/playmatTab';
 import { ContextHints } from './ui/hints';
 import { HelpPanel } from './ui/helpPanel';
 import { buildQueryTab } from './ui/queryTab';
@@ -68,6 +70,9 @@ const outlines = new Outlines(app);
 const pileEditor = new PileEditor(app);
 store.events.on('notice', (msg) => toast(msg, 'warn', 4200));
 const inspect = new InspectPanel(app, right);
+// Playmats (decision 144): drawn under the cards, dragged where no card is.
+const mats = new Mats(app);
+app.mats = mats;
 // Pressing on the play space collapses the side panels for more room, unless pinned open
 // (decisions 137, 139). The table widens under the press, so the camera shifts to keep the
 // table point under the cursor where it was, before the press itself is handled.
@@ -81,6 +86,8 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
 }, true);
 const exporter = new ExportPanel(app);
 spawnPanel.addTab('query', 'Query', buildQueryTab(app, () => spawnPanel.options()));
+// The 4th tab: playmats from a card's art (decision 144).
+spawnPanel.addTab('playmat', 'Playmat', buildPlaymatTab(app, mats));
 const hires = new HiRes(app);
 const markers = new SelectionMarkers(app, ACCENT);
 mouse.hooks.hover = (uid) => {
@@ -102,6 +109,10 @@ mouse.hooks.cardDrag = (uid, x, y, mods) => {
   return drag.begin([uid], 'single', x, y, uid);
 };
 mouse.hooks.doubleClickCard = (uid) => commands.toggleSpread(uid);
+mouse.hooks.matPress = (x, y, mods) => {
+  const mat = mats.matAt(x, y);
+  return mat ? mats.press(mat, x, y, mods) : null;
+};
 // Middle-click flips the card, or the whole selection if the card is in it (spec 10.5).
 mouse.hooks.middleClickCard = (uid) => commands.flip(store.selection.has(uid) ? [...store.selection] : [uid]);
 
@@ -263,6 +274,7 @@ keyboard.bind('r', () => {
   const twice = now - lastR < DOUBLE_TAP_MS;
   lastR = twice ? 0 : now;
   if (drag.dragging) drag.rotate(twice);
+  else if (!store.selection.size && !mouse.hovered && mats.hovered) mats.rotate(mats.hovered);
   else commands.rotate(hoveredCard(), twice);
 });
 keyboard.bind('z', () => commands.frame());
@@ -305,6 +317,11 @@ keyboard.bind('n', () => {
   } else toast('Select one pile to name it (S stacks a selection into one pile)', 'warn');
 });
 const removeSelection = () => {
+  // Over a playmat with nothing selected: remove the mat (decision 144).
+  if (!store.selection.size && !mouse.hovered && mats.hovered) {
+    mats.remove(mats.hovered);
+    return;
+  }
   const n = tray.remove([...store.selection]);
   if (n) toast(`${n} card${n === 1 ? '' : 's'} moved to the Removed tray`);
 };

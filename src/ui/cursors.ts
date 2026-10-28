@@ -151,6 +151,9 @@ export class Cursors {
     const gesture = this.mouse.gestureKind;
     if (gesture === 'pan' || (this.mouse.spaceDown && !this.drag.dragging)) return 'pan';
     if (gesture === 'orbit') return 'orbit';
+    // Dragging a playmat: the fist, linked when it carries its cards (decision 144).
+    const mats = this.app.mats;
+    if (mats?.dragging) return mats.dragging.carrying ? 'fistFormation' : 'fist';
     if (this.drag.dragging) {
       if (shift && !ctrl) return 'fistSweep';
       if (this.drag.heldMode === 'formation') return 'fistFormation';
@@ -169,6 +172,8 @@ export class Cursors {
       if (ctrl) return 'openTidy';
       return 'open';
     }
+    // Over a playmat with no card above: the open glove; Alt carries the cards on it.
+    if (mats?.hovered && !ctrl && !shift) return alt ? 'openFormation' : 'open';
     // Empty table: a marquee; Ctrl adds to the selection, Shift takes away (decision 88).
     if (ctrl) return 'arrowAdd';
     if (shift) return 'arrowSub';

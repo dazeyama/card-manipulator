@@ -8,6 +8,7 @@ import {
   type NamedPile,
   type Pile,
   type Settings,
+  type Mat,
 } from './types';
 
 export interface StoreEvents {
@@ -28,6 +29,8 @@ export interface StoreEvents {
   reset: void;
   /** A short message for the user (a merge of named piles, spec 11.4). */
   notice: string;
+  /** Playmats were added, moved or removed (decision 144). */
+  mats: void;
 }
 
 type Listener<T> = (payload: T) => void;
@@ -196,8 +199,32 @@ export class Store {
   }
 
   /** Remove every card, pile and selection. Card records stay cached. */
+  // ---- playmats (decision 144) ----
+
+  readonly mats = new Map<string, Mat>();
+
+  addMat(mat: Mat): void {
+    this.mats.set(mat.uid, mat);
+    this.events.emit('mats', undefined);
+  }
+
+  moveMat(uid: string, x: number, y: number, yaw: number): void {
+    const m = this.mats.get(uid);
+    if (!m) return;
+    m.x = x;
+    m.y = y;
+    m.yaw = yaw;
+    this.events.emit('mats', undefined);
+  }
+
+  removeMat(uid: string): void {
+    if (this.mats.delete(uid)) this.events.emit('mats', undefined);
+  }
+
   clear(): void {
     this.cards.clear();
+    this.mats.clear();
+    this.events.emit('mats', undefined);
     this.piles = new Map();
     this.named.clear();
     this.spreads.clear();

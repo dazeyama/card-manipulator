@@ -23,6 +23,7 @@ const GROUPS: [string, Line[]][] = [
     ['↔️', 'Right-drag', 'pan (or Space + drag); double right-click straightens the view'],
     ['🔄', 'Middle-drag', 'orbit'],
     ['🔍', 'Wheel', 'zoom toward the cursor'],
+    ['🟫', 'Drag a playmat', 'move it where no card is; Alt + drag carries its cards; R turns it, Delete removes it; its 🖥 button opens a top-down mirror window'],
   ]],
   ['Keys', [
     ['📚', 'S', 'stack · S S shuffles'],

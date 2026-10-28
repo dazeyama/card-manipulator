@@ -37,6 +37,8 @@ export interface MouseHooks {
   doubleClickCard?: (uid: string) => void;
   /** The hovered card changed. */
   hover?: (uid: string | null) => void;
+  /** A left press where no card is: a playmat may take it (decision 144). */
+  matPress?: (x: number, y: number, mods: Mods) => CustomGesture | null;
 }
 
 export class MouseInput {
@@ -156,7 +158,7 @@ export class MouseInput {
       this.lastClick = { uid: onCard, at: now };
       this.gesture = { kind: 'card-press', uid: onCard, x, y, mods: this.mods(e) };
     } else {
-      this.gesture = { kind: 'empty-press', x, y, mods: this.mods(e) };
+      this.gesture = this.hooks.matPress?.(x, y, this.mods(e)) ?? { kind: 'empty-press', x, y, mods: this.mods(e) };
     }
   }
 

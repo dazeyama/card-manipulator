@@ -540,6 +540,16 @@ Available as HUD buttons and keys, acting on the selection:
 
 ---
 
+### 10.9 Playmats
+
+Owner's decision (2026-10-28, decision 144): **playmats**, a card's art on a mat lying on the table.
+
+- **Spawning**: the Spawn panel's fourth tab, **Playmat**, takes one decklist line such as `Ragavan, Nimble Pilferer (MH2) 138` and lays a mat with that exact printing's art in the middle of the view. The art is Scryfall's **art crop** (the illustration without the frame, the highest resolution Scryfall offers for art alone, about 626 px wide), scaled to fill the mat and trimmed top and bottom to its shape.
+- **Size and place**: 61 × 35 cm, always under every card. A mat doesn't change piles: cards on a mat keep their own piles.
+- **Moving**: press where no card is and drag, and the mat moves on its own. Hold **Alt** as you start and the cards lying on it ride along, keeping their layout. A click on a mat without dragging acts like a click on empty table. `R` turns the mat under the cursor a quarter turn and `Delete` removes it, when no card is under the cursor and nothing is selected. Mats don't show in the Inspect panel, searches, counts or decklist exports; they are saved with the table.
+- **Mirror window**: hovering a mat shows a 🖥 button in its top right corner. It opens a window showing that mat and its cards from straight above, live and clean (no selection glow, badges or cursor), for screen sharing.
+- With **Alt** held, each mat shows a badge with its card's name and how many cards lie on it.
+
 ## 11. Piles
 
 ### 11.1 Detection
@@ -710,6 +720,7 @@ Personality: **snappy and light** (decision 42). Quick follow, short settles, ve
 | Middle-click | Flip it (and the selection if it is selected) | Flip the pile | — |
 | Middle-drag | — | — | Orbit camera |
 | Right-drag, Space + left-drag | Pan | Pan | Pan |
+| Left-drag on a playmat (no card under it) | — | — | Move the mat; with Alt, carry the cards on it (Section 10.9) |
 | Double right-click | Straighten the view to the current preset angle, staying put | Straighten view | Straighten view |
 | Wheel | Zoom toward cursor | Zoom | Zoom |
 | Double-click | Toggle spread of its stack | Toggle spread | — |
@@ -767,6 +778,7 @@ The cursor shows what the mouse will do, and what a held key changes (owner, 202
 | Open glove with ↔️ | Space held, or a right-drag | Pan |
 | Gloved fist with 🔄 | Middle-drag | Orbit |
 | Pointing glove with 1️⃣–9️⃣ | After pressing a number over a pile | Click the table to deal that many cards there as a hand |
+| Open glove | Over a playmat where no card is | Drag moves the mat; with 🔗 while Alt is held, its cards ride along |
 | Pointing glove | Over a pile badge's pencil and export buttons, or any other button in the 3D play space | Click it (the panels around the table keep the system hand, decision 131) |
 
 ---
@@ -1009,6 +1021,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 141 | Owner (2026-10-28): a new hotkey to **fan** a pile (hovered or selected), displayed as one holds a hand of cards, arching and slightly overlapping. Owner's choices: the key is **H** (F stays Flip); pressing it again on a fan stacks it back up; the layout is a hand of cards. **(agent)** `src/state/fan.ts` (pure, tested): cards on a circle 132 mm round a pivot below the pile's centre, the middle card upright where the pile was, each card turned 0.12 rad (about 7°) further clockwise, the step shrinking so a big pile spreads no more than 2 rad (about 115°). Remembered like curves so H on an unmoved fan stacks it. Added to the HUD (🎴 Fan), the hint line over a card, and the ? list. |
 | 142 | Owner (2026-10-28): fan a little wider so more of each card shows. **(agent)** Pivot radius 158 mm (was 132), step 0.15 rad, about 8.6° (was 0.12), spread capped at 2.2 rad, about 126° (was 2); neighbouring cards now sit about 24 mm apart along the arc instead of 16, so about half again as much of each card shows. |
 | 143 | Owner (2026-10-28): 1–9 "draw that many cards": press a number over a stack, the cursor turns into the pointing glove, click, and a fanned H-style hand of that many cards appears at that spot; if the stack was face down, the hand is placed face up regardless. One hint covers it. **(agent)** The source is the pile under the cursor, or the selection when there is one; the cards are its top ones by height (all of it if it has fewer). The hand always lands face up. The cursor's number is a keycap emoji (1️⃣–9️⃣) on the pointing glove, and the hint line switches to a draw context (click to lay out a hand of N, they land face up, Esc cancels); over a card it has one 1–9 hint. The click is taken before anything else sees it (after the side panels fold, so it lands where aimed). The hand is remembered like a fan, so H stacks it back. Also in the ? list. |
+| 144 | Owner (2026-10-28): **playmats** (Section 10.9): a 4th Spawn tab, Playmat, spawning a 61 × 35 cm mat with a card's art from Scryfall at the highest resolution, always under cards, dragged like cards (but not inspected), with a 🖥 button on hover that opens a top-down mirror window for screen sharing. Owner's answers: the art crop fills the mat, cropped top and bottom; a mat moves alone unless Alt is held, which carries its cards; cards on a mat keep their own piles; the mirror is a clean live view. **(agent)** Mats are their own objects (`src/mats.ts`), not cards: one textured plane each, 0.01 mm above the table, later mats a hair higher. The art is Scryfall's `art_crop` for the exact printing, fetched through the shared queue (`/cards/{id}`), front face for double-faced cards; it is only about 626 px wide, so a mat is soft close up. A press on a mat where no card is becomes a mat drag instead of a marquee; R and Delete act on the hovered mat when no card is hovered and nothing is selected. Mats are left out of searches, counts and exports, and saved in the table document (`mats`, optional, so older files load). The mirror renders the scene from a straight-down orthographic camera turned with the mat into an off-screen target, with cards drawn plain (no rim or hover glow) and far-zoom dots hidden, about 30 times a second, copying the pixels into the popup's canvas. Cursor: open glove over a mat, fist while dragging it, with 🔗 when Alt carries cards. The hint line has mat and mat-drag contexts; the ? list has a playmat line; with Alt each mat shows its name and card count. |
 
 ## Appendix B: Open items
 

@@ -13,6 +13,7 @@ import { Motion } from './physics/motion';
 import type { Physics } from './physics/world';
 import type { NamedPiles } from './named';
 import type { RestSync } from './physics/restSync';
+import type { Mats } from './mats';
 import type { Rest } from './state/rest';
 
 export const ACCENT = new THREE.Color('#2563eb');
@@ -38,6 +39,8 @@ export class App {
   named!: NamedPiles;
   /** Resting tilt of cards on the cards under them (decision 99), set at boot. */
   rest: RestSync | null = null;
+  /** Playmats (decision 144), set at boot. */
+  mats: Mats | null = null;
   /** The table point under the cursor the last time it was over the table (spawn "at the cursor"). */
   readonly lastTablePoint = { x: 0, y: 0 };
   /** Last cursor position over the canvas, in canvas pixels. */

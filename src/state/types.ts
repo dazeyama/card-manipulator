@@ -132,6 +132,22 @@ export interface CameraState {
 }
 
 /** Save format v1 (spec Section 6.3). */
+/** A playmat (decision 144): a card's art on a 61 x 35 cm mat lying on the table, under every card. */
+export interface Mat {
+  uid: string;
+  scryfallId: string;
+  /** The card's name, for the hint and the mirror window's title. */
+  name: string;
+  /** Scryfall's art crop of that printing. */
+  art: string;
+  x: number;
+  y: number;
+  yaw: number;
+}
+
+export const MAT_W = 610;
+export const MAT_H = 350;
+
 export interface TableDoc {
   format: 'card-manipulator-table';
   version: 1;
@@ -155,4 +171,6 @@ export interface TableDoc {
   /** Open spreads (agent decision 61); older files have none. */
   spreads?: { id: string; anchor: { x: number; y: number }; yaw: number; uids: string[]; pileId: string | null }[];
   cardData: Record<string, CardRecord>;
+  /** Playmats (decision 144); older files have none. */
+  mats?: Mat[];
 }

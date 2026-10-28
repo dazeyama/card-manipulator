@@ -187,6 +187,11 @@ code { font-family: var(--mono); font-size: 0.95em; background: rgba(0, 0, 0, 0.
 .help-icon { text-align: center; }
 .help-keys { font-weight: 600; }
 .help-what { color: var(--text-2); }
+/* Playmats (decision 144): the mirror button in a hovered mat's corner, and its Alt count. */
+.mat-mirror-btn { position: absolute; left: 0; top: 0; pointer-events: auto; font-size: 18px; line-height: 1; padding: 5px 7px; border-radius: 8px; border: 1px solid rgba(0, 0, 0, 0.15); background: rgba(255, 255, 255, 0.9); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2); z-index: 4; }
+.mat-mirror-btn[hidden] { display: none; }
+.mat-count { pointer-events: none; }
+.mat-count[hidden] { display: none; }
 /* The context hint line in the play space (decision 134). */
 .context-hints { position: absolute; left: 10px; bottom: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 4px; pointer-events: none; z-index: 3; }
 .context-hint { display: inline-flex; align-items: center; gap: 5px; background: rgba(255, 255, 255, 0.82); color: #333; border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 12px; padding: 2px 9px 2px 6px; font-size: 12px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); }

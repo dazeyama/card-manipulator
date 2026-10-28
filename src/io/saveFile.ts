@@ -32,6 +32,7 @@ export function toDoc(app: App, withCardData: boolean): TableDoc {
     cards,
     spreads: [...store.spreads.values()].map((s) => ({ ...s, uids: [...s.uids] })),
     cardData,
+    mats: [...store.mats.values()].map((m) => ({ ...m, x: round(m.x), y: round(m.y), yaw: round(m.yaw, 5) })),
   };
 }
 
@@ -76,6 +77,7 @@ export async function loadDoc(app: App, doc: TableDoc): Promise<void> {
   for (const s of doc.spreads ?? []) store.spreads.set(s.id, { ...s, uids: [...s.uids] });
   const cards: Card[] = doc.cards.map((c) => ({ ...c, pileId: c.pileId ?? null, spreadOf: c.spreadOf ?? null }));
   store.addCards(cards);
+  for (const m of doc.mats ?? []) store.addMat({ ...m });
   if (doc.camera) app.rig.fromState(doc.camera);
   store.events.emit('settled', cards.map((c) => c.uid));
   store.events.emit('piles', undefined);

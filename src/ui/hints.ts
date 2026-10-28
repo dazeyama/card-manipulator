@@ -54,6 +54,18 @@ const HINTS: Record<string, Hint[]> = {
     ['➖', 'Shift takes away', 'shift'],
     ['⎋', 'Esc cancels'],
   ],
+  mat: [
+    ['🖐️', 'Drag to move the playmat'],
+    ['🔗', 'Alt + drag carries its cards', 'alt'],
+    ['🖥', 'Top-right button mirrors it'],
+    ['🔃', 'R turns it'],
+    ['🗑️', 'Delete removes it'],
+  ],
+  matDrag: [
+    ['✋', 'Release to place the playmat'],
+    ['🔗', 'Hold Alt as you start to carry its cards'],
+    ['⎋', 'Esc puts it back'],
+  ],
   pan: [
     ['↔️', 'Panning'],
     ['🖱️', 'Double right-click straightens the view'],
@@ -92,9 +104,11 @@ export class ContextHints {
     const gesture = this.mouse.gestureKind;
     if (gesture === 'pan' || (this.mouse.spaceDown && !this.drag.dragging)) return 'pan';
     if (gesture === 'orbit') return 'orbit';
+    if (this.app.mats?.dragging) return 'matDrag';
     if (this.drag.dragging) return this.drag.heldMode === 'formation' ? 'formation' : 'holding';
     if (gesture === 'marquee') return 'marquee';
-    return this.mouse.hovered ? 'card' : 'table';
+    if (this.mouse.hovered) return 'card';
+    return this.app.mats?.hovered ? 'mat' : 'table';
   }
 
   private update(): void {
