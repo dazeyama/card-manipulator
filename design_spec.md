@@ -757,7 +757,7 @@ The cursor shows what the mouse will do, and what a held key changes (owner, 202
 | ... with 📐 | Holding cards with Ctrl held | Tidy mode while held: they land squared at a quarter turn |
 | Open glove with ↔️ | Space held, or a right-drag | Pan |
 | Gloved fist with 🔄 | Middle-drag | Orbit |
-| Pointing glove | Over any button, tab, chip, or a badge's pencil and export buttons | Click it (replaces the system hand everywhere, decision 130) |
+| Pointing glove | Over a pile badge's pencil and export buttons, or any other button in the 3D play space | Click it (the panels around the table keep the system hand, decision 131) |
 
 ---
 
@@ -986,6 +986,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 128 | Owner (2026-10-27): cursor emoji 1 px larger, then 1 px right. **(agent)** Their font goes from 22 to 23 px (48% of the 48 px cursor, was 46%), and they sit 2 px in from the right edge (was 3), still flush with the bottom. |
 | 129 | Owner (2026-10-27): a new hold mode like Alt and Shift: holding **Ctrl** means Tidy mode is on, only while Ctrl is held; the cursor shows it with 📐 (tidy, to measure). **(agent)** Everywhere Tidy mode is read now asks whether it is switched on or Ctrl is held (`app.tidy`): landings, the drag feel, stacking, physics results and spawns. So a drag released with Ctrl held lands squared at a quarter turn, and a card held while Ctrl is down turns square in the hand. Ctrl's other meanings stay: Ctrl + click toggles a card, Ctrl + drag on empty table adds to the selection, Ctrl + Shift is the formation fallback, and the Ctrl shortcuts. The cursor shows 📐 on the open glove over a card and on the fist while holding cards (it replaces the ☑️ toggle badge); over empty table Ctrl still shows ➕. The Tidy mode button lights up while Ctrl holds it on. |
 | 130 | Owner (2026-10-27): wherever the system's pointing-hand cursor still showed (for example over a pile badge's pencil button), show the generated pointing glove instead. **(agent)** The pointing glove (48 px bold, click point at its fingertip) is set once as a CSS variable, `--cursor-point`, which every rule that asked for the system hand now uses: buttons, tabs, icon buttons, chips, autocomplete suggestions, the badges' pencil and export buttons, plus any enabled button, link or labelled control. The system hand remains the fallback until the art has loaded. |
+| 131 | Owner (2026-10-27): not anywhere in the UI, only in the 3D play space: outside it, where the custom cursors aren't used, keep the system hand. **(agent)** Only clickable things inside the play space (`.stage`: the canvas and its overlay, so the badges' pencil and export buttons) use `--cursor-point`; tabs, buttons, chips and suggestions in the panels are back to the system hand. Supersedes the reach of decision 130. |
 
 ## Appendix B: Open items
 

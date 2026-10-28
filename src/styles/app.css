@@ -50,14 +50,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .panel-title { font-weight: 650; }
 .panel-body { flex: 1; overflow: auto; padding: 10px; min-height: 0; }
 .tabs { display: flex; gap: 2px; padding: 6px 10px 0; border-bottom: 1px solid var(--line); }
-/* Anything clickable shows the pointing glove instead of the system hand (decision 130). */
-a[href], button:not(:disabled), summary, label[for] { cursor: var(--cursor-point, pointer); }
-.tab { border: none; background: none; padding: 6px 12px; border-radius: 6px 6px 0 0; cursor: var(--cursor-point, pointer); color: var(--text-2); border-bottom: 2px solid transparent; }
+/* In the 3D play space, clickable things show the pointing glove instead of the system hand; the panels around it keep the system's (decisions 130, 131). */
+.stage a[href], .stage button:not(:disabled) { cursor: var(--cursor-point, pointer); }
+.tab { border: none; background: none; padding: 6px 12px; border-radius: 6px 6px 0 0; cursor: pointer; color: var(--text-2); border-bottom: 2px solid transparent; }
 .tab.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
 .tab:hover { color: var(--text); }
-.icon-btn { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; width: 24px; height: 24px; cursor: var(--cursor-point, pointer); line-height: 1; padding: 0; }
+.icon-btn { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; width: 24px; height: 24px; cursor: pointer; line-height: 1; padding: 0; }
 
-.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 5px 12px; cursor: var(--cursor-point, pointer); white-space: nowrap; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 5px 12px; cursor: pointer; white-space: nowrap; }
 .btn:hover:not(:disabled) { border-color: #c9c5bf; background: var(--panel-2); }
 .btn:disabled { opacity: 0.5; cursor: default; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
@@ -89,7 +89,7 @@ textarea.decklist { width: 100%; height: 190px; resize: vertical; font: 12px/1.4
 .suggest-wrap { position: relative; }
 .suggest-wrap input { width: 100%; }
 .suggest { position: absolute; left: 0; right: 0; top: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow); z-index: 5; max-height: 260px; overflow: auto; }
-.suggest-item { padding: 5px 8px; cursor: var(--cursor-point, pointer); }
+.suggest-item { padding: 5px 8px; cursor: pointer; }
 .suggest-item:hover, .suggest-item.active { background: var(--accent-soft); }
 
 /* ---- toasts and banner ---- */
@@ -129,7 +129,7 @@ textarea.decklist { width: 100%; height: 190px; resize: vertical; font: 12px/1.4
 .filter-live.error { color: var(--danger); white-space: normal; max-width: 340px; }
 .hud-buttons { display: flex; gap: 4px; }
 .chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
-.chip { border: 1px solid var(--line); background: var(--panel-2); border-radius: 12px; padding: 1px 9px; font-size: 12px; cursor: var(--cursor-point, pointer); }
+.chip { border: 1px solid var(--line); background: var(--panel-2); border-radius: 12px; padding: 1px 9px; font-size: 12px; cursor: pointer; }
 .chip:hover { border-color: var(--accent); background: var(--accent-soft); }
 .chip.pip-w, .chip.pip-u, .chip.pip-b, .chip.pip-r, .chip.pip-g, .chip.pip-c, .chip.pip-m { font-weight: 650; min-width: 26px; }
 
