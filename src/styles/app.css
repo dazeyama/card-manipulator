@@ -51,6 +51,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .pin-btn { font-size: 12px; filter: grayscale(1); opacity: 0.55; }
 .pin-btn.on { filter: none; opacity: 1; background: var(--accent-soft); border-color: var(--accent); }
 .panel.collapsed .pin-btn { display: none; }
+/* A collapsed panel's strip is narrow: its open button sits in the middle. */
+.panel.collapsed .panel-head { padding: 8px 0; justify-content: center; }
 .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid var(--line); }
 .panel-title { font-weight: 650; }
 .panel-body { flex: 1; overflow: auto; padding: 10px; min-height: 0; }
