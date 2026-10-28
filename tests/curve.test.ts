@@ -44,6 +44,23 @@ describe('curve layout (decision 107)', () => {
     expect(at.get('w3')!.x).toBeGreaterThan(at.get('w2')!.x);
   });
 
+  it('lays colours out two to a row: W U, then B R, then G colourless, then multicolour and lands', () => {
+    const groups = ['W', 'U', 'B', 'R', 'G', 'colourless', 'multi', 'land'] as const;
+    const cards = groups.map((g) => card(g, 2, { group: g, land: g === 'land' }));
+    const at = new Map(curveLayout(cards, { x: 0, y: 0 }, { byColour: true, split: false }).map((p) => [p.uid, p.at]));
+    const left = at.get('W')!.x, right = at.get('U')!.x;
+    expect(right).toBeGreaterThan(left);
+    for (const [l, r] of [['W', 'U'], ['B', 'R'], ['G', 'colourless']]) {
+      expect(at.get(l)!.x).toBeCloseTo(left, 9);
+      expect(at.get(r)!.x).toBeCloseTo(right, 9);
+      expect(at.get(l)!.y).toBeCloseTo(at.get(r)!.y, 9);
+    }
+    expect(at.get('W')!.y).toBeGreaterThan(at.get('B')!.y);
+    expect(at.get('B')!.y).toBeGreaterThan(at.get('G')!.y);
+    expect(at.get('G')!.y).toBeGreaterThan(at.get('multi')!.y);
+    expect(at.get('multi')!.x).toBeCloseTo(left, 9);
+  });
+
   it('centres the layout on the spot', () => {
     const cards = [card('a', 1), card('b', 3)];
     const xs = curveLayout(cards, { x: 500, y: -200 }, { byColour: false, split: false }).map((p) => p.at.x);

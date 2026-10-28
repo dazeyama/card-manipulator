@@ -530,7 +530,7 @@ Available as HUD buttons and keys, acting on the selection:
 | Tidy | `T` | Square up each pile the selection touches without merging piles. |
 | Flip | `F`, middle-click | See 10.5. |
 | Rotate | `R` | Turn the selection, or the card under the cursor when nothing is selected, to the next quarter turn clockwise: a card at an odd angle squares up to the quarter turn just past it, a square card turns a full 90°. Press twice quickly: upright (decision 102). Piles stay piles. |
-| Curve | `C`, `Shift + C` | Curve view (decision 107): `C` lays the selection, or the pile under the cursor, out by mana value (pressed on cards that are already curved out, it stacks that curve back up instead, as `S` would), one column per mana value (7+ together) with the cards cascading down it so every title bar shows, lands in a neat stack at the start. `Shift + C` does the same for everything on the table (or the selection), sorted into one row per colour, top to bottom: W, U, B, R, G, multicolour, colourless, lands. The **Split creatures** toggle in the HUD puts creatures and non-creatures in separate bands. |
+| Curve | `C`, `Shift + C` | Curve view (decision 107): `C` lays the selection, or the pile under the cursor, out by mana value (pressed on cards that are already curved out, it stacks that curve back up instead, as `S` would), one column per mana value (7+ together) with the cards cascading down it so every title bar shows, lands in a neat stack at the start. `Shift + C` does the same for everything on the table (or the selection), sorted by colour into blocks, two to a row: white and blue, then black and red, then green and colourless, then multicolour and lands (decision 113). The **Split creatures** toggle in the HUD puts creatures and non-creatures in separate bands. |
 
 ### 10.8 Remove
 
@@ -725,7 +725,7 @@ Personality: **snappy and light** (decision 42). Quick follow, short settles, ve
 | F | Flip the selection, or the card under the cursor. While dragging: turn the held cards over in the hand. F twice quickly: every card faces up, so a mixed stack is fronted |
 | R | Turn the selection (or the card under the cursor) to the next quarter turn clockwise; R twice quickly: upright. While dragging, R turns the held cards |
 | C | Curve the selection, or the pile under the cursor, out by mana value; on a curve, stack it back up |
-| Shift + C | Curve everything (or the selection) out by colour, a row per colour |
+| Shift + C | Curve everything (or the selection) out by colour, two colours to a row |
 | N | Name the selected pile |
 | Z | Frame the selection |
 | V | Next camera view preset |
@@ -945,6 +945,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 110 | Owner (2026-10-27): the sweep worked differently from intended: Shift at the press made the whole drag a sweep, even after Shift was let go. Intended: while dragging, holding Shift at any time gathers the cards passed over; releasing Shift stops it. **(agent)** Any drag (a card, a selection, a pile by its badge, a formation) sweeps exactly while Shift is held without Ctrl, read from pointer and key events, so pressing Shift mid-drag starts it without moving. A press no longer changes mode because of Shift. A single-card drag that sweeps up a card becomes a gather. Pressing Shift again over the same pile resumes its count from then, so a pile is not swallowed at once. Supersedes the press-time part of decision 89. |
 | 111 | Owner (2026-10-27): the spawn panel's Arrival, Face and Where controls are not needed; Tidy mode handles the only important one. **(agent)** They are gone from the spawn panel; the settings panel (gear) still has them, and spawns follow those settings as before (Tidy mode forces a neat stack, decision 98). |
 | 112 | Owner (2026-10-27): hide the settings panel too; nothing in it is needed that can't be done elsewhere, and it looks bad. **(agent)** The gear button and the panel are gone. Where each setting went: Tidy mode is the top bar button and `Shift + T`; the query spawn cap is the box on the Query tab; the decklist export format is chosen (and remembered) in the export panel; spawn arrival, face and where, and flick sensitivity, stay at their defaults (messy, face up, centre of view, Normal), with Tidy mode forcing a neat stack. Saved settings still load. The confirm dialog moved to `src/ui/confirm.ts`. Supersedes decision 80's settings panel. |
+| 113 | Owner (2026-10-27): `Shift + C` lays the colours out two to a row, using more width: white and blue, then black and red, then green and colourless, then multicolour. **(agent)** Lands share the last row with multicolour, as one neat stack. Every colour block uses the same mana value columns so they line up down each side; blocks sit 60 mm apart, rows 30 mm. A colour with no cards leaves its place empty rather than shifting the others; a row with neither colour is skipped. Supersedes the row-per-colour layout of decision 107. |
 
 ## Appendix B: Open items
 
