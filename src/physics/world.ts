@@ -12,6 +12,7 @@ import type RAPIER_NS from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import type { App } from '../app';
 import { land, placeSequential } from '../commands';
+import { snapYaw } from '../state/piles';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
 import type { Pose } from '../render/cards';
 
@@ -221,7 +222,9 @@ export class Physics {
       const ax = new THREE.Vector3(1, 0, 0).applyQuaternion(this.q);
       const faceUp = up.z >= 0;
       // Face down is a half turn about the long axis, which flips the card's x axis.
-      const yaw = Math.atan2(ax.y, ax.x) + (faceUp ? 0 : Math.PI);
+      const turned = Math.atan2(ax.y, ax.x) + (faceUp ? 0 : Math.PI);
+      // Tidy mode (decision 98): even a tossed card comes to rest at a quarter turn.
+      const yaw = this.app.store.settings.tidyDrops ? snapYaw(turned) : turned;
       const t = body.translation();
       return { uid, x: t.x / MM, y: t.y / MM, z: t.z / MM, yaw, faceUp };
     });

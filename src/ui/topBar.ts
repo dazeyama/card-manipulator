@@ -51,8 +51,9 @@ export class TopBar {
     syncView();
     this.actions.append(view);
 
-    // Tidy drops (spec 15.4): every release lands squared up when on.
-    const tidy = h('button', { class: 'btn small', title: 'When on, every drop lands squared up instead of messy' }, 'Tidy drops');
+    // Tidy mode (spec 15.4, decision 98): everything lands squared up at quarter turns when on.
+    // The setting keeps its old name, tidyDrops, so saved tables still load.
+    const tidy = h('button', { class: 'btn small', title: 'Tidy mode (Shift + T): everything lands squared up at 90°, with the calmer drag feel. Off: messy and physical.' }, 'Tidy mode');
     const syncTidy = () => {
       tidy.classList.toggle('on', app.store.settings.tidyDrops);
       tidy.setAttribute('aria-pressed', String(app.store.settings.tidyDrops));

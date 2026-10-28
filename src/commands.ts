@@ -87,11 +87,11 @@ export function stackAt(app: App, uids: string[], at: Footprint, exclude = new S
 }
 
 /**
- * Cards gathered onto one spot: a loose, hand-made stack, or a neat one when
- * Tidy drops is on (decision 94). Only Tidy squares a loose stack up.
+ * Cards gathered onto one spot: a loose, hand-made stack, or a neat one at a
+ * quarter turn in Tidy mode (decisions 94, 98). Only Tidy squares a loose stack up.
  */
 export function pileAt(app: App, uids: string[], at: Footprint, exclude = new Set(uids)): Landing[] {
-  if (app.store.settings.tidyDrops) return stackAt(app, uids, at, exclude);
+  if (app.store.settings.tidyDrops) return stackAt(app, uids, { ...at, yaw: snapYaw(at.yaw) }, exclude);
   return placeSequential(app, uids, looseStackLayout(uids.length, at), exclude);
 }
 
@@ -134,7 +134,7 @@ export class Commands {
     return [...this.app.store.selection];
   }
 
-  /** S: gather the selection into one stack at its centroid, loose unless Tidy drops is on. */
+  /** S: gather the selection into one stack at its centroid, loose unless Tidy mode is on. */
   stack(): void {
     const uids = byHeight(this.app, this.sel);
     if (uids.length < 1) return;

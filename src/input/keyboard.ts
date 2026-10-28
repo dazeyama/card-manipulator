@@ -41,7 +41,9 @@ export class KeyboardInput {
 
   private handle(e: KeyboardEvent): void {
     const key = e.key.toLowerCase();
-    const name = (e.ctrlKey || e.metaKey ? 'ctrl+' : '') + key;
+    // Shift counts only with letters, so `?` and the like still match their own key.
+    const shift = e.shiftKey && /^[a-z]$/.test(key) ? 'shift+' : '';
+    const name = (e.ctrlKey || e.metaKey ? 'ctrl+' : '') + shift + key;
     const action = this.bindings.get(name);
     if (!action) return;
     if (isTyping()) return;

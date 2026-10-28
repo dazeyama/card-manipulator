@@ -172,6 +172,12 @@ keyboard.bind('/', () => hud.focus());
 keyboard.bind('s', () => commands.stack());
 keyboard.bind('x', () => commands.spread());
 keyboard.bind('t', () => commands.tidy());
+// Shift + T: Tidy mode on or off (decision 98).
+keyboard.bind('shift+t', () => {
+  const on = !store.settings.tidyDrops;
+  store.updateSettings({ tidyDrops: on });
+  toast(on ? 'Tidy mode on: everything lands squared up at 90°' : 'Tidy mode off: messy and physical', 'info', 1800);
+});
 keyboard.bind('r', () => commands.rotate());
 keyboard.bind('z', () => commands.frame());
 keyboard.bind('f', () => commands.flip());
@@ -208,7 +214,7 @@ const removeSelection = () => {
 keyboard.bind('delete', removeSelection);
 keyboard.bind('backspace', removeSelection);
 
-hud.addButton('Stack', 'Gather the selection into one neat stack (S)', () => commands.stack());
+hud.addButton('Stack', 'Gather the selection into one stack (S); neat in Tidy mode', () => commands.stack());
 hud.addButton('Spread', 'Spread the selection in a grid (X)', () => commands.spread());
 hud.addButton('Tidy', 'Square up each pile the selection touches (T)', () => commands.tidy());
 hud.addButton('Flip', 'Flip the selection over (F)', () => commands.flip());

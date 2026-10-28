@@ -12,6 +12,7 @@ import { land, leaveSpreads, pileAt, placeSequential, stackAt, type Landing } fr
 import type { CustomGesture } from '../input/mouse';
 import { pickCard } from '../render/picking';
 import { messyLayout, overlaps, snapYaw, type Footprint } from '../state/piles';
+import { shortAngle } from './motion';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
 
 export type DragMode = 'single' | 'gather' | 'formation' | 'rigid';
@@ -28,6 +29,13 @@ const OMEGA_MESSY_LEAD = 22;
 const OMEGA_TAIL = 10;
 const MAX_TILT = 0.2;
 const TILT_PER_SPEED = 0.0012;
+/** Tidy mode (decision 98) keeps the lean from before the messy changes. */
+const TIDY_MAX_TILT = 0.14;
+const TIDY_TILT_PER_SPEED = 0.0009;
+/** Tidy mode's clump tail rate, from before decision 96. */
+const OMEGA_TIDY_TAIL = 13;
+/** Rate (1/s) at which a held card turns to the nearest quarter turn in Tidy mode. */
+const SQUARE_RATE = 14;
 /** A single card turns about the point it was grabbed by (decision 94): gain, damping, limit. */
 const TURN_GAIN = 0.02;
 const TURN_DAMP = 10;
@@ -69,6 +77,8 @@ interface Held {
   by: number;
   /** Its own turn on the table while held; the group's lean is added on top. */
   yaw: number;
+  /** The turn it is heading for: its own, or the nearest quarter turn in Tidy mode. */
+  yawTo: number;
   /** Height still to close to the group's plane after pick-up (NaN until the first frame). */
   ez: number;
 }
@@ -169,6 +179,7 @@ export class DragController {
     // A tidy stack dragged whole stays snappy and rigid (decision 96).
     const pile = mode === 'rigid' ? store.pileOf(cards[0].uid) : undefined;
     const tidyStack = !!pile && pile.kind === 'stack' && pile.cardUids.length === cards.length;
+    const tidy = this.tidy;
     const n = cards.length;
     this.mode = mode;
     this.cursor = { x: grab.x, y: grab.y };
@@ -186,14 +197,14 @@ export class DragController {
         ox = Math.cos(a) * r;
         oy = Math.sin(a) * r;
         dz = i * CARD_T;
-        omega = OMEGA_TAIL + (OMEGA_MESSY_LEAD - OMEGA_TAIL) * rank;
+        omega = tidy ? OMEGA_TIDY_TAIL + (OMEGA_LEAD - OMEGA_TIDY_TAIL) * rank : OMEGA_TAIL + (OMEGA_MESSY_LEAD - OMEGA_TAIL) * rank;
       } else if (mode === 'single') {
         dz = 0;
-      } else if (mode === 'rigid' && !tidyStack) {
+      } else if (mode === 'rigid' && !tidyStack && !tidy) {
         // A messy stack: top card leads, lower cards trail, heavier (decisions 95, 96).
         omega = OMEGA_TAIL + (OMEGA_MESSY_LEAD - OMEGA_TAIL) * rank;
       }
-      return { uid: c.uid, ox, oy, dz, omega, vx: 0, vy: 0, vz: 0, home: { x: c.x, y: c.y, z: c.z, yaw: c.yaw }, bx: ox, by: oy, yaw: c.yaw, ez: NaN };
+      return { uid: c.uid, ox, oy, dz, omega, vx: 0, vy: 0, vz: 0, home: { x: c.x, y: c.y, z: c.z, yaw: c.yaw }, bx: ox, by: oy, yaw: c.yaw, yawTo: tidy ? snapYaw(c.yaw) : c.yaw, ez: NaN };
     });
     for (const h of this.held) {
       this.app.motion.cancel(h.uid);
@@ -342,8 +353,9 @@ export class DragController {
     const r = Math.min(6, 1.5 * Math.sqrt(i % 9));
     const top = this.held.reduce((m, c) => Math.max(m, c.dz), -CARD_T);
     this.held.push({
-      uid, ox: Math.cos(a) * r, oy: Math.sin(a) * r, dz: top + CARD_T, omega: OMEGA_TAIL,
-      vx: 0, vy: 0, vz: 0, home: { x: card.x, y: card.y, z: card.z, yaw: card.yaw }, bx: 0, by: 0, yaw: card.yaw, ez: NaN,
+      uid, ox: Math.cos(a) * r, oy: Math.sin(a) * r, dz: top + CARD_T, omega: this.tidy ? OMEGA_TIDY_TAIL : OMEGA_TAIL,
+      vx: 0, vy: 0, vz: 0, home: { x: card.x, y: card.y, z: card.z, yaw: card.yaw }, bx: 0, by: 0,
+      yaw: card.yaw, yawTo: this.tidy ? snapYaw(card.yaw) : card.yaw, ez: NaN,
     });
     app.motion.cancel(uid);
     app.motion.held.add(uid);
@@ -375,6 +387,12 @@ export class DragController {
     c.ox = c.bx * cos - c.by * sin;
     c.oy = c.bx * sin + c.by * cos;
     c.yaw = c.home.yaw + this.turn;
+    c.yawTo = c.yaw;
+  }
+
+  /** Tidy mode (decision 98): everything squared up at quarter turns, with the drag feel from before the messy changes. */
+  private get tidy(): boolean {
+    return this.app.store.settings.tidyDrops;
   }
 
   /**
@@ -387,7 +405,8 @@ export class DragController {
   private step(dt: number): void {
     if (!this.active) return;
     if (this.sweeping) this.sweep(performance.now());
-    if (this.mode === 'single' && this.held.length === 1 && dt > 0) this.turnSingle(dt);
+    const tidy = this.tidy;
+    if (this.mode === 'single' && this.held.length === 1 && dt > 0 && !tidy) this.turnSingle(dt);
     const layer = this.app.layer;
     const steps = 2;
     const h = Math.min(dt, 1 / 30) / steps;
@@ -417,8 +436,10 @@ export class DragController {
     // One lean for the group: the leading edge rises a little, as before.
     const span = Math.max(LEAN_SPAN, maxX - minX, maxY - minY);
     const lean = LEAN_SPAN / span;
-    const sx = Math.tan(clamp((avx / n) * TILT_PER_SPEED, -MAX_TILT, MAX_TILT) * lean);
-    const sy = Math.tan(clamp((avy / n) * TILT_PER_SPEED, -MAX_TILT, MAX_TILT) * lean);
+    const perSpeed = tidy ? TIDY_TILT_PER_SPEED : TILT_PER_SPEED;
+    const maxTilt = tidy ? TIDY_MAX_TILT : MAX_TILT;
+    const sx = Math.tan(clamp((avx / n) * perSpeed, -maxTilt, maxTilt) * lean);
+    const sy = Math.tan(clamp((avy / n) * perSpeed, -maxTilt, maxTilt) * lean);
     const cx = this.cursor.x, cy = this.cursor.y;
 
     // Rise over what lies under (or just ahead of) any held card.
@@ -432,9 +453,15 @@ export class DragController {
     this.normal.set(-sx, -sy, 1).normalize();
     this.qTilt.setFromUnitVectors(DragController.UP, this.normal);
     const join = Math.exp(-JOIN_RATE * dt);
+    const square = Math.min(1, dt * SQUARE_RATE);
     for (const c of this.held) {
       const pose = layer.pose(c.uid);
       if (!pose) continue;
+      // Tidy mode: a card held at an angle turns to the nearest quarter turn as it goes.
+      if (tidy) {
+        if (c.yawTo !== snapYaw(c.yawTo)) c.yawTo = snapYaw(c.yawTo);
+        c.yaw += shortAngle(c.yawTo - c.yaw) * square;
+      }
       const planeZ = this.base + c.dz + sx * (pose.x - cx) + sy * (pose.y - cy);
       // Picked-up cards close the gap to the plane quickly, then ride on it.
       c.ez = Number.isNaN(c.ez) ? pose.z - planeZ : c.ez * join;
@@ -636,11 +663,11 @@ export class DragController {
 
   /**
    * Messy landings fall through the physics world: a single card dropped on
-   * open table, or any group dropped on a messy pile, when Tidy drops is off
+   * open table, or any group dropped on a messy pile, when Tidy mode is off
    * (spec 10.4, 15.4). Returns false when the landing is a tidy one.
    */
   /**
-   * Every drop falls through physics when Tidy drops is off (decision 94):
+   * Every drop falls through physics when Tidy mode is off (decision 94):
    * each card is tossed in a low arc toward where the layout would put it, with
    * a little tumble and twist, and comes to rest wherever it really lands.
    * Formation and whole-pile drags keep their shape and land by layout.
@@ -679,7 +706,7 @@ export class DragController {
 
     if (mode === 'formation') {
       // Each card drops where it is, on whatever is beneath it.
-      const spots = held.map((c) => ({ x: this.cursor.x + c.ox, y: this.cursor.y + c.oy, yaw: c.home.yaw }));
+      const spots = held.map((c) => ({ x: this.cursor.x + c.ox, y: this.cursor.y + c.oy, yaw: tidy ? snapYaw(c.home.yaw) : c.home.yaw }));
       return placeSequential(app, uids, spots, moving);
     }
 
@@ -694,13 +721,13 @@ export class DragController {
       if (tidy) {
         // Join the top, squared up on the pile (spec 10.4).
         const base = pile && pile.kind === 'stack' ? bottom : top;
-        return stackAt(app, uids, { x: base.x, y: base.y, yaw: base.yaw }, moving);
+        return stackAt(app, uids, { x: base.x, y: base.y, yaw: snapYaw(base.yaw) }, moving);
       }
       if (!pile || pile.kind === 'stack' || uids.length === 1 || mode !== 'gather') {
         // Join the top as a loose stack (decision 94).
         return pileAt(app, uids, { x: top.x, y: top.y, yaw: top.yaw }, moving);
       }
-      // A messy pile takes the cards messily (Tidy drops off).
+      // A messy pile takes the cards messily (Tidy mode off).
       const spots = messyLayout(uids.length, { x: this.cursor.x, y: this.cursor.y, yaw: top.yaw }).map((p) => ({ x: p.x, y: p.y, yaw: p.yaw }));
       return placeSequential(app, uids, spots, moving);
     }
@@ -718,11 +745,13 @@ export class DragController {
       return placeSequential(app, uids, [{ x: this.cursor.x + c.ox, y: this.cursor.y + c.oy, yaw }], moving);
     }
     if (mode === 'rigid') {
-      // A lifted stack lands as the stack it was, where it is drawn.
       const b = held[0];
-      return stackAt(app, uids, { x: this.cursor.x + b.ox, y: this.cursor.y + b.oy, yaw: b.home.yaw }, moving);
+      // Tidy mode squares the lifted pile up at a quarter turn where it is drawn.
+      if (tidy) return stackAt(app, uids, { x: this.cursor.x + b.ox, y: this.cursor.y + b.oy, yaw: snapYaw(b.home.yaw) }, moving);
+      // Otherwise it lands as the pile it was, a loose one staying loose (decision 98).
+      return placeSequential(app, uids, held.map((c) => ({ x: this.cursor.x + c.ox, y: this.cursor.y + c.oy, yaw: c.home.yaw })), moving);
     }
-    // A gathered group becomes a stack at the drop point (decision 5), loose unless Tidy drops is on (decision 94).
+    // A gathered group becomes a stack at the drop point (decision 5), loose unless Tidy mode is on (decisions 94, 98).
     return pileAt(app, uids, { x: this.cursor.x, y: this.cursor.y, yaw: 0 }, moving);
   }
 }

@@ -40,7 +40,7 @@ export class SettingsPanel {
     close.addEventListener('click', () => this.close());
     this.el = h('div', { class: 'pile-editor settings-panel', hidden: '' },
       h('div', { class: 'pe-title' }, 'Settings'),
-      row('Tidy drops', h('label', { class: 'inline' }, tidy, ' every drop lands squared up')),
+      row('Tidy mode', h('label', { class: 'inline' }, tidy, ' everything lands squared up at 90° (Shift + T)')),
       row('Spawn arrival', arrival),
       row('Spawn face', face),
       row('Spawn at', where),

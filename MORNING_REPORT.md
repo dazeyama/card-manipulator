@@ -43,7 +43,8 @@ Changes made with you after the overnight build. Each is logged in Appendix A of
 | **Messier and more physical by default.** Drops, gathers, Stack (`S`) and restacks make loose stacks; only Tidy (`T`) or Tidy drops square up. Every drop of up to 80 cards falls through physics. A little more lean, turn about the grab point, turn on landing and tumble. | 94 | `0895828` |
 | **Letting go mid-motion stops cards where they are**, so a quick drag and release fans a stack out. | 95 | `aca8d75` |
 | Messy stacks and gathered clumps are **a little heavier and slower to follow**; tidy stacks stay snappy and move as one. | 96 | `b47e830` |
-| **Held cards no longer clip**: the held group leans as one plane with each card stacked along it, and rises over stacks under or ahead of it. | 97 | this report's commit |
+| **Held cards no longer clip**: the held group leans as one plane with each card stacked along it, and rises over stacks under or ahead of it. | 97 | `e82364a` |
+| **Tidy mode** replaces Tidy drops (top bar, `Shift + T`): on, it brings back the pre-messy behaviour and squares everything at quarter turns, held cards and spawns included. | 98 | this report's commit |
 
 The per-phase sections below describe the build as it was overnight. The QA checklist at the end uses the current controls.
 
@@ -282,7 +283,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 
 ### Phase 5
 - [ ] Drop a handful (spawn ~60 as a messy pile, or drag a group onto a messy pile): it looks dropped.
-- [ ] Toggle Tidy drops (top bar) and drop again: it squares up.
+- [ ] Toggle **Tidy mode** (top bar or `Shift + T`) and drop again: it squares up at 90°; a card held at an angle turns square while you drag it; a spawn arrives as a neat stack (decision 98).
 - [ ] Middle-click flips with a turn; select forty and press F for a cascade.
 - [ ] **Flick feel:** it was too hard to trigger on Normal; it is now easier (decision 90). Check again.
 - [ ] A stack of 100 doesn't jitter.

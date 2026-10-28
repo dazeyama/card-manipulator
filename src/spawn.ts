@@ -35,7 +35,9 @@ export function spawnCards(app: App, items: SpawnItem[], opts: SpawnOptions): st
   const spot = opts.at ?? (opts.where === 'cursor' ? app.lastTablePoint : { x: app.rig.target.x, y: app.rig.target.y });
   const at = { x: spot.x, y: spot.y, yaw: 0 };
   const base = surfaceTop(app.store.cards.values(), at);
-  const places = opts.arrival === 'stack' ? stackLayout(flat.length, at, base) : messyLayout(flat.length, at, base);
+  // Tidy mode (decision 98): new cards always arrive as a squared stack.
+  const arrival = app.store.settings.tidyDrops ? 'stack' : opts.arrival;
+  const places = arrival === 'stack' ? stackLayout(flat.length, at, base) : messyLayout(flat.length, at, base);
 
   const cards: Card[] = flat.map((f, i) => ({
     uid: newUid(),
@@ -53,7 +55,7 @@ export function spawnCards(app: App, items: SpawnItem[], opts: SpawnOptions): st
 
   // A messy handful falls through the physics world when it is small enough (spec 15.1).
   const physics = app.physics;
-  if (opts.arrival === 'messy' && physics && cards.length <= MAX_DROP && physics.bodyCount + cards.length <= MAX_BODIES) {
+  if (arrival === 'messy' && physics && cards.length <= MAX_DROP && physics.bodyCount + cards.length <= MAX_BODIES) {
     cards.forEach((c, i) => {
       app.layer.setPose(c.uid, { x: c.x, y: c.y, z: base + 20 + i * 2.4, yaw: c.yaw, roll: c.faceUp ? 0 : Math.PI, tiltX: (Math.random() - 0.5) * 0.3, tiltY: (Math.random() - 0.5) * 0.3 });
     });

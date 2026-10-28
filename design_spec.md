@@ -496,7 +496,7 @@ Owner's decision (2026-10-27): **gather by default; a modifier keeps the formati
 - **Messy by default** (owner, 2026-10-27, decision 94): cards land as a **loose stack**, each a few millimetres to about a centimetre off centre and turned up to about 8°. It is still clearly one pile. Only the Tidy command (`T`) or the **Tidy drops** toggle make a neat, squared stack.
 - A gathered group released on empty table becomes a loose stack at the drop point (decision 5: stacks by default; decision 94: loose).
 - Released over an existing stack or a single card, the group joins the top of it as a loose stack.
-- Released over a messy pile, the group joins the pile messily. With **Tidy drops** on, every one of these lands squared up instead.
+- Released over a messy pile, the group joins the pile messily. In **Tidy mode** every one of these lands squared up at a quarter turn instead (decision 98).
 - **Letting go mid-motion stops the cards where they are** (owner, 2026-10-27, decision 95). If the held cards are still moving when you release, each drops where it is drawn, sliding on only a few centimetres, instead of finishing the planned landing. A quick drag of a gathered stack, or of a stack by its badge, strings it out behind the cursor, so a flick of the wrist and a release fans the stack out. Releasing at rest lands as described here. With **Tidy drops** on, every release lands squared up as before.
 - Every drop of up to 80 cards falls through physics: each card is tossed in a low arc toward its spot in the layout, with a little tumble and twist, and rests where it really lands. Formation and badge (whole-pile) drags keep their shape and land by layout, as do bigger drops.
 - Landing plays a short settle: a few millimetres of drop, a soft bounce, and shadows pooling. It must finish within about 300 ms so fast work never waits on animation.
@@ -525,7 +525,7 @@ Available as HUD buttons and keys, acting on the selection:
 
 | Command | Key | Effect |
 |---|---|---|
-| Stack | `S` | Gather the selection into one loose stack at its centroid (neat with Tidy drops on, decision 94). |
+| Stack | `S` | Gather the selection into one loose stack at its centroid (neat in Tidy mode, decisions 94, 98). |
 | Spread | `X` | Spread the selection in a grid at its centroid. |
 | Tidy | `T` | Square up each pile the selection touches without merging piles. |
 | Flip | `F`, middle-click | See 10.5. |
@@ -666,7 +666,18 @@ Real cards are 0.3 mm thick, which makes stacks of thin boxes jitter in any engi
 
 ### 15.4 Messy versus tidy
 
-Owner's decision (2026-10-27): hybrid with a toggle. The global **Tidy drops** setting (top bar, default off) decides whether releases land messy or squared up. With it off, everything lands messy, even onto a neat stack, and Stack (`S`) and restacking a spread make loose stacks too (decision 94). The `Tidy` command (Section 10.7) squares up on demand. Spawn's Arrival control is the same idea for new cards.
+Owner's decision (2026-10-27): hybrid with a toggle. The global **Tidy mode** (top bar button, `Shift + T`, or the settings panel; default off; called Tidy drops until decision 98) decides whether the table behaves messy or tidy.
+
+**Tidy mode on** (decision 98) puts back everything from before the messy changes and squares everything at quarter turns:
+
+- Drops, gathers, Stack (`S`), restacks and named bins land as neat stacks, squared at 0°, 90°, 180° or 270°. Dropping onto a pile squares up on its top.
+- Drags feel as before decisions 94–96: the earlier lean, no turning about the grab point, a clump trailing at the earlier rates, and a whole pile moving as one.
+- A card held at an angle turns to the nearest quarter turn while it is still being dragged.
+- Drops land by layout, not physics, and letting go mid-motion still lands on the planned spot. A flick still tosses, but the cards come to rest at quarter turns.
+- New cards arrive as a squared stack whatever the spawn Arrival says.
+- What stays in both modes: held cards never clip (decision 97), the Shift sweep, flicks, and the controls.
+
+**Tidy mode off**: everything above is messy and physical as described in Sections 10.1–10.4. With it off, everything lands messy, even onto a neat stack, and Stack (`S`) and restacking a spread make loose stacks too (decision 94). The `Tidy` command (Section 10.7) squares up on demand. Spawn's Arrival control is the same idea for new cards.
 
 ### 15.5 Feel targets
 
@@ -914,6 +925,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 95 | Owner (2026-10-27): **letting go mid-motion stops the cards where they are** instead of finishing the planned motion, so a quick drag and release fans a stack out. **(agent)** A release counts as mid-motion when any held card moves faster than 150 mm/s. Each card then lands where it is drawn, slid on by 0.03 s of its speed, keeping its turn, in a 150 ms settle by layout rather than physics (2 mm physics bodies starting 0.3 mm apart would pop apart and spoil the fan). It applies to every drag mode; a messy stack dragged by its badge now trails a little by height like a gathered clump (top card leading), so it keeps its shape at rest but fans when swung; a tidy stack stays rigid (decision 96). It skips the drop target, so a fast release over a named pile does not join or check its filter; the cards that land on it join by overlap. Tidy drops on keeps squared landings. |
 | 96 | Owner (2026-10-27): cards in a **messy stack** or a gathered clump are a little **heavier and slower to follow** when dragged; a **tidy stack** stays snappy and moves as one. Consequence: only messy stacks fan out when swung and let go (decision 95); a tidy stack lands as the stack it was, wherever it is when let go. **(agent)** spring rates: a messy stack's or clump's top card 22 rad/s (was 28) and its bottom card 10 rad/s (was 13); a tidy stack dragged whole, a single card and formation stay at 28 rad/s. A stack counts as tidy when it is one detected `stack` pile and the whole of it is being dragged. Swept-up cards follow at the 10 rad/s tail rate. |
 | 97 | Owner (2026-10-27): **held cards must not visibly clip** through each other or the table's cards, even at some performance cost. **(agent)** Held cards each used to lean about their own centre at only 0.3 mm apart, so overlapping cards crossed, and the group flew at a fixed 10 mm over the table, through any tall stack. Now the whole held group leans as one plane (slope from the group's average velocity, same lean as before); each card lies parallel to it at its own height along it, which keeps every pair apart everywhere they overlap. The plane rises over the top of whatever lies under each held card or 0.12 s ahead of it, keeping 10 mm of lift and at least 1.5 mm under a tilted card's lowest corner; it rises at 30/s, settles at 8/s, and is never allowed below that clearance. Picked-up cards close onto the plane at 18/s. A group wider than 300 mm leans proportionally less so a wide formation doesn't seesaw. Cost: one pass over the table's drawn cards a frame plus overlap tests against the few near the group. Not covered: a card lifted from inside a stack rises through the cards above it, and landing tweens are not collision-checked. |
+| 98 | Owner (2026-10-27): the **Tidy drops** button becomes **Tidy mode**. On, it puts back everything decisions 94–96 made messy, and everything is aligned to exact quarter turns, always. Owner's picks of the suggested extras: spawns arrive as a squared stack, a card held at an angle turns to a quarter turn while dragged, and `Shift + T` toggles the mode. Not chosen: squaring the whole table when the mode is switched on. **(agent)** The setting keeps its stored name `tidyDrops` so saved tables and autosaves still load. Held cards turn to the quarter turn at a rate of 14/s. Flicked cards still fly through physics but rest at quarter turns. A formation drag in Tidy mode lands each card at a quarter turn where it is. Badge-dragged piles in Tidy mode land squared at a quarter turn; with the mode off, a badge-dragged loose pile now keeps its loose shape at rest (it used to be squared up, which contradicted decision 94). Keyboard bindings can now name Shift with a letter (`shift+t`), so Shift + a letter no longer triggers the plain letter's command. The no-clipping drag (decision 97) applies in both modes. |
 
 ## Appendix B: Open items
 
