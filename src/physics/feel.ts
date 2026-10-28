@@ -431,9 +431,7 @@ export class DragController {
   flipHeld(): void {
     if (!this.active || !this.held.length) return;
     const store = this.app.store;
-    const heights = this.held.map((c) => c.dz);
-    this.held.reverse();
-    this.held.forEach((c, i) => (c.dz = heights[i]));
+    this.reverseHeld();
     store.moveCards(this.held.map((c) => ({ uid: c.uid, faceUp: !store.cards.get(c.uid)!.faceUp })));
     for (const c of this.held) {
       const pose = this.app.layer.pose(c.uid);
@@ -443,6 +441,31 @@ export class DragController {
       const side = card.faceUp ? 0 : Math.PI;
       c.rollTo = side + 2 * Math.PI * Math.round((pose.roll + Math.PI - side) / (2 * Math.PI));
     }
+  }
+
+  /**
+   * F twice quickly while dragging (decision 105): every held card faces up,
+   * in the order it had before the first F, so a mixed stack is fronted.
+   */
+  frontHeld(): void {
+    if (!this.active || !this.held.length) return;
+    const store = this.app.store;
+    // The first F turned the whole stack over; put its order back.
+    this.reverseHeld();
+    store.moveCards(this.held.map((c) => ({ uid: c.uid, faceUp: true })));
+    for (const c of this.held) {
+      const pose = this.app.layer.pose(c.uid);
+      if (!pose) continue;
+      // Face up by the short way from wherever it is in its turn.
+      c.rollTo = 2 * Math.PI * Math.round(pose.roll / (2 * Math.PI));
+    }
+  }
+
+  /** Reverse the held cards' order, keeping the heights they ride at. */
+  private reverseHeld(): void {
+    const heights = this.held.map((c) => c.dz);
+    this.held.reverse();
+    this.held.forEach((c, i) => (c.dz = heights[i]));
   }
 
   /**

@@ -200,7 +200,18 @@ keyboard.bind('r', () => {
   else commands.rotate(hoveredCard(), twice);
 });
 keyboard.bind('z', () => commands.frame());
-keyboard.bind('f', () => (drag.dragging ? drag.flipHeld() : commands.flip(hoveredCard())));
+// F twice quickly faces every card up, so a mixed stack is fronted (decision 105).
+let lastF = 0;
+keyboard.bind('f', () => {
+  const now = performance.now();
+  const twice = now - lastF < DOUBLE_TAP_MS;
+  lastF = twice ? 0 : now;
+  if (drag.dragging) {
+    if (twice) drag.frontHeld();
+    else drag.flipHeld();
+  } else if (twice) commands.faceUp(hoveredCard());
+  else commands.flip(hoveredCard());
+});
 // N: name the selected pile; with nothing selected, a new empty bin at the cursor (spec 11.3).
 keyboard.bind('n', () => {
   const near = { x: app.pointer.x + app.canvas.getBoundingClientRect().left, y: app.pointer.y + app.canvas.getBoundingClientRect().top };
