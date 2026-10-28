@@ -14,18 +14,20 @@ export class PanelFold {
 
   /**
    * `side` is where the panel sits, which way its arrow points; `name` keys
-   * the remembered pin.
+   * the remembered pin; `pinnedByDefault` is the pin until the owner changes it.
    */
-  constructor(private readonly app: App, private readonly panel: HTMLElement, private readonly side: 'left' | 'right', private readonly name: string) {
+  constructor(private readonly app: App, private readonly panel: HTMLElement, private readonly side: 'left' | 'right', private readonly name: string, pinnedByDefault = false) {
     this.pin = h('button', { class: 'icon-btn pin-btn', title: 'Pin open: this panel stays open when you use the table' }, '📌');
     this.collapse = h('button', { class: 'icon-btn', title: 'Collapse panel' });
     this.pin.addEventListener('click', () => this.setPinned(!this.pinned));
     this.collapse.addEventListener('click', () => this.set(!panel.classList.contains('collapsed')));
     this.controls = h('div', { class: 'panel-head-buttons' }, this.pin, this.collapse);
+    this.pinned = pinnedByDefault;
     try {
-      this.pinned = localStorage.getItem(this.key) === '1';
+      const saved = localStorage.getItem(this.key);
+      if (saved !== null) this.pinned = saved === '1';
     } catch {
-      // No storage: not pinned.
+      // No storage: the default.
     }
     this.syncButtons();
   }

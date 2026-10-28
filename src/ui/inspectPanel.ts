@@ -25,7 +25,8 @@ export class InspectPanel {
     const head = h('div', { class: 'panel-head' }, h('span', { class: 'panel-title' }, 'Inspect'));
     this.el = h('aside', { class: 'panel inspect-panel' }, head, this.body);
     // Collapse and pin buttons; using the table collapses the panel unless pinned (decision 137).
-    this.fold = new PanelFold(app, this.el, 'right', 'inspect');
+    // Pinned open by default (decision 138).
+    this.fold = new PanelFold(app, this.el, 'right', 'inspect', true);
     head.append(this.fold.controls);
     host.append(this.el);
     app.store.events.on('selection', () => this.refresh());
