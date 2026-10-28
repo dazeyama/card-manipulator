@@ -14,6 +14,7 @@ import { pickCard } from '../render/picking';
 import { gridLayout, messyLayout, nextQuarterClockwise, overlaps, shuffled, snapYaw, uprightYaw, type Footprint } from '../state/piles';
 import { shortAngle } from './motion';
 import { restingTop } from './restSync';
+import { CASCADE_STEP } from '../state/curve';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
 
 export type DragMode = 'single' | 'gather' | 'formation' | 'rigid';
@@ -906,6 +907,18 @@ export class DragController {
       const top = store.cards.get(target[target.length - 1])!;
       const bottom = store.cards.get(target[0])!;
       if (tidy) {
+        // Two snap points (decision 114): squared on top of the pile, or one cascade
+        // step down from its top card, as in a curve column. The nearer one wins.
+        const yaw = snapYaw(top.yaw);
+        const down = { x: Math.sin(yaw), y: -Math.cos(yaw) };
+        const lead = held[held.length - 1];
+        const ref = mode === 'single' ? { x: this.cursor.x + lead.ox, y: this.cursor.y + lead.oy } : this.cursor;
+        const cascade = { x: top.x + down.x * CASCADE_STEP, y: top.y + down.y * CASCADE_STEP };
+        if (Math.hypot(ref.x - cascade.x, ref.y - cascade.y) < Math.hypot(ref.x - top.x, ref.y - top.y)) {
+          // Each card continues the cascade, one step further down.
+          const spots = uids.map((_, i) => ({ x: top.x + down.x * CASCADE_STEP * (i + 1), y: top.y + down.y * CASCADE_STEP * (i + 1), yaw }));
+          return placeSequential(app, uids, spots, moving);
+        }
         // Join the top, squared up on the pile (spec 10.4).
         const base = pile && pile.kind === 'stack' ? bottom : top;
         return stackAt(app, uids, { x: base.x, y: base.y, yaw: snapYaw(base.yaw) }, moving);

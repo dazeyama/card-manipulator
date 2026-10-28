@@ -59,7 +59,8 @@ Changes made with you after the overnight build. Each is logged in Appendix A of
 | **Shift sweeps only while held**, at any moment of any drag. | 110 | `013c41a` |
 | **Spawn panel trimmed**: Arrival, Face and Where are gone from it (still in the settings panel). | 111 | `1c31a4a` |
 | **Settings panel removed**: Tidy mode, the query cap and the export format each live where they are used. | 112 | `bbc42d1` |
-| **Shift + C in two columns**: W U, B R, G colourless, multicolour and lands. | 113 | this report's commit |
+| **Shift + C in two columns**: W U, B R, G colourless, multicolour and lands. | 113 | `9569577` |
+| **Tidy-mode cascade snap**: drop a card a little below a pile's top card and it snaps one cascade step down, building curve columns by hand. | 114 | this report's commit |
 
 The per-phase sections below describe the build as it was overnight. The QA checklist at the end uses the current controls.
 
@@ -306,6 +307,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 
 ### Phase 5
 - [ ] Drop a handful (spawn ~60 as a messy pile, or drag a group onto a messy pile): it looks dropped.
+- [ ] In Tidy mode, drop a card onto the lower part of another: it snaps 22 mm below it in a cascade; drop onto the middle: it squares on top (decision 114).
 - [ ] Toggle **Tidy mode** (top bar or `Shift + T`) and drop again: it squares up at 90°; a card held at an angle turns square while you drag it; a spawn arrives as a neat stack (decision 98).
 - [ ] Middle-click flips with a turn; select forty and press F for a cascade.
 - [ ] **Flick feel:** it was too hard to trigger on Normal; it is now easier (decision 90). Check again.

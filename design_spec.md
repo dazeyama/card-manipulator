@@ -673,7 +673,7 @@ Owner's decision (2026-10-27): hybrid with a toggle. The global **Tidy mode** (t
 
 **Tidy mode on** (decision 98) puts back everything from before the messy changes and squares everything at quarter turns:
 
-- Drops, gathers, Stack (`S`), restacks and named bins land as neat stacks, squared at 0°, 90°, 180° or 270°. Dropping onto a pile squares up on its top.
+- Drops, gathers, Stack (`S`), restacks and named bins land as neat stacks, squared at 0°, 90°, 180° or 270°. Dropping onto a pile snaps to the nearer of two points: squared on its top, or one cascade step (22 mm) down from its top card, as in a curve column, so curve columns can be built by hand (decision 114).
 - Drags feel as before decisions 94–96: the earlier lean, no turning about the grab point, a clump trailing at the earlier rates, and a whole pile moving as one.
 - A card held at an angle turns to the nearest quarter turn while it is still being dragged.
 - Drops land by layout, not physics, and letting go mid-motion still lands on the planned spot. A flick still tosses, but the cards come to rest at quarter turns.
@@ -946,6 +946,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 111 | Owner (2026-10-27): the spawn panel's Arrival, Face and Where controls are not needed; Tidy mode handles the only important one. **(agent)** They are gone from the spawn panel; the settings panel (gear) still has them, and spawns follow those settings as before (Tidy mode forces a neat stack, decision 98). |
 | 112 | Owner (2026-10-27): hide the settings panel too; nothing in it is needed that can't be done elsewhere, and it looks bad. **(agent)** The gear button and the panel are gone. Where each setting went: Tidy mode is the top bar button and `Shift + T`; the query spawn cap is the box on the Query tab; the decklist export format is chosen (and remembered) in the export panel; spawn arrival, face and where, and flick sensitivity, stay at their defaults (messy, face up, centre of view, Normal), with Tidy mode forcing a neat stack. Saved settings still load. The confirm dialog moved to `src/ui/confirm.ts`. Supersedes decision 80's settings panel. |
 | 113 | Owner (2026-10-27): `Shift + C` lays the colours out two to a row, using more width: white and blue, then black and red, then green and colourless, then multicolour. **(agent)** Lands share the last row with multicolour, as one neat stack. Every colour block uses the same mana value columns so they line up down each side; blocks sit 60 mm apart, rows 30 mm. A colour with no cards leaves its place empty rather than shifting the others; a row with neither colour is skipped. Supersedes the row-per-colour layout of decision 107. |
+| 114 | Owner (2026-10-27): in Tidy mode, besides snapping squarely onto a pile, a second snap point 22 mm below the top card, where a card lies in curve view, so curve-style cascades can be built by hand. **(agent)** Measured from the pile's top card, "down" along its own long side at its quarter turn. The drop snaps to whichever point is nearer the dropped card's centre (a single card) or the cursor (a group). A group dropped at the cascade point continues the cascade, each card one step further down. Messy mode is unchanged. |
 
 ## Appendix B: Open items
 
