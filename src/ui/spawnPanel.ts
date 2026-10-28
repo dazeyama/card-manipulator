@@ -8,6 +8,7 @@ import { spawnCards, type SpawnItem } from '../spawn';
 import type { Finish } from '../state/types';
 import { toast } from './toasts';
 import { h } from './dom';
+import { controlHints } from './hints';
 
 
 export class SpawnPanel {
@@ -39,7 +40,7 @@ export class SpawnPanel {
     this.body = h('div', { class: 'panel-body' });
     this.trayHost = h('div', { class: 'tray-host' });
     // No arrival, face or where controls: spawns use the defaults, and Tidy mode covers arrival (decisions 111, 112).
-    this.el.append(head, this.tabBar, this.body, this.trayHost);
+    this.el.append(head, this.tabBar, this.body, this.trayHost, controlHints());
     host.append(this.el);
 
     this.addTab('list', 'List', this.buildList());
