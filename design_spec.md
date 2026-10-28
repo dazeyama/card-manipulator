@@ -980,7 +980,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 124 | Owner (2026-10-27): some emoji on the cursors were cut off at the bottom. **(agent)** They were anchored a little below the image's bottom edge by the font's nominal box, and emoji fonts draw some glyphs lower than that. Each emoji is now placed by its measured outline (`measureText`), one pixel in from the bottom right, and drawn smaller if its outline would not fit the corner (about 46% of the cursor). The preview page does the same. |
 | 125 | Owner (2026-10-27): the 🔢 badge (Alt shows every pile's count) should also show on the arrow over empty table, not only on the glove over a card. **(agent)** Ctrl and Shift still take precedence over empty table, since they change what a drag does there. |
 | 126 | Owner (2026-10-27): the formation-drag badge becomes 🔗 (linked together) instead of 📐. |
-| 127 | Owner (2026-10-27): move every cursor emoji 2 px left and 1 px down; they lined up poorly with the arrow's marquee box. **(agent)** Each emoji's measured outline now sits 3 px in from the right edge and flush with the bottom edge (was 1 px in from both). |
+| 127 | Owner (2026-10-27): move every cursor emoji 2 px left and 1 px down; they lined up poorly with the arrow's marquee box. **(agent)** Each emoji's measured outline now sits 4 px in from the right edge (one more pixel left on the owner's follow-up) and flush with the bottom edge (was 1 px in from both). |
 
 ## Appendix B: Open items
 
