@@ -73,7 +73,11 @@ export class Hud {
       e.stopPropagation();
       if (e.key === 'Enter') {
         e.preventDefault();
-        this.apply();
+        // A search that worked hands the keyboard back to the table, so shortcuts act on the result (decision 136).
+        if (this.apply()) {
+          this.input.blur();
+          app.canvas.focus();
+        }
       } else if (e.key === 'Escape') {
         e.preventDefault();
         this.input.blur();
@@ -161,20 +165,21 @@ export class Hud {
       : `${out.matches.length.toLocaleString()} of ${out.scope.toLocaleString()} match`;
   }
 
-  /** Enter: refine the selection, or search the table when nothing is selected. */
-  apply(): void {
+  /** Enter: refine the selection, or search the table when nothing is selected. True if the query ran. */
+  apply(): boolean {
     const q = this.input.value.trim();
-    if (!q) return;
+    if (!q) return false;
     const wasTable = this.app.store.selection.size === 0;
     this.applying = true;
     const out = applyQuery(this.app.store, q);
     this.applying = false;
     if (!out.ok) {
       toast(out.error, 'error');
-      return;
+      return false;
     }
     if (wasTable && out.matches.length === 0) toast('Nothing on the table matches', 'warn');
     this.live();
+    return true;
   }
 
   /** A quick chip appends its term and applies it (spec 9.5). Shift negates. */

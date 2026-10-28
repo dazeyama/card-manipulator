@@ -996,6 +996,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 133 | Owner (2026-10-27): the Controls hints belong at the foot of the Spawn panel, not the Inspect panel. **(agent)** Moved unchanged into `src/ui/hints.ts` and placed below the Removed tray; the inspect panel is back to the card alone. |
 | 134 | Owner (2026-10-27): neither side panel was right for the hints; of the options offered, a context hint line in the play space. **(agent)** `src/ui/hints.ts`: pills in the bottom left of the play space, chosen each frame from the same state as the cursor (holding cards, formation, over a card, over empty table, marquee, pan, orbit); a held key's pill lights in the accent colour. They take no clicks. The Controls list is gone from the Spawn panel. A full-list popover (`?`) was suggested alongside and not built. |
 | 135 | Owner (2026-10-27): also add the full-list popover offered with the hint line: a ? button in the top bar, also the ? key, closed by Esc or a click away. **(agent)** `src/ui/helpPanel.ts`: hold keys, mouse and keys, one line each with icon, keys and what they do, plus a note that keys act on the selection or the pile under the cursor. Esc closes it before Esc's other jobs run. |
+| 136 | Owner (2026-10-27): after a search in the filter box and Enter, leave the box and give the keyboard to the play space, so hotkeys act on the table instead of typing letters. **(agent)** Only when the query ran; a query with an error keeps the box focused so it can be fixed. Esc already did the same. |
 
 ## Appendix B: Open items
 
