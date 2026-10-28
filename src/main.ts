@@ -32,6 +32,7 @@ import { ContextHints } from './ui/hints';
 import { HelpPanel } from './ui/helpPanel';
 import { buildQueryTab } from './ui/queryTab';
 import { HiRes } from './render/hires';
+import { installFit } from './ui/fit';
 import { Graphics } from './graphics';
 import { SelectionMarkers } from './render/markers';
 import { ACCENT } from './app';
@@ -48,6 +49,8 @@ const right = h('div', { class: 'right-host' });
 const bottom = h('div', { class: 'bottom-host' });
 middle.append(left, stageHost, right);
 root.append(top, middle, bottom);
+// Laid out for 1800 px: narrower windows shrink the panels, and below 1280 px a warning covers the page (decision 157).
+installFit();
 
 const app = new App(stageHost);
 const mouse = new MouseInput(app);

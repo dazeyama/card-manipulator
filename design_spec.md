@@ -164,6 +164,8 @@ Start from this list. Any further package, runtime or dev, may be added when its
 
 **Browsers:** current Chrome and Edge only (decision 41). Firefox and Safari are not tested or supported.
 
+**Window width** (decision 157): the bars and panels are laid out for a window **1800 px** wide. Narrower windows shrink the top bar, side panels and bottom bar to fit (CSS zoom, down to about 71%); the play space is never scaled. Below **1280 px** a warning covers the page, giving the window's width and suggesting a wider window or browser zoom out (Ctrl and minus), and goes away by itself once there is room. Keys don't reach the table while it shows.
+
 ### 4.3 Repository layout
 
 ```
@@ -1057,6 +1059,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 154 | Owner (2026-10-28): a **lock** button beside the playmat's 📺: pressed down and locked, the mat can't be dragged or selected any more, only unlocked from the same button on rollover. **(agent)** The button shows 🔓 unlocked and 🔒 locked, lit in the accent colour while locked. A locked mat also ignores R and Delete; pressing on it starts a marquee as on empty table, and the cursor and hint line treat it as table. Hovering it still shows both buttons. The flag (`locked`, optional so older files load) is saved with the table and autosaved. |
 | 155 | Owner (2026-10-28): while a playmat is **locked**, its 🔒 and 📺 buttons show in the mat's **bottom left** corner instead of the top right. **(agent)** Same 22 mm inset, turned with the mat; the lock comes first, nearest the corner, so it sits where the pointer reaches it, with 📺 to its right. Unlocking moves them back to the top right. |
 | 156 | Owner (2026-10-28): the HUD command buttons show their **key in brackets** after the icon, e.g. "📚 (S) Stack". **(agent)** Stack (S), Spread (X), Tidy (T), Flip (F), Fan (H), Curve (C), By colour (Shift + C), Export (Ctrl + E). Split creatures has no key, so it keeps its plain label. |
+| 157 | Owner (2026-10-28): the app needs an **1800 px** wide view to show every button; narrower windows **shrink the interface** to fit, and windows too narrow get a **warning covering the screen** until there is enough width. Owner's answer: the warning starts below **1280 px** (shrinking to about 71%), which still covers a 1920 x 1080 laptop at 150% Windows scaling. **(agent)** Only the top bar, the two side panels and the bottom bar are scaled, through CSS `zoom` set from the window width (`--ui-zoom`); the 3D play space and everything drawn over it (badges, mat buttons, hints) keep their size, so the camera, picking and screen positions are untouched. The width is the browser's own (`innerWidth`), so zooming the browser out also makes room. Popups opened from the bars (export, help, confirm, toasts) are not scaled. `uiScale` in `src/ui/fit.ts` is pure and tested. |
 
 ## Appendix B: Open items
 
