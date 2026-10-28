@@ -4,7 +4,7 @@
 // gloves: an open hand over a card, a fist while holding cards. An emoji in the corner shows what a
 // held key adds: a magnet while Shift sweeps, numbers while Alt shows counts,
 // a chain link for a formation drag, plus or minus for marquee add and take, a
-// set square while Ctrl holds Tidy mode on, books for a whole pile, arrows to pan and orbit.
+// set square while Ctrl holds Tidy mode on, and the pointing glove on anything clickable, books for a whole pile, arrows to pan and orbit.
 // The glove art is made by devtools/makeCursors.ts; the emoji is drawn onto it
 // here with a canvas, so it uses the system's emoji font.
 
@@ -12,6 +12,7 @@ import type { App } from '../app';
 import type { DragController } from '../physics/feel';
 import type { MouseInput } from '../input/mouse';
 import { ARROW_TIP, ARROW_URL } from './cursorArrow';
+import pointUrl from '../../art/cursors/point-48-bold.png';
 import openUrl from '../../art/cursors/open-48-bold.png';
 import fistUrl from '../../art/cursors/fist-48-bold.png';
 import hotspots from '../../art/cursors/cursors.json';
@@ -124,6 +125,13 @@ export class Cursors {
     }
     // A badge lifts its whole pile.
     document.documentElement.style.setProperty('--cursor-pile', this.cursors.openPile!);
+    // Buttons, tabs, chips and other clickable things: the pointing glove, not the system hand (decision 130).
+    const point = await loadImage(pointUrl);
+    const [px, py] = hotspots.point[VERSION] as [number, number];
+    const c = document.createElement('canvas');
+    c.width = c.height = SIZE;
+    c.getContext('2d')!.drawImage(point, 0, 0, SIZE, SIZE);
+    document.documentElement.style.setProperty('--cursor-point', `url(${c.toDataURL()}) ${px} ${py}, pointer`);
     this.shown = '';
   }
 

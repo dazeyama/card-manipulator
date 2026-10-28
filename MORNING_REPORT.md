@@ -312,6 +312,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 ### Phase 5
 - [ ] Drop a handful (spawn ~60 as a messy pile, or drag a group onto a messy pile): it looks dropped.
 - [ ] In Tidy mode, drop a card onto the lower part of another: it snaps 22 mm below it in a cascade; drop onto the middle: it squares on top (decision 114).
+- [ ] Hover buttons, tabs, chips and a badge's pencil (Alt held): the pointing glove shows, never the system hand (decision 130).
 - [ ] Hold **Ctrl** while dragging and drop: the cards land squared at 90° and the cursor shows 📐; the Tidy mode button lights while Ctrl is down (decision 129).
 - [ ] Toggle **Tidy mode** (top bar or `Shift + T`) and drop again: it squares up at 90°; a card held at an angle turns square while you drag it; a spawn arrives as a neat stack (decision 98).
 - [ ] Middle-click flips with a turn; select forty and press F for a cascade.
