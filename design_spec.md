@@ -718,10 +718,10 @@ Personality: **snappy and light** (decision 42). Quick follow, short settles, ve
 | Ctrl + A | Select all |
 | Ctrl + F, `/` | Focus the filter box |
 | Enter (in filter box) | Apply refine or table search |
-| S | Stack the selection, or the pile under the cursor when nothing is selected |
-| X | Spread the selection; with nothing selected, spread or restack the pile under the cursor (like a double-click) |
-| T | Tidy the selection, or the pile under the cursor |
-| F | Flip the selection, or the card under the cursor |
+| S | Stack the selection, or the pile under the cursor when nothing is selected. While dragging: gather the held cards into a stack in the hand |
+| X | Spread the selection; with nothing selected, spread or restack the pile under the cursor (like a double-click). While dragging: spread the held cards in a grid around the cursor |
+| T | Tidy the selection, or the pile under the cursor. While dragging: square the held cards into a neat stack in the hand |
+| F | Flip the selection, or the card under the cursor. While dragging: turn the held cards over in the hand |
 | R | Turn the selection (or the card under the cursor) to the next quarter turn clockwise; R twice quickly: upright. While dragging, R turns the held cards |
 | N | Name the selected pile |
 | Z | Frame the selection |
@@ -933,6 +933,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 101 | Owner (2026-10-27): close-up `normal` images went only to the top card of each pile; any card with even 5-10% of its face showing should get one. **(agent)** A card qualifies when at least 5% of its face is not covered by the cards above it in its pile, judged from above on a 7 x 9 grid across the face (`visibleShare` in `piles.ts`). Cards under the top of a neat stack count as hidden without checking. Up to 32 close-ups (was 24) from a pool of 64 textures (was 48, about 80 MB), nearest the middle of the view first. Each close-up is its own draw, so a full set goes past the 20-draw target in Section 17; the owner put image sharpness first. |
 | 102 | Owner (2026-10-27): R didn't seem to work: it acted only on the selection, so with nothing selected it did nothing. R should snap a card to the next 90° clockwise, not turn it 90° from where it is, so it can be used to align cards; double-tapping R stands cards upright. **(agent)** With nothing selected, R acts on the card under the cursor. "Next quarter turn clockwise" is the first multiple of 90° clockwise of the card's angle (a card within 0.06° of a quarter turn counts as on it, so a square card turns a full 90°). A double tap is two presses within 350 ms; upright is 0° by the shortest turn. |
 | 103 | Owner (2026-10-27): F, S, X and T act on what is under the cursor when nothing is selected, like R; and R while dragging a stack must turn the held cards (it did nothing). **(agent)** F and R act on the hovered card; S and T on the whole pile it is in (stacking or tidying one card means nothing); X toggles the hovered pile's spread exactly as a double-click does, so a second X on a spread card restacks it. With cards selected every key acts on the selection, as before. While dragging, R turns each held card to its next quarter turn clockwise (double tap: upright) and turns the group about the cursor with the top card, swinging there at the Tidy-mode turn rate; the cards land keeping that turn, a gathered group included. |
+| 104 | Owner (2026-10-27): T, X, S and F should work on a stack while it is being held, as R does. **(agent)** While dragging they act on the held cards and the cards land as held. F turns them over in the hand (about 0.1 s); a held stack turns over as a whole, so its order reverses and the bottom card comes out on top. T squares them into a neat stack under the top card at a quarter turn and they then move as one. S gathers them into a clump under the cursor that lands as one stack (loose, or neat in Tidy mode). X spreads them in a grid around the cursor, top card first, and each lands where it is held, as in a formation drag. Esc after F in the hand returns the cards home still flipped. |
 
 ## Appendix B: Open items
 

@@ -178,10 +178,11 @@ const hoveredPile = (): string[] => {
   if (store.selection.size || !mouse.hovered) return [...store.selection];
   return store.pileOf(mouse.hovered)?.cardUids.slice() ?? [mouse.hovered];
 };
-keyboard.bind('s', () => commands.stack(hoveredPile()));
+// While dragging, S, X, T and F act on the cards in the hand (decision 104).
+keyboard.bind('s', () => (drag.dragging ? drag.stackHeld() : commands.stack(hoveredPile())));
 // X on a hovered card toggles its pile's spread, as a double-click does: spread it, or restack it.
-keyboard.bind('x', () => (!store.selection.size && mouse.hovered ? commands.toggleSpread(mouse.hovered) : commands.spread()));
-keyboard.bind('t', () => commands.tidy(hoveredPile()));
+keyboard.bind('x', () => (drag.dragging ? drag.spreadHeld() : !store.selection.size && mouse.hovered ? commands.toggleSpread(mouse.hovered) : commands.spread()));
+keyboard.bind('t', () => (drag.dragging ? drag.tidyHeld() : commands.tidy(hoveredPile())));
 // Shift + T: Tidy mode on or off (decision 98).
 keyboard.bind('shift+t', () => {
   const on = !store.settings.tidyDrops;
@@ -199,7 +200,7 @@ keyboard.bind('r', () => {
   else commands.rotate(hoveredCard(), twice);
 });
 keyboard.bind('z', () => commands.frame());
-keyboard.bind('f', () => commands.flip(hoveredCard()));
+keyboard.bind('f', () => (drag.dragging ? drag.flipHeld() : commands.flip(hoveredCard())));
 // N: name the selected pile; with nothing selected, a new empty bin at the cursor (spec 11.3).
 keyboard.bind('n', () => {
   const near = { x: app.pointer.x + app.canvas.getBoundingClientRect().left, y: app.pointer.y + app.canvas.getBoundingClientRect().top };

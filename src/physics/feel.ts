@@ -11,7 +11,7 @@ import { restPose, type App } from '../app';
 import { land, leaveSpreads, pileAt, placeSequential, stackAt, type Landing } from '../commands';
 import type { CustomGesture } from '../input/mouse';
 import { pickCard } from '../render/picking';
-import { messyLayout, nextQuarterClockwise, overlaps, snapYaw, uprightYaw, type Footprint } from '../state/piles';
+import { gridLayout, messyLayout, nextQuarterClockwise, overlaps, snapYaw, uprightYaw, type Footprint } from '../state/piles';
 import { shortAngle } from './motion';
 import { restingTop } from './restSync';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
@@ -37,6 +37,8 @@ const TIDY_TILT_PER_SPEED = 0.0009;
 const OMEGA_TIDY_TAIL = 13;
 /** Rate (1/s) at which a held card turns to the nearest quarter turn in Tidy mode. */
 const SQUARE_RATE = 14;
+/** Rate (1/s) at which a held card turns over when F flips it in the hand. */
+const FLIP_RATE = 12;
 /** A single card turns about the point it was grabbed by (decision 94): gain, damping, limit. */
 const TURN_GAIN = 0.02;
 const TURN_DAMP = 10;
@@ -82,6 +84,8 @@ interface Held {
   yawTo: number;
   /** Its turn before any swing about the grab point; R while held turns this (decision 103). */
   base: number;
+  /** The roll it is turning over to, when F flips it in the hand (NaN when not flipping). */
+  rollTo: number;
   /** Height still to close to the group's plane after pick-up (NaN until the first frame). */
   ez: number;
 }
@@ -209,7 +213,7 @@ export class DragController {
         // A messy stack: top card leads, lower cards trail, heavier (decisions 95, 96).
         omega = OMEGA_TAIL + (OMEGA_MESSY_LEAD - OMEGA_TAIL) * rank;
       }
-      return { uid: c.uid, ox, oy, dz, omega, vx: 0, vy: 0, vz: 0, home: { x: c.x, y: c.y, z: c.z, yaw: c.yaw }, bx: ox, by: oy, yaw: c.yaw, yawTo: tidy ? snapYaw(c.yaw) : c.yaw, base: c.yaw, ez: NaN };
+      return { uid: c.uid, ox, oy, dz, omega, vx: 0, vy: 0, vz: 0, home: { x: c.x, y: c.y, z: c.z, yaw: c.yaw }, bx: ox, by: oy, yaw: c.yaw, yawTo: tidy ? snapYaw(c.yaw) : c.yaw, base: c.yaw, rollTo: NaN, ez: NaN };
     });
     for (const h of this.held) {
       this.app.motion.cancel(h.uid);
@@ -363,7 +367,7 @@ export class DragController {
     this.held.push({
       uid, ox: Math.cos(a) * r, oy: Math.sin(a) * r, dz: top + CARD_T, omega: this.tidy ? OMEGA_TIDY_TAIL : OMEGA_TAIL,
       vx: 0, vy: 0, vz: 0, home: { x: card.x, y: card.y, z: card.z, yaw: card.yaw }, bx: 0, by: 0,
-      yaw: card.yaw, yawTo: this.tidy ? snapYaw(card.yaw) : card.yaw, base: card.yaw, ez: NaN,
+      yaw: card.yaw, yawTo: this.tidy ? snapYaw(card.yaw) : card.yaw, base: card.yaw, rollTo: NaN, ez: NaN,
     });
     app.motion.cancel(uid);
     app.motion.held.add(uid);
@@ -417,6 +421,84 @@ export class DragController {
       [c.bx, c.by] = [c.bx * cos - c.by * sin, c.bx * sin + c.by * cos];
     }
     this.groupTurn += delta;
+  }
+
+  /**
+   * F while dragging (decision 104): the held cards turn over in the hand. A
+   * held stack turns over as a whole, so its order reverses: the bottom card
+   * comes out on top, as with a real stack.
+   */
+  flipHeld(): void {
+    if (!this.active || !this.held.length) return;
+    const store = this.app.store;
+    const heights = this.held.map((c) => c.dz);
+    this.held.reverse();
+    this.held.forEach((c, i) => (c.dz = heights[i]));
+    store.moveCards(this.held.map((c) => ({ uid: c.uid, faceUp: !store.cards.get(c.uid)!.faceUp })));
+    for (const c of this.held) {
+      const pose = this.app.layer.pose(c.uid);
+      const card = store.cards.get(c.uid);
+      if (!pose || !card) continue;
+      // Always the same way round, to the matching side's roll nearest half a turn on.
+      const side = card.faceUp ? 0 : Math.PI;
+      c.rollTo = side + 2 * Math.PI * Math.round((pose.roll + Math.PI - side) / (2 * Math.PI));
+    }
+  }
+
+  /**
+   * T while dragging (decision 104): the held cards square up into a neat
+   * stack in the hand, under the top card, at a quarter turn; they land neat.
+   */
+  tidyHeld(): void {
+    if (!this.active || this.held.length < 2) return;
+    const top = this.held[this.held.length - 1];
+    const yaw = snapYaw(top.base);
+    this.held.forEach((c, i) => {
+      c.ox = c.bx = top.ox;
+      c.oy = c.by = top.oy;
+      c.dz = i * CARD_T;
+      c.base = c.yawTo = yaw;
+      c.omega = OMEGA_LEAD;
+    });
+    this.mode = 'rigid';
+  }
+
+  /**
+   * S while dragging (decision 104): the held cards gather into a clump under
+   * the cursor and land as one stack (loose, or neat in Tidy mode).
+   */
+  stackHeld(): void {
+    if (!this.active || this.held.length < 2) return;
+    const n = this.held.length;
+    const tidy = this.tidy;
+    this.held.forEach((c, i) => {
+      const a = i * 2.399963;
+      const r = Math.min(14, 1.5 * Math.sqrt(n - 1 - i));
+      c.ox = c.bx = Math.cos(a) * r;
+      c.oy = c.by = Math.sin(a) * r;
+      c.dz = i * CARD_T;
+      const rank = i / (n - 1);
+      c.omega = tidy ? OMEGA_TIDY_TAIL + (OMEGA_LEAD - OMEGA_TIDY_TAIL) * rank : OMEGA_TAIL + (OMEGA_MESSY_LEAD - OMEGA_TAIL) * rank;
+    });
+    this.mode = 'gather';
+  }
+
+  /**
+   * X while dragging (decision 104): the held cards spread out in a grid
+   * around the cursor, top card first, and each lands where it is held.
+   */
+  spreadHeld(): void {
+    if (!this.active || this.held.length < 2) return;
+    const topFirst = [...this.held].reverse();
+    const grid = gridLayout(topFirst.length, { x: 0, y: 0 });
+    topFirst.forEach((c, i) => {
+      c.ox = c.bx = grid[i].x;
+      c.oy = c.by = grid[i].y;
+      c.dz = 0;
+      c.base = c.yawTo = grid[i].yaw;
+      c.omega = OMEGA_LEAD;
+    });
+    this.mode = 'formation';
   }
 
   /** Tidy mode (decision 98): everything squared up at quarter turns, with the drag feel from before the messy changes. */
@@ -493,6 +575,17 @@ export class DragController {
         const d = shortAngle(c.yawTo - c.yaw);
         c.yaw = Math.abs(d) < 1e-4 ? c.yawTo : c.yaw + d * square;
       }
+      // F in the hand: turning over.
+      if (!Number.isNaN(c.rollTo)) {
+        const d = c.rollTo - pose.roll;
+        if (Math.abs(d) < 1e-3) {
+          const card = this.app.store.cards.get(c.uid);
+          pose.roll = card?.faceUp === false ? Math.PI : 0;
+          c.rollTo = NaN;
+        } else {
+          pose.roll += d * Math.min(1, dt * FLIP_RATE);
+        }
+      }
       const planeZ = this.base + c.dz + sx * (pose.x - cx) + sy * (pose.y - cy);
       // Picked-up cards close the gap to the plane quickly, then ride on it.
       c.ez = Number.isNaN(c.ez) ? pose.z - planeZ : c.ez * join;
@@ -547,6 +640,15 @@ export class DragController {
   }
 
   private finish(): void {
+    // A card let go mid-flip finishes the turn by the short way, not a whole extra spin.
+    for (const c of this.held) {
+      const pose = this.app.layer.pose(c.uid);
+      const card = this.app.store.cards.get(c.uid);
+      if (Number.isNaN(c.rollTo) || !pose || !card) continue;
+      const side = card.faceUp ? 0 : Math.PI;
+      pose.roll -= 2 * Math.PI * Math.round((pose.roll - side) / (2 * Math.PI));
+      c.rollTo = NaN;
+    }
     this.active = false;
     this.sweeping = false;
     this.dwell = null;
