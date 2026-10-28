@@ -981,7 +981,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 125 | Owner (2026-10-27): the 🔢 badge (Alt shows every pile's count) should also show on the arrow over empty table, not only on the glove over a card. **(agent)** Ctrl and Shift still take precedence over empty table, since they change what a drag does there. |
 | 126 | Owner (2026-10-27): the formation-drag badge becomes 🔗 (linked together) instead of 📐. |
 | 127 | Owner (2026-10-27): move every cursor emoji 2 px left and 1 px down; they lined up poorly with the arrow's marquee box. **(agent)** Each emoji's measured outline now sits 3 px in from the right edge and flush with the bottom edge (was 1 px in from both); a further pixel left was tried and undone. |
-| 128 | Owner (2026-10-27): cursor emoji 1 px larger. **(agent)** Their font goes from 22 to 23 px (48% of the 48 px cursor, was 46%). |
+| 128 | Owner (2026-10-27): cursor emoji 1 px larger, then 1 px right. **(agent)** Their font goes from 22 to 23 px (48% of the 48 px cursor, was 46%), and they sit 2 px in from the right edge (was 3), still flush with the bottom. |
 
 ## Appendix B: Open items
 

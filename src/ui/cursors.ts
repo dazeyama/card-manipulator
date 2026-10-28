@@ -53,7 +53,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 /** Emoji take up to this share of the cursor's width and height. */
 const EMOJI_SHARE = 0.48;
 /** Gaps between the emoji's outline and the image's right and bottom edges, px. */
-const EMOJI_RIGHT = 3;
+const EMOJI_RIGHT = 2;
 const EMOJI_BOTTOM = 0;
 
 /**
@@ -76,7 +76,7 @@ function drawEmoji(g: CanvasRenderingContext2D, emoji: string, size: number): vo
     g.font = font(px);
     m = g.measureText(emoji);
   }
-  // Three pixels in from the right edge and down to the bottom edge, so it lines up with the arrow's marquee box (decision 127).
+  // Two pixels in from the right edge and down to the bottom edge, so it lines up with the arrow's marquee box (decision 127).
   g.fillText(emoji, size - EMOJI_RIGHT - m.actualBoundingBoxRight, size - EMOJI_BOTTOM - m.actualBoundingBoxDescent);
 }
 
