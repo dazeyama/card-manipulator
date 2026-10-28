@@ -46,17 +46,18 @@ export class PanelFold {
     this.syncButtons();
   }
 
-  /** Open or collapse the panel. */
-  set(collapsed: boolean): void {
-    if (collapsed === this.panel.classList.contains('collapsed')) return;
+  /** Open or collapse the panel. True if it changed. */
+  set(collapsed: boolean): boolean {
+    if (collapsed === this.panel.classList.contains('collapsed')) return false;
     this.panel.classList.toggle('collapsed', collapsed);
     this.syncButtons();
     this.app.resize();
+    return true;
   }
 
-  /** The play space was used: collapse, unless pinned open. */
-  autoCollapse(): void {
-    if (!this.pinned) this.set(true);
+  /** The play space was used: collapse, unless pinned open. True if it collapsed. */
+  autoCollapse(): boolean {
+    return !this.pinned && this.set(true);
   }
 
   private syncButtons(): void {
