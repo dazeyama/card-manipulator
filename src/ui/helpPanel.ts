@@ -32,6 +32,7 @@ const GROUPS: [string, Line[]][] = [
     ['🪟', 'X', 'spread, or restack'],
     ['📊', 'C', 'curve by mana value · Shift + C by colour'],
     ['🎴', 'H', 'fan like a hand of cards · H again stacks it'],
+    ['🖐️', '1 – 9', 'draw that many from the pile under the cursor, then click to lay them out as a hand, face up'],
     ['📐', 'Shift + T', 'Tidy mode on or off'],
     ['🎥', 'V', 'camera angle · Z frames · Home resets'],
     ['🏷️', 'N', 'name a pile'],

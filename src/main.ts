@@ -220,6 +220,31 @@ const curveAll = () => {
   commands.curve(store.selection.size ? [...store.selection] : [...store.cards.keys()], true);
 };
 keyboard.bind('shift+c', curveAll);
+// 1-9: draw that many cards from the hovered pile (or the selection); the next click on the
+// table lays them out there as a fanned hand, face up (decision 143). Esc cancels.
+for (let n = 1; n <= 9; n++) {
+  keyboard.bind(String(n), () => {
+    if (drag.dragging) return;
+    const source = hoveredPile();
+    app.drawing = source.length ? { count: n, source } : null;
+  });
+}
+app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
+  const draw = app.drawing;
+  if (!draw || e.button !== 0) return;
+  e.stopImmediatePropagation();
+  e.preventDefault();
+  app.drawing = null;
+  const r = app.canvas.getBoundingClientRect();
+  const at = app.rig.screenToPlane(e.clientX - r.left, e.clientY - r.top, 0);
+  if (at) commands.dealHand(draw.source, draw.count, at);
+}, true);
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && app.drawing) {
+    e.stopImmediatePropagation();
+    app.drawing = null;
+  }
+}, true);
 // H: fan the selection or the hovered pile like a hand of cards; H again stacks it back (decision 141).
 keyboard.bind('h', () => {
   if (!drag.dragging) commands.toggleFan(curveTargets());

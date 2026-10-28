@@ -233,6 +233,24 @@ export class Commands {
     for (const uid of uids) this.fanOf.set(uid, spots);
   }
 
+  /**
+   * 1-9 then a click (decision 143): take the top `count` cards of `source`
+   * and lay them out at `at` as a fanned hand, like H, always face up. H on
+   * the hand stacks it back up.
+   */
+  dealHand(source: string[], count: number, at: { x: number; y: number }): void {
+    const store = this.app.store;
+    const top = byHeight(this.app, source.filter((u) => store.cards.has(u))).slice(-count);
+    if (!top.length) return;
+    leaveSpreads(this.app, top);
+    const landings = placeSequential(this.app, top, fanLayout(top.length, at));
+    // A hand is for reading: face down cards come up.
+    for (const l of landings) l.faceUp = true;
+    land(this.app, landings, { stagger: Math.min(30, 300 / top.length), arc: 14 });
+    const spots = new Map(landings.map((l) => [l.uid, { x: l.x, y: l.y }]));
+    for (const uid of top) this.fanOf.set(uid, spots);
+  }
+
   toggleCurve(cards: string[], byColour: boolean): void {
     cards = [...new Set(cards)];
     const curved = byColour ? null : this.curvedGroup(cards);

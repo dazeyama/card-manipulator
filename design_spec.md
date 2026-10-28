@@ -532,6 +532,7 @@ Available as HUD buttons and keys, acting on the selection:
 | Rotate | `R` | Turn the selection, or the card under the cursor when nothing is selected, to the next quarter turn clockwise: a card at an odd angle squares up to the quarter turn just past it, a square card turns a full 90°. Press twice quickly: upright (decision 102). Piles stay piles. |
 | Curve | `C`, `Shift + C` | Curve view (decision 107): `C` lays the selection, or the pile under the cursor, out by mana value (pressed on cards that are already curved out, it stacks that curve back up instead, as `S` would), one column per mana value (7+ together) with the cards cascading down it so every title bar shows, lands in a neat stack at the start. `Shift + C` does the same for everything on the table (or the selection), sorted by colour into blocks, two to a row: white and blue, then black and red, then green and colourless, then multicolour and lands (decision 113). The **Split creatures** toggle in the HUD puts creatures and non-creatures in separate bands. |
 | Fan | `H` | Fan the selection, or the pile under the cursor, like a hand of cards: the cards turn about a pivot below the pile, bottom card on the left, top card on the right and on top, each about 8.6° further round, overlapping so every card's left edge and corner show (decision 142). `H` on a fan still in place stacks it back up (decision 141). |
+| Draw a hand | `1`–`9`, then click | Over a pile (or with cards selected), a number arms a draw of that many cards; the cursor becomes the pointing glove with the number. The next click on the table takes that many cards off the top of the pile and lays them out there as a fanned hand, like `H`, always face up. `Esc` cancels. `H` on the hand stacks it back up (decision 143). |
 
 ### 10.8 Remove
 
@@ -728,6 +729,7 @@ Personality: **snappy and light** (decision 42). Quick follow, short settles, ve
 | C | Curve the selection, or the pile under the cursor, out by mana value; on a curve, stack it back up |
 | Shift + C | Curve everything (or the selection) out by colour, two colours to a row |
 | H | Fan the selection, or the pile under the cursor, like a hand of cards; on a fan, stack it back up |
+| 1 – 9 | Draw that many cards from the pile under the cursor (or the selection); click the table to lay them out as a face-up hand |
 | N | Name the selected pile |
 | Z | Frame the selection |
 | V | Next camera view preset |
@@ -764,6 +766,7 @@ The cursor shows what the mouse will do, and what a held key changes (owner, 202
 | ... with 📐 | Holding cards with Ctrl held | Tidy mode while held: they land squared at a quarter turn |
 | Open glove with ↔️ | Space held, or a right-drag | Pan |
 | Gloved fist with 🔄 | Middle-drag | Orbit |
+| Pointing glove with 1️⃣–9️⃣ | After pressing a number over a pile | Click the table to deal that many cards there as a hand |
 | Pointing glove | Over a pile badge's pencil and export buttons, or any other button in the 3D play space | Click it (the panels around the table keep the system hand, decision 131) |
 
 ---
@@ -1005,6 +1008,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 140 | Owner (2026-10-28): the HUD command buttons get their icons. **(agent)** The same emoji as the hint line and the controls list: 📚 Stack, 🪟 Spread, 🧹 Tidy, 🃏 Flip, 📊 Curve; new ones where none existed: 🎨 By colour, 🐉 Split creatures, 📤 Export. |
 | 141 | Owner (2026-10-28): a new hotkey to **fan** a pile (hovered or selected), displayed as one holds a hand of cards, arching and slightly overlapping. Owner's choices: the key is **H** (F stays Flip); pressing it again on a fan stacks it back up; the layout is a hand of cards. **(agent)** `src/state/fan.ts` (pure, tested): cards on a circle 132 mm round a pivot below the pile's centre, the middle card upright where the pile was, each card turned 0.12 rad (about 7°) further clockwise, the step shrinking so a big pile spreads no more than 2 rad (about 115°). Remembered like curves so H on an unmoved fan stacks it. Added to the HUD (🎴 Fan), the hint line over a card, and the ? list. |
 | 142 | Owner (2026-10-28): fan a little wider so more of each card shows. **(agent)** Pivot radius 158 mm (was 132), step 0.15 rad, about 8.6° (was 0.12), spread capped at 2.2 rad, about 126° (was 2); neighbouring cards now sit about 24 mm apart along the arc instead of 16, so about half again as much of each card shows. |
+| 143 | Owner (2026-10-28): 1–9 "draw that many cards": press a number over a stack, the cursor turns into the pointing glove, click, and a fanned H-style hand of that many cards appears at that spot; if the stack was face down, the hand is placed face up regardless. One hint covers it. **(agent)** The source is the pile under the cursor, or the selection when there is one; the cards are its top ones by height (all of it if it has fewer). The hand always lands face up. The cursor's number is a keycap emoji (1️⃣–9️⃣) on the pointing glove, and the hint line switches to a draw context (click to lay out a hand of N, they land face up, Esc cancels); over a card it has one 1–9 hint. The click is taken before anything else sees it (after the side panels fold, so it lands where aimed). The hand is remembered like a fan, so H stacks it back. Also in the ? list. |
 
 ## Appendix B: Open items
 

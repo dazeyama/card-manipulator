@@ -37,6 +37,7 @@ const HINTS: Record<string, Hint[]> = {
     ['📖', 'Double-click spreads'],
     ['📊', 'C curves'],
     ['🎴', 'H fans'],
+    ['🖐️', '1–9 draws a hand'],
   ],
   table: [
     ['⬚', 'Drag to select'],
@@ -68,7 +69,7 @@ export class ContextHints {
   private readonly keys = { shift: false, ctrl: false, alt: false };
   private shown = '';
 
-  constructor(app: App, private readonly mouse: MouseInput, private readonly drag: DragController) {
+  constructor(private readonly app: App, private readonly mouse: MouseInput, private readonly drag: DragController) {
     this.el = document.createElement('div');
     this.el.className = 'context-hints';
     app.overlay.append(this.el);
@@ -87,6 +88,7 @@ export class ContextHints {
 
   /** Which set of hints fits what the mouse is doing. */
   private context(): string {
+    if (this.app.drawing) return 'draw';
     const gesture = this.mouse.gestureKind;
     if (gesture === 'pan' || (this.mouse.spaceDown && !this.drag.dragging)) return 'pan';
     if (gesture === 'orbit') return 'orbit';
@@ -98,8 +100,12 @@ export class ContextHints {
   private update(): void {
     const context = this.context();
     const lit = (key?: Key) => !!key && this.keys[key];
-    const hints = HINTS[context];
-    const signature = context + hints.map((hint) => (lit(hint[2]) ? '1' : '0')).join('');
+    // Drawing a hand (decision 143): what the next click does.
+    const n = this.app.drawing?.count ?? 0;
+    const hints: Hint[] = context === 'draw'
+      ? [['👆', `Click the table to lay out a hand of ${n}`], ['🃏', 'They land face up'], ['⎋', 'Esc cancels']]
+      : HINTS[context];
+    const signature = context + n + hints.map((hint) => (lit(hint[2]) ? '1' : '0')).join('');
     if (signature === this.shown) return;
     this.shown = signature;
     this.el.replaceChildren(

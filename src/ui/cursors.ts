@@ -101,6 +101,8 @@ export class Cursors {
   private shown = '';
   /** The finished cursors, once the glove art has loaded. */
   private cursors: Partial<Record<State, string>> = {};
+  /** Pointing gloves with a number, while a hand is being drawn (index = how many). */
+  private readonly drawCursors: string[] = [];
 
   constructor(private readonly app: App, private readonly mouse: MouseInput, private readonly drag: DragController) {
     const keys = (e: KeyboardEvent | PointerEvent) => {
@@ -132,6 +134,15 @@ export class Cursors {
     c.width = c.height = SIZE;
     c.getContext('2d')!.drawImage(point, 0, 0, SIZE, SIZE);
     document.documentElement.style.setProperty('--cursor-point', `url(${c.toDataURL()}) ${px} ${py}, pointer`);
+    // Drawing a hand: the pointing glove with the number as a keycap (decision 143).
+    for (let n = 1; n <= 9; n++) {
+      const d = document.createElement('canvas');
+      d.width = d.height = SIZE;
+      const g = d.getContext('2d')!;
+      g.drawImage(point, 0, 0, SIZE, SIZE);
+      drawEmoji(g, `${n}️⃣`, SIZE);
+      this.drawCursors[n] = `url(${d.toDataURL()}) ${px} ${py}, pointer`;
+    }
     this.shown = '';
   }
 
@@ -167,8 +178,9 @@ export class Cursors {
   }
 
   private update(): void {
+    const draw = this.app.drawing;
     const state = this.pick();
-    const next = this.cursors[state] ?? STATES[state][2];
+    const next = draw ? this.drawCursors[draw.count] ?? 'pointer' : this.cursors[state] ?? STATES[state][2];
     if (next === this.shown) return;
     this.shown = next;
     this.app.canvas.parentElement!.style.cursor = next;
