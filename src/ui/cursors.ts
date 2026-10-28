@@ -173,7 +173,7 @@ export class Cursors {
       return 'open';
     }
     // Over a playmat with no card above: the open glove; Alt carries the cards on it.
-    if (mats?.hovered && !ctrl && !shift) return alt ? 'openFormation' : 'open';
+    if (mats?.movable && !ctrl && !shift) return alt ? 'openFormation' : 'open';
     // Empty table: a marquee; Ctrl adds to the selection, Shift takes away (decision 88).
     if (ctrl) return 'arrowAdd';
     if (shift) return 'arrowSub';

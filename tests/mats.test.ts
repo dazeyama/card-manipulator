@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { onMat, ridersOf } from '../src/mats';
+import { Store } from '../src/state/store';
 import { MAT_H, MAT_W, type Mat } from '../src/state/types';
 
 const mat = (yaw = 0): Mat => ({ uid: 'm1', scryfallId: 'x', name: 'Ragavan', art: '', x: 100, y: 50, yaw });
@@ -28,5 +29,17 @@ describe('playmats (decision 144)', () => {
       { uid: 'elsewhere', x: edge + 300, y: 50, pileId: 'p2' },
     ];
     expect(ridersOf(mat(), cards).sort()).toEqual(['alone-on', 'hanging', 'on']);
+  });
+
+  it('locks and unlocks, telling listeners (decision 154)', () => {
+    const store = new Store();
+    store.addMat(mat());
+    let told = 0;
+    store.events.on('mats', () => told++);
+    store.setMatLocked('m1', true);
+    expect(store.mats.get('m1')!.locked).toBe(true);
+    store.setMatLocked('m1', false);
+    expect(store.mats.get('m1')!.locked).toBe(false);
+    expect(told).toBe(2);
   });
 });

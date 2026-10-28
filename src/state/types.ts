@@ -143,6 +143,8 @@ export interface Mat {
   x: number;
   y: number;
   yaw: number;
+  /** Locked in place (decision 154): not dragged, turned or removed until unlocked. */
+  locked?: boolean;
 }
 
 export const MAT_W = 610;

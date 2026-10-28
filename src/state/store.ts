@@ -217,6 +217,13 @@ export class Store {
     this.events.emit('mats', undefined);
   }
 
+  setMatLocked(uid: string, locked: boolean): void {
+    const m = this.mats.get(uid);
+    if (!m) return;
+    m.locked = locked;
+    this.events.emit('mats', undefined);
+  }
+
   removeMat(uid: string): void {
     if (this.mats.delete(uid)) this.events.emit('mats', undefined);
   }

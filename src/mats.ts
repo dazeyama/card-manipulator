@@ -1,7 +1,8 @@
 // Playmats (decision 144): a card's art on a 61 x 35 cm mat lying on the
 // table, always under the cards. A mat is dragged like a card (pressed where
 // no card is), moving alone, or carrying the cards on it while Alt is held.
-// R turns it, Delete removes it. Hovering one shows a 📺 button in its top
+// R turns it, Delete removes it. A 🔓 button locks it in place (decision
+// 154). Hovering one shows a 📺 button in its top
 // right corner that opens a mirror window: the mat and its cards from straight
 // above, live and clean, for screen sharing.
 
@@ -73,6 +74,8 @@ export class Mats {
   /** A mat being dragged, and whether it carries its cards. */
   dragging: { uid: string; carrying: boolean } | null = null;
   private readonly button: HTMLButtonElement;
+  private readonly lockButton: HTMLButtonElement;
+  private readonly buttons: HTMLDivElement;
   private readonly counts = new Map<string, HTMLDivElement>();
   private alt = false;
   private readonly mirrors: Mirror[] = [];
@@ -89,12 +92,23 @@ export class Mats {
     this.button.className = 'mat-mirror-btn';
     this.button.textContent = '📺';
     this.button.title = 'Open a top-down mirror of this playmat in its own window, for screen sharing';
-    this.button.hidden = true;
     this.button.addEventListener('pointerdown', (e) => e.stopPropagation());
     this.button.addEventListener('click', () => {
       if (this.hovered) this.openMirror(this.hovered);
     });
-    app.overlay.append(this.button);
+    // Beside it, the lock (decision 154): a locked mat stays put until unlocked here.
+    this.lockButton = document.createElement('button');
+    this.lockButton.className = 'mat-mirror-btn mat-lock-btn';
+    this.lockButton.addEventListener('pointerdown', (e) => e.stopPropagation());
+    this.lockButton.addEventListener('click', () => {
+      const m = this.hovered ? app.store.mats.get(this.hovered) : undefined;
+      if (m) app.store.setMatLocked(m.uid, !m.locked);
+    });
+    this.buttons = document.createElement('div');
+    this.buttons.className = 'mat-buttons';
+    this.buttons.hidden = true;
+    this.buttons.append(this.lockButton, this.button);
+    app.overlay.append(this.buttons);
 
     window.addEventListener('pointermove', (e) => {
       this.alt = e.altKey;
@@ -219,6 +233,17 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
   // ---- picking ----
 
   /** The top mat under a screen point (cards ignored), or null. */
+  /** The hovered mat if it can be moved, turned or removed: not locked. */
+  get movable(): string | null {
+    return this.hovered && !this.app.store.mats.get(this.hovered)?.locked ? this.hovered : null;
+  }
+
+  /** The topmost mat under a screen point that isn't locked, or null. */
+  movableAt(sx: number, sy: number): string | null {
+    const uid = this.matAt(sx, sy);
+    return uid && !this.app.store.mats.get(uid)?.locked ? uid : null;
+  }
+
   matAt(sx: number, sy: number): string | null {
     const p = this.app.rig.screenToPlane(sx, sy, MAT_T);
     if (!p) return null;
@@ -316,13 +341,21 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
   private frame(now: number): void {
     const rig = this.app.rig;
     const store = this.app.store;
-    // The 📺 button sits just inside the hovered mat's top right corner.
+    // The 🔒 and 📺 buttons sit just inside the hovered mat's top right corner.
     const m = this.hovered && !this.dragging ? store.mats.get(this.hovered) : undefined;
-    this.button.hidden = !m;
+    this.buttons.hidden = !m;
     if (m) {
       const c = corner(m, MAT_W / 2 - 22, MAT_H / 2 - 22);
       const s = rig.worldToScreen(c.x, c.y, MAT_T);
-      this.button.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) translate(-50%, -50%)`;
+      // The corner point is the middle of the 📺 button; the lock sits to its left.
+      this.buttons.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) translate(calc(-100% + 16px), -50%)`;
+      const locked = !!m.locked;
+      if (this.lockButton.classList.contains('on') !== locked || !this.lockButton.textContent) {
+        this.lockButton.textContent = locked ? '🔒' : '🔓';
+        this.lockButton.classList.toggle('on', locked);
+        this.lockButton.setAttribute('aria-pressed', String(locked));
+        this.lockButton.title = locked ? 'Locked: it can’t be dragged, turned or removed. Click to unlock.' : 'Lock this playmat in place';
+      }
     }
     // With Alt held, each mat shows how many cards lie on it, like a pile's badge (decision 109).
     for (const mat of store.mats.values()) {

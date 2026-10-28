@@ -114,7 +114,8 @@ mouse.hooks.cardDrag = (uid, x, y, mods) => {
 };
 mouse.hooks.doubleClickCard = (uid) => commands.toggleSpread(uid);
 mouse.hooks.matPress = (x, y, mods) => {
-  const mat = mats.matAt(x, y);
+  // A locked mat acts as empty table (decision 154).
+  const mat = mats.movableAt(x, y);
   return mat ? mats.press(mat, x, y, mods) : null;
 };
 // Middle-click flips the card, or the whole selection if the card is in it (spec 10.5).
@@ -278,7 +279,7 @@ keyboard.bind('r', () => {
   const twice = now - lastR < DOUBLE_TAP_MS;
   lastR = twice ? 0 : now;
   if (drag.dragging) drag.rotate(twice);
-  else if (!store.selection.size && !mouse.hovered && mats.hovered) mats.rotate(mats.hovered);
+  else if (!store.selection.size && !mouse.hovered && mats.movable) mats.rotate(mats.movable);
   else commands.rotate(hoveredCard(), twice);
 });
 keyboard.bind('z', () => commands.frame());
@@ -322,8 +323,8 @@ keyboard.bind('n', () => {
 });
 const removeSelection = () => {
   // Over a playmat with nothing selected: remove the mat (decision 144).
-  if (!store.selection.size && !mouse.hovered && mats.hovered) {
-    mats.remove(mats.hovered);
+  if (!store.selection.size && !mouse.hovered && mats.movable) {
+    mats.remove(mats.movable);
     return;
   }
   const n = tray.remove([...store.selection]);

@@ -58,6 +58,7 @@ const HINTS: Record<string, Hint[]> = {
     ['🖐️', 'Drag to move the playmat'],
     ['🔗', 'Alt + drag carries its cards', 'alt'],
     ['📺', 'Top-right button mirrors it'],
+    ['🔓', 'The lock beside it keeps it in place'],
     ['🔃', 'R turns it'],
     ['🗑️', 'Delete removes it'],
   ],
@@ -108,7 +109,8 @@ export class ContextHints {
     if (this.drag.dragging) return this.drag.heldMode === 'formation' ? 'formation' : 'holding';
     if (gesture === 'marquee') return 'marquee';
     if (this.mouse.hovered) return 'card';
-    return this.app.mats?.hovered ? 'mat' : 'table';
+    // A locked mat acts as table (decision 154).
+    return this.app.mats?.movable ? 'mat' : 'table';
   }
 
   private update(): void {
