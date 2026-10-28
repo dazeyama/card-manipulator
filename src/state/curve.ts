@@ -3,10 +3,11 @@
 // down the table with every card's title bar showing. Optionally creatures and
 // non-creatures cascade in two bands. Sorted by colour, each colour group is
 // its own block of columns, two blocks to a row: white and blue, black and
-// red, green and colourless, then multicolour (decision 113). Lands get their
-// own row underneath, cascading in a column per colour identity: the ten
-// guilds, then three or more colours, then one colour and colourless together
-// (decision 149). Pure geometry, tested without a browser.
+// red, green and colourless. Multicolour cards then get a full row of their
+// own, a cascading column per colour identity (decision 150). Lands get their
+// own row underneath in the same columns: the ten guilds, then three or more
+// colours, then one colour and colourless together (decision 149). Pure
+// geometry, tested without a browser.
 
 import { CARD_H, CARD_T, CARD_W } from './types';
 import type { Placed } from './piles';
@@ -37,15 +38,19 @@ export interface CurveCard {
 }
 
 export type ColourGroup = 'W' | 'U' | 'B' | 'R' | 'G' | 'multi' | 'colourless' | 'land';
-/** Where each colour block goes when sorted by colour: two to a row, top to bottom (decision 113). Lands have their own row below. */
-export const COLOUR_GRID: ColourGroup[][] = [['W', 'U'], ['B', 'R'], ['G', 'colourless'], ['multi']];
+/**
+ * Where each colour block goes when sorted by colour: two to a row, top to
+ * bottom (decision 113). Multicolour and lands have rows of their own below,
+ * by colour identity (decisions 149, 150).
+ */
+export const COLOUR_GRID: ColourGroup[][] = [['W', 'U'], ['B', 'R'], ['G', 'colourless']];
 
 /** The guilds in their usual order: Azorius, Orzhov, Dimir, Izzet, Rakdos, Golgari, Gruul, Boros, Selesnya, Simic. */
 export const GUILDS = ['WU', 'WB', 'UB', 'UR', 'BR', 'BG', 'RG', 'RW', 'GW', 'GU'];
 
 /**
- * A land's column in the land row (decision 149): 0 to 9 for the guilds,
- * 10 for three or more colours, 11 for one colour or none.
+ * A card's column in a colour identity row (decisions 149, 150): 0 to 9 for
+ * the guilds, 10 for three or more colours, 11 for one colour or none.
  */
 export function landColumn(identity: string[]): number {
   if (identity.length >= 3) return GUILDS.length;
@@ -80,7 +85,13 @@ const byName = (a: CurveCard, b: CurveCard) => a.name.localeCompare(b.name);
  * y = 0 (negative y is down the table). Returns the placements, x from the
  * block's left edge, and the block's height.
  */
-function block(cards: CurveCard[], cols: number[], split: boolean, column: (c: CurveCard) => number = columnOf): Block {
+function block(
+  cards: CurveCard[],
+  cols: number[],
+  split: boolean,
+  column: (c: CurveCard) => number = columnOf,
+  order: (a: CurveCard, b: CurveCard) => number = byName,
+): Block {
   const placed: { uid: string; x: number; y: number }[] = [];
   let top = 0;
   const bands = split ? [cards.filter((c) => c.creature), cards.filter((c) => !c.creature)] : [cards];
@@ -88,7 +99,7 @@ function block(cards: CurveCard[], cols: number[], split: boolean, column: (c: C
     if (!band.length) continue;
     let tallest = CARD_H;
     cols.forEach((col, k) => {
-      const inCol = band.filter((c) => column(c) === col).sort(byName);
+      const inCol = band.filter((c) => column(c) === col).sort(order);
       if (!inCol.length) return;
       const x = k * (CARD_W + COLUMN_GAP) + CARD_W / 2;
       inCol.forEach((c, i) => placed.push({ uid: c.uid, x, y: top - CARD_H / 2 - i * CASCADE_STEP }));
@@ -101,11 +112,17 @@ function block(cards: CurveCard[], cols: number[], split: boolean, column: (c: C
 
 const widthOf = (cols: number) => cols * CARD_W + (cols - 1) * COLUMN_GAP;
 
-/** The land row (decision 149): a cascading column per colour identity that has lands, in landColumn order. */
-function landRow(lands: CurveCard[]): Block & { width: number } {
+/** Multicolour cards in a column: cheapest first, then by name. */
+const byCost = (a: CurveCard, b: CurveCard) => columnOf(a) - columnOf(b) || byName(a, b);
+
+/**
+ * A row by colour identity (decisions 149, 150): a cascading column per
+ * identity that has cards, in landColumn order.
+ */
+function identityRow(cards: CurveCard[], split: boolean, order: (a: CurveCard, b: CurveCard) => number): Block & { width: number } {
   const column = (c: CurveCard) => landColumn(c.identity);
-  const cols = [...new Set(lands.map(column))].sort((a, b) => a - b);
-  return { ...block(lands, cols, false, column), width: widthOf(cols.length) };
+  const cols = [...new Set(cards.map(column))].sort((a, b) => a - b);
+  return { ...block(cards, cols, split, column, order), width: widthOf(cols.length) };
 }
 
 /**
@@ -123,6 +140,13 @@ export function curveLayout(cards: CurveCard[], centre: { x: number; y: number }
   const lands = cards.filter((c) => c.land);
   const cols = [...new Set(spells.map(columnOf))].sort((a, b) => a - b);
   let width = 0, height = 0;
+  // A full-width row under everything so far, from the left edge.
+  const addRow = (row: Block & { width: number }) => {
+    const top = placed.length ? -(height + ROW_GAP) : 0;
+    for (const p of row.placed) placed.push({ uid: p.uid, x: p.x, y: top + p.y });
+    width = Math.max(width, row.width);
+    height = -top + row.height;
+  };
   if (spells.length && !opts.byColour) {
     const b = block(spells, cols, opts.split);
     placed.push(...b.placed);
@@ -146,18 +170,17 @@ export function curveLayout(cards: CurveCard[], centre: { x: number; y: number }
       });
       if (tallest) top -= tallest + ROW_GAP;
     }
-    width = used * blockWidth + (used - 1) * BLOCK_GAP;
-    height = -top - ROW_GAP;
+    if (used) {
+      width = used * blockWidth + (used - 1) * BLOCK_GAP;
+      height = -top - ROW_GAP;
+    }
+    // Multicolour: a row by colour identity, guilds first (decision 150).
+    const multi = spells.filter((c) => c.group === 'multi');
+    if (multi.length) addRow(identityRow(multi, opts.split, byCost));
   }
 
-  // Lands: their own row underneath, from the left edge.
-  if (lands.length) {
-    const row = landRow(lands);
-    const top = spells.length ? -(height + ROW_GAP) : 0;
-    for (const p of row.placed) placed.push({ uid: p.uid, x: p.x, y: top + p.y });
-    width = Math.max(width, row.width);
-    height = -top + row.height;
-  }
+  // Lands: their own row underneath, by colour identity (decision 149).
+  if (lands.length) addRow(identityRow(lands, false, byName));
 
   // Centre the whole layout on the spot.
   const ox = centre.x - width / 2, oy = centre.y + height / 2;

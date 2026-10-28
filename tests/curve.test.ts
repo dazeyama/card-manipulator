@@ -50,6 +50,34 @@ describe('curve layout (decision 107)', () => {
     }
   });
 
+  it('with Shift + C, lays multicolour cards out by colour identity, cheapest first (decision 150)', () => {
+    const gold = (uid: string, mv: number, identity: string[]) => card(uid, mv, { group: 'multi', identity });
+    const cards = [
+      card('w2', 2, { group: 'W', identity: ['W'] }),
+      gold('teferi', 3, ['W', 'U']),
+      gold('absorb', 3, ['W', 'U']),
+      gold('dovin', 2, ['W', 'U']),
+      gold('vindicate', 3, ['W', 'B']),
+      gold('kroxa', 2, ['B', 'R']),
+      gold('niv', 6, ['W', 'U', 'B', 'R', 'G']),
+      land('tundra', ['W', 'U']),
+    ];
+    const at = new Map(curveLayout(cards, { x: 0, y: 0 }, { byColour: true, split: false }).map((p) => [p.uid, p.at]));
+    // Below the colour blocks, above the lands.
+    expect(at.get('w2')!.y).toBeGreaterThan(at.get('dovin')!.y + 88);
+    expect(at.get('teferi')!.y).toBeGreaterThan(at.get('tundra')!.y + 88);
+    // Azorius cascades cheapest first, then by name.
+    expect([at.get('dovin')!.y, at.get('absorb')!.y, at.get('teferi')!.y]).toEqual([...[at.get('dovin')!.y, at.get('absorb')!.y, at.get('teferi')!.y]].sort((a, b) => b - a));
+    expect(at.get('dovin')!.x).toBe(at.get('teferi')!.x);
+    // Guild order, then three or more colours.
+    expect(at.get('teferi')!.x).toBeLessThan(at.get('vindicate')!.x);
+    expect(at.get('vindicate')!.x).toBeLessThan(at.get('kroxa')!.x);
+    expect(at.get('kroxa')!.x).toBeLessThan(at.get('niv')!.x);
+    // Plain C keeps multicolour in the mana value curve.
+    const plain = new Map(curveLayout(cards, { x: 0, y: 0 }, { byColour: false, split: false }).map((p) => [p.uid, p.at]));
+    expect(plain.get('dovin')!.x).toBe(plain.get('kroxa')!.x);
+  });
+
   it('gives each land a column: the guilds in order, then 3+ colours, then one colour or none', () => {
     expect(GUILDS.map((g) => landColumn(g.split('')))).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     expect(landColumn(['U', 'G'])).toBe(9);
