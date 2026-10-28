@@ -52,10 +52,13 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 
 /** Emoji take up to this share of the cursor's width and height. */
 const EMOJI_SHARE = 0.46;
+/** Gaps between the emoji's outline and the image's right and bottom edges, px. */
+const EMOJI_RIGHT = 3;
+const EMOJI_BOTTOM = 0;
 
 /**
  * Draw an emoji in the bottom right corner of a square cursor image, placed by
- * its measured outline so no part of it is cut off (decision 124). Emoji fonts
+ * its measured outline so no part of it is cut off (decisions 124, 127). Emoji fonts
  * draw some glyphs below the text baseline, so the font's nominal box isn't
  * enough; a glyph too big for its corner is drawn smaller.
  */
@@ -73,8 +76,8 @@ function drawEmoji(g: CanvasRenderingContext2D, emoji: string, size: number): vo
     g.font = font(px);
     m = g.measureText(emoji);
   }
-  // One pixel in from the right and bottom edges.
-  g.fillText(emoji, size - 1 - m.actualBoundingBoxRight, size - 1 - m.actualBoundingBoxDescent);
+  // Three pixels in from the right edge and down to the bottom edge, so it lines up with the arrow's marquee box (decision 127).
+  g.fillText(emoji, size - EMOJI_RIGHT - m.actualBoundingBoxRight, size - EMOJI_BOTTOM - m.actualBoundingBoxDescent);
 }
 
 /** The glove with its emoji in the bottom right corner, as a CSS cursor value. */

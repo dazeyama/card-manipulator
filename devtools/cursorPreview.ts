@@ -83,7 +83,7 @@ async function compose(hand, emoji, size) {
     let m = g.measureText(emoji);
     const box = size * 0.46 + 2, w = m.actualBoundingBoxLeft + m.actualBoundingBoxRight, h = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
     if (w > box || h > box) { px = Math.floor(px * Math.min(box / w, box / h)); g.font = font(px); m = g.measureText(emoji); }
-    g.fillText(emoji, size - 1 - m.actualBoundingBoxRight, size - 1 - m.actualBoundingBoxDescent);
+    g.fillText(emoji, size - 3 - m.actualBoundingBoxRight, size - m.actualBoundingBoxDescent);
   }
   return c;
 }
