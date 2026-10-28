@@ -27,6 +27,7 @@ import { ExportPanel } from './ui/exportPanel';
 import { confirmDialog } from './ui/confirm';
 import { Cursors } from './ui/cursors';
 import { ContextHints } from './ui/hints';
+import { HelpPanel } from './ui/helpPanel';
 import { buildQueryTab } from './ui/queryTab';
 import { HiRes } from './render/hires';
 import { SelectionMarkers } from './render/markers';
@@ -335,6 +336,10 @@ fileBtn('New', 'Clear the table and start a new one', () => void newTable());
 fileBtn('Open…', 'Load a saved table file', () => void openFile());
 fileBtn('Save', 'Save the table as a file (Ctrl + S)', () => saveFile());
 fileBtn('Export', 'Export the whole table as a decklist or CSV', () => exporter.open([...store.cards.keys()], store.name)).classList.add('export-trigger');
+// ?: the full controls list (decision 135).
+const help = new HelpPanel();
+fileBtn('?', 'All the controls (?)', () => help.toggle()).classList.add('help-trigger');
+keyboard.bind('?', () => help.toggle());
 
 // A 429 pauses the queue; say so while it lasts (spec 5.2).
 let bannerTimer = 0;

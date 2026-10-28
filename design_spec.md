@@ -733,10 +733,13 @@ Personality: **snappy and light** (decision 42). Quick follow, short settles, ve
 | Delete | Remove selection to the tray |
 | Ctrl + S | Save file |
 | Ctrl + E | Export selection as decklist |
+| ? | Show or hide the full controls list |
 
 All keys are inactive while a text field has focus.
 
 **Context hint line** (owner, 2026-10-27, decision 134): a thin strip of small pills in the bottom left of the play space shows only the controls that matter right now, each with its icon: over a card (drag to pick up, Shift sweeps, Ctrl tidy, Alt formation, middle-click flips, double-click spreads, C curves), over empty table (drag to select, Ctrl adds, Shift takes away, Alt counts, pan, orbit, V), while holding cards (release, Shift sweeps, Ctrl lands tidy, R, F, X, Esc), while drawing a marquee, and while panning or orbiting. A held key's pill lights up in the accent colour.
+
+**Full controls list** (owner, 2026-10-27, decision 135): the **?** button at the right of the top bar, or the `?` key, opens a popover listing every control in three groups (hold keys, mouse, keys), each with its icon. Esc or a click elsewhere closes it.
 
 ### 16.1 Cursors
 
@@ -992,6 +995,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 132 | Owner (2026-10-27): the inspect panel has a lot of empty space at the bottom; reserve some of it for control hints, each line starting with an emoji or icon (for example 🧲 Hold Shift to gather, 📐 Hold Ctrl for Tidy mode). **(agent)** A **Controls** section pinned to the foot of the inspect panel (up to 45% of its height, scrolling if the window is short), one line each: icon, keys, what they do. Hold keys first, with the same emoji the cursor shows (🧲 Shift sweep, 📐 Ctrl Tidy mode, 🔗 Alt + drag formation, 🔢 Alt counts), then the mouse (pan, orbit and middle-click flip, double-click spread), then the letter keys with their double taps (S, F, R, T, X, C, V and Z, Delete), and a note that keys act on the selection or the pile under the cursor. It hides with the panel when collapsed. |
 | 133 | Owner (2026-10-27): the Controls hints belong at the foot of the Spawn panel, not the Inspect panel. **(agent)** Moved unchanged into `src/ui/hints.ts` and placed below the Removed tray; the inspect panel is back to the card alone. |
 | 134 | Owner (2026-10-27): neither side panel was right for the hints; of the options offered, a context hint line in the play space. **(agent)** `src/ui/hints.ts`: pills in the bottom left of the play space, chosen each frame from the same state as the cursor (holding cards, formation, over a card, over empty table, marquee, pan, orbit); a held key's pill lights in the accent colour. They take no clicks. The Controls list is gone from the Spawn panel. A full-list popover (`?`) was suggested alongside and not built. |
+| 135 | Owner (2026-10-27): also add the full-list popover offered with the hint line: a ? button in the top bar, also the ? key, closed by Esc or a click away. **(agent)** `src/ui/helpPanel.ts`: hold keys, mouse and keys, one line each with icon, keys and what they do, plus a note that keys act on the selection or the pile under the cursor. Esc closes it before Esc's other jobs run. |
 
 ## Appendix B: Open items
 
