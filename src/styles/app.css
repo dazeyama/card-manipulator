@@ -46,6 +46,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .panel.collapsed { width: 36px; }
 .panel.collapsed > :not(.panel-head) { display: none; }
 .panel.collapsed .panel-title { display: none; }
+/* Pin and collapse buttons in a panel's head (decision 137). */
+.panel-head-buttons { display: flex; gap: 4px; }
+.pin-btn { font-size: 12px; filter: grayscale(1); opacity: 0.55; }
+.pin-btn.on { filter: none; opacity: 1; background: var(--accent-soft); border-color: var(--accent); }
+.panel.collapsed .pin-btn { display: none; }
 .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid var(--line); }
 .panel-title { font-weight: 650; }
 .panel-body { flex: 1; overflow: auto; padding: 10px; min-height: 0; }

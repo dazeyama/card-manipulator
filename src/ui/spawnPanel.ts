@@ -8,6 +8,7 @@ import { spawnCards, type SpawnItem } from '../spawn';
 import type { Finish } from '../state/types';
 import { toast } from './toasts';
 import { h } from './dom';
+import { PanelFold } from './panelFold';
 
 
 export class SpawnPanel {
@@ -24,17 +25,14 @@ export class SpawnPanel {
   /** Panel-wide controls. */
   /** The removed tray lives at the bottom (spec 10.8). */
   readonly trayHost: HTMLElement;
+  readonly fold: PanelFold;
 
   constructor(private readonly app: App, host: HTMLElement) {
     this.el = h('aside', { class: 'panel spawn-panel' });
     const head = h('div', { class: 'panel-head' }, h('span', { class: 'panel-title' }, 'Spawn'));
-    const collapse = h('button', { class: 'icon-btn', title: 'Collapse panel' }, '‹');
-    collapse.addEventListener('click', () => {
-      this.el.classList.toggle('collapsed');
-      collapse.textContent = this.el.classList.contains('collapsed') ? '›' : '‹';
-      app.resize();
-    });
-    head.append(collapse);
+    // Collapse and pin buttons; using the table collapses the panel unless pinned (decision 137).
+    this.fold = new PanelFold(app, this.el, 'left', 'spawn');
+    head.append(this.fold.controls);
     this.tabBar = h('div', { class: 'tabs' });
     this.body = h('div', { class: 'panel-body' });
     this.trayHost = h('div', { class: 'tray-host' });

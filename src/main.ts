@@ -68,6 +68,16 @@ const outlines = new Outlines(app);
 const pileEditor = new PileEditor(app);
 store.events.on('notice', (msg) => toast(msg, 'warn', 4200));
 const inspect = new InspectPanel(app, right);
+// Using the play space collapses the side panels for more room, unless pinned open (decision 137).
+// They fold when the press ends: resizing the table under a press would move what it lands on.
+let pressedTable = false;
+app.canvas.parentElement!.addEventListener('pointerdown', () => (pressedTable = true), true);
+window.addEventListener('pointerup', () => {
+  if (!pressedTable) return;
+  pressedTable = false;
+  spawnPanel.fold.autoCollapse();
+  inspect.fold.autoCollapse();
+});
 const exporter = new ExportPanel(app);
 spawnPanel.addTab('query', 'Query', buildQueryTab(app, () => spawnPanel.options()));
 const hires = new HiRes(app);

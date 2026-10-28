@@ -6,12 +6,14 @@ import type { App } from '../app';
 import { setName } from '../scryfall/names';
 import type { Card, CardRecord } from '../state/types';
 import { h } from './dom';
+import { PanelFold } from './panelFold';
 
 const HOVER_MS = 150;
 
 export class InspectPanel {
   readonly el: HTMLElement;
   private readonly body: HTMLElement;
+  readonly fold: PanelFold;
   // undefined until the first render, so the empty state is drawn too.
   private shown: string | null | undefined = undefined;
   private pinned: string | null = null;
@@ -20,13 +22,11 @@ export class InspectPanel {
 
   constructor(private readonly app: App, host: HTMLElement) {
     this.body = h('div', { class: 'inspect-body' });
-    const toggle = h('button', { class: 'icon-btn', title: 'Collapse the inspect panel' }, '›');
-    toggle.addEventListener('click', () => {
-      this.el.classList.toggle('collapsed');
-      toggle.textContent = this.el.classList.contains('collapsed') ? '‹' : '›';
-      app.resize();
-    });
-    this.el = h('aside', { class: 'panel inspect-panel' }, h('div', { class: 'panel-head' }, h('span', { class: 'panel-title' }, 'Inspect'), toggle), this.body);
+    const head = h('div', { class: 'panel-head' }, h('span', { class: 'panel-title' }, 'Inspect'));
+    this.el = h('aside', { class: 'panel inspect-panel' }, head, this.body);
+    // Collapse and pin buttons; using the table collapses the panel unless pinned (decision 137).
+    this.fold = new PanelFold(app, this.el, 'right', 'inspect');
+    head.append(this.fold.controls);
     host.append(this.el);
     app.store.events.on('selection', () => this.refresh());
     app.store.events.on('records', () => {

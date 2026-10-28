@@ -329,6 +329,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 
 ### Phase 7
 - [ ] Hover shows a big readable image; a DFC shows both faces; click to pin.
+- [ ] Click or drag on the table: the Spawn and Inspect panels collapse when you let go. Pin one with 📌 (it highlights) and it stays open; reload and the pin is kept (decision 137).
 - [ ] The **?** button (or the `?` key) opens the full controls list; Esc or a click away closes it (decision 135).
 - [ ] A hint line in the bottom left of the table shows the controls for what's under the cursor, and changes while holding cards, drawing a marquee, panning or orbiting; a held key's hint lights up (decision 134).
 - [x] Export Keep (⤓ on its badge) and paste it into Moxfield. Works (decision 93).
