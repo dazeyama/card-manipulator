@@ -12,8 +12,14 @@ import { ImageLoader } from './render/images';
 import { MAT_H, MAT_W, type Mat } from './state/types';
 import { newUid } from './state/store';
 
-/** Mats lie just above the table and below every card and its contact shadow (at 0.03). */
-const MAT_Z = 0.01;
+/**
+ * A mat is 2.5 mm thick, a black rubber base under the art (decision 146).
+ * The thickness is for looks only: cards on a mat still lie at table height
+ * and are drawn over it.
+ */
+const MAT_T = 2.5;
+/** Rounded corners, like a real playmat. */
+const MAT_CORNER = 10;
 /**
  * Mats are drawn by order, not by depth (decision 145): after the table
  * (render order -1), before the cards (0), each later mat over earlier ones.
@@ -32,7 +38,10 @@ const MIRROR_EVERY_MS = 33;
 const MIRROR_MAX = 1920;
 
 interface Drawn {
+  /** The art on top. */
   mesh: THREE.Mesh;
+  /** The black base under it. */
+  base: THREE.Mesh;
   material: THREE.MeshLambertMaterial;
   art: string;
 }
@@ -48,7 +57,9 @@ interface Mirror {
 
 export class Mats {
   private readonly group = new THREE.Group();
-  private readonly geometry = new THREE.PlaneGeometry(MAT_W, MAT_H);
+  private readonly geometry = matTop();
+  private readonly baseGeometry = new THREE.ExtrudeGeometry(matShape(), { depth: MAT_T, bevelEnabled: false, curveSegments: 8 });
+  private readonly baseMaterial = new THREE.MeshLambertMaterial({ color: 0x141414, depthTest: false, depthWrite: false });
   private readonly drawn = new Map<string, Drawn>();
   private readonly loader = new ImageLoader(ART_W, ART_H);
   private readonly textures = new Map<string, THREE.Texture>();
@@ -117,7 +128,7 @@ export class Mats {
     const mats = this.app.store.mats;
     for (const [uid, d] of this.drawn) {
       if (!mats.has(uid)) {
-        this.group.remove(d.mesh);
+        this.group.remove(d.mesh, d.base);
         d.material.dispose();
         this.drawn.delete(uid);
         this.counts.get(uid)?.remove();
@@ -129,10 +140,21 @@ export class Mats {
       let d = this.drawn.get(m.uid);
       if (!d) {
         const material = new THREE.MeshLambertMaterial({ color: 0x3a3a3a, depthTest: false, depthWrite: false });
+        // Shadows fall on the art as if it lay on the table, where the cards really are.
+        material.onBeforeCompile = (shader) => {
+          shader.vertexShader = shader.vertexShader.replace(
+            '#include <worldpos_vertex>',
+            `#include <worldpos_vertex>
+#ifdef USE_SHADOWMAP
+worldPosition.z -= ${MAT_T.toFixed(2)};
+#endif`,
+          );
+        };
         const mesh = new THREE.Mesh(this.geometry, material);
         mesh.receiveShadow = true;
-        this.group.add(mesh);
-        d = { mesh, material, art: '' };
+        const base = new THREE.Mesh(this.baseGeometry, this.baseMaterial);
+        this.group.add(base, mesh);
+        d = { mesh, base, material, art: '' };
         this.drawn.set(m.uid, d);
       }
       if (d.art !== m.art) {
@@ -144,9 +166,13 @@ export class Mats {
           d.material.needsUpdate = true;
         });
       }
-      // Later mats are drawn over earlier ones where they overlap.
-      d.mesh.renderOrder = MAT_ORDER + order++ * MAT_ORDER_STEP;
-      d.mesh.position.set(m.x, m.y, MAT_Z);
+      // Each mat's base, then its art; later mats are drawn over earlier ones where they overlap.
+      d.base.renderOrder = MAT_ORDER + order * MAT_ORDER_STEP;
+      d.mesh.renderOrder = MAT_ORDER + (order + 0.5) * MAT_ORDER_STEP;
+      order++;
+      d.base.position.set(m.x, m.y, 0);
+      d.mesh.position.set(m.x, m.y, MAT_T);
+      d.base.rotation.set(0, 0, m.yaw);
       d.mesh.rotation.set(0, 0, m.yaw);
     }
   }
@@ -177,7 +203,7 @@ export class Mats {
 
   /** The top mat under a screen point (cards ignored), or null. */
   matAt(sx: number, sy: number): string | null {
-    const p = this.app.rig.screenToPlane(sx, sy, 0);
+    const p = this.app.rig.screenToPlane(sx, sy, MAT_T);
     if (!p) return null;
     const mats = [...this.app.store.mats.values()];
     for (let i = mats.length - 1; i >= 0; i--) if (onMat(mats[i], p.x, p.y)) return mats[i].uid;
@@ -248,7 +274,8 @@ export class Mats {
         if (!p) return;
         last = { dx: p.x - grab.x, dy: p.y - grab.y };
         const d = this.drawn.get(uid);
-        d?.mesh.position.set(start.x + last.dx, start.y + last.dy, d.mesh.position.z);
+        d?.mesh.position.set(start.x + last.dx, start.y + last.dy, MAT_T);
+        d?.base.position.set(start.x + last.dx, start.y + last.dy, 0);
         for (const r of riders ?? []) {
           const pose = app.layer.pose(r.uid);
           if (!pose) continue;
@@ -277,7 +304,7 @@ export class Mats {
     this.button.hidden = !m;
     if (m) {
       const c = corner(m, MAT_W / 2 - 22, MAT_H / 2 - 22);
-      const s = rig.worldToScreen(c.x, c.y, MAT_Z);
+      const s = rig.worldToScreen(c.x, c.y, MAT_T);
       this.button.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) translate(-50%, -50%)`;
     }
     // With Alt held, each mat shows how many cards lie on it, like a pile's badge (decision 109).
@@ -296,7 +323,7 @@ export class Mats {
       el.hidden = false;
       el.textContent = `${mat.name.split(' // ')[0]} · ${this.cardsOn(mat.uid).length}`;
       const c = corner(mat, -MAT_W / 2 + 40, MAT_H / 2 - 16);
-      const s = rig.worldToScreen(c.x, c.y, MAT_Z);
+      const s = rig.worldToScreen(c.x, c.y, MAT_T);
       el.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) translate(0, -50%)`;
     }
     if (this.mirrors.length) this.drawMirrors(now);
@@ -372,6 +399,31 @@ export class Mats {
       if (ctx) ctx.putImageData(new ImageData(new Uint8ClampedArray(mirror.pixels.buffer as ArrayBuffer), width, height), 0, 0);
     }
   }
+}
+
+/** The mat's outline, centred, with rounded corners. */
+function matShape(): THREE.Shape {
+  const w = MAT_W / 2, h = MAT_H / 2, r = MAT_CORNER;
+  const s = new THREE.Shape();
+  s.moveTo(-w + r, -h);
+  s.lineTo(w - r, -h);
+  s.quadraticCurveTo(w, -h, w, -h + r);
+  s.lineTo(w, h - r);
+  s.quadraticCurveTo(w, h, w - r, h);
+  s.lineTo(-w + r, h);
+  s.quadraticCurveTo(-w, h, -w, h - r);
+  s.lineTo(-w, -h + r);
+  s.quadraticCurveTo(-w, -h, -w + r, -h);
+  return s;
+}
+
+/** The art's surface: the rounded outline, with the texture spread corner to corner. */
+function matTop(): THREE.ShapeGeometry {
+  const geo = new THREE.ShapeGeometry(matShape(), 8);
+  const pos = geo.getAttribute('position');
+  const uv = geo.getAttribute('uv');
+  for (let i = 0; i < pos.count; i++) uv.setXY(i, pos.getX(i) / MAT_W + 0.5, pos.getY(i) / MAT_H + 0.5);
+  return geo;
 }
 
 /** True if a table point lies on a mat. */
