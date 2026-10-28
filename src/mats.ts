@@ -32,10 +32,15 @@ const MAT_ORDER_STEP = 0.0001;
 /** The art crop is loaded at about Scryfall's size; it is the most detail there is. */
 const ART_W = 626;
 const ART_H = 457;
-/** The mirror window redraws at most this often, ms. */
-const MIRROR_EVERY_MS = 33;
-/** The mirror's longest side, in device pixels, at most. */
-const MIRROR_MAX = 1920;
+/** Mirror window and art quality, set by the graphics mode (decision 152). */
+export interface MatQuality {
+  /** The mirror redraws at most this often, ms... */
+  mirrorEveryMs: number;
+  /** ...at most this many device pixels wide, with this many smoothing samples. */
+  mirrorMax: number;
+  mirrorSamples: number;
+  anisotropy: number;
+}
 
 interface Drawn {
   /** The art on top. */
@@ -71,6 +76,7 @@ export class Mats {
   private readonly counts = new Map<string, HTMLDivElement>();
   private alt = false;
   private readonly mirrors: Mirror[] = [];
+  private quality: MatQuality = { mirrorEveryMs: 33, mirrorMax: 1920, mirrorSamples: 4, anisotropy: 8 };
   private readonly mirrorCam = new THREE.OrthographicCamera(-MAT_W / 2, MAT_W / 2, MAT_H / 2, -MAT_H / 2, 1, 5000);
 
   constructor(private readonly app: App) {
@@ -177,6 +183,17 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
     }
   }
 
+  /** Switch graphics mode: the art's filtering changes at once, the mirror on its next frame. */
+  setQuality(q: MatQuality): void {
+    const refilter = q.anisotropy !== this.quality.anisotropy;
+    this.quality = { ...q };
+    if (!refilter) return;
+    for (const tex of this.textures.values()) {
+      tex.anisotropy = q.anisotropy;
+      tex.needsUpdate = true;
+    }
+  }
+
   /** The art, cropped top and bottom to the mat's wide shape. */
   private async texture(url: string): Promise<THREE.Texture | null> {
     const have = this.textures.get(url);
@@ -185,7 +202,7 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
       const bmp = await this.loader.load(url, 2);
       const tex = new THREE.Texture(bmp as unknown as HTMLImageElement);
       tex.colorSpace = THREE.SRGBColorSpace;
-      tex.anisotropy = 8;
+      tex.anisotropy = this.quality.anisotropy;
       // Image bitmaps arrive top row first, so v runs down the image.
       tex.flipY = false;
       const keep = (ART_W / ART_H) / (MAT_W / MAT_H);
@@ -364,16 +381,17 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
         this.mirrors.splice(i, 1);
         continue;
       }
-      if (now - mirror.last < MIRROR_EVERY_MS) continue;
+      if (now - mirror.last < this.quality.mirrorEveryMs) continue;
       mirror.last = now;
       // As big as the window shows it, in device pixels.
       const dpr = mirror.win.devicePixelRatio || 1;
       const shownW = Math.max(64, mirror.canvas.clientWidth * dpr);
-      const width = Math.round(Math.min(MIRROR_MAX, shownW));
+      const width = Math.round(Math.min(this.quality.mirrorMax, shownW));
       const height = Math.round((width * MAT_H) / MAT_W);
-      if (!mirror.target || mirror.target.width !== width || mirror.target.height !== height) {
+      const samples = Math.min(this.quality.mirrorSamples, renderer.capabilities.maxSamples);
+      if (!mirror.target || mirror.target.width !== width || mirror.target.height !== height || mirror.target.samples !== samples) {
         mirror.target?.dispose();
-        mirror.target = new THREE.WebGLRenderTarget(width, height, { samples: 4 });
+        mirror.target = new THREE.WebGLRenderTarget(width, height, { samples });
         mirror.target.texture.colorSpace = THREE.SRGBColorSpace;
         mirror.pixels = new Uint8Array(width * height * 4);
         mirror.canvas.width = width;

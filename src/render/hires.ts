@@ -1,6 +1,7 @@
 // Close-up quality (spec 8.3): when a card is bigger than about 160 px on
-// screen, the hovered card and the cards nearest the middle of the view get
-// Scryfall's `normal` image through a small pool of individual textures,
+// screen (100 px in High graphics, decision 152), the hovered card and the
+// cards nearest the middle of the view get Scryfall's `normal` image (`large`
+// in High) through a pool of individual textures,
 // drawn as a plane just above the card's face. The plane is inset 2 mm so the
 // instanced card's border, selection rim and rounded corners still show. Any
 // card with at least 5% of its face showing qualifies, so every card of a fan
@@ -12,9 +13,16 @@ import { visibleShare } from '../state/piles';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
 import { ImageLoader } from './images';
 
-const SHOW_ABOVE_PX = 160;
-const MAX_OVERLAYS = 32;
-const TEXTURE_POOL = 64;
+/** How close-up images behave; the graphics mode sets these (decision 152). */
+export interface HiResQuality {
+  /** Shown once a card is this many CSS pixels tall. */
+  abovePx: number;
+  /** At most this many cards at once, keeping this many textures. */
+  max: number;
+  pool: number;
+  image: 'normal' | 'large';
+  anisotropy: number;
+}
 /** A card gets a close-up image once at least this share of its face shows (decision 101). */
 const MIN_SHOWING = 0.05;
 const INSET = 2;
@@ -26,7 +34,8 @@ interface Overlay {
 }
 
 export class HiRes {
-  private readonly loader = new ImageLoader(488, 680);
+  private readonly loaders = { normal: new ImageLoader(488, 680), large: new ImageLoader(672, 936) };
+  private quality: HiResQuality = { abovePx: 160, max: 32, pool: 64, image: 'normal', anisotropy: 8 };
   private readonly textures = new Map<string, THREE.Texture>();
   private readonly loading = new Set<string>();
   private readonly overlays = new Map<string, Overlay>();
@@ -63,7 +72,7 @@ export class HiRes {
   }
 
   private update(now: number): void {
-    const close = this.cardPixels() > SHOW_ABOVE_PX;
+    const close = this.cardPixels() > this.quality.abovePx;
     if (!close) {
       if (this.overlays.size) this.clear();
       return;
@@ -107,7 +116,7 @@ export class HiRes {
     if (this.hovered && app.store.cards.has(this.hovered)) want.add(this.hovered);
     // Nearest the middle first; a card whose face is almost all covered is skipped.
     for (const s of scored) {
-      if (want.size >= MAX_OVERLAYS) break;
+      if (want.size >= this.quality.max) break;
       if (this.showing(s.uid) >= MIN_SHOWING) want.add(s.uid);
     }
     for (const [uid, o] of this.overlays) {
@@ -142,7 +151,8 @@ export class HiRes {
   private attach(uid: string): void {
     const card = this.app.store.cards.get(uid);
     const r = card && this.app.store.records.get(card.scryfallId);
-    const url = r?.image_normal;
+    // Scryfall's large image sits at the same path as the normal one.
+    const url = this.quality.image === 'large' ? r?.image_normal?.replace('/normal/', '/large/') : r?.image_normal;
     if (!url) return;
     const tex = this.textures.get(url);
     if (!tex) {
@@ -160,12 +170,12 @@ export class HiRes {
   private request(url: string): void {
     if (this.loading.has(url)) return;
     this.loading.add(url);
-    this.loader
+    this.loaders[url.includes('/large/') ? 'large' : 'normal']
       .load(url, 1)
       .then((bmp) => {
         const tex = new THREE.Texture(bmp as unknown as HTMLImageElement);
         tex.colorSpace = THREE.SRGBColorSpace;
-        tex.anisotropy = 8;
+        tex.anisotropy = this.quality.anisotropy;
         tex.flipY = false;
         tex.needsUpdate = true;
         this.textures.set(url, tex);
@@ -178,14 +188,27 @@ export class HiRes {
 
   /** Keep the texture pool small: drop the oldest textures no overlay uses. */
   private evict(): void {
-    if (this.textures.size <= TEXTURE_POOL) return;
+    if (this.textures.size <= this.quality.pool) return;
     const inUse = new Set([...this.overlays.values()].map((o) => o.url));
     for (const [url, tex] of this.textures) {
-      if (this.textures.size <= TEXTURE_POOL) break;
+      if (this.textures.size <= this.quality.pool) break;
       if (inUse.has(url)) continue;
       tex.dispose();
       this.textures.delete(url);
     }
+  }
+
+  /** Switch graphics mode: a new image size starts over with fresh textures. */
+  setQuality(q: HiResQuality): void {
+    const restart = q.image !== this.quality.image || q.anisotropy !== this.quality.anisotropy;
+    this.quality = { ...q };
+    if (restart) {
+      this.clear();
+      for (const tex of this.textures.values()) tex.dispose();
+      this.textures.clear();
+    }
+    this.evict();
+    this.lastPick = 0;
   }
 
   private clear(): void {

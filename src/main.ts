@@ -32,6 +32,7 @@ import { ContextHints } from './ui/hints';
 import { HelpPanel } from './ui/helpPanel';
 import { buildQueryTab } from './ui/queryTab';
 import { HiRes } from './render/hires';
+import { Graphics } from './graphics';
 import { SelectionMarkers } from './render/markers';
 import { ACCENT } from './app';
 import { loadDoc, toDoc, validateDoc } from './io/saveFile';
@@ -89,6 +90,9 @@ spawnPanel.addTab('query', 'Query', buildQueryTab(app, () => spawnPanel.options(
 // The 4th tab: playmats from a card's art (decision 144).
 spawnPanel.addTab('playmat', 'Playmat', buildPlaymatTab(app, mats));
 const hires = new HiRes(app);
+// High or Low graphics, on the top bar beside the camera angle (decision 152).
+const graphics = new Graphics(app, hires, mats);
+topBar.addGraphics(graphics);
 const markers = new SelectionMarkers(app, ACCENT);
 mouse.hooks.hover = (uid) => {
   inspect.hover(uid);

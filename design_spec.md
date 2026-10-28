@@ -389,6 +389,26 @@ One directional light with a shadow map covering the visible table, plus soft am
 
 ---
 
+### 8.6 Graphics mode
+
+Owner's decision (2026-10-28, decision 152): two graphics modes, switched by the **Graphics: High / Low** button on the top bar beside the camera angle, and remembered in this browser.
+
+- **Low** is the original budget, unchanged.
+- **High** is the default, and turns each dial up to where a 1080p screen stops showing a difference:
+
+| Dial | Low | High |
+|---|---|---|
+| Render resolution | the screen's own (up to 2× on high-DPI screens) | 2× the screen's own, scaled down (up to 3×), on top of the usual edge smoothing |
+| Sun shadow map | 4096² | 8192² (crisper shadow edges) |
+| Texture filtering at a slant | 8× | 16× (atlas, close-ups, playmats) |
+| Close-up images shown from | 160 px card height | 100 px |
+| Close-up images at once / kept | 32 / 64 | 160 / 192 |
+| Close-up image | Scryfall `normal` (488 × 680) | Scryfall `large` (672 × 936) |
+| Mirror window | 30 fps, up to 1920 px, 4 samples | 60 fps, up to 2560 px, 8 samples |
+
+- Above **1000 cards** High drops to Low by itself, with a notice, and the button reads **Graphics: Low (auto)**. Clicking it then keeps High anyway; once the table is back under 1000 cards the automatic drop is armed again, and an automatic Low returns to High by itself.
+- The selection rim and table grid lines stay the same width on screen at the higher resolution.
+
 ## 9. Selection: the headline feature
 
 ### 9.1 Basic selection
@@ -1030,6 +1050,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 149 | Owner (2026-10-28): when curving out, **lands** are laid out like the rest, cascading 22 mm, in columns by **colour identity** (Scryfall `ci`) in guild order: Azorius, Orzhov, Dimir, Izzet, Rakdos, Golgari, Gruul, Boros, Selesnya, Simic; then one-colour and colourless lands share the 11th column. Owner's answers: the land block is its own row below the curve (with `Shift + C`, a full-width row under the colour blocks); lands in a column by name. **(agent)** Lands of three or more colours (triomes, Command Tower) get a column between the guilds and the one-colour column, so colourless stays last; only columns with lands show, so with no three-colour lands the one-colour column is the 11th. The row starts at the curve's left edge, 30 mm below it, and the layout is centred as a whole. With Split creatures on, lands no longer sit in the creature band. Supersedes the neat land stack of decisions 107 and 113. `landColumn` in `src/state/curve.ts` is pure and tested. |
 | 150 | Owner (2026-10-28): with `Shift + C`, **multicolour** cards are laid out by **colour identity** the same way as lands: a column per guild in order, then three or more colours. **(agent)** The multicolour block becomes a full-width row under the colour blocks and above the lands, starting at the left edge; within a column cards go cheapest first, then by name, so each guild reads like a small curve; Split creatures still splits the row into bands. A card counted as multicolour by its colours but with an odd identity falls in the last column. Plain `C` keeps multicolour cards in the mana value curve. |
 | 151 | Owner (2026-10-28): with `Shift + C`, the multicolour and land rows start **one column to the right**, so they don't begin under the 0 mana column (0-mana spells are rare and it looked odd). **(agent)** The spacer is one column (card width plus the 8 mm gap) and appears only when the curve has a 0 column, so the rows always start under mana value 1; plain `C` keeps lands at the left edge, since it has no colour blocks to line up with. |
+| 152 | Owner (2026-10-28): a **graphics mode**: High, with every rendering dial turned to its perceivable maximum, and Low, the current conservative preset. High is the default; above 1000 cards it switches to Low by itself; a toggle sits on the top bar next to the camera angle. **(agent)** The dials and values are in Section 8.6, chosen for the owner's 1080p screen and RTX 4070 Ti: rendering at twice the resolution (supersampling) is the biggest visible gain, removing shimmer on card text and edges; 8192 shadows are past the point where a shadow texel is smaller than a screen pixel; 16× is the hardware's anisotropic maximum; close-ups start at 100 px because at twice the resolution the 204 px atlas image runs out there, and use Scryfall's `large` image, which shows when zoomed in at the doubled resolution (`png` is barely larger, 745 × 1040, and far heavier); 160 close-ups covers about every card on screen at that zoom. The atlas keeps Scryfall's `small` images in both modes, since rebuilding it bigger would multiply texture memory for every card. Shadow softness (radius 3 texels) stays the same in texels, so shadows read crisper in High rather than as blurry as before. The mode is a browser preference (local storage), not saved with tables. The automatic drop happens when the count goes over 1000, with a notice; clicking the button while lowered keeps High until the table goes back under 1000. Changing modes resizes the drawing buffer, drops and rebuilds the shadow map, sets the atlas's filtering on its GL texture directly (re-uploading would clear it) and reloads the close-up images at the new size. Lines drawn a set number of pixels wide (selection rim, table grid) are scaled by the extra resolution so they look the same. `src/render/quality.ts` holds the presets and the rule, pure and tested; `src/graphics.ts` applies them. |
 
 ## Appendix B: Open items
 

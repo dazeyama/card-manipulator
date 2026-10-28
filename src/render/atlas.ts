@@ -39,6 +39,8 @@ export class Atlas {
   private depth: number;
   private mipDirty = false;
   private lastMip = 0;
+  /** Texture filtering at a slant (decision 152). */
+  private anisotropy = 8;
   private readonly scratch: HTMLCanvasElement;
   private readonly scratchCtx: CanvasRenderingContext2D;
   /** Called when the texture object is replaced after growing. */
@@ -114,6 +116,24 @@ export class Atlas {
     this.lastMip = now;
   }
 
+  /**
+   * Texture filtering at a slant, set by the graphics mode (decision 152).
+   * Set on the GL texture directly, since re-uploading the atlas would clear it.
+   */
+  setAnisotropy(n: number): void {
+    this.anisotropy = n;
+    const value = Math.min(n, this.renderer.capabilities.getMaxAnisotropy());
+    this.texture.anisotropy = value;
+    const gl = this.renderer.getContext() as WebGL2RenderingContext;
+    const ext = this.renderer.extensions.get('EXT_texture_filter_anisotropic') as { TEXTURE_MAX_ANISOTROPY_EXT: number } | null;
+    if (!ext) return;
+    const props = this.renderer.properties.get(this.texture) as { __webglTexture: WebGLTexture; __currentAnisotropy?: number };
+    this.renderer.state.activeTexture(gl.TEXTURE0);
+    this.renderer.state.bindTexture(gl.TEXTURE_2D_ARRAY, props.__webglTexture);
+    gl.texParameterf(gl.TEXTURE_2D_ARRAY, ext.TEXTURE_MAX_ANISOTROPY_EXT, value);
+    props.__currentAnisotropy = value;
+  }
+
   private regenerateMips(): void {
     const gl = this.renderer.getContext() as WebGL2RenderingContext;
     const glTex = (this.renderer.properties.get(this.texture) as { __webglTexture: WebGLTexture }).__webglTexture;
@@ -132,7 +152,7 @@ export class Atlas {
     tex.generateMipmaps = true;
     tex.minFilter = THREE.LinearMipmapLinearFilter;
     tex.magFilter = THREE.LinearFilter;
-    tex.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+    tex.anisotropy = Math.min(this.anisotropy, this.renderer.capabilities.getMaxAnisotropy());
     tex.flipY = false;
     tex.premultiplyAlpha = false;
     tex.unpackAlignment = 4;

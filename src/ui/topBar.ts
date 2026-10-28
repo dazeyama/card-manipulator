@@ -1,6 +1,7 @@
 // The top bar (spec 14.3): table name, and room for save, load, export and settings.
 
 import type { App } from '../app';
+import type { Graphics } from '../graphics';
 import { VIEW_PRESETS } from '../render/camera';
 import { h } from './dom';
 
@@ -11,6 +12,7 @@ export class TopBar {
   /** Buttons and toggles added by later features go here, right-aligned. */
   readonly actions: HTMLElement;
   private readonly status: HTMLElement;
+  private readonly viewButton: HTMLButtonElement;
 
   constructor(private readonly app: App, host: HTMLElement) {
     const name = h('input', { class: 'table-name', 'aria-label': 'Table name', spellcheck: 'false' });
@@ -34,6 +36,7 @@ export class TopBar {
       // No storage: start on the first preset.
     }
     const view = h('button', { class: 'btn small view-btn', title: 'Next camera angle (V). Double right-click straightens back to it.' });
+    this.viewButton = view;
     let shown = -1;
     const syncView = () => {
       if (app.rig.preset === shown) return;
@@ -70,6 +73,24 @@ export class TopBar {
     app.store.events.on('settings', syncTidy);
     syncTidy();
     this.actions.append(tidy);
+  }
+
+  /** Graphics mode (decision 152): a button beside the camera angle that switches High and Low. */
+  addGraphics(graphics: Graphics): void {
+    const btn = h('button', { class: 'btn small graphics-btn' });
+    const sync = () => {
+      const high = graphics.mode === 'high';
+      btn.textContent = `Graphics: ${high ? 'High' : 'Low'}${graphics.lowered ? ' (auto)' : ''}`;
+      btn.title = graphics.lowered
+        ? 'Lowered by itself above 1,000 cards. Click for High anyway.'
+        : high
+          ? 'High: sharper rendering, shadows and close-ups. Click for Low.'
+          : 'Low: the lighter rendering budget. Click for High.';
+    };
+    btn.addEventListener('click', () => graphics.toggle());
+    graphics.onChange = sync;
+    sync();
+    this.viewButton.after(btn);
   }
 
   private refreshStatus(): void {

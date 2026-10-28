@@ -11,7 +11,7 @@ export class SceneView {
   readonly scene = new THREE.Scene();
   readonly table: THREE.Mesh;
   readonly sun: THREE.DirectionalLight;
-  private readonly tableUniforms = { uFocus: { value: new THREE.Vector3() }, uScale: { value: 1000 } };
+  private readonly tableUniforms = { uFocus: { value: new THREE.Vector3() }, uScale: { value: 1000 }, uSuper: { value: 1 } };
   private readonly corners = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
   private readonly lightSpace = new THREE.Matrix4();
 
@@ -57,8 +57,9 @@ export class SceneView {
 varying vec3 vTableP;
 uniform vec3 uFocus;
 uniform float uScale;
+uniform float uSuper;
 float gridLine(vec2 p, float spacing) {
-  vec2 g = abs(fract(p / spacing - 0.5) - 0.5) / fwidth(p / spacing);
+  vec2 g = abs(fract(p / spacing - 0.5) - 0.5) / (fwidth(p / spacing) * uSuper);
   return 1.0 - min(min(g.x, g.y), 1.0);
 }
 ` + shader.fragmentShader.replace(
@@ -75,6 +76,11 @@ diffuseColor.rgb *= 1.0 - fade * (0.035 * minor + 0.06 * major);`,
     mesh.scale.set(400000, 400000, 1);
     mesh.renderOrder = -1;
     return mesh;
+  }
+
+  /** Keep grid lines as wide on screen when rendering at a higher resolution (decision 152). */
+  setSupersample(n: number): void {
+    this.tableUniforms.uSuper.value = n;
   }
 
   resize(width: number, height: number): void {

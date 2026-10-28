@@ -68,6 +68,8 @@ uniform sampler2DArray uAtlas;
 uniform vec2 uSlotUV;
 uniform vec3 uAccent;
 uniform float uTime;
+// Render pixels per screen pixel beyond the screen's own (2 in High graphics, decision 152).
+uniform float uSuper;
 varying vec3 vFront;
 varying vec3 vBack;
 varying vec4 vFlags;
@@ -110,7 +112,7 @@ diffuseColor.rgb *= 1.0 + 0.14 * vFlags.y;
 const emissiveFragment = /* glsl */ `
 #include <emissivemap_fragment>
 float px = max(fwidth(vLocal.x), fwidth(vLocal.y));
-float rimW = max(1.6, px * 2.6);
+float rimW = max(1.6, px * 2.6 * uSuper);
 float rim = vFlags.x * step(0.5, abs(vFace)) * smoothstep(-rimW, -rimW * 0.35, cd);
 if (abs(vFace) < 0.5) {
   // Card edges: lit by hand, without the shadow map, so a stack's side reads as
@@ -188,6 +190,7 @@ export class CardLayer {
     uAccent: { value: THREE.Color };
     uTime: { value: number };
     uPlain: { value: number };
+    uSuper: { value: number };
   };
   private readonly m = new THREE.Matrix4();
   private readonly q = new THREE.Quaternion();
@@ -204,6 +207,7 @@ export class CardLayer {
       uAccent: { value: accent },
       uTime: { value: 0 },
       uPlain: { value: 0 },
+      uSuper: { value: 1 },
     };
     atlas.onTextureChanged = (tex) => {
       this.uniforms.uAtlas.value = tex;
@@ -273,6 +277,11 @@ export class CardLayer {
   /** Draw without selection rims or hover glow (for the mirror window). */
   setPlain(on: boolean): void {
     this.uniforms.uPlain.value = on ? 1 : 0;
+  }
+
+  /** Keep the selection rim as wide on screen when rendering at a higher resolution. */
+  setSupersample(n: number): void {
+    this.uniforms.uSuper.value = n;
   }
 
   setTime(t: number): void {
