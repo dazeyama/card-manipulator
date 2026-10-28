@@ -1,35 +1,116 @@
-// The Controls list at the foot of the Spawn panel (decisions 132, 133): one
-// line per control, an icon, the keys, and what they do.
+// A context hint line inside the play space (decision 134): a thin strip in
+// the bottom left corner showing only the controls that matter right now,
+// changing with what is under the mouse, what is held and which keys are down.
+// The cursor shows what is happening; the strip shows what you could do next.
+// A held key's hint lights up.
 
-import { h } from './dom';
+import type { App } from '../app';
+import type { DragController } from '../physics/feel';
+import type { MouseInput } from '../input/mouse';
 
-/**
- * Control hints at the foot of the Spawn panel (decisions 132, 133): an icon, the keys,
- * and what they do. Hold keys first, as they match the cursor's emoji.
- */
-const HINTS: [string, string, string][] = [
-  ['🧲', 'Hold Shift', 'sweep up cards while dragging'],
-  ['📐', 'Hold Ctrl', 'Tidy mode while held'],
-  ['🔗', 'Alt + drag', 'move cards in formation'],
-  ['🔢', 'Hold Alt', 'show every pile’s count'],
-  ['↔️', 'Right-drag', 'pan · Space + drag too'],
-  ['🔄', 'Middle-drag', 'orbit · middle-click flips'],
-  ['📖', 'Double-click', 'spread a pile, or restack it'],
-  ['📚', 'S', 'stack · S S shuffles'],
-  ['🃏', 'F', 'flip · F F faces all up'],
-  ['🔃', 'R', 'turn 90° · R R upright'],
-  ['🧹', 'T', 'tidy · Shift + T Tidy mode'],
-  ['🪟', 'X', 'spread'],
-  ['📊', 'C', 'curve · Shift + C by colour'],
-  ['🎥', 'V', 'camera angle · Z frames'],
-  ['🗑️', 'Delete', 'remove to the tray'],
-];
+type Key = 'shift' | 'ctrl' | 'alt';
+/** One hint: its icon, its words, and the key that lights it up while held. */
+type Hint = [string, string, Key?];
 
-/** The Controls section. */
-export function controlHints(): HTMLElement {
-  return h('div', { class: 'hints' },
-    h('div', { class: 'hints-title' }, 'Controls'),
-    ...HINTS.map(([icon, keys, what]) => h('div', { class: 'hint' }, h('span', { class: 'hint-icon' }, icon), h('span', { class: 'hint-keys' }, keys), h('span', { class: 'hint-what' }, what))),
-    h('div', { class: 'hint-note' }, 'Keys act on the selection, or on the pile under the cursor.'),
-  );
+const HINTS: Record<string, Hint[]> = {
+  holding: [
+    ['✋', 'Release to drop'],
+    ['🧲', 'Shift sweeps cards in', 'shift'],
+    ['📐', 'Ctrl lands tidy', 'ctrl'],
+    ['🔃', 'R turns'],
+    ['🃏', 'F flips'],
+    ['🪟', 'X spreads'],
+    ['⎋', 'Esc puts back'],
+  ],
+  formation: [
+    ['✋', 'Release to drop each where it is'],
+    ['🔗', 'Moving in formation'],
+    ['🧲', 'Shift sweeps cards in', 'shift'],
+    ['⎋', 'Esc puts back'],
+  ],
+  card: [
+    ['🖐️', 'Drag to pick up'],
+    ['🧲', 'Shift sweeps', 'shift'],
+    ['📐', 'Ctrl tidy · click toggles', 'ctrl'],
+    ['🔗', 'Alt keeps formation', 'alt'],
+    ['🃏', 'Middle-click flips'],
+    ['📖', 'Double-click spreads'],
+    ['📊', 'C curves'],
+  ],
+  table: [
+    ['⬚', 'Drag to select'],
+    ['➕', 'Ctrl adds', 'ctrl'],
+    ['➖', 'Shift takes away', 'shift'],
+    ['🔢', 'Alt shows counts', 'alt'],
+    ['↔️', 'Right-drag pans'],
+    ['🔄', 'Middle-drag orbits'],
+    ['🎥', 'V camera angle'],
+  ],
+  marquee: [
+    ['⬚', 'Release to select'],
+    ['➕', 'Ctrl adds', 'ctrl'],
+    ['➖', 'Shift takes away', 'shift'],
+    ['⎋', 'Esc cancels'],
+  ],
+  pan: [
+    ['↔️', 'Panning'],
+    ['🖱️', 'Double right-click straightens the view'],
+  ],
+  orbit: [
+    ['🔄', 'Orbiting'],
+    ['🎥', 'V cycles camera angles'],
+  ],
+};
+
+export class ContextHints {
+  private readonly el: HTMLDivElement;
+  private readonly keys = { shift: false, ctrl: false, alt: false };
+  private shown = '';
+
+  constructor(app: App, private readonly mouse: MouseInput, private readonly drag: DragController) {
+    this.el = document.createElement('div');
+    this.el.className = 'context-hints';
+    app.overlay.append(this.el);
+    const keys = (e: KeyboardEvent | PointerEvent) => {
+      this.keys.shift = e.shiftKey;
+      this.keys.ctrl = e.ctrlKey || e.metaKey;
+      this.keys.alt = e.altKey;
+    };
+    window.addEventListener('keydown', keys);
+    window.addEventListener('keyup', keys);
+    window.addEventListener('pointermove', keys);
+    window.addEventListener('pointerdown', keys);
+    window.addEventListener('blur', () => (this.keys.shift = this.keys.ctrl = this.keys.alt = false));
+    app.onFrame(() => this.update());
+  }
+
+  /** Which set of hints fits what the mouse is doing. */
+  private context(): string {
+    const gesture = this.mouse.gestureKind;
+    if (gesture === 'pan' || (this.mouse.spaceDown && !this.drag.dragging)) return 'pan';
+    if (gesture === 'orbit') return 'orbit';
+    if (this.drag.dragging) return this.drag.heldMode === 'formation' ? 'formation' : 'holding';
+    if (gesture === 'marquee') return 'marquee';
+    return this.mouse.hovered ? 'card' : 'table';
+  }
+
+  private update(): void {
+    const context = this.context();
+    const lit = (key?: Key) => !!key && this.keys[key];
+    const hints = HINTS[context];
+    const signature = context + hints.map((hint) => (lit(hint[2]) ? '1' : '0')).join('');
+    if (signature === this.shown) return;
+    this.shown = signature;
+    this.el.replaceChildren(
+      ...hints.map(([icon, text, key]) => {
+        const item = document.createElement('span');
+        item.className = 'context-hint' + (lit(key) ? ' on' : '');
+        const i = document.createElement('span');
+        i.className = 'context-hint-icon';
+        i.textContent = icon;
+        item.append(i, text);
+        return item;
+      }),
+    );
+  }
 }

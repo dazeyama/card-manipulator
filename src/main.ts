@@ -26,6 +26,7 @@ import { InspectPanel } from './ui/inspectPanel';
 import { ExportPanel } from './ui/exportPanel';
 import { confirmDialog } from './ui/confirm';
 import { Cursors } from './ui/cursors';
+import { ContextHints } from './ui/hints';
 import { buildQueryTab } from './ui/queryTab';
 import { HiRes } from './render/hires';
 import { SelectionMarkers } from './render/markers';
@@ -56,6 +57,8 @@ const commands = new Commands(app);
 const drag = new DragController(app);
 // Cursors that show what the mouse will do (decision 116).
 new Cursors(app, mouse, drag);
+// A hint line in the play space showing the controls that matter right now (decision 134).
+new ContextHints(app, mouse, drag);
 const tray = new RemovedTray(app, spawnPanel.trayHost);
 const autosave = new Autosave(app);
 const store = app.store;

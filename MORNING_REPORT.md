@@ -329,7 +329,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 
 ### Phase 7
 - [ ] Hover shows a big readable image; a DFC shows both faces; click to pin.
-- [ ] The foot of the Spawn panel lists the controls with their emoji, below the Removed tray (decisions 132, 133).
+- [ ] A hint line in the bottom left of the table shows the controls for what's under the cursor, and changes while holding cards, drawing a marquee, panning or orbiting; a held key's hint lights up (decision 134).
 - [x] Export Keep (⤓ on its badge) and paste it into Moxfield. Works (decision 93).
 - [x] Save a file (Ctrl + S), New table, Open it back. Works (decision 93).
 - [ ] Spawn `set:ltr r:rare` from the Query tab: the preview count comes first.
