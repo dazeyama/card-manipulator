@@ -669,7 +669,7 @@ Real cards are 0.3 mm thick, which makes stacks of thin boxes jitter in any engi
 
 ### 15.4 Messy versus tidy
 
-Owner's decision (2026-10-27): hybrid with a toggle. The global **Tidy mode** (top bar button, `Shift + T`, or the settings panel; default off; called Tidy drops until decision 98) decides whether the table behaves messy or tidy.
+Owner's decision (2026-10-27): hybrid with a toggle. The global **Tidy mode** (top bar button or `Shift + T`; holding **Ctrl** turns it on for as long as Ctrl is held, decision 129; default off; called Tidy drops until decision 98) decides whether the table behaves messy or tidy.
 
 **Tidy mode on** (decision 98) puts back everything from before the messy changes and squares everything at quarter turns:
 
@@ -749,11 +749,12 @@ The cursor shows what the mouse will do, and what a held key changes (owner, 202
 | Open glove | Over a card | Drag picks it up (or the selection) |
 | ... with 🧲 | Shift held over a card | A drag will sweep up cards it passes |
 | ... with 🔢 | Alt (or Ctrl + Shift) held over a card | Every pile shows its count; a drag keeps the formation |
-| ... with ☑️ | Ctrl held over a card | Click toggles it in or out of the selection |
+| ... with 📐 | Ctrl held over a card | Tidy mode while Ctrl is held: a drag lands squared; a click still toggles the card in or out of the selection |
 | ... with 📚 | Over a pile's badge | Drag lifts the whole pile |
 | Gloved fist | Holding cards | Release drops them |
 | ... with 🧲 | Holding cards with Shift held | Sweeping up the cards passed over |
 | ... with 🔗 | Holding cards in formation | They move linked together and keep their layout |
+| ... with 📐 | Holding cards with Ctrl held | Tidy mode while held: they land squared at a quarter turn |
 | Open glove with ↔️ | Space held, or a right-drag | Pan |
 | Gloved fist with 🔄 | Middle-drag | Orbit |
 
@@ -982,6 +983,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 126 | Owner (2026-10-27): the formation-drag badge becomes 🔗 (linked together) instead of 📐. |
 | 127 | Owner (2026-10-27): move every cursor emoji 2 px left and 1 px down; they lined up poorly with the arrow's marquee box. **(agent)** Each emoji's measured outline now sits 3 px in from the right edge and flush with the bottom edge (was 1 px in from both); a further pixel left was tried and undone. |
 | 128 | Owner (2026-10-27): cursor emoji 1 px larger, then 1 px right. **(agent)** Their font goes from 22 to 23 px (48% of the 48 px cursor, was 46%), and they sit 2 px in from the right edge (was 3), still flush with the bottom. |
+| 129 | Owner (2026-10-27): a new hold mode like Alt and Shift: holding **Ctrl** means Tidy mode is on, only while Ctrl is held; the cursor shows it with 📐 (tidy, to measure). **(agent)** Everywhere Tidy mode is read now asks whether it is switched on or Ctrl is held (`app.tidy`): landings, the drag feel, stacking, physics results and spawns. So a drag released with Ctrl held lands squared at a quarter turn, and a card held while Ctrl is down turns square in the hand. Ctrl's other meanings stay: Ctrl + click toggles a card, Ctrl + drag on empty table adds to the selection, Ctrl + Shift is the formation fallback, and the Ctrl shortcuts. The cursor shows 📐 on the open glove over a card and on the fist while holding cards (it replaces the ☑️ toggle badge); over empty table Ctrl still shows ➕. The Tidy mode button lights up while Ctrl holds it on. |
 
 ## Appendix B: Open items
 

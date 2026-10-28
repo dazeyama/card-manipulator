@@ -55,9 +55,17 @@ export class TopBar {
     // The setting keeps its old name, tidyDrops, so saved tables still load.
     const tidy = h('button', { class: 'btn small', title: 'Tidy mode (Shift + T): everything lands squared up at 90°, with the calmer drag feel. Off: messy and physical.' }, 'Tidy mode');
     const syncTidy = () => {
-      tidy.classList.toggle('on', app.store.settings.tidyDrops);
+      tidy.classList.toggle('on', app.tidy);
       tidy.setAttribute('aria-pressed', String(app.store.settings.tidyDrops));
     };
+    // Holding Ctrl turns Tidy mode on while it is held (decision 129): the button shows it.
+    let held = false;
+    app.onFrame(() => {
+      if (app.ctrlHeld !== held) {
+        held = app.ctrlHeld;
+        syncTidy();
+      }
+    });
     tidy.addEventListener('click', () => app.store.updateSettings({ tidyDrops: !app.store.settings.tidyDrops }));
     app.store.events.on('settings', syncTidy);
     syncTidy();

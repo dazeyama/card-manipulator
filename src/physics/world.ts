@@ -237,7 +237,7 @@ export class Physics {
       // Face down is a half turn about the long axis, which flips the card's x axis.
       const turned = Math.atan2(ax.y, ax.x) + (faceUp ? 0 : Math.PI);
       // Tidy mode (decision 98): even a tossed card comes to rest at a quarter turn.
-      const yaw = this.app.store.settings.tidyDrops ? snapYaw(turned) : turned;
+      const yaw = this.app.tidy ? snapYaw(turned) : turned;
       const t = body.translation();
       return { uid, x: t.x / MM, y: t.y / MM, z: t.z / MM, yaw, faceUp };
     });

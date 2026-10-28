@@ -24,11 +24,12 @@ const states: [string, string, string, string][] = [
   ['open', '', 'Over a card', 'Pick it up'],
   ['open', '🧲', '+ Shift', 'Sweep cards in'],
   ['open', '🔢', '+ Alt', 'Show counts, keep formation'],
-  ['open', '☑️', '+ Ctrl', 'Toggle in selection'],
+  ['open', '📐', '+ Ctrl', 'Tidy while held; click toggles'],
   ['open', '📚', 'Pile badge', 'Lift whole pile'],
   ['fist', '', 'Holding cards', 'Release to drop'],
   ['fist', '🧲', 'Holding + Shift', 'Sweeping'],
   ['fist', '🔗', 'Formation drag', 'Layout kept'],
+  ['fist', '📐', 'Holding + Ctrl', 'Lands tidy'],
   ['open', '↔️', 'Space or right-drag', 'Pan'],
   ['fist', '🔄', 'Middle-drag', 'Orbit'],
 ];

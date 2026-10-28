@@ -555,7 +555,7 @@ export class DragController {
 
   /** Tidy mode (decision 98): everything squared up at quarter turns, with the drag feel from before the messy changes. */
   private get tidy(): boolean {
-    return this.app.store.settings.tidyDrops;
+    return this.app.tidy;
   }
 
   /**
@@ -735,7 +735,7 @@ export class DragController {
     // Let go mid-motion: the cards drop where they are drawn, strung out along
     // the drag, instead of finishing the planned landing (decision 95). A quick
     // drag of a gathered stack fans it out this way.
-    if (!this.app.store.settings.tidyDrops && inMotion(held)) {
+    if (!this.app.tidy && inMotion(held)) {
       const ordered = held
         .map((c) => ({ c, pose: this.app.layer.pose(c.uid) }))
         .filter((e) => e.pose)
@@ -870,7 +870,7 @@ export class DragController {
   private dropLoose(held: Held[], mode: DragMode, sx: number, sy: number): boolean {
     const app = this.app;
     const physics = app.physics;
-    if (!physics || app.store.settings.tidyDrops || mode === 'formation' || mode === 'rigid') return false;
+    if (!physics || app.tidy || mode === 'formation' || mode === 'rigid') return false;
     const spots = this.landings(held, mode, sx, sy);
     const byUid = new Map(held.map((c) => [c.uid, c]));
     const tosses = spots.map((l, i) => {
@@ -897,7 +897,7 @@ export class DragController {
     const store = app.store;
     const uids = held.map((c) => c.uid);
     const moving = new Set(uids);
-    const tidy = store.settings.tidyDrops;
+    const tidy = app.tidy;
 
     if (mode === 'formation') {
       // Each card drops where it is, on whatever is beneath it.

@@ -42,13 +42,26 @@ export class App {
   readonly lastTablePoint = { x: 0, y: 0 };
   /** Last cursor position over the canvas, in canvas pixels. */
   readonly pointer = { x: 0, y: 0, inside: false };
+  /** Ctrl is held: Tidy mode is on while it is (decision 129). */
+  ctrlHeld = false;
   /** Per-frame hooks run before rendering. */
   private readonly frameHooks: ((now: number, dt: number) => void)[] = [];
   private lastFrame = performance.now();
   /** Frame time samples for the performance readout. */
   readonly frameTimes: number[] = [];
 
+  /** Tidy mode right now: switched on, or held on with Ctrl (decisions 98, 129). */
+  get tidy(): boolean {
+    return this.store.settings.tidyDrops || this.ctrlHeld;
+  }
+
   constructor(readonly root: HTMLElement) {
+    const keys = (e: KeyboardEvent | PointerEvent) => (this.ctrlHeld = e.ctrlKey || e.metaKey);
+    window.addEventListener('keydown', keys);
+    window.addEventListener('keyup', keys);
+    window.addEventListener('pointermove', keys);
+    window.addEventListener('pointerdown', keys);
+    window.addEventListener('blur', () => (this.ctrlHeld = false));
     const stage = document.createElement('div');
     stage.className = 'stage';
     this.canvas = document.createElement('canvas');

@@ -95,7 +95,7 @@ export function stackAt(app: App, uids: string[], at: Footprint, exclude = new S
  * quarter turn in Tidy mode (decisions 94, 98). Only Tidy squares a loose stack up.
  */
 export function pileAt(app: App, uids: string[], at: Footprint, exclude = new Set(uids)): Landing[] {
-  if (app.store.settings.tidyDrops) return stackAt(app, uids, { ...at, yaw: snapYaw(at.yaw) }, exclude);
+  if (app.tidy) return stackAt(app, uids, { ...at, yaw: snapYaw(at.yaw) }, exclude);
   return placeSequential(app, uids, looseStackLayout(uids.length, at), exclude);
 }
 

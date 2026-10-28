@@ -4,7 +4,7 @@
 // gloves: an open hand over a card, a fist while holding cards. An emoji in the corner shows what a
 // held key adds: a magnet while Shift sweeps, numbers while Alt shows counts,
 // a chain link for a formation drag, plus or minus for marquee add and take, a
-// tick for Ctrl's toggle, books for a whole pile, arrows to pan and orbit.
+// set square while Ctrl holds Tidy mode on, books for a whole pile, arrows to pan and orbit.
 // The glove art is made by devtools/makeCursors.ts; the emoji is drawn onto it
 // here with a canvas, so it uses the system's emoji font.
 
@@ -31,11 +31,12 @@ const STATES = {
   open: ['open', '', 'grab'],
   openSweep: ['open', '🧲', 'grab'],
   openFormation: ['open', '🔢', 'grab'],
-  openToggle: ['open', '☑️', 'pointer'],
+  openTidy: ['open', '📐', 'pointer'],
   openPile: ['open', '📚', 'grab'],
   fist: ['fist', '', 'grabbing'],
   fistSweep: ['fist', '🧲', 'grabbing'],
   fistFormation: ['fist', '🔗', 'grabbing'],
+  fistTidy: ['fist', '📐', 'grabbing'],
   pan: ['open', '↔️', 'move'],
   orbit: ['fist', '🔄', 'all-scroll'],
 } satisfies Record<string, [Hand, string, string]>;
@@ -134,6 +135,8 @@ export class Cursors {
     if (this.drag.dragging) {
       if (shift && !ctrl) return 'fistSweep';
       if (this.drag.heldMode === 'formation') return 'fistFormation';
+      // Ctrl held: the cards land tidy (decision 129).
+      if (ctrl) return 'fistTidy';
       return 'fist';
     }
     if (gesture === 'marquee') {
@@ -143,7 +146,8 @@ export class Cursors {
     if (this.mouse.hovered) {
       if (alt || (ctrl && shift)) return 'openFormation';
       if (shift) return 'openSweep';
-      if (ctrl) return 'openToggle';
+      // Ctrl held: Tidy mode while held; a click still toggles the card (decisions 88, 129).
+      if (ctrl) return 'openTidy';
       return 'open';
     }
     // Empty table: a marquee; Ctrl adds to the selection, Shift takes away (decision 88).

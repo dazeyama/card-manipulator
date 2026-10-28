@@ -36,7 +36,7 @@ export function spawnCards(app: App, items: SpawnItem[], opts: SpawnOptions): st
   const at = { x: spot.x, y: spot.y, yaw: 0 };
   const base = surfaceTop(app.store.cards.values(), at);
   // Tidy mode (decision 98): new cards always arrive as a squared stack.
-  const arrival = app.store.settings.tidyDrops ? 'stack' : opts.arrival;
+  const arrival = app.tidy ? 'stack' : opts.arrival;
   const places = arrival === 'stack' ? stackLayout(flat.length, at, base) : messyLayout(flat.length, at, base);
 
   const cards: Card[] = flat.map((f, i) => ({
