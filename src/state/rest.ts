@@ -1,16 +1,14 @@
-// How a card comes to rest on the cards under it (decision 99). Cards keep
-// their flat model height for ordering and pile detection; this works out the
-// drawn pose they really rest in: tilted onto the edges of the cards beneath
-// and down onto the table, so a fanned stack lies low instead of floating as a
-// staircase. Pure geometry, so it is tested without a browser.
+// How a card comes to rest on the cards under it (decisions 99, 100). Cards
+// keep their flat model height for ordering and pile detection; this works out
+// the drawn pose they really rest in: as low as they can go as rigid cards,
+// supported under their centre, tilted where they lie across an edge. Pure
+// geometry, so it is tested without a browser.
 
 import { CARD_H, CARD_T, CARD_W } from './types';
 
 const HW = CARD_W / 2;
 const HH = CARD_H / 2;
 
-/** A thin card droops onto a lower side up to this slope (about 11 degrees), even when its centre is supported. */
-export const SAG_MAX = 0.2;
 /** No resting card leans steeper than this (about 39 degrees). */
 export const MAX_SLOPE = 0.8;
 
@@ -156,9 +154,10 @@ function upperHull(pts: { u: number; z: number }[]): { u: number; z: number }[] 
 
 /**
  * The slope a card settles at along one of its sides, from the highest points
- * under it. A rigid card rests on the edge of the hull under its centre; a
- * thin card also droops toward a lower side when that takes only a gentle
- * slope, which is what makes a fanned stack lie low on the table.
+ * under it: a rigid card rests on the edge of their hull under its centre,
+ * which is as low as its centre can go (decision 100). It never droops toward
+ * a lower side: that lifts its other end into the air, and cards landing on
+ * those raised ends built towers.
  */
 export function restSlope(pts: { u: number; z: number }[]): number {
   const h = upperHull(pts);
@@ -172,13 +171,7 @@ export function restSlope(pts: { u: number; z: number }[]): number {
     }
   }
   if (!Number.isFinite(com)) com = 0;
-  let g = com;
-  const left = h[0], right = h[h.length - 1];
-  if (Math.abs(left.z - right.z) > 0.05) {
-    const drape = left.z < right.z ? slope(0) : slope(h.length - 2);
-    if (Math.abs(drape) <= SAG_MAX && Math.abs(drape) > Math.abs(com)) g = drape;
-  }
-  return Math.max(-MAX_SLOPE, Math.min(MAX_SLOPE, g));
+  return Math.max(-MAX_SLOPE, Math.min(MAX_SLOPE, com));
 }
 
 /**

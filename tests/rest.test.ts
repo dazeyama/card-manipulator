@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { rng } from '../src/state/piles';
-import { bottomAt, MAX_SLOPE, restOn, restSlope, SAG_MAX, slopesOf, tiltFor, type Resting } from '../src/state/rest';
+import { messyLayout } from '../src/state/piles';
+import { bottomAt, MAX_SLOPE, restOn, restSlope, slopesOf, tiltFor, type Resting } from '../src/state/rest';
 import { CARD_H, CARD_T, CARD_W } from '../src/state/types';
 
 const flat = (x: number, y: number, z: number, yaw = 0): Resting => ({ x, y, z, yaw, tiltX: 0, tiltY: 0 });
@@ -39,7 +40,7 @@ function minGap(at: { x: number; y: number; yaw: number }, rest: ReturnType<type
   return gap;
 }
 
-describe('resting tilt (decision 99)', () => {
+describe('resting as rigid cards (decisions 99, 100)', () => {
   it('turns pose tilt into slopes and back', () => {
     const t = tiltFor(0.12, -0.3);
     const g = slopesOf(t.tiltX, t.tiltY);
@@ -57,30 +58,28 @@ describe('resting tilt (decision 99)', () => {
     expect(Math.abs(r.tiltX) + Math.abs(r.tiltY)).toBeLessThan(1e-9);
   });
 
-  it('droops onto the table when it hangs a little off a card', () => {
-    // Offset 5 mm across: the card touches the table on the free side.
+  it('lies flat on a card when its centre is supported, even hanging a little off it', () => {
     const at = { x: 5, y: 0, yaw: 0 };
     const supports = [flat(0, 0, CARD_T / 2)];
     const r = restOn(at, supports);
-    const { gs, gt } = slopesOf(r.tiltX, r.tiltY);
-    expect(gs).toBeLessThan(0);
-    expect(Math.abs(gs)).toBeLessThanOrEqual(SAG_MAX);
-    expect(Math.abs(gt)).toBeLessThan(1e-6);
-    expect(bottomAt(r, CARD_W / 2, 0)).toBeCloseTo(0, 6);
+    expect(Math.abs(r.tiltX) + Math.abs(r.tiltY)).toBeLessThan(1e-9);
+    expect(r.z).toBeCloseTo(CARD_T * 1.5, 9);
     expect(minGap(at, r, supports)).toBeGreaterThanOrEqual(-1e-6);
   });
 
-  it('keeps a fanned stack low: a 40-card ribbon stays a few mm tall, not 12 mm', () => {
-    const placed: Resting[] = [];
-    let top = 0;
-    for (let i = 0; i < 40; i++) {
-      const at = { x: i * 5, y: 0, yaw: 0 };
-      const r = restOn(at, placed.filter((c) => Math.abs(c.x - at.x) < CARD_W));
-      expect(minGap(at, r, placed)).toBeGreaterThanOrEqual(-1e-6);
-      placed.push({ ...at, ...r });
-      for (const s of [-CARD_W / 2, CARD_W / 2]) top = Math.max(top, bottomAt(r, s, 0) + CARD_T);
+  it('never builds a tower: a messy heap is no taller than its cards stacked flat', () => {
+    // The droop rule of decision 99 stood 60 cards 70-130 mm tall.
+    for (const seed of [1, 2, 3]) {
+      const placed: Resting[] = [];
+      let top = 0;
+      for (const at of messyLayout(60, { x: 0, y: 0, yaw: 0 }, 0, rng(seed))) {
+        const r = restOn(at, placed.slice(-20));
+        expect(minGap(at, r, placed.slice(-20))).toBeGreaterThanOrEqual(-1e-6);
+        placed.push({ ...at, ...r });
+        for (const s of [-CARD_W / 2, CARD_W / 2]) for (const t of [-CARD_H / 2, CARD_H / 2]) top = Math.max(top, bottomAt(r, s, t) + CARD_T);
+      }
+      expect(top).toBeLessThanOrEqual(60 * CARD_T + 1e-6);
     }
-    expect(top).toBeLessThan(6);
   });
 
   it('stays flat hanging off a tall stack while its centre is over it, and tips once it is not', () => {
@@ -89,7 +88,7 @@ describe('resting tilt (decision 99)', () => {
     expect(Math.abs(slopesOf(held.tiltX, held.tiltY).gs)).toBeLessThan(1e-9);
     const tipped = restOn({ x: 40, y: 0, yaw: 0 }, stack);
     const gs = slopesOf(tipped.tiltX, tipped.tiltY).gs;
-    expect(gs).toBeLessThan(-SAG_MAX);
+    expect(gs).toBeLessThan(-0.2);
     expect(Math.abs(gs)).toBeLessThanOrEqual(MAX_SLOPE + 1e-9);
   });
 
@@ -104,8 +103,8 @@ describe('resting tilt (decision 99)', () => {
     }
   });
 
-  it('droops toward the lower side off a ridge, and caps the slope', () => {
-    expect(restSlope([{ u: -44, z: 0 }, { u: 0, z: 5 }, { u: 44, z: 1 }])).toBeCloseTo(5 / 44, 9);
+  it('balanced on a ridge, tips the gentler way; caps the slope', () => {
+    expect(restSlope([{ u: -44, z: 0 }, { u: 0, z: 5 }, { u: 44, z: 1 }])).toBeCloseTo(-4 / 44, 9);
     expect(Math.abs(restSlope([{ u: -44, z: 200 }, { u: 44, z: 0 }]))).toBe(MAX_SLOPE);
   });
 });

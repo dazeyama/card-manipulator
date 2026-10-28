@@ -211,6 +211,8 @@ export class DragController {
       this.app.motion.cancel(h.uid);
       this.app.motion.held.add(h.uid);
     }
+    // What rested on the lifted cards falls now (decision 100).
+    this.app.rest?.lifted(this.held.map((h) => h.uid));
     this.active = true;
     this.flicked = false;
     this.vel = { x: 0, y: 0 };
@@ -360,6 +362,7 @@ export class DragController {
     });
     app.motion.cancel(uid);
     app.motion.held.add(uid);
+    app.rest?.lifted([uid]);
     app.store.setSelection([...app.store.selection, uid]);
     this.showLabel(this.screen.x, this.screen.y);
   }

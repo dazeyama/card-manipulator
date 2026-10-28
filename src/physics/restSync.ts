@@ -1,8 +1,10 @@
-// Keeps every card's drawn pose resting on what is under it (decision 99).
-// The model keeps flat heights for ordering and pile detection; after piles
-// are detected, the cards that moved, and every card above them in the same
-// pile, are rested again from the bottom up. Their drawn pose then settles
-// there: a landing in flight is retargeted, a card at rest tips over briefly.
+// Keeps every card's drawn pose resting on what is under it (decisions 99,
+// 100). The model keeps flat heights for ordering and pile detection; after
+// piles are detected, the cards that moved, and every card above them in the
+// same pile, rest again from the bottom up, as low as they can go. Physics
+// carries cards while they fly and tumble; this lays them to rest, and lets
+// what lay on a lifted card fall at once. A landing in flight is retargeted;
+// a card at rest drops into place briefly.
 
 import type { App } from '../app';
 import { overlaps } from '../state/piles';
@@ -42,6 +44,21 @@ export class RestSync {
       this.rests.clear();
       this.seen.clear();
     });
+  }
+
+  /** Cards were lifted off the table (a drag began): what rested on them falls now (decision 100). */
+  lifted(uids: string[]): void {
+    const store = this.app.store;
+    const lowest = new Map<string, number>();
+    for (const uid of uids) {
+      const c = store.cards.get(uid);
+      const pile = store.pileOf(uid);
+      if (c && pile) lowest.set(pile.id, Math.min(lowest.get(pile.id) ?? Infinity, c.z));
+    }
+    for (const [id, z] of lowest) {
+      const pile = store.piles.get(id);
+      if (pile) this.restPile(pile, z);
+    }
   }
 
   /** The drawn rest of a card, or null when it lies flat at its model height. */

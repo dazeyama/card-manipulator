@@ -45,7 +45,8 @@ Changes made with you after the overnight build. Each is logged in Appendix A of
 | Messy stacks and gathered clumps are **a little heavier and slower to follow**; tidy stacks stay snappy and move as one. | 96 | `b47e830` |
 | **Held cards no longer clip**: the held group leans as one plane with each card stacked along it, and rises over stacks under or ahead of it. | 97 | `e82364a` |
 | **Tidy mode** replaces Tidy drops (top bar, `Shift + T`): on, it brings back the pre-messy behaviour and squares everything at quarter turns, held cards and spawns included. | 98 | `8463c05` |
-| **Cards rest naturally** on what is under them: a fanned stack lies low and touches the table instead of floating as a staircase. About 2 ms to re-rest a 60-card fan. | 99 | this report's commit |
+| **Cards rest naturally** on what is under them: a fanned stack lies low and touches the table instead of floating as a staircase. About 2 ms to re-rest a 60-card fan. | 99 | `92925a3` |
+| **Cards fall to the lowest place they can**: rigid resting replaces decision 99's droop, which built mid-air towers. Lifting a card lets what lay on it fall at once. | 100 | this report's commit |
 
 The per-phase sections below describe the build as it was overnight. The QA checklist at the end uses the current controls.
 
@@ -272,7 +273,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 - [ ] Select thirty, drag: they clump behind the cursor and fall into a loose stack on release; `T` squares it up (decision 94).
 - [ ] Drag a single card by its corner in a curve: it turns a little about where you hold it.
 - [ ] Select a stack, drag it quickly and let go mid-swing: the cards stay strung out where they were, a fan (decision 95).
-- [ ] Look at a fan from a low angle: it lies low and touches the table, no floating staircase; pull a card out from under it and the cards above settle (decision 99).
+- [ ] Pick up a messy pile by its badge and drop it: it lands as a compact heap, nothing mid-air. Pull a card from the middle: the cards above drop at once (decision 100).
 - [ ] Drag a fast clump of 30 in circles, and over a tall stack: no card passes through another (decision 97).
 - [ ] Drag a messy stack by its badge: it feels a little heavy and trails. Press `T`, drag it again: it moves snappily as one (decision 96).
 - [x] **Alt-drag keeps formation, and releasing Alt does not focus the browser menu (decision 29).** Confirmed (decision 93).
