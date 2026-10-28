@@ -6,6 +6,7 @@
 //   node --experimental-transform-types devtools/cursorPreview.ts
 
 import { readFileSync, writeFileSync } from 'node:fs';
+import { ARROW_TIP, ARROW_URL } from '../src/ui/cursorArrow.ts';
 
 const hotspots = JSON.parse(readFileSync('art/cursors/cursors.json', 'utf8')) as Record<string, Record<string, [number, number]>>;
 const variants = ['32', '32-bold', '48-bold'];
@@ -30,6 +31,10 @@ const states: [string, string, string, string][] = [
   ['open', '↔️', 'Space or right-drag', 'Pan'],
   ['fist', '🔄', 'Middle-drag', 'Orbit'],
 ];
+
+// The empty-table arrow is hand-drawn (decision 123), the same image the app uses.
+for (const v of variants) images[`arrow-${v}`] = ARROW_URL;
+hotspots.arrow = Object.fromEntries(variants.map((v) => [v, ARROW_TIP]));
 
 const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">

@@ -1,7 +1,7 @@
-// Custom cursors that say what the mouse will do (decisions 116, 118-122).
-// Drawn in one cartoon style: over empty table, a chunky arrow with a dashed
-// marquee box; over cards, white gloves: an open hand over a card, a fist
-// while holding cards. An emoji in the corner shows what a
+// Custom cursors that say what the mouse will do (decisions 116, 118-123).
+// Over empty table, a pointy arrow with a dashed marquee box, hand-drawn at
+// the gloves' size and style (cursorArrow.ts); over cards, cartoon white
+// gloves: an open hand over a card, a fist while holding cards. An emoji in the corner shows what a
 // held key adds: a magnet while Shift sweeps, numbers while Alt shows counts,
 // a set square for a formation drag, plus or minus for marquee add and take, a
 // tick for Ctrl's toggle, books for a whole pile, arrows to pan and orbit.
@@ -11,7 +11,7 @@
 import type { App } from '../app';
 import type { DragController } from '../physics/feel';
 import type { MouseInput } from '../input/mouse';
-import arrowUrl from '../../art/cursors/arrow-48-bold.png';
+import { ARROW_TIP, ARROW_URL } from './cursorArrow';
 import openUrl from '../../art/cursors/open-48-bold.png';
 import fistUrl from '../../art/cursors/fist-48-bold.png';
 import hotspots from '../../art/cursors/cursors.json';
@@ -20,7 +20,7 @@ const SIZE = 48;
 const VERSION = '48-bold';
 
 type Hand = 'arrow' | 'open' | 'fist';
-const ART: Record<Hand, string> = { arrow: arrowUrl, open: openUrl, fist: fistUrl };
+const ART: Record<Hand, string> = { arrow: ARROW_URL, open: openUrl, fist: fistUrl };
 
 /** Every cursor: its glove, its emoji (if any), and the browser cursor used until the art loads. */
 const STATES = {
@@ -61,7 +61,7 @@ function compose(img: HTMLImageElement, hand: Hand, emoji: string, fallback: str
     g.textBaseline = 'bottom';
     g.fillText(emoji, SIZE, SIZE + Math.round(SIZE * 0.04));
   }
-  const [hx, hy] = hotspots[hand][VERSION] as [number, number];
+  const [hx, hy] = hand === 'arrow' ? ARROW_TIP : (hotspots[hand][VERSION] as [number, number]);
   return `url(${c.toDataURL()}) ${hx} ${hy}, ${fallback}`;
 }
 
