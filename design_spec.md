@@ -738,11 +738,11 @@ All keys are inactive while a text field has focus.
 
 ### 16.1 Cursors
 
-The cursor shows what the mouse will do, and what a held key changes (owner, 2026-10-27, decisions 116, 118 and 119). The hands are cartoon white gloves in a 1930s rubber-hose style, 48 px; an emoji in the corner marks a held key's effect.
+The cursor shows what the mouse will do, and what a held key changes (owner, 2026-10-27, decisions 116 and 118–121). Over empty table it is an arrow with a dashed marquee box, the size of an ordinary cursor; over cards the hands are cartoon white gloves in a 1930s rubber-hose style, 48 px. An emoji in the corner marks a held key's effect.
 
 | Cursor | When | Means |
 |---|---|---|
-| Pointing glove | Over empty table | Drag draws a marquee |
+| Arrow with a dashed box | Over empty table | Drag draws a marquee |
 | ... with ➕ | Ctrl held over empty table, or a Ctrl marquee | The marquee adds to the selection |
 | ... with ➖ | Shift held over empty table, or a Shift marquee | The marquee takes from the selection |
 | Open glove | Over a card | Drag picks it up (or the selection) |
@@ -973,6 +973,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 118 | Owner (2026-10-27): the cursors become cartoon white gloves in a 1930s rubber-hose style (like Cuphead or early Disney), generated with an image model, with emoji badges instead of the blue ones; the open hand and fist redrawn to match the chosen pointing glove. **(agent)** Generated with `openai/gpt-image-2` on OpenRouter on flat green (it won't do transparent backgrounds there), the open hand and fist with the pointer as a style reference; the chosen source art is in `art/cursors/raw/`. `devtools/makeCursors.ts` keys out the green, trims, optionally thickens the outline so it survives shrinking, scales by area averaging to 32 and 48 px, and finds the click points (the pointing fingertip, the middle of the others) into `art/cursors/cursors.json`. `devtools/cursorPreview.ts` builds `art/cursors/preview.html` with each state live. Emoji badges are drawn onto the hand with a canvas at runtime, so they use the system's emoji font. New dev dependency: `pngjs` (pure JavaScript PNG reading and writing, no native parts). Not wired into the app yet. |
 | 119 | Owner (2026-10-27): use the 48 px bold glove cursors in the app. **(agent)** `src/ui/cursors.ts` loads the three gloves (`art/cursors/*-48-bold.png`, which Vite inlines) and draws each state's emoji onto a copy with a canvas at start-up, using the system emoji font at about 22 px in the bottom right corner; click points come from `art/cursors/cursors.json`. Until the art has loaded, the browser's own cursors stand in. The SVG cursors of decision 116 are gone; the choice of cursor is unchanged. |
 | 120 | Owner (2026-10-27): the open glove showed the palm, which felt odd; show the back of the hand instead. **(agent)** Regenerated with the pointer as the style reference; of two drawings, the one with four fingers and a thumb was chosen so it matches the pointer and fist (the other had the classic three-fingered glove). It shows the three stitch lines of the back of a cartoon glove. Cost about $0.44; the cursor art has cost about $1.97 in all. |
+| 121 | Owner (2026-10-27): the gloves are great, but empty table and its Ctrl and Shift versions should go back to the arrow cursor with its dashed marquee box, sized correctly, instead of the pointing glove. **(agent)** The arrow and box from decision 116, drawn at 1.1 times its 32-unit grid in the 48 px cursor image, so the arrow is about 23 px tall like an ordinary cursor; its tip is the click point. Its badges stay emoji (➕, ➖) like the rest of the set. The pointing glove art is kept but unused. |
 
 ## Appendix B: Open items
 

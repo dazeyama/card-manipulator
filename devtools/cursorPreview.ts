@@ -16,9 +16,9 @@ for (const hand of Object.keys(hotspots)) {
 
 // Every cursor state: the hand, its emoji badge, and what it means.
 const states: [string, string, string, string][] = [
-  ['point', '', 'Empty table', 'Drag to select'],
-  ['point', '➕', '+ Ctrl', 'Select, adding'],
-  ['point', '➖', '+ Shift', 'Select, taking away'],
+  ['arrow', '', 'Empty table', 'Drag to select'],
+  ['arrow', '➕', '+ Ctrl', 'Select, adding'],
+  ['arrow', '➖', '+ Shift', 'Select, taking away'],
   ['open', '', 'Over a card', 'Pick it up'],
   ['open', '🧲', '+ Shift', 'Sweep cards in'],
   ['open', '🔢', '+ Alt', 'Show counts, keep formation'],
@@ -30,6 +30,12 @@ const states: [string, string, string, string][] = [
   ['open', '↔️', 'Space or right-drag', 'Pan'],
   ['fist', '🔄', 'Middle-drag', 'Orbit'],
 ];
+
+// The empty-table arrow, as src/ui/cursors.ts draws it (decision 121).
+const ARROW_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect x="16" y="17" width="12" height="10" fill="none" stroke="#1e293b" stroke-width="1.2" stroke-dasharray="2 1.6"/><path d="M3 3 V21 L7.4 16.8 L10.6 24 L13.6 22.6 L10.4 15.6 H16.4 Z" fill="#fff" stroke="#1e293b" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+for (const v of variants) images[`arrow-${v}`] = `data:image/svg+xml,${encodeURIComponent(ARROW_SVG)}`;
+const arrowScale: Record<string, number> = { '32': 1, '32-bold': 1, '48-bold': 1.1 };
+hotspots.arrow = Object.fromEntries(variants.map((v) => [v, [Math.round(3 * arrowScale[v]), Math.round(3 * arrowScale[v])]]));
 
 const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -58,6 +64,7 @@ const html = `<!doctype html>
 const IMAGES = ${JSON.stringify(images)};
 const HOTSPOTS = ${JSON.stringify(hotspots)};
 const STATES = ${JSON.stringify(states)};
+const ARROW_SCALE = ${JSON.stringify(arrowScale)};
 let version = '32-bold';
 const loaded = {};
 const load = (src) => loaded[src] ??= new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.src = src; });
@@ -68,7 +75,8 @@ async function compose(hand, emoji, size) {
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const g = c.getContext('2d');
-  g.drawImage(img, 0, 0, size, size);
+  if (hand === 'arrow') g.drawImage(img, 0, 0, 32 * ARROW_SCALE[version], 32 * ARROW_SCALE[version]);
+  else g.drawImage(img, 0, 0, size, size);
   if (emoji) {
     const e = Math.round(size * 0.46);
     g.font = e + 'px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
