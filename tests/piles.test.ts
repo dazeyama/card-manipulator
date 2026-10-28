@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextQuarterClockwise, uprightYaw, visibleShare } from '../src/state/piles';
+import { nextQuarterClockwise, shuffled, uprightYaw, visibleShare } from '../src/state/piles';
 import { gridLayout, LOOSE_OFFSET, LOOSE_TURN, looseStackLayout, messyLayout, overlaps, rng, spreadLayout, stackLayout, surfaceTop } from '../src/state/piles';
 import { CARD_T } from '../src/state/types';
 
@@ -233,5 +233,22 @@ describe('rotate snapping (decision 102)', () => {
     expect(uprightYaw(0.4)).toBeCloseTo(0, 9);
     expect(uprightYaw(2 * Math.PI - 0.2)).toBeCloseTo(2 * Math.PI, 9);
     expect(Math.abs(uprightYaw(3) - 3)).toBeLessThanOrEqual(Math.PI);
+  });
+});
+
+describe('shuffled (decision 106)', () => {
+  it('keeps every card once and leaves the original alone', () => {
+    const cards = Array.from({ length: 40 }, (_, i) => i);
+    const out = shuffled(cards, rng(4));
+    expect([...out].sort((a, b) => a - b)).toEqual(cards);
+    expect(cards[0]).toBe(0);
+    expect(out).not.toEqual(cards);
+  });
+
+  it('puts any card anywhere about equally often', () => {
+    const random = rng(8);
+    const firsts = [0, 0, 0, 0];
+    for (let k = 0; k < 4000; k++) firsts[shuffled([0, 1, 2, 3], random)[0]]++;
+    for (const n of firsts) expect(Math.abs(n - 1000)).toBeLessThan(120);
   });
 });

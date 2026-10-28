@@ -11,7 +11,7 @@ import { restPose, type App } from '../app';
 import { land, leaveSpreads, pileAt, placeSequential, stackAt, type Landing } from '../commands';
 import type { CustomGesture } from '../input/mouse';
 import { pickCard } from '../render/picking';
-import { gridLayout, messyLayout, nextQuarterClockwise, overlaps, snapYaw, uprightYaw, type Footprint } from '../state/piles';
+import { gridLayout, messyLayout, nextQuarterClockwise, overlaps, shuffled, snapYaw, uprightYaw, type Footprint } from '../state/piles';
 import { shortAngle } from './motion';
 import { restingTop } from './restSync';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
@@ -504,6 +504,13 @@ export class DragController {
       c.omega = tidy ? OMEGA_TIDY_TAIL + (OMEGA_LEAD - OMEGA_TIDY_TAIL) * rank : OMEGA_TAIL + (OMEGA_MESSY_LEAD - OMEGA_TAIL) * rank;
     });
     this.mode = 'gather';
+  }
+
+  /** S twice quickly while dragging (decision 106): the held cards gather in a random order, a shuffle. */
+  shuffleHeld(): void {
+    if (!this.active || this.held.length < 2) return;
+    this.held = shuffled(this.held);
+    this.stackHeld();
   }
 
   /**

@@ -3,7 +3,7 @@
 
 import type { App } from './app';
 import { CARD_H, CARD_T, CARD_W, type Card } from './state/types';
-import { gridLayout, looseStackLayout, nextQuarterClockwise, overlaps, snapYaw, spreadLayout, uprightYaw, type Footprint, type Placed } from './state/piles';
+import { gridLayout, looseStackLayout, nextQuarterClockwise, overlaps, shuffled, snapYaw, spreadLayout, uprightYaw, type Footprint, type Placed } from './state/piles';
 import type { Spread } from './state/store';
 
 export interface Landing {
@@ -144,6 +144,15 @@ export class Commands {
     leaveSpreads(this.app, uids);
     const c = centroid(this.app, uids);
     land(this.app, pileAt(this.app, uids, { x: c.x, y: c.y, yaw: 0 }));
+  }
+
+  /** S twice quickly (decision 106): stack the cards in a random order, a shuffle. */
+  shuffle(cards: string[] = this.sel): void {
+    if (cards.length < 2) return;
+    const uids = shuffled(cards);
+    leaveSpreads(this.app, uids);
+    const c = centroid(this.app, uids);
+    land(this.app, pileAt(this.app, uids, { x: c.x, y: c.y, yaw: 0 }), { stagger: Math.min(3, 300 / uids.length), arc: 8 });
   }
 
   /** X: spread the selection in a grid at its centroid. A selection that is exactly one stack spreads beside it instead. */

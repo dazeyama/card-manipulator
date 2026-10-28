@@ -179,7 +179,18 @@ const hoveredPile = (): string[] => {
   return store.pileOf(mouse.hovered)?.cardUids.slice() ?? [mouse.hovered];
 };
 // While dragging, S, X, T and F act on the cards in the hand (decision 104).
-keyboard.bind('s', () => (drag.dragging ? drag.stackHeld() : commands.stack(hoveredPile())));
+// S twice quickly shuffles: the stack's cards in a random order (decision 106).
+let lastS = 0;
+keyboard.bind('s', () => {
+  const now = performance.now();
+  const twice = now - lastS < DOUBLE_TAP_MS;
+  lastS = twice ? 0 : now;
+  if (drag.dragging) {
+    if (twice) drag.shuffleHeld();
+    else drag.stackHeld();
+  } else if (twice) commands.shuffle(hoveredPile());
+  else commands.stack(hoveredPile());
+});
 // X on a hovered card toggles its pile's spread, as a double-click does: spread it, or restack it.
 keyboard.bind('x', () => (drag.dragging ? drag.spreadHeld() : !store.selection.size && mouse.hovered ? commands.toggleSpread(mouse.hovered) : commands.spread()));
 keyboard.bind('t', () => (drag.dragging ? drag.tidyHeld() : commands.tidy(hoveredPile())));

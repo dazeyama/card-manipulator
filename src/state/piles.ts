@@ -365,6 +365,16 @@ export function uprightYaw(yaw: number): number {
   return Math.round(yaw / (2 * Math.PI)) * 2 * Math.PI;
 }
 
+/** A shuffled copy (Fisher-Yates): every order equally likely (decision 106). */
+export function shuffled<T>(items: T[], random: () => number = Math.random): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 /** Yaw snapped to the nearest quarter turn (tidy cards are 0 or +-90 degrees, spec 6.1). */
 export function snapYaw(yaw: number): number {
   return Math.round(yaw / (Math.PI / 2)) * (Math.PI / 2);
