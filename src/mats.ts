@@ -341,15 +341,17 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
   private frame(now: number): void {
     const rig = this.app.rig;
     const store = this.app.store;
-    // The 🔒 and 📺 buttons sit just inside the hovered mat's top right corner.
+    // The 🔒 and 📺 buttons sit just inside the hovered mat's top right corner,
+    // or its bottom left corner while it is locked (decision 155).
     const m = this.hovered && !this.dragging ? store.mats.get(this.hovered) : undefined;
     this.buttons.hidden = !m;
     if (m) {
-      const c = corner(m, MAT_W / 2 - 22, MAT_H / 2 - 22);
-      const s = rig.worldToScreen(c.x, c.y, MAT_T);
-      // The corner point is the middle of the 📺 button; the lock sits to its left.
-      this.buttons.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) translate(calc(-100% + 16px), -50%)`;
       const locked = !!m.locked;
+      const c = locked ? corner(m, -MAT_W / 2 + 22, -MAT_H / 2 + 22) : corner(m, MAT_W / 2 - 22, MAT_H / 2 - 22);
+      const s = rig.worldToScreen(c.x, c.y, MAT_T);
+      // The corner point is the middle of the button nearest the corner: the 📺 at top right, the lock at bottom left.
+      const shift = locked ? 'translate(-16px, -50%)' : 'translate(calc(-100% + 16px), -50%)';
+      this.buttons.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) ${shift}`;
       if (this.lockButton.classList.contains('on') !== locked || !this.lockButton.textContent) {
         this.lockButton.textContent = locked ? '🔒' : '🔓';
         this.lockButton.classList.toggle('on', locked);
