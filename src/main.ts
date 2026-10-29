@@ -124,14 +124,14 @@ mouse.hooks.matPress = (x, y, mods) => {
 };
 // Middle-click flips the card, or the whole selection if the card is in it (spec 10.5).
 // Right-click while holding cards drops the bottom one, messy or (Ctrl) squared; held down,
-// another every half second until the hand is empty or the button is let go (decision 180).
-const DEAL_EVERY_MS = 500;
+// another every quarter second until the hand is empty or the button is let go (decisions 180, 182).
+const DEAL_EVERY_MS = 250;
 let dealTimer = 0;
 const stopDealing = () => {
   clearInterval(dealTimer);
   dealTimer = 0;
 };
-/** Start dealing from the hand: one card now, then one every half second. False if nothing is held. */
+/** Start dealing from the hand: one card now, then one every quarter second. False if nothing is held. */
 const startDealing = (): boolean => {
   if (!drag.dragging) return false;
   drag.dropBottom();
