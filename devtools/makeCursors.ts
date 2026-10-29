@@ -151,6 +151,24 @@ function fingertip(img: Image): { x: number; y: number } {
   return best;
 }
 
+// --gestures: the action gestures under review instead (shuffle, tidy, flip...), 48 px bold
+// only, into art/cursors/gestures/, leaving the hands in use and cursors.json alone.
+if (process.argv.includes('--gestures')) {
+  const { readdirSync, mkdirSync } = await import('node:fs');
+  mkdirSync('art/cursors/gestures', { recursive: true });
+  for (const file of readdirSync('art/cursors/raw/gestures').filter((f) => f.endsWith('.png'))) {
+    const src = read(`art/cursors/raw/gestures/${file}`);
+    keyGreen(src);
+    const b = bounds(src);
+    const side = Math.max(b.x1 - b.x0 + 1, b.y1 - b.y0 + 1) / FILL;
+    const sx = (b.x0 + b.x1 + 1) / 2 - side / 2, sy = (b.y0 + b.y1 + 1) / 2 - side / 2;
+    const art = boldLines(src, Math.max(0, (1.7 * (side / 48) - SOURCE_OUTLINE) / 2));
+    write(`art/cursors/gestures/${file.replace('.png', '-48-bold.png')}`, shrink(art, sx, sy, side, 48));
+    console.log(`gestures/${file.replace('.png', '-48-bold.png')}`);
+  }
+  process.exit(0);
+}
+
 const hotspots: Record<string, Record<string, [number, number]>> = {};
 for (const hand of HANDS) {
   const src = read(hand.file);
