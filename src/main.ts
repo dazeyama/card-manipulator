@@ -36,6 +36,7 @@ import { installFit } from './ui/fit';
 import pointUrl from '../art/cursors/point-48-bold.png';
 import { installRecordUpgrade } from './scryfall/upgrade';
 import { buildCubeTab } from './ui/cubeTab';
+import { installClipboard } from './io/clipboard';
 import { fitLayout, gridLayout } from './state/piles';
 import { Graphics } from './graphics';
 import { SelectionMarkers } from './render/markers';
@@ -96,6 +97,8 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
 }, true);
 const exporter = new ExportPanel(app);
 spawnPanel.addTab('query', 'Query', buildQueryTab(app, () => spawnPanel.options()));
+// Ctrl + C copies the selection as a decklist; Ctrl + V spawns the clipboard's cards at the cursor (decision 202).
+installClipboard(app, () => spawnPanel.options());
 // The 4th tab: playmats from a card's art (decision 144).
 spawnPanel.addTab('playmat', 'Playmat', buildPlaymatTab(app, mats));
 // A whole CubeCobra cube, with each card's Elo (decision 192), second after List (decision 193).

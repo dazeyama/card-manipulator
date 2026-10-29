@@ -43,6 +43,7 @@ const GROUPS: [string, Line[]][] = [
     ['🗑️', 'Delete', 'remove to the tray'],
     ['🔎', 'Ctrl + F or /', 'search the table'],
     ['👆', 'P', 'or the finger button by the search box: then click the table to move the selection (or the pile under the cursor) there as a stack'],
+    ['📋', 'Ctrl + C', 'copy the selection · Ctrl + V pastes it at the cursor, as a messy pile (any decklist pastes too)'],
     ['💾', 'Ctrl + S', 'save · Ctrl + E exports · Ctrl + A selects all'],
     ['❓', '?', 'this list'],
   ]],
