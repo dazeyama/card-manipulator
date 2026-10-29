@@ -14,11 +14,11 @@ import { MAT_H, MAT_W, type Mat } from './state/types';
 import { newUid } from './state/store';
 
 /**
- * A mat is 2.5 mm thick, a black rubber base under the art (decision 146).
+ * A mat is 5 mm thick, a black rubber base under the art (decisions 146, 172).
  * The thickness is for looks only: cards on a mat still lie at table height
  * and are drawn over it.
  */
-const MAT_T = 2.5;
+const MAT_T = 5;
 /** Rounded corners, like a real playmat. */
 const MAT_CORNER = 10;
 /**
