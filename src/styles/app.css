@@ -144,6 +144,9 @@ textarea.decklist { width: 100%; height: 190px; resize: vertical; font: 12px/1.4
 .chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
 .chip { border: 1px solid var(--line); background: var(--panel-2); border-radius: 12px; padding: 1px 9px; font-size: 12px; cursor: pointer; }
 .chip:hover { border-color: var(--accent); background: var(--accent-soft); }
+/* Chips about how a card lies on the table, set apart from the card's own traits (decision 176). */
+.chip.chip-table { border-style: dashed; }
+.chip:not(.chip-table) + .chip-table { margin-left: 10px; }
 .chip.pip-w, .chip.pip-u, .chip.pip-b, .chip.pip-r, .chip.pip-g, .chip.pip-c, .chip.pip-m { font-weight: 650; min-width: 26px; }
 
 /* ---- badges, drag label, tray ---- */

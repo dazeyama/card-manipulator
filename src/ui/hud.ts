@@ -27,6 +27,9 @@ const CHIPS: { label: string; term: string; title?: string; cls?: string }[] = [
   { label: '4', term: 'mv=4', title: 'Mana value 4' },
   { label: '5', term: 'mv=5', title: 'Mana value 5' },
   { label: '6+', term: 'mv>=6', title: 'Mana value 6 or more' },
+  // How the card lies on the table, not a trait of the card (decision 176).
+  { label: 'Face up', term: 'is:faceup', title: 'Lying face up on the table', cls: 'chip-table' },
+  { label: 'Face down', term: 'is:facedown', title: 'Lying face down on the table', cls: 'chip-table' },
 ];
 
 export class Hud {
