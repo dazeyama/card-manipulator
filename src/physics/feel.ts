@@ -545,6 +545,34 @@ export class DragController {
     this.mode = 'gather';
   }
 
+  /**
+   * Right-click while holding cards (decision 180): the bottom card of the hand
+   * drops onto whatever is under the cursor, falling messily, or squared in
+   * Tidy mode (Ctrl). The last card ends the drag, as letting go does.
+   */
+  dropBottom(): void {
+    if (!this.active || !this.held.length) return;
+    if (this.held.length === 1) {
+      this.release(this.screen.x, this.screen.y);
+      return;
+    }
+    let k = 0, low = Infinity;
+    this.held.forEach((c, i) => {
+      const z = this.app.layer.pose(c.uid)?.z ?? Infinity;
+      if (z < low) {
+        low = z;
+        k = i;
+      }
+    });
+    const [c] = this.held.splice(k, 1);
+    this.app.motion.held.delete(c.uid);
+    const keep = new Set(this.held.map((h) => h.uid));
+    if (!this.dropLoose([c], 'single', this.screen.x, this.screen.y, keep)) {
+      land(this.app, this.landings([c], 'single', this.screen.x, this.screen.y, keep));
+    }
+    this.showLabel(this.screen.x, this.screen.y);
+  }
+
   /** S twice quickly while dragging (decision 106): the held cards gather in a random order, a shuffle. */
   shuffleHeld(): void {
     if (!this.active || this.held.length < 2) return;
@@ -884,11 +912,11 @@ export class DragController {
    * a little tumble and twist, and comes to rest wherever it really lands.
    * Formation and whole-pile drags keep their shape and land by layout.
    */
-  private dropLoose(held: Held[], mode: DragMode, sx: number, sy: number): boolean {
+  private dropLoose(held: Held[], mode: DragMode, sx: number, sy: number, keep = new Set<string>()): boolean {
     const app = this.app;
     const physics = app.physics;
     if (!physics || app.tidy || mode === 'formation' || mode === 'rigid') return false;
-    const spots = this.landings(held, mode, sx, sy);
+    const spots = this.landings(held, mode, sx, sy, keep);
     const byUid = new Map(held.map((c) => [c.uid, c]));
     const tosses = spots.map((l, i) => {
       const c = byUid.get(l.uid)!;
@@ -905,15 +933,16 @@ export class DragController {
       // A little extra to make up for the bodies' air damping.
       return { uid: l.uid, vx: ((l.x - pose.x) / t) * 1.15, vy: ((l.y - pose.y) / t) * 1.15, vz, wx: jitter(1.2), wy: jitter(1.2), wz: jitter(1.5) };
     });
-    return physics.drop(tosses);
+    return physics.drop(tosses, undefined, { ignore: keep });
   }
 
   /** Where released cards come to rest (spec 10.4). */
-  private landings(held: Held[], mode: DragMode, sx: number, sy: number): Landing[] {
+  private landings(held: Held[], mode: DragMode, sx: number, sy: number, keep = new Set<string>()): Landing[] {
     const app = this.app;
     const store = app.store;
     const uids = held.map((c) => c.uid);
-    const moving = new Set(uids);
+    // `keep`: cards still in the hand, which are no surface to land on (decision 180).
+    const moving = new Set([...uids, ...keep]);
     const tidy = app.tidy;
 
     if (mode === 'formation') {

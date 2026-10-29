@@ -35,6 +35,8 @@ export interface MouseHooks {
   middleClickCard?: (uid: string) => void;
   /** A middle press while cards are held: return true if it flipped them (decision 179). */
   middleWhileHolding?: () => boolean;
+  /** A right press while cards are held: return true if it dropped one (decision 180). */
+  rightWhileHolding?: () => boolean;
   /** Double-click on a card (spread, spec 10.6). */
   doubleClickCard?: (uid: string) => void;
   /** The hovered card changed. */
@@ -76,8 +78,11 @@ export class MouseInput {
     });
     // A middle press while the left button holds cards flips them, as F does (decision 179).
     // Browsers send no pointerdown for a second button, only mousedown, so listen for that.
+    // A right press drops the hand's bottom card (decision 180).
     window.addEventListener('mousedown', (e) => {
-      if (e.button === 1 && (e.buttons & 1) && this.hooks.middleWhileHolding?.()) e.preventDefault();
+      if (!(e.buttons & 1)) return;
+      if (e.button === 1 && this.hooks.middleWhileHolding?.()) e.preventDefault();
+      if (e.button === 2 && this.hooks.rightWhileHolding?.()) e.preventDefault();
     }, true);
     app.canvas.tabIndex = 0;
     // Letting go of Ctrl ends the checking.
@@ -135,6 +140,8 @@ export class MouseInput {
     this.app.pointer.x = x;
     this.app.pointer.y = y;
     this.app.canvas.focus({ preventScroll: true });
+    // Mid-drag, the right button drops cards from the hand (decision 180) and must not pan.
+    if (e.button === 2 && this.gesture.kind === 'custom') return;
     if (e.button === 2) {
       // Double right-click straightens the view to the current preset's angle, staying put.
       const now = performance.now();

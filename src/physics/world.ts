@@ -93,11 +93,13 @@ export class Physics {
    * snapped flat, stacked by the model and `done` is called with their uids.
    * Returns false (and does nothing) if physics isn't ready or the drop is too big.
    */
-  drop(cards: LooseCard[], done: (uids: string[]) => void = () => {}, opts: { ccd?: boolean } = {}): boolean {
+  drop(cards: LooseCard[], done: (uids: string[]) => void = () => {}, opts: { ccd?: boolean; ignore?: Set<string> } = {}): boolean {
     const world = this.world;
     if (!world || !cards.length || cards.length > MAX_DROP || this.bodyCount + cards.length > MAX_BODIES) return false;
     const app = this.app;
     const loose = new Set(cards.map((c) => c.uid));
+    // Cards still in the hand are no surface to land on (decision 180).
+    const ignore = opts.ignore ?? new Set<string>();
     const session: Session = { bodies: [], statics: [], started: performance.now(), done };
 
     // Static colliders for what the cards can land on.
@@ -116,7 +118,7 @@ export class Physics {
       // its top card, so a loose cube doesn't become a thousand colliders.
       if (pile.kind !== 'stack' && pile.cardUids.length < BOX_PILE) continue;
       const bottom = app.store.cards.get(pile.cardUids[0]);
-      if (!bottom || pile.cardUids.some((u) => loose.has(u))) continue;
+      if (!bottom || pile.cardUids.some((u) => loose.has(u) || ignore.has(u))) continue;
       const topCard = app.store.cards.get(pile.cardUids[pile.cardUids.length - 1])!;
       const base = pile.kind === 'stack' ? bottom : topCard;
       if (base.x < minX || base.x > maxX || base.y < minY || base.y > maxY) continue;
@@ -133,7 +135,7 @@ export class Physics {
       pile.cardUids.forEach((u) => doneCards.add(u));
     }
     for (const c of app.store.cards.values()) {
-      if (loose.has(c.uid) || doneCards.has(c.uid)) continue;
+      if (loose.has(c.uid) || ignore.has(c.uid) || doneCards.has(c.uid)) continue;
       if (c.x < minX || c.x > maxX || c.y < minY || c.y > maxY) continue;
       // A slab where the card is drawn, tilted as it rests (decision 99).
       const p = app.layer.pose(c.uid);
