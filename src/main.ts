@@ -453,10 +453,15 @@ keyboard.bind('shift+t', () => {
 });
 // R turns the selection, or the card under the cursor when nothing is selected (decision 102).
 // R twice quickly stands cards upright; while dragging, R turns the held cards (decision 103).
-// R waits a moment to tell one press from two (decision 184): one turns a quarter, two stand
-// the cards upright without turning first. Held, R keeps turning a quarter every 0.25 s
-// (decision 183). A playmat has no upright, so R turns it at once.
+// R waits a moment to tell one press from two (decisions 184, 188): a single press turns a
+// quarter after R_WAIT_MS; a second press within R_DOUBLE_MS stands the cards upright, straight
+// from the first press if it comes during the wait, or from the quarter turn if just after.
+// Held, R keeps turning a quarter every 0.25 s (decision 183). A playmat has no upright, so R
+// turns it at once.
+const R_WAIT_MS = 150;
+const R_DOUBLE_MS = 300;
 let pendingR = 0;
+let lastRPress = 0;
 let rTargets: string[] = [];
 const turn = (upright: boolean, targets: string[]) => {
   if (drag.dragging || targets.length) app.showGesture('rotate');
@@ -471,9 +476,12 @@ keyboard.bind('r', (e) => {
     turn(false, drag.dragging ? [] : hoveredCard());
     return;
   }
-  if (pendingR) {
+  const now = performance.now();
+  if (now - lastRPress < R_DOUBLE_MS) {
+    // The second press: upright, whether or not the quarter turn has happened yet.
     clearTimeout(pendingR);
     pendingR = 0;
+    lastRPress = 0;
     turn(true, rTargets);
     return;
   }
@@ -482,12 +490,13 @@ keyboard.bind('r', (e) => {
     mats.rotate(mats.movable);
     return;
   }
+  lastRPress = now;
   // The cards are the ones under the cursor now, even if it moves while R waits.
   rTargets = hoveredCard();
   pendingR = window.setTimeout(() => {
     pendingR = 0;
     turn(false, rTargets);
-  }, DOUBLE_TAP_MS);
+  }, R_WAIT_MS);
 }, { repeatMs: 250 });
 keyboard.bind('z', () => commands.frame());
 // F twice quickly faces every card up, so a mixed stack is fronted (decision 105).
