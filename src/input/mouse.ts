@@ -33,6 +33,8 @@ export interface MouseHooks {
   cardDrag?: (uid: string, x: number, y: number, mods: Mods) => CustomGesture | null;
   /** Middle-click without dragging on a card (flip, spec 10.5). */
   middleClickCard?: (uid: string) => void;
+  /** A middle press while cards are held: return true if it flipped them (decision 179). */
+  middleWhileHolding?: () => boolean;
   /** Double-click on a card (spread, spec 10.6). */
   doubleClickCard?: (uid: string) => void;
   /** The hovered card changed. */
@@ -72,6 +74,11 @@ export class MouseInput {
     el.addEventListener('mousedown', (e) => {
       if (e.button === 1) e.preventDefault();
     });
+    // A middle press while the left button holds cards flips them, as F does (decision 179).
+    // Browsers send no pointerdown for a second button, only mousedown, so listen for that.
+    window.addEventListener('mousedown', (e) => {
+      if (e.button === 1 && (e.buttons & 1) && this.hooks.middleWhileHolding?.()) e.preventDefault();
+    }, true);
     app.canvas.tabIndex = 0;
     // Letting go of Ctrl ends the checking.
     window.addEventListener('keyup', (e) => {
@@ -149,6 +156,8 @@ export class MouseInput {
     }
     const onCard = pickCard(this.app.rig, this.app.layer, x, y);
     if (e.button === 1) {
+      // Mid-drag, the middle button flips the hand (decision 179) and must not end the drag.
+      if (this.gesture.kind === 'custom') return;
       this.gesture = { kind: 'middle-pending', x, y, onCard };
       e.preventDefault();
       return;

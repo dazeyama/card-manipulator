@@ -123,6 +123,13 @@ mouse.hooks.matPress = (x, y, mods) => {
   return mat ? mats.press(mat, x, y, mods) : null;
 };
 // Middle-click flips the card, or the whole selection if the card is in it (spec 10.5).
+// Middle-click while holding cards flips them in the hand, as F does (decision 179).
+mouse.hooks.middleWhileHolding = () => {
+  if (!drag.dragging) return false;
+  app.showGesture('flip');
+  drag.flipHeld();
+  return true;
+};
 mouse.hooks.middleClickCard = (uid) => {
   // Middle-click flips too, so it shows the flip gesture (decision 165).
   app.showGesture('flip');
