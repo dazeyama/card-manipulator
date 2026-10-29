@@ -137,6 +137,8 @@ export class Cursors {
   private readonly drawCursors: string[] = [];
   /** The pointing glove with a window pane, while picking where to spread (decision 159). */
   private spreadCursor = '';
+  /** The plain pointing glove, for pointer mode (decision 189). */
+  private pointCursor = '';
   private gestureCursors: Partial<Record<Gesture, string>> = {};
 
   constructor(private readonly app: App, private readonly mouse: MouseInput, private readonly drag: DragController) {
@@ -168,7 +170,8 @@ export class Cursors {
     const c = document.createElement('canvas');
     c.width = c.height = SIZE;
     c.getContext('2d')!.drawImage(point, 0, 0, SIZE, SIZE);
-    document.documentElement.style.setProperty('--cursor-point', `url(${c.toDataURL()}) ${px} ${py}, pointer`);
+    this.pointCursor = `url(${c.toDataURL()}) ${px} ${py}, pointer`;
+    document.documentElement.style.setProperty('--cursor-point', this.pointCursor);
     // Drawing a hand: the pointing glove with the number as a keycap (decision 143);
     // 0 (any number, decision 162) shows the numbers keycap.
     for (let n = 0; n <= 9; n++) {
@@ -252,7 +255,9 @@ export class Cursors {
       ? this.drawCursors[draw.count <= 9 ? draw.count : 0] ?? 'pointer'
       : this.app.spreading
         ? this.spreadCursor || 'pointer'
-        : this.cursors[state] ?? STATES[state][2];
+        : this.app.placing
+          ? this.pointCursor || 'pointer'
+          : this.cursors[state] ?? STATES[state][2];
     if (next === this.shown) return;
     this.shown = next;
     this.app.canvas.parentElement!.style.cursor = next;

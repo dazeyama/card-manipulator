@@ -310,6 +310,17 @@ export class Commands {
     land(this.app, landings, { stagger: Math.min(4, 300 / ordered.length), arc: 6 });
   }
 
+  /**
+   * Pointer mode (decision 189): move cards to a spot as one stack, on top of
+   * whatever is there, loose or (in Tidy mode) squared, keeping their order.
+   */
+  stackAt(cards: string[], at: { x: number; y: number }): void {
+    if (!cards.length) return;
+    const ordered = byHeight(this.app, cards);
+    leaveSpreads(this.app, ordered);
+    land(this.app, pileAt(this.app, ordered, { x: at.x, y: at.y, yaw: 0 }), { stagger: Math.min(3, 300 / ordered.length), arc: 10 });
+  }
+
   /** T: square up each pile the selection touches, without merging piles. Loose cards snap to a quarter turn. */
   tidy(cards: string[] = this.sel): void {
     const store = this.app.store;

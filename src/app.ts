@@ -56,6 +56,8 @@ export class App {
   gesture: { name: Gesture; at: number; settle?: string[] } | null = null;
   /** X was pressed: the next click or dragged box on the table spreads these cards there (decision 159). */
   spreading: { source: string[] } | null = null;
+  /** Pointer mode: the next click on the table stacks these cards there (decision 189). */
+  placing: { source: string[] } | null = null;
   /** Per-frame hooks run before rendering. */
   private readonly frameHooks: ((now: number, dt: number) => void)[] = [];
   private lastFrame = performance.now();

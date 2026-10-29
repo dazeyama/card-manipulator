@@ -42,6 +42,7 @@ export class Hud {
   private readonly pipsEl: HTMLElement;
   private readonly histEl: HTMLElement;
   private readonly liveEl: HTMLElement;
+  private readonly filterWrap: HTMLElement;
   private pending = false;
   /** True while a query is changing the selection, so the box keeps its text. */
   private applying = false;
@@ -52,6 +53,7 @@ export class Hud {
     this.histEl = h('div', { class: 'hud-hist', title: 'Mana value of the selection (lands left out): 0 to 7+' });
     this.input = h('input', { class: 'filter', spellcheck: 'false', autocomplete: 'off', 'aria-label': 'Filter' });
     this.liveEl = h('div', { class: 'filter-live' });
+    this.filterWrap = h('div', { class: 'filter-wrap' }, this.input, this.liveEl);
     this.buttons = h('div', { class: 'hud-buttons' });
     const chips = h('div', { class: 'chips' });
     for (const c of CHIPS) {
@@ -64,7 +66,7 @@ export class Hud {
         this.countEl,
         this.pipsEl,
         this.histEl,
-        h('div', { class: 'filter-wrap' }, this.input, this.liveEl),
+        this.filterWrap,
         this.buttons,
       ),
       chips,
@@ -101,6 +103,11 @@ export class Hud {
   focus(): void {
     this.input.focus();
     this.input.select();
+  }
+
+  /** A button just after the search box (decision 189). */
+  addBesideSearch(el: HTMLElement): void {
+    this.filterWrap.after(el);
   }
 
   addButton(label: string, title: string, run: () => void): HTMLButtonElement {

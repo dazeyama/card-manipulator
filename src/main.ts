@@ -33,6 +33,7 @@ import { HelpPanel } from './ui/helpPanel';
 import { buildQueryTab } from './ui/queryTab';
 import { HiRes } from './render/hires';
 import { installFit } from './ui/fit';
+import pointUrl from '../art/cursors/point-48-bold.png';
 import { installRecordUpgrade } from './scryfall/upgrade';
 import { fitLayout, gridLayout } from './state/piles';
 import { Graphics } from './graphics';
@@ -284,6 +285,7 @@ keyboard.bind('s', () => {
 let lastX = 0;
 const startSpread = (source: string[]) => {
   app.drawing = null;
+  app.placing = null;
   app.spreading = source.length ? { source } : null;
 };
 keyboard.bind('x', () => {
@@ -325,6 +327,7 @@ for (let n = 1; n <= 9; n++) {
     if (drag.dragging) return;
     const source = hoveredPile();
     app.spreading = null;
+    app.placing = null;
     app.drawing = source.length ? { count: n, source } : null;
   });
 }
@@ -344,6 +347,33 @@ keyboard.bind('0', () => {
     })
     .finally(() => (askingCount = false));
 });
+// Pointer mode (decision 189): the finger button beside the search box, then a click on the
+// table moves the selection there as one stack (squared in Tidy mode). Esc cancels.
+const pointBtn = h('button', { class: 'btn small point-btn', title: 'Move the selection: click here, then click the table where it should go, as a stack' }, h('img', { src: pointUrl, alt: 'Point' }));
+pointBtn.addEventListener('click', () => {
+  if (app.placing) {
+    app.placing = null;
+  } else if (store.selection.size) {
+    app.drawing = null;
+    app.spreading = null;
+    app.placing = { source: [...store.selection] };
+  } else {
+    toast('Select some cards first, then click where they should go', 'warn');
+  }
+});
+app.onFrame(() => pointBtn.classList.toggle('on', !!app.placing));
+hud.addBesideSearch(pointBtn);
+app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
+  const place = app.placing;
+  if (!place || e.button !== 0) return;
+  e.stopImmediatePropagation();
+  e.preventDefault();
+  app.placing = null;
+  const r = app.canvas.getBoundingClientRect();
+  const at = app.rig.screenToPlane(e.clientX - r.left, e.clientY - r.top, 0);
+  const cards = place.source.filter((u) => store.cards.has(u));
+  if (at && cards.length) commands.stackAt(cards, at);
+}, true);
 app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
   const draw = app.drawing;
   if (!draw || e.button !== 0) return;
@@ -432,10 +462,11 @@ function tableBox(x0: number, y0: number, x1: number, y1: number): { minX: numbe
   return { minX: c.x - hx * lo, minY: c.y - hy * lo, maxX: c.x + hx * lo, maxY: c.y + hy * lo };
 }
 window.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape' || !(app.drawing || app.spreading)) return;
+  if (e.key !== 'Escape' || !(app.drawing || app.spreading || app.placing)) return;
   e.stopImmediatePropagation();
   app.drawing = null;
   app.spreading = null;
+  app.placing = null;
   endSpreadGesture?.();
 }, true);
 // H: fan the selection or the hovered pile like a hand of cards; H again stacks it back (decision 141).

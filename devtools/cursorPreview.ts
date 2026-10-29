@@ -91,6 +91,7 @@ const SECTIONS: { title: string; note?: string; tiles: Tile[] }[] = [
       ['point', '9️⃣', '9 over a pile', 'Click to deal nine'],
       ['point', '\u{1F522}', '0 over a pile, then a number over 9', 'Click to deal that many'],
       ['point', '\u{1FA9F}', 'X', 'Click to spread there, or drag a box to fit them in'],
+      ['point', '', 'The pointing-finger button beside the search box', 'Click to move the selection there as a stack'],
     ],
   },
   {
