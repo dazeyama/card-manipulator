@@ -58,7 +58,8 @@ const STATES = {
   arrowCounts: ['arrowCount', '', 'default'],
   open: ['open', '', 'grab'],
   openSweep: ['open', '🧲', 'grab'],
-  openFormation: ['open', '🔢', 'grab'],
+  // Alt over a card or a mat: the chain link, as the drag will be linked; numbers are for empty table (decision 171).
+  openFormation: ['open', '🔗', 'grab'],
   openTidy: ['open', '📐', 'grab'],
   openToggle: ['open', '☑️', 'pointer'],
   openPile: ['open', '📚', 'grab'],

@@ -50,7 +50,7 @@ const SECTIONS: { title: string; note?: string; tiles: Tile[] }[] = [
     tiles: [
       ['open', '', 'Hovering a card', 'Drag to pick it up; click selects it'],
       ['open', '\u{1F9F2}', 'Shift held', 'Drag sweeps up the cards you pass over'],
-      ['open', '\u{1F522}', 'Alt held (or Ctrl + Shift)', 'Drag moves the selection in formation'],
+      ['open', '\u{1F517}', 'Alt held (or Ctrl + Shift)', 'Drag moves the selection in formation'],
       ['open', '\u{1F4D0}', 'Ctrl held', 'A drag lands tidy; a click checks the card in or out of the selection'],
       ['open', '☑️', 'Ctrl held, after a Ctrl + click', 'Checking cards in and out, until Ctrl is let go'],
       ['open', '\u{1F4DA}', "Hovering a pile's number badge", 'Drag lifts the whole pile'],
@@ -71,7 +71,7 @@ const SECTIONS: { title: string; note?: string; tiles: Tile[] }[] = [
     title: 'Playmats',
     tiles: [
       ['open', '', 'Over a mat where no card is', 'Drag moves the mat'],
-      ['open', '\u{1F522}', 'Over a mat, Alt held', 'Drag carries the cards on it too'],
+      ['open', '\u{1F517}', 'Over a mat, Alt held', 'Drag carries the cards on it too'],
       ['fist', '', 'Dragging a mat', 'Release to place it'],
       ['fist', '\u{1F517}', 'Dragging a mat with Alt', 'Its cards ride along'],
       ['arrow', '', 'Over a locked mat', 'Acts as empty table'],

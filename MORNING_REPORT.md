@@ -303,6 +303,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 - [ ] Hover a card at an odd angle and press R: it squares to the next quarter turn clockwise; R again turns it 90°; R twice quickly stands it upright (decision 102).
 - [ ] With nothing selected, hover a pile and press T, X, X, S, F; drag a stack and press R mid-drag: it turns in your hand and lands turned (decision 103).
 - [ ] Spawn the cube, press `Shift + C`: colours two to a row (W U, B R, G colourless, multicolour and lands; decision 113), columns by mana value lined up, lands stacked at the start, title bars readable. Hover one colour's pile and press `C`. Toggle **Split creatures** and press `Shift + C` again (decision 107). Press `C` on a curved pile: it stacks back up; cascades show more of each card (decision 108).
+- [ ] **Alt chain link** (decision 171): hold Alt over a card, and over a playmat: the open glove shows 🔗. Over empty table Alt still shows the numbers arrow.
 - [ ] **Ctrl ruler, then tick** (decision 170): hold Ctrl over a card: 📐. Ctrl + click it: the badge becomes ☑️ and stays over other cards while Ctrl is held. Let go of Ctrl and press it again: 📐.
 - [ ] **Alt arrow** (decision 169): hold Alt over empty table: the arrow with a blue 1 2 / 3 4 keycap drawn in, no box, no emoji.
 - [ ] **Plus and minus arrows** (decision 168): over empty table the arrow shows its dashed box; hold Ctrl: the arrow with a drawn plus, no box; hold Shift: the arrow with a minus. Same while drawing those marquees. Alt still shows the box arrow with 🔢.
