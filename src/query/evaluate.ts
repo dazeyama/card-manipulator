@@ -13,6 +13,8 @@ export interface QueryCard {
   selected: boolean;
   /** The named pile this card is in, if any. */
   pileName: string | null;
+  /** Its CubeCobra Elo, if known (decision 192). */
+  elo?: number;
 }
 
 export type Predicate = (c: QueryCard) => boolean;
@@ -95,6 +97,12 @@ function compileTerm(field: string, op: Op, raw: string): Predicate {
       return numeric(op, starNumber(value), (r) => statValues(r, 'toughness'));
     case 'loy':
       return numeric(op, starNumber(value), (r) => statValues(r, 'loyalty'));
+    case 'elo': {
+      const want = Number(value);
+      const o: Op = op === ':' ? '=' : op;
+      // A card with no Elo matches no Elo test.
+      return (c) => c.elo !== undefined && cmp(c.elo, o, want);
+    }
     case 'edhrec':
       // A card with no rank matches no rank test.
       return numeric(op, Number(value), (r) => (typeof r.edhrec_rank === 'number' ? [r.edhrec_rank] : []));

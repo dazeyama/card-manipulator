@@ -185,4 +185,6 @@ export interface TableDoc {
   cardData: Record<string, CardRecord>;
   /** Playmats (decision 144); older files have none. */
   mats?: Mat[];
+  /** CubeCobra Elo by oracle id (decision 192); older files have none. */
+  elo?: Record<string, number>;
 }

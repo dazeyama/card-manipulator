@@ -35,6 +35,7 @@ import { HiRes } from './render/hires';
 import { installFit } from './ui/fit';
 import pointUrl from '../art/cursors/point-48-bold.png';
 import { installRecordUpgrade } from './scryfall/upgrade';
+import { buildCubeTab } from './ui/cubeTab';
 import { fitLayout, gridLayout } from './state/piles';
 import { Graphics } from './graphics';
 import { SelectionMarkers } from './render/markers';
@@ -97,6 +98,8 @@ const exporter = new ExportPanel(app);
 spawnPanel.addTab('query', 'Query', buildQueryTab(app, () => spawnPanel.options()));
 // The 4th tab: playmats from a card's art (decision 144).
 spawnPanel.addTab('playmat', 'Playmat', buildPlaymatTab(app, mats));
+// The 5th tab: a whole CubeCobra cube, with each card's Elo (decision 192).
+spawnPanel.addTab('cube', 'Cube', buildCubeTab(app, () => spawnPanel.options()));
 const hires = new HiRes(app);
 // High or Low graphics, on the top bar beside the camera angle (decision 152).
 const graphics = new Graphics(app, hires, mats);

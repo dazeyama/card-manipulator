@@ -11,6 +11,7 @@ export function queryCard(store: Store, card: Card): QueryCard {
     record: store.records.get(card.scryfallId),
     selected: store.selection.has(card.uid),
     pileName: namedPileOf(store, card),
+    elo: store.eloOf(card),
   };
 }
 

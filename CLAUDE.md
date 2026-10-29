@@ -41,6 +41,7 @@ Regenerate the test lists (Scryfall, through the app's own client): `node --expe
 - `src/state/` the table model, selection, pile geometry and detection (`piles.ts`, pure), and `pileSync.ts` which runs detection after cards settle.
 - `src/scryfall/` the API client, resolution and caches.
 - `src/query/` the local Scryfall-subset query engine.
+- `src/cube/` CubeCobra cubes: links, the cube JSON and card Elo (one request per cube; not Scryfall, so not through the queue).
 - `src/render/` Three.js scene, instanced cards (`cards.ts`, one draw call, shader does corners, rim, foil), the atlas (layers of one array texture), picking, badges, outlines of empty named piles, close-up `normal` images (`hires.ts`), far-zoom selection dots.
 - `src/physics/` `world.ts` Rapier for loose cards only, `feel.ts` drags, landings and flicks, `motion.ts` display tweens.
 - `src/input/` the mouse and keyboard grammar from spec Section 16.

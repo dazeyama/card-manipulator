@@ -203,6 +203,21 @@ export class Store {
 
   readonly mats = new Map<string, Mat>();
 
+  /** CubeCobra Elo by oracle id (decision 192), from spawned cubes; kept with the table. */
+  readonly elo = new Map<string, number>();
+
+  /** Learn Elo ratings. Tells listeners as for new card data, so panels and searches update. */
+  setElo(entries: Iterable<[string, number]>): void {
+    for (const [oracle, elo] of entries) this.elo.set(oracle, elo);
+    this.events.emit('records', []);
+  }
+
+  /** A card's CubeCobra Elo, if known. */
+  eloOf(card: Card): number | undefined {
+    const r = this.records.get(card.scryfallId);
+    return r ? this.elo.get(r.oracle_id) : undefined;
+  }
+
   addMat(mat: Mat): void {
     this.mats.set(mat.uid, mat);
     this.events.emit('mats', undefined);
@@ -231,6 +246,7 @@ export class Store {
   clear(): void {
     this.cards.clear();
     this.mats.clear();
+    this.elo.clear();
     this.events.emit('mats', undefined);
     this.piles = new Map();
     this.named.clear();

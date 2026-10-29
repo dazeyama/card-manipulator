@@ -469,6 +469,7 @@ Supported in version one:
 | `kw:`, `keyword:` | `kw:flying` | |
 | `is:` | `is:foil`, `is:nonfoil`, `is:dfc`, `is:permanent`, `is:spell`, `is:faceup`, `is:facedown`, `is:selected` | The last three are this tool's own. |
 | `edhrec` | `edhrec<=500`, `edhrec=1` | EDHREC rank, 1 the most played in Commander; this tool's own (decision 187). A card with no rank matches no rank test. |
+| `elo` | `elo>=1400`, `elo<1200` | CubeCobra Elo, known for cards spawned from a cube; this tool's own (decision 192). A card with no Elo matches no Elo test. |
 | `f:`, `format:` | `f:modern`, `f:commander` | Legal in the format. |
 | `pile:` | `pile:keep`, `pile:"deck a"` | This tool's own: cards in the named pile. |
 | `-term` | `-t:land` | Negation. |
@@ -607,11 +608,13 @@ Dropping a stack onto a stack merges them, and a named stack keeps its name (if 
 
 ### 12.1 Spawn panel
 
-A collapsible panel on the left with three tabs:
+A collapsible panel on the left with five tabs:
 
 1. **List**: a textarea for a decklist, a Parse button, a preview of resolved and unresolved lines, and Spawn.
 2. **Card**: a search box with autocomplete from the name catalog (fuse.js for typos), an optional set code and collector number, a quantity, a finish, and Spawn.
 3. **Query**: a Scryfall query, a Preview count (runs the search and reports the total before spawning), a cap field (default 500, settings allow up to 2,000) and Spawn. Extras are always excluded (Section 5.1); a small note under the box says so.
+4. **Playmat**: one card line, spawning a playmat with its art (Section 10.9).
+5. **Cube**: a CubeCobra cube link (or its id) and Spawn cube: the cube's mainboard spawns as one pile, in the cube's own printings and finishes, and the table learns each card's **CubeCobra Elo** (decision 192).
 
 Spawn settings, kept at their defaults since decision 112 (no controls for them); below its tabs the spawn panel shows only the Removed tray; control hints live in the play space (decision 134):
 
@@ -1098,6 +1101,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 189 | Owner (2026-10-29): a **pointing-finger button** beside the search box, drawn with the pointer-finger cursor art: clicked, it enters **pointer mode** and waits for a click; the click moves the **selected cards to that spot as a stack**. **(agent)** The button lights while the mode is on and a second click turns it off; with nothing selected it says to select cards first. The cursor over the table is the plain pointing glove, and the hint line says how many cards will move. The cards stack on top of whatever is at the spot, in their height order, loose or squared in Tidy mode, as S would; Esc cancels. Pressing 1–9 or X switches to that mode instead. The ? list and the cursor review page include it. |
 | 190 | Owner (2026-10-29): the pointer-mode finger button sits against the **right end of the search box**, before the match count, instead of after it. |
 | 191 | Owner (2026-10-29): **Shift + C** lays the colour curve out in the **middle of the view** instead of where the cards were. **(agent)** The layout is centred on the point the camera looks at (its target on the table), whether it curves the selection or the whole table; plain `C` still curves cards out where they are. The HUD's By colour button does the same. |
+| 192 | Owner (2026-10-29): the Spawn panel gets a 5th tab, **Cube**: paste a **CubeCobra** cube link and it spawns every card of that cube **with its Elo**. **(agent)** It reads CubeCobra's cube JSON (`/cube/api/cubeJSON/<id>`, undocumented but open to any page; one request, about 2.5 MB for 540 cards), taking the mainboard only (not the maybeboard or basics), with each card's Scryfall id, finish and Elo. Links of every kind (overview, list, playtest, analysis, `/c/` short links) and bare ids work. Card data comes from the cache, then from Scryfall through the shared queue. Elo is kept by oracle id, so every printing of a card shares it, in the store and in saved tables (`elo`, optional, only for cards on the table). Inspect shows "CubeCobra Elo N" beside the EDHREC rank; the query language gets `elo`. Elo is known only for cards that came from a cube. The pure link and JSON readers are in `src/cube/cubecobra.ts` and tested. |
 
 ## Appendix B: Open items
 

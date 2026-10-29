@@ -35,7 +35,19 @@ export function toDoc(app: App, withCardData: boolean): TableDoc {
     spreads: [...store.spreads.values()].map((s) => ({ ...s, uids: [...s.uids] })),
     cardData,
     mats: [...store.mats.values()].map((m) => ({ ...m, x: round(m.x), y: round(m.y), yaw: round(m.yaw, 5) })),
+    elo: eloOnTable(store),
   };
+}
+
+/** The Elo ratings of the cards on the table, by oracle id (decision 192). */
+function eloOnTable(store: App['store']): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const c of store.cards.values()) {
+    const oracle = store.records.get(c.scryfallId)?.oracle_id;
+    const elo = oracle ? store.elo.get(oracle) : undefined;
+    if (oracle && elo !== undefined) out[oracle] = round(elo, 1);
+  }
+  return out;
 }
 
 function round(v: number, places = 3): number {
@@ -80,6 +92,7 @@ export async function loadDoc(app: App, doc: TableDoc): Promise<void> {
   const cards: Card[] = doc.cards.map((c) => ({ ...c, pileId: c.pileId ?? null, spreadOf: c.spreadOf ?? null }));
   store.addCards(cards);
   for (const m of doc.mats ?? []) store.addMat({ ...m });
+  if (doc.elo) store.setElo(Object.entries(doc.elo));
   if (doc.camera) app.rig.fromState(doc.camera);
   store.events.emit('settled', cards.map((c) => c.uid));
   store.events.emit('piles', undefined);

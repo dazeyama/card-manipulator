@@ -101,9 +101,13 @@ export class InspectPanel {
     const finish = card.finish === 'nonfoil' ? 'Nonfoil' : card.finish === 'foil' ? 'Foil' : 'Etched foil';
     out.push(h('div', { class: 'printing muted' },
       `${r.set_name || setName(r.set) || r.set.toUpperCase()} (${r.set.toUpperCase()}) #${r.collector_number} · ${cap(r.rarity)} · ${finish}${card.faceUp ? '' : ' · face down'}`));
-    // EDHREC rank (decision 187): how widely played the card is in Commander.
-    if (typeof r.edhrec_rank === 'number') {
-      out.push(h('div', { class: 'printing muted', title: 'Rank by how many Commander decks on EDHREC play this card; 1 is the most played' }, `EDHREC rank #${r.edhrec_rank.toLocaleString()}`));
+    // EDHREC rank (decision 187) and CubeCobra Elo (decision 192): how the card is valued.
+    const elo = this.app.store.elo.get(r.oracle_id);
+    const ranks: string[] = [];
+    if (typeof r.edhrec_rank === 'number') ranks.push(`EDHREC rank #${r.edhrec_rank.toLocaleString()}`);
+    if (elo !== undefined) ranks.push(`CubeCobra Elo ${Math.round(elo).toLocaleString()}`);
+    if (ranks.length) {
+      out.push(h('div', { class: 'printing muted', title: 'EDHREC rank: how many Commander decks play it, 1 the most. CubeCobra Elo: how highly drafters pick it in cubes.' }, ranks.join(' · ')));
     }
     return out;
   }
