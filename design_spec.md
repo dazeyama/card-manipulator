@@ -888,7 +888,7 @@ Performance pass against Section 17 with `stress-2000.txt`. Badge decluttering. 
 
 ## 19. Later (explicitly deferred)
 
-- Undo/redo (`history.ts` is reserved).
+- Undo/redo (`history.ts` is reserved). A one-step undo on Ctrl + Z, a second press redoing, is planned and open (Appendix B).
 - Saved selection groups on Ctrl + 1–9, RTS style.
 - Multiple tables or tabs in one session.
 - Drawn snap zones and lanes.
@@ -1117,4 +1117,4 @@ All dated 2026-10-27, from the brainstorming session.
 
 ## Appendix B: Open items
 
-None as of 2026-10-27. Every question raised while drafting has been answered and logged in Appendix A (decisions 23–43). During the overnight build the agent does not add items here: it decides and logs an agent decision in Appendix A instead (Section 0.1).
+- **One-step undo** (owner, 2026-10-29: "maybe later"). **Ctrl + Z** undoes the last move or action; a second press redoes it. Assessed at about half a day: a snapshot of the table (card positions, turns, faces, piles; named piles, spreads, mats; which cards exist) taken at the start of each action (a drag, a hotkey, a HUD button, a spawn or paste, Delete, a mat move), swapped in on undo and back on redo. Cards in flight or in the physics stop first; double taps (S S, R R, X X, E E) undo as one; the selection, the camera and save or load are left out. One step only; a full history would build on it.
