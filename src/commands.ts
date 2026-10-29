@@ -7,6 +7,7 @@ import { gridLayout, looseStackLayout, nextQuarterClockwise, overlaps, shuffled,
 import type { Spread } from './state/store';
 import { colourGroup, curveLayout, type CurveCard } from './state/curve';
 import { fanLayout, handLayout } from './state/fan';
+import { rankLayout, type RankCard, type RankMode } from './state/rankLayout';
 
 export interface Landing {
   uid: string;
@@ -137,6 +138,8 @@ export class Commands {
 
   /** Which curve each curved-out card belongs to, and where the curve put that curve's cards (decision 108). */
   private readonly curveOf = new Map<string, Map<string, { x: number; y: number }>>();
+  /** Which rank view (E, decision 198) each card was laid out in, and where. */
+  private readonly rankOf = new Map<string, Map<string, { x: number; y: number }>>();
   /** The same for fans (decision 141). */
   private readonly fanOf = new Map<string, Map<string, { x: number; y: number }>>();
 
@@ -210,6 +213,39 @@ export class Commands {
       if (still.length >= 2 && still.some(([u]) => u === uid)) return still.map(([u]) => u);
     }
     return null;
+  }
+
+  /**
+   * E: lay the cards out in columns by EDHREC rank; E E by CubeCobra Elo
+   * (decision 198), cascading like a curve, centred where they are.
+   */
+  rankSort(cards: string[], mode: RankMode): void {
+    const store = this.app.store;
+    cards = [...new Set(cards)].filter((u) => store.cards.has(u));
+    if (!cards.length) return;
+    const info: RankCard[] = cards.map((uid) => {
+      const card = store.cards.get(uid)!;
+      const r = store.records.get(card.scryfallId);
+      const rank = typeof r?.edhrec_rank === 'number' ? r.edhrec_rank : undefined;
+      return { uid, name: r?.name ?? '', creature: /\bCreature\b/.test((r?.type_line ?? '').split('//')[0]), value: mode === 'elo' ? store.eloOf(card) : rank };
+    });
+    leaveSpreads(this.app, cards);
+    const layout = rankLayout(info, centroid(this.app, cards), { mode, split: store.settings.curveSplit });
+    const uids = layout.map((p) => p.uid);
+    const landings = placeSequential(this.app, uids, layout.map((p) => p.at));
+    land(this.app, landings, { stagger: Math.min(2, 400 / uids.length), arc: 10 });
+    // Remember the view, so E on it stacks it back up.
+    const spots = new Map(landings.map((l) => [l.uid, { x: l.x, y: l.y }]));
+    for (const uid of spots.keys()) this.rankOf.set(uid, spots);
+  }
+
+  /** E: the rank view by EDHREC, or stack the cards back up if they are already laid out in one (decision 198). */
+  toggleRank(cards: string[]): void {
+    const sorted = this.laidOutGroup(this.rankOf, [...new Set(cards)]);
+    if (sorted) {
+      for (const u of sorted) this.rankOf.delete(u);
+      this.stack(sorted);
+    } else this.rankSort(cards, 'edhrec');
   }
 
   /** C: curve the cards out, or stack them back up if they already are (decision 108). */

@@ -34,6 +34,7 @@ const GROUPS: [string, Line[]][] = [
     ['🪟', 'X', 'then click to spread there, or drag a box to fit them in it · X X spreads in place · X on a spread restacks it'],
     ['📊', 'C', 'curve by mana value · Shift + C by colour'],
     ['🎴', 'H', 'fan like a hand of cards · H again stacks it'],
+    ['🏆', 'E', 'columns by EDHREC rank · E E by CubeCobra Elo · E again stacks them back'],
     ['🖐️', '1 – 9', 'draw that many from the pile under the cursor, then click to lay them out as a hand, face up'],
     ['🔢', '0', 'draw any number: type how many (a whole sealed pool), then click'],
     ['📐', 'Shift + T', 'Tidy mode on or off'],
