@@ -21,8 +21,9 @@ export function pickCard(rig: CameraRig, layer: CardLayer, sx: number, sy: numbe
   layer.forEach((uid, p) => {
     if (skip?.has(uid)) return;
     const c = Math.cos(-p.yaw), s = Math.sin(-p.yaw);
-    // A hovered card is met where it is drawn, popped up (decision 174), so it stays hovered.
-    const z = p.z + layer.lift(uid);
+    // Met at its resting height, not where the hover pop draws it: a card is hovered only
+    // over the part of it that shows before it pops (decision 175).
+    const z = p.z;
     let t: number;
     if (p.tiltX === 0 && p.tiltY === 0) {
       t = (z + CARD_T / 2 - oz) / dz;
