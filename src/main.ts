@@ -445,16 +445,41 @@ keyboard.bind('shift+t', () => {
 });
 // R turns the selection, or the card under the cursor when nothing is selected (decision 102).
 // R twice quickly stands cards upright; while dragging, R turns the held cards (decision 103).
-let lastR = 0;
-// Held, R keeps turning a quarter every 0.25 s (decision 183); only two real presses stand cards upright.
+// R waits a moment to tell one press from two (decision 184): one turns a quarter, two stand
+// the cards upright without turning first. Held, R keeps turning a quarter every 0.25 s
+// (decision 183). A playmat has no upright, so R turns it at once.
+let pendingR = 0;
+let rTargets: string[] = [];
+const turn = (upright: boolean, targets: string[]) => {
+  if (drag.dragging || targets.length) app.showGesture('rotate');
+  if (drag.dragging) drag.rotate(upright);
+  else commands.rotate(targets, upright);
+};
 keyboard.bind('r', (e) => {
-  const now = performance.now();
-  const twice = !e.repeat && now - lastR < DOUBLE_TAP_MS;
-  lastR = twice || e.repeat ? 0 : now;
-  if (drag.dragging || hoveredPile().length || mats.movable) app.showGesture('rotate');
-  if (drag.dragging) drag.rotate(twice);
-  else if (!store.selection.size && !mouse.hovered && mats.movable) mats.rotate(mats.movable);
-  else commands.rotate(hoveredCard(), twice);
+  if (e.repeat) {
+    // Held: the wait is over, keep turning.
+    clearTimeout(pendingR);
+    pendingR = 0;
+    turn(false, drag.dragging ? [] : hoveredCard());
+    return;
+  }
+  if (pendingR) {
+    clearTimeout(pendingR);
+    pendingR = 0;
+    turn(true, rTargets);
+    return;
+  }
+  if (!drag.dragging && !store.selection.size && !mouse.hovered && mats.movable) {
+    app.showGesture('rotate');
+    mats.rotate(mats.movable);
+    return;
+  }
+  // The cards are the ones under the cursor now, even if it moves while R waits.
+  rTargets = hoveredCard();
+  pendingR = window.setTimeout(() => {
+    pendingR = 0;
+    turn(false, rTargets);
+  }, DOUBLE_TAP_MS);
 }, { repeatMs: 250 });
 keyboard.bind('z', () => commands.frame());
 // F twice quickly faces every card up, so a mixed stack is fronted (decision 105).
