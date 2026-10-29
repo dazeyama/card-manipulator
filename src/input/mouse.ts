@@ -49,6 +49,8 @@ export class MouseInput {
   private readonly marqueeEl: HTMLDivElement;
   private lastClick = { uid: '', at: 0 };
   private lastRight = { x: 0, y: 0, at: 0 };
+  /** A Ctrl + click has checked a card in or out since Ctrl went down: the cursor shows the tick (decision 170). */
+  ctrlChecking = false;
 
   constructor(private readonly app: App) {
     const el = app.canvas.parentElement!;
@@ -71,6 +73,11 @@ export class MouseInput {
       if (e.button === 1) e.preventDefault();
     });
     app.canvas.tabIndex = 0;
+    // Letting go of Ctrl ends the checking.
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'Control' || e.key === 'Meta') this.ctrlChecking = false;
+    });
+    window.addEventListener('blur', () => (this.ctrlChecking = false));
   }
 
   /** Hand the current press to a gesture owned by another module (badge presses). */
@@ -223,8 +230,10 @@ export class MouseInput {
       case 'card-press':
         // Shift has no click meaning on a card (spec 9.1, decisions 23 and 88).
         if (g.mods.shift) break;
-        if (g.mods.ctrl) toggle(store, [g.uid]);
-        else store.setSelection([g.uid]);
+        if (g.mods.ctrl) {
+          toggle(store, [g.uid]);
+          this.ctrlChecking = true;
+        } else store.setSelection([g.uid]);
         break;
       case 'empty-press':
         if (!g.mods.shift && !g.mods.ctrl) store.clearSelection();

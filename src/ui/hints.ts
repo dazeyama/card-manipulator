@@ -31,7 +31,7 @@ const HINTS: Record<string, Hint[]> = {
   card: [
     ['🖐️', 'Drag to pick up'],
     ['🧲', 'Shift sweeps', 'shift'],
-    ['☑️', 'Ctrl + click toggles · drag lands tidy', 'ctrl'],
+    ['📐', 'Ctrl: drag lands tidy · click checks cards in and out', 'ctrl'],
     ['🔗', 'Alt keeps formation', 'alt'],
     ['🃏', 'Middle-click flips'],
     ['📖', 'Double-click spreads'],
