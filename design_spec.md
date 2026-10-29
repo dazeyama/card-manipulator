@@ -468,6 +468,7 @@ Supported in version one:
 | `cn:`, `number:` | `cn:149` | |
 | `kw:`, `keyword:` | `kw:flying` | |
 | `is:` | `is:foil`, `is:nonfoil`, `is:dfc`, `is:permanent`, `is:spell`, `is:faceup`, `is:facedown`, `is:selected` | The last three are this tool's own. |
+| `edhrec` | `edhrec<=500`, `edhrec=1` | EDHREC rank, 1 the most played in Commander; this tool's own (decision 187). A card with no rank matches no rank test. |
 | `f:`, `format:` | `f:modern`, `f:commander` | Legal in the format. |
 | `pile:` | `pile:keep`, `pile:"deck a"` | This tool's own: cards in the named pile. |
 | `-term` | `-t:land` | Negation. |
@@ -1092,6 +1093,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 184 | Owner (2026-10-29): **R** should wait to know whether it is a single or a double press before turning. **(agent)** R now waits the double-tap window (350 ms): a single press then turns the cards a quarter clockwise; a second press inside it stands them upright straight away, without the quarter turn first. The cards are the ones under the cursor (or selected, or held) when R was first pressed. Holding R ends the wait at the first repeat and keeps turning every 0.25 s. R over a playmat still turns it at once, as a mat has no upright. The cost is a 0.35 s pause before a single R turns. |
 | 185 | Owner (2026-10-29): call right-click and Space while holding cards **dealing** in the hint line and the ? list, and show the **dealing glove** (the one for drawing a hand with 1–9) when it deals. **(agent)** The hint reads 👇 Right-click or Space deals one, hold to keep dealing; the ? list calls it dealing. Every card dealt shows the dealing glove for half a second, so holding the button or Space keeps it showing until the dealing stops. |
 | 186 | Owner (2026-10-29): dealing from a **face-down** stack deals its **top** card instead of the bottom one. **(agent)** A hand counts as face down when more than half its cards are; then each card dealt is the highest one drawn in the hand, as dealt from a deck, and it stays face down. A face-up or evenly mixed hand still deals from the bottom (decision 180). |
+| 187 | Owner (2026-10-29): add **EDHREC rank** for every card (CubeCobra Elo to follow). **(agent)** Scryfall already sends `edhrec_rank` with each card, so the card record keeps it (`null` when a card has none). Records cached before this lack the field and are fetched again once, in the background, two seconds after they appear, through the shared queue in batches of 75. The query language gets `edhrec` with numeric comparisons (`edhrec<=500`); the Inspect panel shows "EDHREC rank #N" under the printing. The welcome table's embedded card data was refreshed with `scripts/refresh-welcome.ts` (447 of 449 cards have a rank). The pure trimming code moved to `src/scryfall/trim.ts` so Node scripts can use it. Sorting a pile by rank is not part of this. |
 
 ## Appendix B: Open items
 

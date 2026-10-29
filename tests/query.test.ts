@@ -13,11 +13,11 @@ function rec(p: Partial<CardRecord> & { name: string }): CardRecord {
 }
 
 const records: CardRecord[] = [
-  rec({ name: 'Lightning Bolt', set: 'm11', collector_number: '149', mana_cost: '{R}', cmc: 1, type_line: 'Instant', oracle_text: 'Lightning Bolt deals 3 damage to any target.', colors: ['R'], color_identity: ['R'], legalities: { modern: 'legal', vintage: 'legal', commander: 'legal' } }),
-  rec({ name: 'Counterspell', cmc: 2, rarity: 'uncommon', type_line: 'Instant', oracle_text: 'Counter target spell.', colors: ['U'], color_identity: ['U'], legalities: { vintage: 'legal', commander: 'legal' } }),
+  rec({ name: 'Lightning Bolt', set: 'm11', collector_number: '149', mana_cost: '{R}', cmc: 1, type_line: 'Instant', oracle_text: 'Lightning Bolt deals 3 damage to any target.', colors: ['R'], color_identity: ['R'], legalities: { modern: 'legal', vintage: 'legal', commander: 'legal' }, edhrec_rank: 40 }),
+  rec({ name: 'Counterspell', edhrec_rank: 300, cmc: 2, rarity: 'uncommon', type_line: 'Instant', oracle_text: 'Counter target spell.', colors: ['U'], color_identity: ['U'], legalities: { vintage: 'legal', commander: 'legal' } }),
   rec({ name: 'Serra Angel', cmc: 5, rarity: 'uncommon', type_line: 'Creature — Angel', oracle_text: 'Flying\nVigilance', colors: ['W'], color_identity: ['W'], power: '4', toughness: '4', keywords: ['Flying', 'Vigilance'], legalities: { commander: 'legal' } }),
   rec({ name: 'Tarmogoyf', cmc: 2, rarity: 'mythic', type_line: 'Creature — Lhurgoyf', colors: ['G'], color_identity: ['G'], power: '*', toughness: '1+*', legalities: { modern: 'legal' } }),
-  rec({ name: 'Sol Ring', cmc: 1, rarity: 'uncommon', type_line: 'Artifact', oracle_text: '{T}: Add {C}{C}.', legalities: { commander: 'legal', vintage: 'restricted' } }),
+  rec({ name: 'Sol Ring', edhrec_rank: 1, cmc: 1, rarity: 'uncommon', type_line: 'Artifact', oracle_text: '{T}: Add {C}{C}.', legalities: { commander: 'legal', vintage: 'restricted' } }),
   rec({ name: 'Dimir Signet', cmc: 2, type_line: 'Artifact', colors: [], color_identity: ['U', 'B'] }),
   rec({ name: 'Fire // Ice', cmc: 4, rarity: 'uncommon', layout: 'split', type_line: 'Instant // Instant', colors: ['R', 'U'], color_identity: ['R', 'U'],
     faces: [{ name: 'Fire', mana_cost: '{1}{R}', type_line: 'Instant', oracle_text: 'Fire deals 2 damage divided as you choose among one or two targets.', colors: ['R'] }, { name: 'Ice', mana_cost: '{1}{U}', type_line: 'Instant', oracle_text: 'Tap target permanent.\nDraw a card.', colors: ['U'] }] }),
@@ -226,5 +226,14 @@ describe('errors (spec 9.4: never a silent empty match)', () => {
     const r = parseQuery('t:creature art:x');
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.pos).toBe(11);
+  });
+});
+
+describe('EDHREC rank (decision 187)', () => {
+  it('compares ranks, and a card with no rank matches no rank test', () => {
+    expect(names('edhrec<=50').sort()).toEqual(['Lightning Bolt', 'Sol Ring']);
+    expect(names('edhrec=1')).toEqual(['Sol Ring']);
+    expect(names('edhrec>100')).toEqual(['Counterspell']);
+    expect(names('-edhrec<=50')).not.toContain('Sol Ring');
   });
 });

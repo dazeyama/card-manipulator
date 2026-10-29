@@ -33,6 +33,7 @@ import { HelpPanel } from './ui/helpPanel';
 import { buildQueryTab } from './ui/queryTab';
 import { HiRes } from './render/hires';
 import { installFit } from './ui/fit';
+import { installRecordUpgrade } from './scryfall/upgrade';
 import { fitLayout, gridLayout } from './state/piles';
 import { Graphics } from './graphics';
 import { SelectionMarkers } from './render/markers';
@@ -61,6 +62,8 @@ const spawnPanel = new SpawnPanel(app, left);
 const hud = new Hud(app, bottom);
 app.rest = new RestSync(app);
 const pileSync = installPileSync(app.store);
+// Cards cached before EDHREC rank was kept are fetched again once (decision 187).
+installRecordUpgrade(app.store);
 const commands = new Commands(app);
 const drag = new DragController(app);
 // Cursors that show what the mouse will do (decision 116).

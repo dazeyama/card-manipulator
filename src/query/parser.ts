@@ -6,7 +6,7 @@ import { QueryError, lex, type Op, type Token } from './lexer';
 
 export type Field =
   | 'name' | 'oracle' | 'type' | 'color' | 'identity' | 'mv' | 'pow' | 'tou' | 'loy'
-  | 'rarity' | 'set' | 'number' | 'keyword' | 'is' | 'format' | 'pile';
+  | 'rarity' | 'set' | 'number' | 'keyword' | 'is' | 'format' | 'pile' | 'edhrec';
 
 export type Node =
   | { type: 'and'; children: Node[] }
@@ -33,6 +33,8 @@ const KEYS: Record<string, Field> = {
   is: 'is',
   f: 'format', format: 'format', legal: 'format',
   pile: 'pile',
+  // EDHREC rank, this tool's own (decision 187): edhrec<=500 is the 500 most played.
+  edhrec: 'edhrec', edhrecrank: 'edhrec',
 };
 
 /** Scryfall keys the table deliberately doesn't support in version one. */
@@ -46,8 +48,8 @@ const UNSUPPORTED = new Set([
 
 export const IS_VALUES = new Set(['foil', 'nonfoil', 'etched', 'dfc', 'mdfc', 'transform', 'split', 'permanent', 'spell', 'faceup', 'facedown', 'selected', 'multicolor', 'colorless', 'historic', 'legendary']);
 
-const NUMERIC: Field[] = ['mv', 'pow', 'tou', 'loy'];
-const ORDERED: Field[] = ['mv', 'pow', 'tou', 'loy', 'rarity', 'color', 'identity', 'number'];
+const NUMERIC: Field[] = ['mv', 'pow', 'tou', 'loy', 'edhrec'];
+const ORDERED: Field[] = ['mv', 'pow', 'tou', 'loy', 'rarity', 'color', 'identity', 'number', 'edhrec'];
 
 export type ParseResult = { ok: true; ast: Node } | { ok: false; error: string; pos: number };
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isDfc, trimCard, type ScryfallCard } from '../src/scryfall/cardData';
+import { isOutdated } from '../src/scryfall/upgrade';
 import { NameIndex } from '../src/scryfall/names';
 import { identifierFor, matches } from '../src/scryfall/resolve';
 import { ScryfallClient } from '../src/scryfall/client';
@@ -37,6 +38,15 @@ describe('trimCard (spec 5.3)', () => {
     expect(r).toMatchObject({ id: 'b1', name: 'Lightning Bolt', cmc: 1, colors: ['R'], image_small: 'https://x/s.jpg', fetched_at: 1 });
     expect(r.legalities).toEqual({ modern: 'legal', vintage: 'legal' });
     expect(isDfc(r)).toBe(false);
+  });
+
+  it('keeps the EDHREC rank, null when Scryfall has none, so old records stand out (decision 187)', () => {
+    expect(trimCard({ ...bolt, edhrec_rank: 42 }).edhrec_rank).toBe(42);
+    const none = trimCard(bolt);
+    expect(none.edhrec_rank).toBeNull();
+    expect(isOutdated(none)).toBe(false);
+    const { edhrec_rank: _drop, ...old } = none;
+    expect(isOutdated(old)).toBe(true);
   });
 
   it('keeps both faces and both images of a double-faced card', () => {

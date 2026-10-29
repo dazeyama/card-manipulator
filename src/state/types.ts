@@ -92,6 +92,11 @@ export interface CardRecord {
   legalities: Record<string, string>;
   finishes: string[];
   prices: { usd: string | null; usd_foil: string | null };
+  /**
+   * The card's popularity rank on EDHREC, 1 the most played (decision 187); null when it
+   * has none. Missing on records cached before it was kept: those are fetched again.
+   */
+  edhrec_rank?: number | null;
   faces: CardFace[];
   image_small?: string;
   image_normal?: string;

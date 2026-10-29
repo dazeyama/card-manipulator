@@ -20,7 +20,7 @@ npm run build
 
 `start.bat` runs the dev server and opens the browser. The built-in browser can start it by name: `card-manipulator` in `.claude/launch.json`; `card-manipulator-preview` serves the production build on port 4173 (run `npm run build` first).
 
-Regenerate the test lists (Scryfall, through the app's own client): `node --experimental-transform-types scripts/make-test-data.ts [deck|dfc|bad|stress]`.
+Regenerate the test lists (Scryfall, through the app's own client): `node --experimental-transform-types scripts/make-test-data.ts [deck|dfc|bad|stress]`. Refresh the welcome table's embedded card data the same way: `node --experimental-transform-types scripts/refresh-welcome.ts`.
 
 ## Rules
 

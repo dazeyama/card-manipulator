@@ -101,6 +101,10 @@ export class InspectPanel {
     const finish = card.finish === 'nonfoil' ? 'Nonfoil' : card.finish === 'foil' ? 'Foil' : 'Etched foil';
     out.push(h('div', { class: 'printing muted' },
       `${r.set_name || setName(r.set) || r.set.toUpperCase()} (${r.set.toUpperCase()}) #${r.collector_number} · ${cap(r.rarity)} · ${finish}${card.faceUp ? '' : ' · face down'}`));
+    // EDHREC rank (decision 187): how widely played the card is in Commander.
+    if (typeof r.edhrec_rank === 'number') {
+      out.push(h('div', { class: 'printing muted', title: 'Rank by how many Commander decks on EDHREC play this card; 1 is the most played' }, `EDHREC rank #${r.edhrec_rank.toLocaleString()}`));
+    }
     return out;
   }
 }
