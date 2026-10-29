@@ -102,7 +102,7 @@ const SECTIONS: { title: string; note?: string; tiles: Tile[] }[] = [
       ['flip', '', 'F, F F, or a middle-click', 'Flipping over'],
       ['rotate', '', 'R, R R, or R over a mat', 'Turning'],
       ['fan', '', 'H', 'Fanning into a hand'],
-      ['draw', '', 'The click that deals a hand', 'Dealing'],
+      ['draw', '', 'The click that deals a hand, or dealing from the hand (right-click or Space while holding)', 'Dealing'],
       ['remove', '❌', 'Delete or Backspace', 'Removing'],
     ],
   },

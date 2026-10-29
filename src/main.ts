@@ -132,12 +132,17 @@ const stopDealing = () => {
   dealTimer = 0;
 };
 /** Start dealing from the hand: one card now, then one every quarter second. False if nothing is held. */
+// Each card dealt shows the dealing glove, as drawing a hand does (decision 185).
+const dealOne = () => {
+  app.showGesture('draw');
+  drag.dropBottom();
+};
 const startDealing = (): boolean => {
   if (!drag.dragging) return false;
-  drag.dropBottom();
+  dealOne();
   stopDealing();
   dealTimer = window.setInterval(() => {
-    if (drag.dragging) drag.dropBottom();
+    if (drag.dragging) dealOne();
     else stopDealing();
   }, DEAL_EVERY_MS);
   return true;
