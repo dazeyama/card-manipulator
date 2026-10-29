@@ -546,9 +546,10 @@ export class DragController {
   }
 
   /**
-   * Right-click while holding cards (decision 180): the bottom card of the hand
-   * drops onto whatever is under the cursor, falling messily, or squared in
-   * Tidy mode (Ctrl). The last card ends the drag, as letting go does.
+   * Dealing (decisions 180, 186): right-click or Space while holding cards. The
+   * bottom card of the hand drops onto whatever is under the cursor, falling
+   * messily, or squared in Tidy mode (Ctrl); from a face-down hand, the top card
+   * is dealt instead, as from a deck. The last card ends the drag, as letting go does.
    */
   dropBottom(): void {
     if (!this.active || !this.held.length) return;
@@ -556,11 +557,15 @@ export class DragController {
       this.release(this.screen.x, this.screen.y);
       return;
     }
-    let k = 0, low = Infinity;
+    const store = this.app.store;
+    const down = this.held.filter((c) => store.cards.get(c.uid)?.faceUp === false).length;
+    const fromTop = down * 2 > this.held.length;
+    let k = 0, best = fromTop ? -Infinity : Infinity;
     this.held.forEach((c, i) => {
-      const z = this.app.layer.pose(c.uid)?.z ?? Infinity;
-      if (z < low) {
-        low = z;
+      const z = this.app.layer.pose(c.uid)?.z;
+      if (z === undefined) return;
+      if (fromTop ? z > best : z < best) {
+        best = z;
         k = i;
       }
     });
