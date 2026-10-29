@@ -27,7 +27,7 @@ Regenerate the test lists (Scryfall, through the app's own client): `node --expe
 - **The spec wins.** If the owner says something that conflicts with it, the owner wins, and the spec is updated in the same change so the conflict doesn't return.
 - **Decisions are logged.** Every new decision gets the next number in Appendix A with its date. Decisions made without the owner are marked **(agent)** with the reasoning.
 - **The owner is QA.** Hand off with a short "Where to look" checklist. During the autonomous overnight build only, also verify in the built-in browser (spec Section 0.1).
-- **Git is local only.** Commit locally. Never add a remote, push, or run `gh`. Nothing is deployed (decisions 36 and 37).
+- **Git and deploy** (decision 203). The repo is public on GitHub as `origin`. Commit locally as usual; push to `main` only when the owner asks, since every push to `main` deploys the site to GitHub Pages through `.github/workflows/pages.yml` (it runs typecheck, tests and build first). Commits use the owner's GitHub noreply email, never their personal one.
 - **Scryfall courtesy.** Every request goes through the one serialized queue in `src/scryfall/client.ts`: 100 ms between general calls, 550 ms between searches. Reuse the caches.
 - **Reference projects are read-only.** `C:\ClaudeProjects\pug-pricing-tool` is reference material for the Scryfall client and conventions. Never edit it.
 - **Chrome and Edge only.** Performance target is the owner's RTX 4070 Ti at 1080p.
