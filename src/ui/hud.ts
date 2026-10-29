@@ -105,9 +105,9 @@ export class Hud {
     this.input.select();
   }
 
-  /** A button just after the search box (decision 189). */
+  /** A button against the left end of the search box (decisions 189, 190). */
   addBesideSearch(el: HTMLElement): void {
-    this.filterWrap.after(el);
+    this.filterWrap.prepend(el);
   }
 
   addButton(label: string, title: string, run: () => void): HTMLButtonElement {
