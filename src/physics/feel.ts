@@ -100,12 +100,22 @@ export const SWEEP_ALL_MS = 1600;
 /** Moving off a pile for less than this keeps its dwell time. */
 const SWEEP_GRACE_MS = 150;
 
-/** How many cards a sweep has pulled from a pile of `size` after `ms` over it. */
-export function sweepCount(ms: number, size: number): number {
-  if (size <= 1 || ms < SWEEP_MORE_MS) return Math.min(1, size);
-  if (ms >= SWEEP_ALL_MS) return size;
-  // Slow at first, then faster: a heavy pile resists, then gives way.
-  const k = ((ms - SWEEP_MORE_MS) / (SWEEP_ALL_MS - SWEEP_MORE_MS)) ** 2.2;
+/** A messy pile gives way sooner (decision 178): more after this long, all of it after this long. */
+export const SWEEP_MESSY_MORE_MS = 120;
+export const SWEEP_MESSY_ALL_MS = 650;
+
+/**
+ * How many cards a sweep has pulled from a pile of `size` after `ms` over it.
+ * A neat stack (a deck) resists (decision 89); a messy pile gives way sooner
+ * and more evenly (decision 178).
+ */
+export function sweepCount(ms: number, size: number, neat = true): number {
+  const more = neat ? SWEEP_MORE_MS : SWEEP_MESSY_MORE_MS;
+  const all = neat ? SWEEP_ALL_MS : SWEEP_MESSY_ALL_MS;
+  if (size <= 1 || ms < more) return Math.min(1, size);
+  if (ms >= all) return size;
+  // A deck is slow at first, then faster: a heavy pile resists, then gives way.
+  const k = ((ms - more) / (all - more)) ** (neat ? 2.2 : 1);
   return Math.min(size, Math.max(2, 1 + Math.floor(k * (size - 1))));
 }
 
@@ -354,7 +364,14 @@ export class DragController {
       d = { key, since: now, taken: 0, size: pile ? pile.cardUids.filter((u) => !held.has(u)).length : 1, lost: 0 };
       this.dwell = d;
     }
-    const want = sweepCount(now - d.since, d.size);
+    // A messy pile isn't a deck: every card the cursor reaches comes at once (decision 178).
+    const neat = !pile || pile.kind === 'stack';
+    if (!neat && !held.has(hit)) {
+      this.collect(hit);
+      held.add(hit);
+      d.taken++;
+    }
+    const want = sweepCount(now - d.since, d.size, neat);
     while (d.taken < want) {
       // The card under the cursor first, then the pile from the top down.
       let next: string | null = d.taken === 0 ? hit : null;

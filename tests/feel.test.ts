@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CARRY_S, flickDirection, inMotion, MOVING_SPEED, planeBase, stopWhereTheyAre, sweepCount, SWEEP_ALL_MS, SWEEP_MORE_MS } from '../src/physics/feel';
+import { CARRY_S, flickDirection, inMotion, MOVING_SPEED, planeBase, stopWhereTheyAre, sweepCount, SWEEP_ALL_MS, SWEEP_MESSY_ALL_MS, SWEEP_MESSY_MORE_MS, SWEEP_MORE_MS } from '../src/physics/feel';
 
 describe('flickDirection (spec 10.5)', () => {
   it('fires on a fast move that reverses sharply, tossing the way it was going', () => {
@@ -43,6 +43,26 @@ describe('sweepCount (decision 89)', () => {
     }
     expect(sweepCount(5000, 1)).toBe(1);
     expect(sweepCount(5000, 0)).toBe(0);
+  });
+});
+
+describe('sweeping a messy pile (decision 178)', () => {
+  it('gives way much sooner than a deck', () => {
+    expect(sweepCount(SWEEP_MESSY_MORE_MS, 40, false)).toBe(2);
+    expect(sweepCount(SWEEP_MESSY_ALL_MS, 40, false)).toBe(40);
+    expect(SWEEP_MESSY_ALL_MS).toBeLessThan(SWEEP_ALL_MS / 2);
+    // Halfway through, a messy pile has given far more than a deck would.
+    const ms = SWEEP_MORE_MS + (SWEEP_MESSY_ALL_MS - SWEEP_MORE_MS) / 2;
+    expect(sweepCount(ms, 40, false)).toBeGreaterThan(sweepCount(ms, 40, true) + 10);
+  });
+
+  it('never goes down as time passes', () => {
+    let prev = 0;
+    for (let ms = 0; ms <= SWEEP_MESSY_ALL_MS + 100; ms += 16) {
+      const n = sweepCount(ms, 30, false);
+      expect(n).toBeGreaterThanOrEqual(prev);
+      prev = n;
+    }
   });
 });
 
