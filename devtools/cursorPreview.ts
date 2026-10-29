@@ -8,7 +8,7 @@
 //   node --experimental-transform-types devtools/cursorPreview.ts
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import { ARROW_MINUS_URL, ARROW_PLUS_URL, ARROW_TIP, ARROW_URL } from '../src/ui/cursorArrow.ts';
+import { ARROW_COUNT_URL, ARROW_MINUS_URL, ARROW_PLUS_URL, ARROW_TIP, ARROW_URL } from '../src/ui/cursorArrow.ts';
 
 const png = (file: string) => `data:image/png;base64,${readFileSync(file).toString('base64')}`;
 const hotspots = JSON.parse(readFileSync('art/cursors/cursors.json', 'utf8')) as Record<string, Record<string, [number, number]>>;
@@ -18,6 +18,7 @@ const ART: Record<string, { src: string; hot: [number, number] | 'centre' }> = {
   arrow: { src: ARROW_URL, hot: ARROW_TIP },
   arrowPlus: { src: ARROW_PLUS_URL, hot: ARROW_TIP },
   arrowMinus: { src: ARROW_MINUS_URL, hot: ARROW_TIP },
+  arrowCount: { src: ARROW_COUNT_URL, hot: ARROW_TIP },
   open: { src: png('art/cursors/open-48-bold.png'), hot: hotspots.open['48-bold'] },
   fist: { src: png('art/cursors/fist-48-bold.png'), hot: hotspots.fist['48-bold'] },
   point: { src: png('art/cursors/point-48-bold.png'), hot: hotspots.point['48-bold'] },
@@ -41,7 +42,7 @@ const SECTIONS: { title: string; note?: string; tiles: Tile[] }[] = [
       ['arrow', '', 'Nothing held', 'Drag to draw a selection box'],
       ['arrowPlus', '', 'Ctrl held, or a Ctrl selection box', 'The box adds to the selection'],
       ['arrowMinus', '', 'Shift held, or a Shift selection box', 'The box takes away from the selection'],
-      ['arrow', '\u{1F522}', 'Alt held', 'Every pile shows its card count'],
+      ['arrowCount', '', 'Alt held', 'Every pile shows its card count'],
     ],
   },
   {

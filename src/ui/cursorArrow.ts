@@ -2,7 +2,8 @@
 // hand-drawn at the gloves' 48 px size and in their style, with a heavy black
 // outline, a white body and soft grey shading on its right side. The plain one
 // carries a dashed marquee box; the ones for adding to and taking from the
-// selection carry a bold plus or minus sign, drawn the same way, instead.
+// selection carry a bold plus or minus sign, drawn the same way, instead, and
+// the one for Alt a numbers keycap (decision 169).
 // Shared by the app's cursors and the dev preview page.
 
 const INK = '#111';
@@ -18,6 +19,11 @@ const C = 37, ARM = 8, HALF = 3.2;
 const PLUS = `M${C - HALF} ${C - ARM} H${C + HALF} V${C - HALF} H${C + ARM} V${C + HALF} H${C + HALF} V${C + ARM} H${C - HALF} V${C + HALF} H${C - ARM} V${C - HALF} H${C - HALF} Z`;
 const MINUS = `M${C - ARM} ${C - HALF} H${C + ARM} V${C + HALF} H${C - ARM} Z`;
 const sign = (d: string) => `<path d="${d}" fill="#fff" stroke="${INK}" stroke-width="2.6" stroke-linejoin="round"/>`;
+/** A numbers keycap like the 🔢 emoji, blue with 1 2 / 3 4 in white, outlined like the arrow (decision 169). */
+const NUMBERS = `<rect x="27" y="27" width="19" height="19" rx="3.5" fill="#3b82f6" stroke="${INK}" stroke-width="2.4"/>
+  <g fill="#fff" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="8.6" text-anchor="middle">
+    <text x="32.6" y="35.6">1</text><text x="40.4" y="35.6">2</text><text x="32.6" y="43.6">3</text><text x="40.4" y="43.6">4</text>
+  </g>`;
 
 function arrowSvg(extra: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
@@ -35,10 +41,14 @@ export const ARROW_PLUS_SVG = arrowSvg(sign(PLUS));
 /** Shift over empty table: the marquee takes away from the selection (decision 168). */
 export const ARROW_MINUS_SVG = arrowSvg(sign(MINUS));
 
+/** Alt over empty table: every pile shows its count (decision 169). */
+export const ARROW_COUNT_SVG = arrowSvg(NUMBERS);
+
 /** The arrows as image URLs. */
 export const ARROW_URL = `data:image/svg+xml,${encodeURIComponent(ARROW_SVG)}`;
 export const ARROW_PLUS_URL = `data:image/svg+xml,${encodeURIComponent(ARROW_PLUS_SVG)}`;
 export const ARROW_MINUS_URL = `data:image/svg+xml,${encodeURIComponent(ARROW_MINUS_SVG)}`;
+export const ARROW_COUNT_URL = `data:image/svg+xml,${encodeURIComponent(ARROW_COUNT_SVG)}`;
 
 /** The click point: the very tip, where the mitred outline ends. */
 export const ARROW_TIP: [number, number] = [4, 2];

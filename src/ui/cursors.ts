@@ -13,7 +13,7 @@
 import type { App, Gesture } from '../app';
 import type { DragController } from '../physics/feel';
 import type { MouseInput } from '../input/mouse';
-import { ARROW_MINUS_URL, ARROW_PLUS_URL, ARROW_TIP, ARROW_URL } from './cursorArrow';
+import { ARROW_COUNT_URL, ARROW_MINUS_URL, ARROW_PLUS_URL, ARROW_TIP, ARROW_URL } from './cursorArrow';
 import pointUrl from '../../art/cursors/point-48-bold.png';
 import openUrl from '../../art/cursors/open-48-bold.png';
 import fistUrl from '../../art/cursors/fist-48-bold.png';
@@ -30,10 +30,11 @@ import hotspots from '../../art/cursors/cursors.json';
 const SIZE = 48;
 const VERSION = '48-bold';
 
-type Hand = 'arrow' | 'arrowPlus' | 'arrowMinus' | 'open' | 'fist' | 'holdOne';
+type Hand = 'arrow' | 'arrowPlus' | 'arrowMinus' | 'arrowCount' | 'open' | 'fist' | 'holdOne';
 // holdOne: the glove holding up one card, while a single card is dragged (decision 164).
-// arrowPlus, arrowMinus: the arrow with a drawn plus or minus sign instead of the marquee (decision 168).
-const ART: Record<Hand, string> = { arrow: ARROW_URL, arrowPlus: ARROW_PLUS_URL, arrowMinus: ARROW_MINUS_URL, open: openUrl, fist: fistUrl, holdOne: holdOneUrl };
+// arrowPlus, arrowMinus: the arrow with a drawn plus or minus sign instead of the marquee (decision 168);
+// arrowCount: with a drawn numbers keycap, for Alt (decision 169).
+const ART: Record<Hand, string> = { arrow: ARROW_URL, arrowPlus: ARROW_PLUS_URL, arrowMinus: ARROW_MINUS_URL, arrowCount: ARROW_COUNT_URL, open: openUrl, fist: fistUrl, holdOne: holdOneUrl };
 
 /** Each action's gesture glove and its badge, shown for a moment after the key (decision 164). */
 const GESTURES: Record<Gesture, [string, string]> = {
@@ -54,7 +55,7 @@ const STATES = {
   arrow: ['arrow', '', 'default'],
   arrowAdd: ['arrowPlus', '', 'copy'],
   arrowSub: ['arrowMinus', '', 'default'],
-  arrowCounts: ['arrow', '🔢', 'default'],
+  arrowCounts: ['arrowCount', '', 'default'],
   open: ['open', '', 'grab'],
   openSweep: ['open', '🧲', 'grab'],
   openFormation: ['open', '🔢', 'grab'],
@@ -118,7 +119,7 @@ function compose(img: HTMLImageElement, hand: Hand, emoji: string, fallback: str
   g.drawImage(img, 0, 0, SIZE, SIZE);
   if (emoji) drawEmoji(g, emoji, SIZE);
   // The gesture gloves hold their click point in the middle, like the open hand and the fist.
-  const [hx, hy] = hand === 'arrow' || hand === 'arrowPlus' || hand === 'arrowMinus' ? ARROW_TIP : hand === 'holdOne' ? [SIZE / 2, SIZE / 2] : (hotspots[hand][VERSION] as [number, number]);
+  const [hx, hy] = hand === 'open' || hand === 'fist' ? (hotspots[hand][VERSION] as [number, number]) : hand === 'holdOne' ? [SIZE / 2, SIZE / 2] : ARROW_TIP;
   return `url(${c.toDataURL()}) ${hx} ${hy}, ${fallback}`;
 }
 

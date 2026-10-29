@@ -791,7 +791,7 @@ The cursor shows what the mouse will do, and what a held key changes (owner, 202
 | Arrow with a dashed box | Over empty table | Drag draws a marquee |
 | Arrow with a plus sign (no marquee box) | Ctrl held over empty table, or a Ctrl marquee | The marquee adds to the selection (decision 168) |
 | Arrow with a minus sign (no marquee box) | Shift held over empty table, or a Shift marquee | The marquee takes from the selection (decision 168) |
-| ... with 🔢 | Alt held over empty table | Every pile shows its count |
+| Arrow with a numbers keycap (no marquee box) | Alt held over empty table | Every pile shows its count (decision 169) |
 | Open glove | Over a card | Drag picks it up (or the selection) |
 | ... with 🧲 | Shift held over a card | A drag will sweep up cards it passes |
 | ... with 🔢 | Alt (or Ctrl + Shift) held over a card | Every pile shows its count; a drag keeps the formation |
@@ -1073,6 +1073,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 166 | Owner (2026-10-28): the **Shuffle** gesture's hands looked too small next to the other gloves, being two hands in one cursor; make it bigger so the hands match. **(agent)** Shuffle is cut out at 96 px instead of 48 (`makeCursors --gestures` takes a size per gesture), which makes each of its hands about as big as a single glove; browsers accept cursor images up to 128 px. Gesture cursors are drawn at their own size, click point in the middle. |
 | 167 | Owner (2026-10-28): the 96 px Shuffle hands were a little too big; try **72 px**. Replaces the size in decision 166. |
 | 168 | Owner (2026-10-29): the empty-table arrow looked bad with the ➕ and ➖ emoji. Make three simple arrows, drawn in code rather than generated: the default with its marquee box, one with a **plus** sign and no box, and one with a **minus** sign and no box, the signs drawn into the image. **(agent)** All three share the hand-drawn arrow of decision 123 (`src/ui/cursorArrow.ts`, inline SVG); the plus and minus are bold white signs 16 px across with the arrow's black outline, in the bottom right corner where the box sits, and no emoji badge. Ctrl uses the plus arrow, Shift the minus arrow, both over empty table and during their marquee. Alt keeps the marquee arrow with 🔢. The hint line keeps its ➕ and ➖ icons. The cursor preview page (`devtools/cursorPreview.ts`) shows the new arrows. |
+| 169 | Owner (2026-10-29): **Alt over empty table** looked bad as the box arrow with a 🔢 badge; make a bespoke arrow like the plus and minus ones, without the marquee, with the numbers emoji baked in. **(agent)** The hand-drawn arrow with a drawn keycap in the bottom right corner instead of the box: a blue rounded square, 19 px, outlined in black like the arrow, with 1 2 / 3 4 in bold white, after the 🔢 emoji. No emoji badge. The 🔢 badge stays on the open glove (Alt over a card or a mat) and the 0 draw cursor. |
 
 ## Appendix B: Open items
 
