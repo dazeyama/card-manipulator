@@ -625,7 +625,7 @@ hud.addButton('🏆 (E) Rank', 'Rank: columns by EDHREC rank (E), or by CubeCobr
   else commands.toggleRank([...store.selection]);
 });
 hud.addButton('📊 (C) Curve', 'Curve the selection out by mana value, or stack it back up if it already is (C)', () => commands.toggleCurve([...store.selection], false));
-hud.addButton('🎨 (⇧C) Colour', 'Colour curve (Shift + C): curve everything (or the selection) out by colour, a row per colour (Shift + C)', curveAll);
+hud.addButton('🎨 (Shift C) Color', 'Color curve (Shift + C): curve everything (or the selection) out by colour, a row per colour (Shift + C)', curveAll);
 // Split creatures: curves put creatures and non-creatures in separate bands (decision 107).
 const splitBtn = hud.addButton('🐉 Split', 'Split creatures: curves and the rank view (E) put creatures and non-creatures in separate bands', () => store.updateSettings({ curveSplit: !store.settings.curveSplit }));
 const syncSplit = () => {
