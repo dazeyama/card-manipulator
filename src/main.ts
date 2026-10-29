@@ -317,7 +317,9 @@ keyboard.bind('c', () => {
 const curveTargets = (): string[] => (store.selection.size || !mouse.hovered ? hoveredPile() : [mouse.hovered, ...hoveredPile()]);
 const curveAll = () => {
   if (drag.dragging) return;
-  commands.curve(store.selection.size ? [...store.selection] : [...store.cards.keys()], true);
+  // Laid out in the middle of the view, where you are looking (decision 191).
+  const t = app.rig.target;
+  commands.curve(store.selection.size ? [...store.selection] : [...store.cards.keys()], true, { x: t.x, y: t.y });
 };
 keyboard.bind('shift+c', curveAll);
 // 1-9: draw that many cards from the hovered pile (or the selection); the next click on the

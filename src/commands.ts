@@ -158,7 +158,7 @@ export class Commands {
    * underneath by colour identity (decision 149); Shift + C also sorts them
    * into a row per colour (decision 107).
    */
-  curve(cards: string[], byColour: boolean): void {
+  curve(cards: string[], byColour: boolean, centre?: { x: number; y: number }): void {
     const store = this.app.store;
     if (!cards.length) return;
     const info: CurveCard[] = cards.map((uid) => {
@@ -171,7 +171,8 @@ export class Commands {
       return { uid, name: r?.name ?? '', mv: r?.cmc ?? 0, land: isLand, creature: /\bCreature\b/.test(type), group: colourGroup(colours, isLand), identity: r?.color_identity ?? [] };
     });
     leaveSpreads(this.app, cards);
-    const layout = curveLayout(info, centroid(this.app, cards), { byColour, split: store.settings.curveSplit });
+    // Centred where the cards are, or at `centre` (Shift + C: the middle of the view, decision 191).
+    const layout = curveLayout(info, centre ?? centroid(this.app, cards), { byColour, split: store.settings.curveSplit });
     const uids = layout.map((p) => p.uid);
     const landings = placeSequential(this.app, uids, layout.map((p) => p.at));
     land(this.app, landings, { stagger: Math.min(2, 400 / uids.length), arc: 10 });
