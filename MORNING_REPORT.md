@@ -6,7 +6,7 @@
 |---|---|
 | **Phases finished** | All eight (1–8), each through the full gate: typecheck, tests, build, browser check, commit |
 | **BROKEN items** | None |
-| **Tests** | 103 passing after the morning follow-ups (97 at the end of the overnight build) |
+| **Tests** | 164 passing as of 2026-10-28 (97 at the end of the overnight build, 103 after the morning follow-ups) |
 | **Final pass** | `await __regression()` in the dev console: 28 of 28 checklist items pass, no page errors |
 | **Run it** | `npm install` once, then `npm run dev` and open http://localhost:5173, or double-click `start.bat` |
 
