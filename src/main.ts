@@ -3,7 +3,7 @@
 import './styles/app.css';
 import { App } from './app';
 import { MouseInput, type CustomGesture } from './input/mouse';
-import { KeyboardInput } from './input/keyboard';
+import { isTyping, KeyboardInput } from './input/keyboard';
 import { scryfall } from './scryfall/client';
 import { SpawnPanel } from './ui/spawnPanel';
 import { TopBar } from './ui/topBar';
@@ -131,7 +131,8 @@ const stopDealing = () => {
   clearInterval(dealTimer);
   dealTimer = 0;
 };
-mouse.hooks.rightWhileHolding = () => {
+/** Start dealing from the hand: one card now, then one every half second. False if nothing is held. */
+const startDealing = (): boolean => {
   if (!drag.dragging) return false;
   drag.dropBottom();
   stopDealing();
@@ -141,8 +142,17 @@ mouse.hooks.rightWhileHolding = () => {
   }, DEAL_EVERY_MS);
   return true;
 };
+mouse.hooks.rightWhileHolding = startDealing;
 window.addEventListener('mouseup', (e) => {
   if (e.button === 2) stopDealing();
+});
+// Space does the same while cards are held, as it is the other pan control beside right-drag (decision 181).
+window.addEventListener('keydown', (e) => {
+  if (e.key !== ' ' || e.repeat || isTyping()) return;
+  if (startDealing()) e.preventDefault();
+});
+window.addEventListener('keyup', (e) => {
+  if (e.key === ' ') stopDealing();
 });
 window.addEventListener('blur', stopDealing);
 // Middle-click while holding cards flips them in the hand, as F does (decision 179).
