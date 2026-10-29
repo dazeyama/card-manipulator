@@ -41,7 +41,7 @@ const GROUPS: [string, Line[]][] = [
     ['🏷️', 'N', 'name a pile'],
     ['🗑️', 'Delete', 'remove to the tray'],
     ['🔎', 'Ctrl + F or /', 'search the table'],
-    ['👆', 'Finger button', 'beside the search box: then click the table to move the selection there as a stack'],
+    ['👆', 'P', 'or the finger button by the search box: then click the table to move the selection (or the pile under the cursor) there as a stack'],
     ['💾', 'Ctrl + S', 'save · Ctrl + E exports · Ctrl + A selects all'],
     ['❓', '?', 'this list'],
   ]],

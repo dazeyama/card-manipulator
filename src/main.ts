@@ -354,17 +354,23 @@ keyboard.bind('0', () => {
 });
 // Pointer mode (decision 189): the finger button beside the search box, then a click on the
 // table moves the selection there as one stack (squared in Tidy mode). Esc cancels.
-const pointBtn = h('button', { class: 'btn small point-btn', title: 'Move the selection: click here, then click the table where it should go, as a stack' }, h('img', { src: pointUrl, alt: 'Point' }));
-pointBtn.addEventListener('click', () => {
+const pointBtn = h('button', { class: 'btn small point-btn', title: 'Move the selection (P): click here, then click the table where it should go, as a stack' }, h('img', { src: pointUrl, alt: 'Point' }), ' (P)');
+/** Turn pointer mode on for some cards, or off. */
+const togglePointer = (source: string[]) => {
   if (app.placing) {
     app.placing = null;
-  } else if (store.selection.size) {
+  } else if (source.length) {
     app.drawing = null;
     app.spreading = null;
-    app.placing = { source: [...store.selection] };
+    app.placing = { source };
   } else {
     toast('Select some cards first, then click where they should go', 'warn');
   }
+};
+pointBtn.addEventListener('click', () => togglePointer([...store.selection]));
+// P does the same, for the selection or the pile under the cursor, like the other keys (decision 195).
+keyboard.bind('p', () => {
+  if (!drag.dragging) togglePointer(hoveredPile());
 });
 app.onFrame(() => pointBtn.classList.toggle('on', !!app.placing));
 hud.addBesideSearch(pointBtn);
