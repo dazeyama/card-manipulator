@@ -789,8 +789,8 @@ The cursor shows what the mouse will do, and what a held key changes (owner, 202
 | Cursor | When | Means |
 |---|---|---|
 | Arrow with a dashed box | Over empty table | Drag draws a marquee |
-| ... with ➕ | Ctrl held over empty table, or a Ctrl marquee | The marquee adds to the selection |
-| ... with ➖ | Shift held over empty table, or a Shift marquee | The marquee takes from the selection |
+| Arrow with a plus sign (no marquee box) | Ctrl held over empty table, or a Ctrl marquee | The marquee adds to the selection (decision 168) |
+| Arrow with a minus sign (no marquee box) | Shift held over empty table, or a Shift marquee | The marquee takes from the selection (decision 168) |
 | ... with 🔢 | Alt held over empty table | Every pile shows its count |
 | Open glove | Over a card | Drag picks it up (or the selection) |
 | ... with 🧲 | Shift held over a card | A drag will sweep up cards it passes |
@@ -1072,6 +1072,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 165 | Owner (2026-10-28): drop the **Stack** gesture (it looked bad and clashed with Shuffle); **Shuffle** shows longer, at least until the cards settle; **middle-click** flips must show the Flip gesture too. **(agent)** S now has no gesture. S S keeps the two-handed glove until every shuffled card has stopped moving (at least 500 ms, at most 3 s). A middle-click on a card, and on a pile's badge, shows the Flip glove like F. The stack art stays in `art/cursors/gestures/` unused. |
 | 166 | Owner (2026-10-28): the **Shuffle** gesture's hands looked too small next to the other gloves, being two hands in one cursor; make it bigger so the hands match. **(agent)** Shuffle is cut out at 96 px instead of 48 (`makeCursors --gestures` takes a size per gesture), which makes each of its hands about as big as a single glove; browsers accept cursor images up to 128 px. Gesture cursors are drawn at their own size, click point in the middle. |
 | 167 | Owner (2026-10-28): the 96 px Shuffle hands were a little too big; try **72 px**. Replaces the size in decision 166. |
+| 168 | Owner (2026-10-29): the empty-table arrow looked bad with the ➕ and ➖ emoji. Make three simple arrows, drawn in code rather than generated: the default with its marquee box, one with a **plus** sign and no box, and one with a **minus** sign and no box, the signs drawn into the image. **(agent)** All three share the hand-drawn arrow of decision 123 (`src/ui/cursorArrow.ts`, inline SVG); the plus and minus are bold white signs 16 px across with the arrow's black outline, in the bottom right corner where the box sits, and no emoji badge. Ctrl uses the plus arrow, Shift the minus arrow, both over empty table and during their marquee. Alt keeps the marquee arrow with 🔢. The hint line keeps its ➕ and ➖ icons. The cursor preview page (`devtools/cursorPreview.ts`) shows the new arrows. |
 
 ## Appendix B: Open items
 

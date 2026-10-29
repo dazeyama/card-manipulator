@@ -6,7 +6,7 @@
 //   node --experimental-transform-types devtools/cursorPreview.ts
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import { ARROW_TIP, ARROW_URL } from '../src/ui/cursorArrow.ts';
+import { ARROW_MINUS_URL, ARROW_PLUS_URL, ARROW_TIP, ARROW_URL } from '../src/ui/cursorArrow.ts';
 
 const hotspots = JSON.parse(readFileSync('art/cursors/cursors.json', 'utf8')) as Record<string, Record<string, [number, number]>>;
 const variants = ['32', '32-bold', '48-bold'];
@@ -18,8 +18,8 @@ for (const hand of Object.keys(hotspots)) {
 // Every cursor state: the hand, its emoji badge, and what it means.
 const states: [string, string, string, string][] = [
   ['arrow', '', 'Empty table', 'Drag to select'],
-  ['arrow', '➕', '+ Ctrl', 'Select, adding'],
-  ['arrow', '➖', '+ Shift', 'Select, taking away'],
+  ['arrowPlus', '', '+ Ctrl', 'Select, adding'],
+  ['arrowMinus', '', '+ Shift', 'Select, taking away'],
   ['arrow', '🔢', '+ Alt', 'Show pile counts'],
   ['open', '', 'Over a card', 'Pick it up'],
   ['open', '🧲', '+ Shift', 'Sweep cards in'],
@@ -35,8 +35,10 @@ const states: [string, string, string, string][] = [
 ];
 
 // The empty-table arrow is hand-drawn (decision 123), the same image the app uses.
-for (const v of variants) images[`arrow-${v}`] = ARROW_URL;
-hotspots.arrow = Object.fromEntries(variants.map((v) => [v, ARROW_TIP]));
+for (const [name, url] of [['arrow', ARROW_URL], ['arrowPlus', ARROW_PLUS_URL], ['arrowMinus', ARROW_MINUS_URL]]) {
+  for (const v of variants) images[`${name}-${v}`] = url;
+  hotspots[name] = Object.fromEntries(variants.map((v) => [v, ARROW_TIP]));
+}
 
 const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
