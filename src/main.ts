@@ -98,8 +98,8 @@ const exporter = new ExportPanel(app);
 spawnPanel.addTab('query', 'Query', buildQueryTab(app, () => spawnPanel.options()));
 // The 4th tab: playmats from a card's art (decision 144).
 spawnPanel.addTab('playmat', 'Playmat', buildPlaymatTab(app, mats));
-// The 5th tab: a whole CubeCobra cube, with each card's Elo (decision 192).
-spawnPanel.addTab('cube', 'Cube', buildCubeTab(app, () => spawnPanel.options()));
+// A whole CubeCobra cube, with each card's Elo (decision 192), second after List (decision 193).
+spawnPanel.addTab('cube', 'Cube', buildCubeTab(app, () => spawnPanel.options()), { after: 'list' });
 const hires = new HiRes(app);
 // High or Low graphics, on the top bar beside the camera angle (decision 152).
 const graphics = new Graphics(app, hires, mats);

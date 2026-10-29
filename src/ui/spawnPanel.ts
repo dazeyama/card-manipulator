@@ -48,10 +48,13 @@ export class SpawnPanel {
     nameIndex().catch(() => {});
   }
 
-  addTab(id: string, label: string, pane: HTMLElement): void {
+  /** Add a tab, at the end or just after another one (decision 193). */
+  addTab(id: string, label: string, pane: HTMLElement, opts: { after?: string } = {}): void {
     const button = h('button', { class: 'tab' }, label);
     button.addEventListener('click', () => this.show(id));
-    this.tabBar.append(button);
+    const before = opts.after ? this.tabs.get(opts.after)?.button : undefined;
+    if (before) before.after(button);
+    else this.tabBar.append(button);
     pane.classList.add('tab-pane');
     this.body.append(pane);
     this.tabs.set(id, { button, pane });
