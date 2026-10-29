@@ -153,9 +153,9 @@ function fingertip(img: Image): { x: number; y: number } {
 
 // --gestures: the action gestures (shuffle, tidy, flip...), bold only, into
 // art/cursors/gestures/, leaving the hands in use and cursors.json alone. Most are
-// 48 px; Shuffle shows two hands side by side, so it is twice the size to keep each
+// 48 px; Shuffle shows two hands side by side, so it is half as big again to keep each
 // hand as big as the others (decision 166).
-const GESTURE_SIZE: Record<string, number> = { shuffle: 96 };
+const GESTURE_SIZE: Record<string, number> = { shuffle: 72 };
 if (process.argv.includes('--gestures')) {
   const { readdirSync, mkdirSync } = await import('node:fs');
   mkdirSync('art/cursors/gestures', { recursive: true });

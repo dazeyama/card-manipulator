@@ -17,7 +17,7 @@ import pointUrl from '../../art/cursors/point-48-bold.png';
 import openUrl from '../../art/cursors/open-48-bold.png';
 import fistUrl from '../../art/cursors/fist-48-bold.png';
 import holdOneUrl from '../../art/cursors/gestures/holdOne-48-bold.png';
-import shuffleUrl from '../../art/cursors/gestures/shuffle-96-bold.png';
+import shuffleUrl from '../../art/cursors/gestures/shuffle-72-bold.png';
 import tidyUrl from '../../art/cursors/gestures/tidy-48-bold.png';
 import flipUrl from '../../art/cursors/gestures/flip-48-bold.png';
 import rotateUrl from '../../art/cursors/gestures/rotate-48-bold.png';
@@ -181,7 +181,7 @@ export class Cursors {
     drawEmoji(sg, '🪟', SIZE);
     this.spreadCursor = `url(${sp.toDataURL()}) ${px} ${py}, pointer`;
     for (const [name, [url, emoji]] of Object.entries(GESTURES) as [Gesture, [string, string]][]) {
-      // Each at its own size: Shuffle's two hands are twice as big (decision 166).
+      // Each at its own size: Shuffle's two hands are drawn bigger (decisions 166, 167).
       const img = await loadImage(url);
       const side = img.naturalWidth || SIZE;
       const c = document.createElement('canvas');
