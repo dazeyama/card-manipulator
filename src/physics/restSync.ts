@@ -8,7 +8,7 @@
 
 import type { App } from '../app';
 import { overlaps } from '../state/piles';
-import { laidFlat, restOn, type Rest, type Resting } from '../state/rest';
+import { capRest, laidFlat, restOn, type Rest, type Resting } from '../state/rest';
 import { CARD_T, type Pile } from '../state/types';
 
 /** A card rests on at most this many of the cards under it, nearest first. */
@@ -144,7 +144,8 @@ export class RestSync {
         if (held.has(cards[j].uid)) continue;
         if (overlaps(resting[j], resting[k])) supports.push(resting[j]);
       }
-      const rest = restOn(c, supports);
+      // Never far above its stacked height, so a deep pile can't grow into a tower (decision 194).
+      const rest = capRest(restOn(c, supports), c.z);
       resting[k] = { x: c.x, y: c.y, yaw: c.yaw, ...rest };
       const flat = Math.abs(rest.z - c.z) < 0.01 && Math.abs(rest.tiltX) < 1e-4 && Math.abs(rest.tiltY) < 1e-4;
       this.apply(c.uid, flat ? null : rest);

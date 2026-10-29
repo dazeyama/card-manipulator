@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { rng } from '../src/state/piles';
-import { messyLayout } from '../src/state/piles';
-import { bottomAt, laidFlat, MAX_SLOPE, POP_MIN, popLift, restOn, restSlope, slopesOf, tiltFor, type Resting } from '../src/state/rest';
+import { messyLayout, overlaps } from '../src/state/piles';
+import { bottomAt, capRest, laidFlat, MAX_SLOPE, POP_MIN, popLift, REST_SLACK, restOn, restSlope, slopesOf, tiltFor, type Resting } from '../src/state/rest';
 import { CARD_H, CARD_T, CARD_W } from '../src/state/types';
 
 const flat = (x: number, y: number, z: number, yaw = 0): Resting => ({ x, y, z, yaw, tiltX: 0, tiltY: 0 });
@@ -146,5 +146,29 @@ describe('the hover pop (decision 174)', () => {
 
   it('ignores cards below it and cards that do not overlap it', () => {
     expect(popLift(card(5), [card(1), card(30, 300)])).toBe(POP_MIN);
+  });
+});
+
+describe('deep messy piles (decision 194)', () => {
+  it('stay close to their stacked height instead of growing a tower', () => {
+    const random = rng(7);
+    const placed = messyLayout(450, { x: 0, y: 0, yaw: 0 }, 0, random);
+    const resting: Resting[] = [];
+    let top = 0;
+    placed.forEach((c, k) => {
+      const supports: Resting[] = [];
+      for (let j = k - 1; j >= 0 && supports.length < 20; j--) if (overlaps(resting[j], c)) supports.push(resting[j]);
+      const r = capRest(restOn(c, supports), c.z);
+      resting.push({ x: c.x, y: c.y, yaw: c.yaw, ...r });
+      top = Math.max(top, r.z);
+    });
+    // 450 cards are 135 mm of card; the pile may sit a couple of millimetres proud, no more.
+    expect(top).toBeLessThan(placed[449].z + REST_SLACK + 0.01);
+  });
+
+  it('leaves an ordinary rest alone', () => {
+    const rest = { z: 1, tiltX: 0.1, tiltY: 0 };
+    expect(capRest(rest, 0.9)).toBe(rest);
+    expect(capRest({ z: 50, tiltX: 0.4, tiltY: -0.2 }, 10)).toEqual({ z: 10 + REST_SLACK, tiltX: 0.2, tiltY: -0.1 });
   });
 });

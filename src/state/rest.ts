@@ -31,6 +31,20 @@ export interface Rest {
   tiltY: number;
 }
 
+/** A resting card may sit at most this far above its stacked height, mm (decision 194)... */
+export const REST_SLACK = 2;
+
+/**
+ * ...because in a deep messy pile each card's tilt lifts the next a little more,
+ * and over hundreds of cards that builds a tower many times the pile's real
+ * height. Real cards bend and settle instead: a rest above the card's stacked
+ * height plus REST_SLACK is lowered to it, and its tilt halved.
+ */
+export function capRest(rest: Rest, stackedZ: number): Rest {
+  const cap = stackedZ + REST_SLACK;
+  return rest.z <= cap ? rest : { z: cap, tiltX: rest.tiltX * 0.5, tiltY: rest.tiltY * 0.5 };
+}
+
 /** A drawn card, for the hover pop. */
 interface Drawn {
   x: number;
