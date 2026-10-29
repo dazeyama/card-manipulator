@@ -678,7 +678,7 @@ Keep,4,Lightning Bolt,m11,149,nonfoil,…
 ### 14.3 Save and load
 
 - **Autosave** to IndexedDB after every settle, debounced to one second. Reopening the page restores the last table, camera included.
-- **Welcome table** (decision 153): a first visit, with no table saved in this browser, opens `public/welcome-table.json`, the owner's table of 449 cards and a playmat, so a new player has cards to play with before pressing **New**. From then on autosave keeps their own table, even an empty one.
+- **Welcome table** (decision 153): a first visit, with no table saved in this browser, opens `public/welcome-table.json`, the owner's table of 450 cards and a playmat, with EDHREC ranks and CubeCobra Elo (decision 196), so a new player has cards to play with before pressing **New**. From then on autosave keeps their own table, even an empty one.
 - **Save as file**: the Table document (Section 6.3) as `.json`, with `cardData` embedded. **Load file** replaces the table after a confirm.
 - **New table** clears everything after a confirm.
 - The table name sits in the top bar and is editable.
@@ -1105,6 +1105,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 193 | Owner (2026-10-29): the **Cube** tab sits **second**, right after List: List, Cube, Card, Query, Playmat. |
 | 194 | Owner (2026-10-29): the first cube spawned as a **tall leaning tower** reaching far up the screen. **(agent)** A spawn of more than 80 cards is too big for the physics drop, so it arrives as one messy pile, and the rigid rest (decisions 99, 100) then laid each card on the tilted cards under it: every card's tilt lifted the next a little more, and over hundreds of cards the pile grew about seven times its real height (450 cards: about a metre instead of 135 mm). A resting card may now sit at most 2 mm above its stacked height; a higher rest is lowered to that and its tilt halved, as real cards bend and settle. Ordinary piles are unaffected (under about 80 cards the build-up stays within that). `capRest` in `src/state/rest.ts` is tested on a 450-card pile. |
 | 195 | Owner (2026-10-29): the pointer-mode button shows **(P)** after its icon and the **P** key does the same. **(agent)** Like the other keys, P acts on the selection, or on the pile under the cursor when nothing is selected; pressed again (or the button) it turns pointer mode off. It does nothing while cards are held. |
+| 196 | Owner (2026-10-29): the **welcome table** is replaced by a newer save of the owner's that carries **EDHREC rank and CubeCobra Elo**. **(agent)** Copied unchanged apart from its name (Welcome table): 450 cards with their card data embedded, 448 with an EDHREC rank, 440 with Elo, and the Bloodbraid Elf playmat. |
 
 ## Appendix B: Open items
 
