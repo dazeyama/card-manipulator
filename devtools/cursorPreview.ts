@@ -30,7 +30,6 @@ const ART: Record<string, { src: string; hot: [number, number] | 'centre' }> = {
   fan: { src: png('art/cursors/gestures/fan-48-bold.png'), hot: 'centre' },
   draw: { src: png('art/cursors/gestures/draw-48-bold.png'), hot: 'centre' },
   remove: { src: png('art/cursors/gestures/remove-48-bold.png'), hot: 'centre' },
-  stack: { src: png('art/cursors/gestures/stack-48-bold.png'), hot: 'centre' },
 };
 
 /** [art, emoji badge, what causes it, what it means] */
@@ -110,11 +109,6 @@ const SECTIONS: { title: string; note?: string; tiles: Tile[] }[] = [
   {
     title: 'Clickable things in the play space',
     tiles: [['point', '', "Buttons on badges and mats (✎, \u{1F4FA}, \u{1F512})", 'Click it']],
-  },
-  {
-    title: 'Not used',
-    note: 'Kept in art/cursors/gestures/ but not shown by the app.',
-    tiles: [['stack', '', 'S (removed, decision 165)', 'Looked bad next to Shuffle']],
   },
 ];
 
