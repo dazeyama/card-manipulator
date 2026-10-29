@@ -19,7 +19,7 @@ import type { Rest } from './state/rest';
 export const ACCENT = new THREE.Color('#2563eb');
 
 /** Actions with their own glove gesture (decision 164). */
-export type Gesture = 'shuffle' | 'tidy' | 'flip' | 'stack' | 'rotate' | 'draw' | 'remove' | 'fan';
+export type Gesture = 'shuffle' | 'tidy' | 'flip' | 'rotate' | 'draw' | 'remove' | 'fan';
 
 export function poseOf(card: Card): Pose {
   return { x: card.x, y: card.y, z: card.z, yaw: card.yaw, roll: card.faceUp ? 0 : Math.PI, tiltX: 0, tiltY: 0 };
@@ -53,7 +53,7 @@ export class App {
   /** A number was pressed over a pile: the next click deals that many of its top cards as a hand (decision 143). */
   drawing: { count: number; source: string[] } | null = null;
   /** The action gesture the cursor shows for a moment after a key (decision 164), and when it began. */
-  gesture: { name: Gesture; at: number } | null = null;
+  gesture: { name: Gesture; at: number; settle?: string[] } | null = null;
   /** X was pressed: the next click or dragged box on the table spreads these cards there (decision 159). */
   spreading: { source: string[] } | null = null;
   /** Per-frame hooks run before rendering. */
@@ -108,9 +108,12 @@ export class App {
     this.rig.resize(w, h);
   }
 
-  /** Show an action's glove gesture on the cursor for a moment (decision 164). */
-  showGesture(name: Gesture): void {
-    this.gesture = { name, at: performance.now() };
+  /**
+   * Show an action's glove gesture on the cursor for a moment (decision 164),
+   * or until the `settle` cards stop moving (decision 165).
+   */
+  showGesture(name: Gesture, settle?: string[]): void {
+    this.gesture = { name, at: performance.now(), settle };
   }
 
   onFrame(fn: (now: number, dt: number) => void): void {

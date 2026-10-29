@@ -20,7 +20,6 @@ import holdOneUrl from '../../art/cursors/gestures/holdOne-48-bold.png';
 import shuffleUrl from '../../art/cursors/gestures/shuffle-48-bold.png';
 import tidyUrl from '../../art/cursors/gestures/tidy-48-bold.png';
 import flipUrl from '../../art/cursors/gestures/flip-48-bold.png';
-import stackUrl from '../../art/cursors/gestures/stack-48-bold.png';
 import rotateUrl from '../../art/cursors/gestures/rotate-48-bold.png';
 import drawUrl from '../../art/cursors/gestures/draw-48-bold.png';
 import removeUrl from '../../art/cursors/gestures/remove-48-bold.png';
@@ -39,14 +38,14 @@ const GESTURES: Record<Gesture, [string, string]> = {
   shuffle: [shuffleUrl, ''],
   tidy: [tidyUrl, ''],
   flip: [flipUrl, ''],
-  stack: [stackUrl, ''],
   rotate: [rotateUrl, ''],
   draw: [drawUrl, ''],
   remove: [removeUrl, '❌'],
   fan: [fanUrl, ''],
 };
-/** How long a gesture shows, ms. */
+/** How long a gesture shows, ms; one waiting for cards to settle shows at most GESTURE_MAX_MS. */
 const GESTURE_MS = 500;
+const GESTURE_MAX_MS = 3000;
 
 /** Every cursor: its glove, its emoji (if any), and the browser cursor used until the art loads. */
 const STATES = {
@@ -236,7 +235,9 @@ export class Cursors {
     const state = this.pick();
     // Just after an action key, its gesture shows for a moment (decision 164).
     const g = this.app.gesture;
-    const gesture = g && performance.now() - g.at < GESTURE_MS ? this.gestureCursors[g.name] : undefined;
+    const age = g ? performance.now() - g.at : Infinity;
+    const settling = !!g?.settle && age < GESTURE_MAX_MS && g.settle.some((u) => this.app.motion.isAnimating(u));
+    const gesture = g && (age < GESTURE_MS || settling) ? this.gestureCursors[g.name] : undefined;
     const next = gesture
       ? gesture
       : draw

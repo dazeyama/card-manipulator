@@ -123,7 +123,11 @@ mouse.hooks.matPress = (x, y, mods) => {
   return mat ? mats.press(mat, x, y, mods) : null;
 };
 // Middle-click flips the card, or the whole selection if the card is in it (spec 10.5).
-mouse.hooks.middleClickCard = (uid) => commands.flip(store.selection.has(uid) ? [...store.selection] : [uid]);
+mouse.hooks.middleClickCard = (uid) => {
+  // Middle-click flips too, so it shows the flip gesture (decision 165).
+  app.showGesture('flip');
+  commands.flip(store.selection.has(uid) ? [...store.selection] : [uid]);
+};
 
 function pileCards(id: string): string[] {
   if (id.startsWith('spread:')) return store.spreads.get(id.slice(7))?.uids.filter((u) => store.cards.has(u)) ?? [];
@@ -157,6 +161,7 @@ const badges = new Badges(app, {
     });
   },
   middleClick(id) {
+    app.showGesture('flip');
     commands.flip(pileCards(id));
   },
   decorate(pileId, el) {
@@ -218,7 +223,8 @@ keyboard.bind('s', () => {
   const now = performance.now();
   const twice = now - lastS < DOUBLE_TAP_MS;
   lastS = twice ? 0 : now;
-  if (drag.dragging || hoveredPile().length) app.showGesture(twice ? 'shuffle' : 'stack');
+  // S S shows the shuffling hands until the cards settle (decision 165); S has no gesture.
+  if (twice && (drag.dragging || hoveredPile().length)) app.showGesture('shuffle', drag.dragging ? drag.heldUids : hoveredPile());
   if (drag.dragging) {
     if (twice) drag.shuffleHeld();
     else drag.stackHeld();
