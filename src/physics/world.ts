@@ -226,6 +226,16 @@ export class Physics {
     pose.yaw = this.e.z;
   }
 
+  /** Undo (decision 204): drop every fall in progress without landing it; the model's positions stand. */
+  abandonAll(): void {
+    const world = this.world;
+    if (!world) return;
+    for (const s of this.sessions.splice(0)) {
+      for (const { body } of s.bodies) world.removeRigidBody(body);
+      for (const c of s.statics) world.removeCollider(c, false);
+    }
+  }
+
   /** Snap a finished drop flat and give it back to the model. */
   private settle(s: Session): void {
     const world = this.world!;

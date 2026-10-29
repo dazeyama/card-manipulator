@@ -7,7 +7,7 @@
 | **Phases finished** | All eight (1–8), each through the full gate: typecheck, tests, build, browser check, commit |
 | **BROKEN items** | None |
 | **Live site** | https://dazeyama.github.io/card-manipulator/ (repo github.com/dazeyama/card-manipulator, public; every push to main deploys) |
-| **Open items** | One-step undo on Ctrl + Z, a second press redoing: planned, not built (spec Appendix B) |
+| **Open items** | None. One-step undo is built (decision 204), committed locally, **not pushed** |
 | **Tests** | 164 passing as of 2026-10-28 (97 at the end of the overnight build, 103 after the morning follow-ups) |
 | **Final pass** | `await __regression()` in the dev console: 28 of 28 checklist items pass, no page errors |
 | **Run it** | `npm install` once, then `npm run dev` and open http://localhost:5173, or double-click `start.bat` |
@@ -305,6 +305,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 - [ ] Hover a card at an odd angle and press R: it squares to the next quarter turn clockwise; R again turns it 90°; R twice quickly stands it upright (decision 102).
 - [ ] With nothing selected, hover a pile and press T, X, X, S, F; drag a stack and press R mid-drag: it turns in your hand and lands turned (decision 103).
 - [ ] Spawn the cube, press `Shift + C`: colours two to a row (W U, B R, G colourless, multicolour and lands; decision 113), columns by mana value lined up, lands stacked at the start, title bars readable. Hover one colour's pile and press `C`. Toggle **Split creatures** and press `Shift + C` again (decision 107). Press `C` on a curved pile: it stacks back up; cascades show more of each card (decision 108).
+- [ ] **Ctrl + Z undo** (decision 204, built while you were away; local commit, not pushed): drag a card, Ctrl + Z: it flies back; Ctrl + Z again: it returns (Redone). Try S S, F, Delete (the Removed tray empties on undo), a spawn, a paste and a playmat move. Click empty table between an action and Ctrl + Z: the undo still works. While holding cards Ctrl + Z does nothing. Verified by the agent in the built-in browser at 1920 x 1080 (screenshot `reports/screenshots/undo/undone-toast.png`).
 - [ ] **Copy and paste** (decision 202): select some cards (a foil among them), Ctrl + C, move the mouse elsewhere, Ctrl + V: copies land at the cursor as a messy pile, same printings and foils. Paste into a text editor: a decklist. Copy a decklist from a website and Ctrl + V over the table: those cards spawn. Ctrl + C / V in the filter box still copy text.
 - [ ] **E rank view** (decision 198): over the welcome table (or a spawned cube), press E: columns by EDHREC rank, least played on the left, 1–100 on the right, cascading 22 mm. Press E E: columns by Elo in steps of 50, like CubeCobra's view. Split creatures on: creatures above non-creatures. E on the sorted view stacks it back up. The HUD's 🏆 (E) button does the same.
 - [ ] **P for pointer mode** (decision 195): the finger button reads (P). Hover a pile (or select cards), press P, click the table: they move there as a stack. P again cancels.

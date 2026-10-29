@@ -46,6 +46,17 @@ export class RemovedTray {
     return removed.length;
   }
 
+  /** Undo brought these removed cards back to the table: they leave the tray (decision 204). */
+  take(cards: { scryfallId: string; finish: Finish }[]): void {
+    for (const c of cards) {
+      const key = `${c.scryfallId}|${c.finish}`;
+      const e = this.entries.get(key);
+      if (!e) continue;
+      if (--e.count <= 0) this.entries.delete(key);
+    }
+    this.render();
+  }
+
   private spawnBack(keys: string[]): void {
     const items = keys
       .map((k) => this.entries.get(k)!)

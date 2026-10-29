@@ -37,6 +37,7 @@ import pointUrl from '../art/cursors/point-48-bold.png';
 import { installRecordUpgrade } from './scryfall/upgrade';
 import { buildCubeTab } from './ui/cubeTab';
 import { installClipboard } from './io/clipboard';
+import { Undo } from './undo';
 import { fitLayout, gridLayout } from './state/piles';
 import { Graphics } from './graphics';
 import { SelectionMarkers } from './render/markers';
@@ -74,6 +75,15 @@ new Cursors(app, mouse, drag);
 // A hint line in the play space showing the controls that matter right now (decision 134).
 new ContextHints(app, mouse, drag);
 const tray = new RemovedTray(app, spawnPanel.trayHost);
+// Ctrl + Z: one-step undo; pressed again, redo (decision 204).
+const undo = new Undo(app, tray, drag);
+keyboard.beforeKey = (e) => undo.markKey(e);
+keyboard.bind('ctrl+z', () => {
+  const did = undo.swap();
+  if (did === 'undo') toast('Undone (Ctrl + Z again to redo)', 'info', 1600);
+  else if (did === 'redo') toast('Redone', 'info', 1200);
+  else toast(drag.dragging ? 'Let go of the cards first' : 'Nothing to undo', 'info', 1400);
+});
 const autosave = new Autosave(app);
 const store = app.store;
 app.named = new NamedPiles(app);
@@ -729,7 +739,7 @@ physics
   .then(() => (app.physics = physics))
   .catch((err) => console.warn('Physics failed to load; drops land without it', err));
 
-export const ui = { app, mouse, keyboard, topBar, spawnPanel, hud, commands, drag, badges, tray, autosave, pileSync, physics, outlines, pileEditor, inspect, exporter, saveFile, openFile, newTable, hires, markers };
+export const ui = { app, mouse, keyboard, topBar, spawnPanel, hud, commands, undo, drag, badges, tray, autosave, pileSync, physics, outlines, pileEditor, inspect, exporter, saveFile, openFile, newTable, hires, markers };
 
 if (import.meta.env.DEV) {
   // The phase gate reads this to confirm the page logged no errors since it loaded.

@@ -26,6 +26,8 @@ export class KeyboardInput {
   private readonly bindings = new Map<string, KeyAction>();
   /** Bindings that keep firing while held, and how often (decision 183). */
   private readonly repeats = new Map<string, number>();
+  /** Called just before a hotkey runs, so undo can keep the table as it was (decision 204). */
+  beforeKey: (e: KeyboardEvent) => void = () => {};
   /** Keys whose press ran a hotkey and are still down, with when it last ran. */
   private readonly down = new Map<string, number>();
 
@@ -83,6 +85,7 @@ export class KeyboardInput {
     if (isTyping()) return;
     e.preventDefault();
     this.down.set(e.code, performance.now());
+    this.beforeKey(e);
     action(e);
   }
 }
