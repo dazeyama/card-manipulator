@@ -102,13 +102,14 @@ export class InspectPanel {
     out.push(h('div', { class: 'printing muted' },
       `${r.set_name || setName(r.set) || r.set.toUpperCase()} (${r.set.toUpperCase()}) #${r.collector_number} · ${cap(r.rarity)} · ${finish}${card.faceUp ? '' : ' · face down'}`));
     // EDHREC rank (decision 187) and CubeCobra Elo (decision 192): how the card is valued.
+    // Each a chip on its own line (decision 197).
     const elo = this.app.store.elo.get(r.oracle_id);
-    const ranks: string[] = [];
-    if (typeof r.edhrec_rank === 'number') ranks.push(`EDHREC rank #${r.edhrec_rank.toLocaleString()}`);
-    if (elo !== undefined) ranks.push(`CubeCobra Elo ${Math.round(elo).toLocaleString()}`);
-    if (ranks.length) {
-      out.push(h('div', { class: 'printing muted', title: 'EDHREC rank: how many Commander decks play it, 1 the most. CubeCobra Elo: how highly drafters pick it in cubes.' }, ranks.join(' · ')));
-    }
+    const chips: HTMLElement[] = [];
+    const chip = (label: string, value: string, title: string) =>
+      h('span', { class: 'rank-chip', title }, h('span', { class: 'rank-label' }, label), h('strong', {}, value));
+    if (typeof r.edhrec_rank === 'number') chips.push(chip('EDHREC rank', `#${r.edhrec_rank.toLocaleString()}`, 'How many Commander decks on EDHREC play this card; 1 is the most played'));
+    if (elo !== undefined) chips.push(chip('CubeCobra Elo', Math.round(elo).toLocaleString(), 'How highly drafters pick this card in cubes on CubeCobra'));
+    if (chips.length) out.push(h('div', { class: 'rank-chips' }, ...chips));
     return out;
   }
 }
