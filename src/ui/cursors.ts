@@ -9,20 +9,44 @@
 // The glove art is made by devtools/makeCursors.ts; the emoji is drawn onto it
 // here with a canvas, so it uses the system's emoji font.
 
-import type { App } from '../app';
+import type { App, Gesture } from '../app';
 import type { DragController } from '../physics/feel';
 import type { MouseInput } from '../input/mouse';
 import { ARROW_TIP, ARROW_URL } from './cursorArrow';
 import pointUrl from '../../art/cursors/point-48-bold.png';
 import openUrl from '../../art/cursors/open-48-bold.png';
 import fistUrl from '../../art/cursors/fist-48-bold.png';
+import holdOneUrl from '../../art/cursors/gestures/holdOne-48-bold.png';
+import shuffleUrl from '../../art/cursors/gestures/shuffle-48-bold.png';
+import tidyUrl from '../../art/cursors/gestures/tidy-48-bold.png';
+import flipUrl from '../../art/cursors/gestures/flip-48-bold.png';
+import stackUrl from '../../art/cursors/gestures/stack-48-bold.png';
+import rotateUrl from '../../art/cursors/gestures/rotate-48-bold.png';
+import drawUrl from '../../art/cursors/gestures/draw-48-bold.png';
+import removeUrl from '../../art/cursors/gestures/remove-48-bold.png';
+import fanUrl from '../../art/cursors/gestures/fan-48-bold.png';
 import hotspots from '../../art/cursors/cursors.json';
 
 const SIZE = 48;
 const VERSION = '48-bold';
 
-type Hand = 'arrow' | 'open' | 'fist';
-const ART: Record<Hand, string> = { arrow: ARROW_URL, open: openUrl, fist: fistUrl };
+type Hand = 'arrow' | 'open' | 'fist' | 'holdOne';
+// holdOne: the glove holding up one card, while a single card is dragged (decision 164).
+const ART: Record<Hand, string> = { arrow: ARROW_URL, open: openUrl, fist: fistUrl, holdOne: holdOneUrl };
+
+/** Each action's gesture glove and its badge, shown for a moment after the key (decision 164). */
+const GESTURES: Record<Gesture, [string, string]> = {
+  shuffle: [shuffleUrl, ''],
+  tidy: [tidyUrl, ''],
+  flip: [flipUrl, ''],
+  stack: [stackUrl, ''],
+  rotate: [rotateUrl, ''],
+  draw: [drawUrl, ''],
+  remove: [removeUrl, '❌'],
+  fan: [fanUrl, ''],
+};
+/** How long a gesture shows, ms. */
+const GESTURE_MS = 500;
 
 /** Every cursor: its glove, its emoji (if any), and the browser cursor used until the art loads. */
 const STATES = {
@@ -39,6 +63,8 @@ const STATES = {
   fistSweep: ['fist', '🧲', 'grabbing'],
   fistFormation: ['fist', '🔗', 'grabbing'],
   fistTidy: ['fist', '📐', 'grabbing'],
+  holdOne: ['holdOne', '', 'grabbing'],
+  holdOneTidy: ['holdOne', '📐', 'grabbing'],
   pan: ['open', '↔️', 'move'],
   orbit: ['fist', '🔄', 'all-scroll'],
 } satisfies Record<string, [Hand, string, string]>;
@@ -90,7 +116,8 @@ function compose(img: HTMLImageElement, hand: Hand, emoji: string, fallback: str
   const g = c.getContext('2d')!;
   g.drawImage(img, 0, 0, SIZE, SIZE);
   if (emoji) drawEmoji(g, emoji, SIZE);
-  const [hx, hy] = hand === 'arrow' ? ARROW_TIP : (hotspots[hand][VERSION] as [number, number]);
+  // The gesture gloves hold their click point in the middle, like the open hand and the fist.
+  const [hx, hy] = hand === 'arrow' ? ARROW_TIP : hand === 'holdOne' ? [SIZE / 2, SIZE / 2] : (hotspots[hand][VERSION] as [number, number]);
   return `url(${c.toDataURL()}) ${hx} ${hy}, ${fallback}`;
 }
 
@@ -106,6 +133,7 @@ export class Cursors {
   private readonly drawCursors: string[] = [];
   /** The pointing glove with a window pane, while picking where to spread (decision 159). */
   private spreadCursor = '';
+  private gestureCursors: Partial<Record<Gesture, string>> = {};
 
   constructor(private readonly app: App, private readonly mouse: MouseInput, private readonly drag: DragController) {
     const keys = (e: KeyboardEvent | PointerEvent) => {
@@ -153,6 +181,14 @@ export class Cursors {
     sg.drawImage(point, 0, 0, SIZE, SIZE);
     drawEmoji(sg, '🪟', SIZE);
     this.spreadCursor = `url(${sp.toDataURL()}) ${px} ${py}, pointer`;
+    for (const [name, [url, emoji]] of Object.entries(GESTURES) as [Gesture, [string, string]][]) {
+      const c = document.createElement('canvas');
+      c.width = c.height = SIZE;
+      const g = c.getContext('2d')!;
+      g.drawImage(await loadImage(url), 0, 0, SIZE, SIZE);
+      if (emoji) drawEmoji(g, emoji, SIZE);
+      this.gestureCursors[name] = `url(${c.toDataURL()}) ${SIZE / 2} ${SIZE / 2}, grabbing`;
+    }
     this.shown = '';
   }
 
@@ -167,9 +203,11 @@ export class Cursors {
     if (this.drag.dragging) {
       if (shift && !ctrl) return 'fistSweep';
       if (this.drag.heldMode === 'formation') return 'fistFormation';
+      // One card in hand: the glove holding it up; more: the fist (decision 164).
+      const one = this.drag.heldUids.length === 1;
       // Ctrl held: the cards land tidy (decision 129).
-      if (ctrl) return 'fistTidy';
-      return 'fist';
+      if (ctrl) return one ? 'holdOneTidy' : 'fistTidy';
+      return one ? 'holdOne' : 'fist';
     }
     if (gesture === 'marquee') {
       const mode = this.mouse.marqueeMode;
@@ -196,7 +234,12 @@ export class Cursors {
   private update(): void {
     const draw = this.app.drawing;
     const state = this.pick();
-    const next = draw
+    // Just after an action key, its gesture shows for a moment (decision 164).
+    const g = this.app.gesture;
+    const gesture = g && performance.now() - g.at < GESTURE_MS ? this.gestureCursors[g.name] : undefined;
+    const next = gesture
+      ? gesture
+      : draw
       ? this.drawCursors[draw.count <= 9 ? draw.count : 0] ?? 'pointer'
       : this.app.spreading
         ? this.spreadCursor || 'pointer'

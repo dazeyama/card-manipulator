@@ -218,6 +218,7 @@ keyboard.bind('s', () => {
   const now = performance.now();
   const twice = now - lastS < DOUBLE_TAP_MS;
   lastS = twice ? 0 : now;
+  if (drag.dragging || hoveredPile().length) app.showGesture(twice ? 'shuffle' : 'stack');
   if (drag.dragging) {
     if (twice) drag.shuffleHeld();
     else drag.stackHeld();
@@ -246,7 +247,11 @@ keyboard.bind('x', () => {
   if (card?.spreadOf && store.spreads.has(card.spreadOf)) return commands.restack(card.spreadOf);
   startSpread(hoveredPile());
 });
-keyboard.bind('t', () => (drag.dragging ? drag.tidyHeld() : commands.tidy(hoveredPile())));
+keyboard.bind('t', () => {
+  if (drag.dragging || hoveredPile().length) app.showGesture('tidy');
+  if (drag.dragging) drag.tidyHeld();
+  else commands.tidy(hoveredPile());
+});
 // C: curve out the selection or the hovered pile by mana value; Shift + C: everything
 // (or the selection), sorted into a row per colour (decision 107).
 keyboard.bind('c', () => {
@@ -294,7 +299,10 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
   app.drawing = null;
   const r = app.canvas.getBoundingClientRect();
   const at = app.rig.screenToPlane(e.clientX - r.left, e.clientY - r.top, 0);
-  if (at) commands.dealHand(draw.source, draw.count, at);
+  if (at) {
+    app.showGesture('draw');
+    commands.dealHand(draw.source, draw.count, at);
+  }
 }, true);
 // Spreading (decision 159): a click spreads the cards centred there; a drag draws a box they fit inside.
 const spreadBox = h('div', { class: 'marquee' });
@@ -379,7 +387,10 @@ window.addEventListener('keydown', (e) => {
 }, true);
 // H: fan the selection or the hovered pile like a hand of cards; H again stacks it back (decision 141).
 keyboard.bind('h', () => {
-  if (!drag.dragging) commands.toggleFan(curveTargets());
+  if (drag.dragging) return;
+  const targets = curveTargets();
+  if (targets.length) app.showGesture('fan');
+  commands.toggleFan(targets);
 });
 // Shift + T: Tidy mode on or off (decision 98).
 keyboard.bind('shift+t', () => {
@@ -394,6 +405,7 @@ keyboard.bind('r', () => {
   const now = performance.now();
   const twice = now - lastR < DOUBLE_TAP_MS;
   lastR = twice ? 0 : now;
+  if (drag.dragging || hoveredPile().length || mats.movable) app.showGesture('rotate');
   if (drag.dragging) drag.rotate(twice);
   else if (!store.selection.size && !mouse.hovered && mats.movable) mats.rotate(mats.movable);
   else commands.rotate(hoveredCard(), twice);
@@ -405,6 +417,7 @@ keyboard.bind('f', () => {
   const now = performance.now();
   const twice = now - lastF < DOUBLE_TAP_MS;
   lastF = twice ? 0 : now;
+  if (drag.dragging || hoveredPile().length) app.showGesture('flip');
   if (drag.dragging) {
     if (twice) drag.frontHeld();
     else drag.flipHeld();
@@ -438,6 +451,7 @@ keyboard.bind('n', () => {
   } else toast('Select one pile to name it (S stacks a selection into one pile)', 'warn');
 });
 const removeSelection = () => {
+  if (store.selection.size || (!mouse.hovered && mats.movable)) app.showGesture('remove');
   // Over a playmat with nothing selected: remove the mat (decision 144).
   if (!store.selection.size && !mouse.hovered && mats.movable) {
     mats.remove(mats.movable);
