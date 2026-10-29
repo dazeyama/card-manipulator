@@ -446,15 +446,16 @@ keyboard.bind('shift+t', () => {
 // R turns the selection, or the card under the cursor when nothing is selected (decision 102).
 // R twice quickly stands cards upright; while dragging, R turns the held cards (decision 103).
 let lastR = 0;
-keyboard.bind('r', () => {
+// Held, R keeps turning a quarter every 0.25 s (decision 183); only two real presses stand cards upright.
+keyboard.bind('r', (e) => {
   const now = performance.now();
-  const twice = now - lastR < DOUBLE_TAP_MS;
-  lastR = twice ? 0 : now;
+  const twice = !e.repeat && now - lastR < DOUBLE_TAP_MS;
+  lastR = twice || e.repeat ? 0 : now;
   if (drag.dragging || hoveredPile().length || mats.movable) app.showGesture('rotate');
   if (drag.dragging) drag.rotate(twice);
   else if (!store.selection.size && !mouse.hovered && mats.movable) mats.rotate(mats.movable);
   else commands.rotate(hoveredCard(), twice);
-});
+}, { repeatMs: 250 });
 keyboard.bind('z', () => commands.frame());
 // F twice quickly faces every card up, so a mixed stack is fronted (decision 105).
 let lastF = 0;
