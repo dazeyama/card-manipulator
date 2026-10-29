@@ -341,6 +341,11 @@ export class CardLayer {
     return this.entries.get(uid)?.pose;
   }
 
+  /** How far the card is drawn above its pose: the hover pop (decision 173). */
+  lift(uid: string): number {
+    return this.entries.get(uid)?.hovered ? HOVER_LIFT : 0;
+  }
+
   /** Mark a card's pose as changed after editing the object returned by pose(). */
   touch(uid: string): void {
     const e = this.entries.get(uid);

@@ -86,7 +86,8 @@ export class HiRes {
       const pose = this.app.layer.pose(o.uid);
       const card = this.app.store.cards.get(o.uid);
       if (!pose || !card) continue;
-      this.p.set(pose.x, pose.y, pose.z);
+      // Up with the card when hovering pops it above the cards on it (decision 173).
+      this.p.set(pose.x, pose.y, pose.z + this.app.layer.lift(o.uid));
       this.e.set(pose.tiltX, pose.roll + pose.tiltY, pose.yaw, 'ZXY');
       this.q.setFromEuler(this.e);
       this.m.compose(this.p, this.q, this.one).multiply(this.lift);
