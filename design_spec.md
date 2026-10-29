@@ -477,7 +477,7 @@ Not supported in version one: `art:`, `flavor:`, `a:` artist, `year:`, `usd:`, `
 
 ### 9.5 Quick chips
 
-Beside the filter box, one-click refinements for the most common narrowings: W U B R G C M (multicolour), Creature, Instant/Sorcery, Artifact, Enchantment, Planeswalker, Land, and mana value 0–1, 2, 3, 4, 5, 6+. Clicking a chip appends its term to the filter box and applies it. Ctrl-click a chip to negate it.
+Beside the filter box, one-click refinements for the most common narrowings: W U B R G C M (multicolour), Creature, Instant/Sorcery, Artifact, Enchantment, Planeswalker, Land, mana value 0, 1, 2, 3, 4, 5, 6+ (decision 177), and Face up / Face down for how the cards lie (decision 176). Clicking a chip appends its term to the filter box and applies it. Ctrl-click a chip to negate it.
 
 ### 9.6 Table search
 
