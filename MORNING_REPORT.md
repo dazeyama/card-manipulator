@@ -303,6 +303,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 - [ ] Hover a card at an odd angle and press R: it squares to the next quarter turn clockwise; R again turns it 90°; R twice quickly stands it upright (decision 102).
 - [ ] With nothing selected, hover a pile and press T, X, X, S, F; drag a stack and press R mid-drag: it turns in your hand and lands turned (decision 103).
 - [ ] Spawn the cube, press `Shift + C`: colours two to a row (W U, B R, G colourless, multicolour and lands; decision 113), columns by mana value lined up, lands stacked at the start, title bars readable. Hover one colour's pile and press `C`. Toggle **Split creatures** and press `Shift + C` again (decision 107). Press `C` on a curved pile: it stacks back up; cascades show more of each card (decision 108).
+- [ ] **Higher pops** (decision 174): hover a card near the bottom of a tall messy stack: it pops up clear of every card on it and shows whole; move the mouse across it and it stays up. A top card still pops just a little.
 - [ ] **Sharp popped cards** (decision 173): zoom in on a messy stack and hover a card partly under others: it pops up, and within a moment shows the sharp image, not the soft small scan.
 - [ ] **Thicker mats** (decision 172): tilt the camera low over a playmat: the black edge is twice as thick (5 mm). Cards on it still read as lying on it from the default angle.
 - [ ] **Alt chain link** (decision 171): hold Alt over a card, and over a playmat: the open glove shows 🔗. Over empty table Alt still shows the numbers arrow.

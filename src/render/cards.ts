@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
 import { SLOT_UV, type Atlas, type Slot } from './atlas';
+import { popLift } from '../state/rest';
 
 /** The displayed transform of one card. The model position is the target; this is what is drawn. */
 export interface Pose {
@@ -23,7 +24,6 @@ export interface Pose {
 }
 
 export const CORNER_R = 3;
-const HOVER_LIFT = 2;
 
 interface Entry {
   uid: string;
@@ -31,6 +31,8 @@ interface Entry {
   pose: Pose;
   selected: boolean;
   hovered: boolean;
+  /** How far the hover pops it up, mm (decision 174). */
+  lift: number;
   foil: boolean;
   hidden: boolean;
 }
@@ -295,7 +297,7 @@ export class CardLayer {
   add(uid: string, pose: Pose, front: Slot, back: Slot, foil: boolean): void {
     if (this.entries.has(uid)) return;
     if (this.byIndex.length >= this.capacity) this.grow(this.capacity * 2);
-    const entry: Entry = { uid, index: this.byIndex.length, pose: { ...pose }, selected: false, hovered: false, foil, hidden: false };
+    const entry: Entry = { uid, index: this.byIndex.length, pose: { ...pose }, selected: false, hovered: false, lift: 0, foil, hidden: false };
     this.byIndex.push(entry);
     this.entries.set(uid, entry);
     this.writeSlots(entry, front, back);
@@ -341,9 +343,17 @@ export class CardLayer {
     return this.entries.get(uid)?.pose;
   }
 
-  /** How far the card is drawn above its pose: the hover pop (decision 173). */
+  /** How far the card is drawn above its pose: the hover pop (decisions 173, 174). */
   lift(uid: string): number {
-    return this.entries.get(uid)?.hovered ? HOVER_LIFT : 0;
+    return this.entries.get(uid)?.lift ?? 0;
+  }
+
+  /** The drawn poses of the other cards within reach of one. */
+  private *posesNear(e: Entry): Generator<Pose> {
+    const reach = Math.hypot(CARD_W, CARD_H);
+    for (const o of this.byIndex) {
+      if (o !== e && !o.hidden && Math.abs(o.pose.x - e.pose.x) < reach && Math.abs(o.pose.y - e.pose.y) < reach) yield o.pose;
+    }
   }
 
   /** Mark a card's pose as changed after editing the object returned by pose(). */
@@ -375,6 +385,8 @@ export class CardLayer {
     const e = this.entries.get(uid);
     if (!e || e.hovered === on) return;
     e.hovered = on;
+    // High enough to clear every card lying on it, so it shows whole (decision 174).
+    e.lift = on ? popLift(e.pose, this.posesNear(e)) : 0;
     this.writeFlags(e);
     this.dirtyMatrix.add(e);
   }
@@ -427,7 +439,7 @@ export class CardLayer {
 
   private compose(e: Entry): void {
     const p = e.pose;
-    this.p.set(p.x, p.y, p.z + (e.hovered ? HOVER_LIFT : 0));
+    this.p.set(p.x, p.y, p.z + e.lift);
     // Yaw about world z, then tilt, then the flip roll about the card's long (y) axis.
     this.e.set(p.tiltX, p.roll + p.tiltY, p.yaw, 'ZXY');
     this.q.setFromEuler(this.e);

@@ -4,6 +4,7 @@
 // supported under their centre, tilted where they lie across an edge. Pure
 // geometry, so it is tested without a browser.
 
+import { overlaps } from './piles';
 import { CARD_H, CARD_T, CARD_W } from './types';
 
 const HW = CARD_W / 2;
@@ -28,6 +29,39 @@ export interface Rest {
   z: number;
   tiltX: number;
   tiltY: number;
+}
+
+/** A drawn card, for the hover pop. */
+interface Drawn {
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  tiltX: number;
+  tiltY: number;
+}
+
+/** A hovered card always pops up at least this far, mm... */
+export const POP_MIN = 2;
+/** ...and clears the cards lying on it by this much, mm, up to POP_MAX (decision 174). */
+const POP_CLEAR = 0.6;
+const POP_MAX = 40;
+const HALF_DIAG = Math.hypot(CARD_W, CARD_H) / 2;
+
+/**
+ * How far to lift a hovered card so it shows whole (decision 174): above every
+ * card overlapping it that lies higher, allowing for tilts, and never less
+ * than POP_MIN.
+ */
+export function popLift(me: Drawn, others: Iterable<Drawn>): number {
+  const slant = (d: Drawn) => (Math.abs(Math.sin(d.tiltX)) + Math.abs(Math.sin(d.tiltY))) * HALF_DIAG;
+  const myBottom = me.z - CARD_T / 2 - slant(me);
+  let lift = POP_MIN;
+  for (const o of others) {
+    if (o.z <= me.z || !overlaps(o, me)) continue;
+    lift = Math.max(lift, o.z + CARD_T / 2 + slant(o) - myBottom + POP_CLEAR);
+  }
+  return Math.min(POP_MAX, lift);
 }
 
 /** True while a card is still where an X spread laid it, so it lies flat (decision 160). */

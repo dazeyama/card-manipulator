@@ -21,9 +21,11 @@ export function pickCard(rig: CameraRig, layer: CardLayer, sx: number, sy: numbe
   layer.forEach((uid, p) => {
     if (skip?.has(uid)) return;
     const c = Math.cos(-p.yaw), s = Math.sin(-p.yaw);
+    // A hovered card is met where it is drawn, popped up (decision 174), so it stays hovered.
+    const z = p.z + layer.lift(uid);
     let t: number;
     if (p.tiltX === 0 && p.tiltY === 0) {
-      t = (p.z + CARD_T / 2 - oz) / dz;
+      t = (z + CARD_T / 2 - oz) / dz;
     } else {
       // A resting card is tilted (decision 99): meet the plane of its top face.
       const { gs, gt } = slopesOf(p.tiltX, p.tiltY);
@@ -31,7 +33,7 @@ export function pickCard(rig: CameraRig, layer: CardLayer, sx: number, sy: numbe
       const adx = dx * c - dy * s, ady = dx * s + dy * c;
       const den = dz - gs * adx - gt * ady;
       if (Math.abs(den) < 1e-9) return;
-      t = (p.z + CARD_T / 2 + gs * ax0 + gt * ay0 - oz) / den;
+      t = (z + CARD_T / 2 + gs * ax0 + gt * ay0 - oz) / den;
     }
     if (t <= 0 || t >= bestT) return;
     const hx = ox + dx * t - p.x;

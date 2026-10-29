@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { rng } from '../src/state/piles';
 import { messyLayout } from '../src/state/piles';
-import { bottomAt, laidFlat, MAX_SLOPE, restOn, restSlope, slopesOf, tiltFor, type Resting } from '../src/state/rest';
+import { bottomAt, laidFlat, MAX_SLOPE, POP_MIN, popLift, restOn, restSlope, slopesOf, tiltFor, type Resting } from '../src/state/rest';
 import { CARD_H, CARD_T, CARD_W } from '../src/state/types';
 
 const flat = (x: number, y: number, z: number, yaw = 0): Resting => ({ x, y, z, yaw, tiltX: 0, tiltY: 0 });
@@ -119,5 +119,32 @@ describe('cards laid by an X spread (decision 160)', () => {
   it('rest normally once moved, or when never laid', () => {
     expect(laidFlat({ x: 15, y: 20, laidAt: { x: 10, y: 20 } })).toBe(false);
     expect(laidFlat({ x: 10, y: 20 })).toBe(false);
+  });
+});
+
+describe('the hover pop (decision 174)', () => {
+  const card = (z: number, x = 0, extra: Partial<{ tiltX: number; tiltY: number }> = {}) => ({ x, y: 0, z, yaw: 0, tiltX: 0, tiltY: 0, ...extra });
+
+  it('pops a top card the usual 2 mm', () => {
+    expect(popLift(card(CARD_T / 2), [card(CARD_T / 2, 200)])).toBe(POP_MIN);
+  });
+
+  it('lifts a buried card clear of every card lying on it', () => {
+    const me = card(CARD_T / 2);
+    const above = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => card(CARD_T / 2 + i * CARD_T, 20));
+    const lift = popLift(me, above);
+    // Its bottom ends up above the highest card's top.
+    expect(me.z - CARD_T / 2 + lift).toBeGreaterThan(above[9].z + CARD_T / 2);
+  });
+
+  it('allows for a tilted card above', () => {
+    const me = card(CARD_T / 2);
+    const flat = popLift(me, [card(CARD_T * 1.5, 20)]);
+    const tilted = popLift(me, [card(CARD_T * 1.5, 20, { tiltX: 0.1 })]);
+    expect(tilted).toBeGreaterThan(flat);
+  });
+
+  it('ignores cards below it and cards that do not overlap it', () => {
+    expect(popLift(card(5), [card(1), card(30, 300)])).toBe(POP_MIN);
   });
 });
