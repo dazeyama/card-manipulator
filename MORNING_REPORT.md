@@ -6,6 +6,7 @@
 |---|---|
 | **Phases finished** | All eight (1–8), each through the full gate: typecheck, tests, build, browser check, commit |
 | **BROKEN items** | None |
+| **Live site** | https://dazeyama.github.io/card-manipulator/ (repo github.com/dazeyama/card-manipulator, public; every push to main deploys) |
 | **Open items** | One-step undo on Ctrl + Z, a second press redoing: planned, not built (spec Appendix B) |
 | **Tests** | 164 passing as of 2026-10-28 (97 at the end of the overnight build, 103 after the morning follow-ups) |
 | **Final pass** | `await __regression()` in the dev console: 28 of 28 checklist items pass, no page errors |

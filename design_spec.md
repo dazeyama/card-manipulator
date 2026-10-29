@@ -7,7 +7,7 @@
 | **Spec version** | 0.3 — 2026-10-27 |
 | **Status** | Phases 1–8 built in the autonomous overnight run of 2026-10-27 (see `MORNING_REPORT.md`); awaiting the owner's morning QA. |
 | **Project folder** | `C:\ClaudeProjects\card-manipulator` |
-| **Live URL** | None yet. Deploy is deferred (decision 37). When it happens: `https://dazeyama.github.io/card-manipulator/`. |
+| **Live URL** | `https://dazeyama.github.io/card-manipulator/`, deployed by GitHub Pages from `github.com/dazeyama/card-manipulator` on every push to `main` (decision 203). |
 | **Inspiration** | Lucky Paper's MTG Scratchpad (`https://luckypaper.co/resources/scratchpad/`), rebuilt as a 3D table with physics and RTS-style selection |
 | **Words** | A **card** is one physical object on the table. A **stack** is a tidy pile of cards squared up on top of each other. A **pile** is any group of cards resting together, tidy or messy. A **named pile** is a pile the owner has given a name. A **selection** is the set of cards currently under command. See Section 2. |
 
