@@ -1,6 +1,8 @@
 // The table model (spec Section 6). Distances are millimetres. The table is
 // the plane z = 0; x runs right and y runs away from the default camera.
 
+import type { Basics } from './basics';
+
 export const CARD_W = 63;
 export const CARD_H = 88;
 /** Rendered thickness of one card, and the height step between cards in a stack. */
@@ -187,4 +189,6 @@ export interface TableDoc {
   mats?: Mat[];
   /** CubeCobra Elo by oracle id (decision 192); older files have none. */
   elo?: Record<string, number>;
+  /** The basic land printings the Card tab's chips spawn (decision 210); older files have none. */
+  basics?: Basics;
 }

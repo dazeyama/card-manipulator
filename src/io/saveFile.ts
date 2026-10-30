@@ -4,6 +4,7 @@
 import type { App } from '../app';
 import { getRecords } from '../scryfall/cardData';
 import { fetchByIds } from '../scryfall/resolve';
+import { readBasics } from '../state/basics';
 import { DEFAULT_SETTINGS, type Card, type CardRecord, type TableDoc } from '../state/types';
 
 export function toDoc(app: App, withCardData: boolean): TableDoc {
@@ -36,6 +37,7 @@ export function toDoc(app: App, withCardData: boolean): TableDoc {
     cardData,
     mats: [...store.mats.values()].map((m) => ({ ...m, x: round(m.x), y: round(m.y), yaw: round(m.yaw, 5) })),
     elo: eloOnTable(store),
+    basics: store.basics,
   };
 }
 
@@ -93,6 +95,8 @@ export async function loadDoc(app: App, doc: TableDoc): Promise<void> {
   store.addCards(cards);
   for (const m of doc.mats ?? []) store.addMat({ ...m });
   if (doc.elo) store.setElo(Object.entries(doc.elo));
+  // Older files have no basics: they keep the defaults (decision 210).
+  store.setBasics(readBasics(doc.basics));
   if (doc.camera) app.rig.fromState(doc.camera);
   store.events.emit('settled', cards.map((c) => c.uid));
   store.events.emit('piles', undefined);

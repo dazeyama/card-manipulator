@@ -10,6 +10,7 @@ import {
   type Settings,
   type Mat,
 } from './types';
+import { defaultBasics, type Basics } from './basics';
 
 export interface StoreEvents {
   /** Cards were created. */
@@ -31,6 +32,8 @@ export interface StoreEvents {
   notice: string;
   /** Playmats were added, moved or removed (decision 144). */
   mats: void;
+  /** The table's basic land printings changed (decision 210). */
+  basics: void;
 }
 
 type Listener<T> = (payload: T) => void;
@@ -218,6 +221,14 @@ export class Store {
     return r ? this.elo.get(r.oracle_id) : undefined;
   }
 
+  /** Which printing each basic land chip spawns (decision 210); kept with the table. */
+  basics: Basics = defaultBasics();
+
+  setBasics(basics: Basics): void {
+    this.basics = basics;
+    this.events.emit('basics', undefined);
+  }
+
   addMat(mat: Mat): void {
     this.mats.set(mat.uid, mat);
     this.events.emit('mats', undefined);
@@ -247,6 +258,8 @@ export class Store {
     this.cards.clear();
     this.mats.clear();
     this.elo.clear();
+    this.basics = defaultBasics();
+    this.events.emit('basics', undefined);
     this.events.emit('mats', undefined);
     this.piles = new Map();
     this.named.clear();

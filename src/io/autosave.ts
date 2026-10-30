@@ -26,6 +26,7 @@ export class Autosave {
     ev.on('piles', schedule);
     ev.on('reset', schedule);
     ev.on('mats', schedule);
+    ev.on('basics', schedule);
     app.onFrame(() => {
       if (app.rig.changed) schedule();
     });

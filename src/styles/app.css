@@ -240,5 +240,20 @@ label.inline { display: inline-flex; flex-direction: row; align-items: center; g
 .modal-back { position: fixed; inset: 0; background: rgba(30, 30, 30, 0.25); display: flex; align-items: center; justify-content: center; z-index: 100; }
 .modal { background: var(--panel); border-radius: var(--radius); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25); padding: 16px 18px; width: 380px; }
 .modal p { margin: 0 0 8px; }
+
+/* ---- basic lands on the Card tab (decision 210) ---- */
+.basics { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 10px; }
+.basics-head { display: flex; align-items: center; justify-content: space-between; }
+.basics-title { font-weight: 600; }
+.basics-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 8px; }
+.basics-col { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.chip.basic-chip { width: 100%; padding: 3px 2px; font-size: 11.5px; min-width: 0; }
+.basics-col input { width: 100%; padding: 3px 4px; text-align: center; }
+.modal.basics-modal { width: 520px; }
+.basics-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.basics-row .basics-name { width: 76px; text-align: center; cursor: default; flex: none; }
+.basics-row .basics-name:hover { background: inherit; border-color: var(--line); }
+.basics-row.bad input { border-color: var(--danger); }
+.basics-row .suggest { max-height: 220px; }
 .row.end { justify-content: flex-end; }
 .preview.bad { color: var(--danger); }
