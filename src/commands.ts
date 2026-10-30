@@ -176,6 +176,27 @@ function slopeHand(m: Mat, count: number): Placed[] {
 }
 
 /**
+ * H H on a stand (decision 272): a hand of the usual size in the middle of the
+ * slope, its arch flattened just enough to stay on the slope when it is too tall.
+ */
+function smallSlopeHand(m: Mat, count: number): Placed[] {
+  const fan = fanLayout(count, { x: 0, y: 0 });
+  const reach = (p: Placed) => Math.abs(Math.sin(p.yaw)) * (CARD_W / 2) + Math.abs(Math.cos(p.yaw)) * (CARD_H / 2);
+  let k = 1;
+  let spots = fan;
+  for (let i = 0; i < 20; i++) {
+    spots = fan.map((p) => ({ ...p, y: p.y * k }));
+    const low = Math.min(...spots.map((p) => p.y - reach(p))), high = Math.max(...spots.map((p) => p.y + reach(p)));
+    if (high - low <= SLOPE_LEN - 1 || i === 19) {
+      const shift = SLOPE_LEN / 2 - (low + high) / 2;
+      return fromSlope(m, spots.map((p) => ({ ...p, y: p.y + shift })));
+    }
+    k *= 0.85;
+  }
+  return fromSlope(m, spots);
+}
+
+/**
  * A big table layout (curve, rank, colour) of cards that were on a card stand
  * goes on the table directly in front of that stand, centred, like any shape
  * too big for its slope (decision 225); other layouts stay where they are.
@@ -376,13 +397,23 @@ export class Commands {
       this.stack(fanned);
       return;
     }
+    this.fan(cards);
+  }
+
+  /**
+   * Fan cards like a hand. On a stand, one arc the slope's width (decision 222),
+   * or with `small` (H H, decision 272) a hand of the usual size in the slope's middle.
+   */
+  fan(cards: string[], small = false): void {
+    cards = [...new Set(cards)].filter((u) => this.app.store.cards.has(u));
     if (cards.length < 2) return;
     const uids = byHeight(this.app, cards);
     leaveSpreads(this.app, uids);
-    // On a stand: one arc exactly the slope's width, filling it (decision 222).
     const m = standOf(this.app, uids);
     const centre = centroid(this.app, uids);
-    const layout = m ? slopeHand(m, uids.length) : alignTo(fanLayout(uids.length, centre), centre, this.app.facing);
+    const layout = m
+      ? small ? smallSlopeHand(m, uids.length) : slopeHand(m, uids.length)
+      : alignTo(fanLayout(uids.length, centre), centre, this.app.facing);
     const landings = inSpace(m?.uid ?? null, () => placeSequential(this.app, uids, layout));
     land(this.app, landings, { stagger: Math.min(3, 300 / uids.length), arc: 6 });
     const spots = new Map(landings.map((l) => [l.uid, { x: l.x, y: l.y }]));

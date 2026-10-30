@@ -708,9 +708,19 @@ window.addEventListener('keydown', (e) => {
   endSpreadGesture?.();
 }, true);
 // H: fan the selection or the hovered pile like a hand of cards; H again stacks it back (decision 141).
+// H H on a stand's slope: a hand of the usual size, not the slope's width (decision 272).
+let lastH = 0;
+let hTargets: string[] = [];
 keyboard.bind('h', () => {
   if (drag.dragging) return;
-  const targets = curveTargets();
+  const now = performance.now();
+  if (now - lastH < DOUBLE_TAP_MS) {
+    lastH = 0;
+    commands.fan(hTargets, true);
+    return;
+  }
+  lastH = now;
+  const targets = (hTargets = curveTargets());
   if (targets.length) app.showGesture('fan');
   commands.toggleFan(targets);
 });
