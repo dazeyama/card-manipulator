@@ -137,6 +137,8 @@ export class Cursors {
   private readonly drawCursors: string[] = [];
   /** The pointing glove with a window pane, while picking where to spread (decision 159). */
   private spreadCursor = '';
+  /** X X: the same glove mirrored, pointing the other way (decision 215). */
+  private reverseCursor = '';
   /** The plain pointing glove, for pointer mode (decision 189). */
   private pointCursor = '';
   private gestureCursors: Partial<Record<Gesture, string>> = {};
@@ -188,6 +190,13 @@ export class Cursors {
     sg.drawImage(point, 0, 0, SIZE, SIZE);
     drawEmoji(sg, '🪟', SIZE);
     this.spreadCursor = `url(${sp.toDataURL()}) ${px} ${py}, pointer`;
+    const rv = document.createElement('canvas');
+    rv.width = rv.height = SIZE;
+    const rg = rv.getContext('2d')!;
+    rg.translate(SIZE, 0);
+    rg.scale(-1, 1);
+    rg.drawImage(sp, 0, 0);
+    this.reverseCursor = `url(${rv.toDataURL()}) ${SIZE - 1 - px} ${py}, pointer`;
     for (const [name, [url, emoji]] of Object.entries(GESTURES) as [Gesture, [string, string]][]) {
       // Each at its own size: Shuffle's two hands are drawn bigger (decisions 166, 167).
       const img = await loadImage(url);
@@ -254,7 +263,7 @@ export class Cursors {
       : draw
       ? this.drawCursors[draw.count <= 9 ? draw.count : 0] ?? 'pointer'
       : this.app.spreading
-        ? this.spreadCursor || 'pointer'
+        ? (this.app.spreading.reverse ? this.reverseCursor : this.spreadCursor) || 'pointer'
         : this.app.placing
           ? this.pointCursor || 'pointer'
           : this.cursors[state] ?? STATES[state][2];

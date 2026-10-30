@@ -3,7 +3,7 @@
 
 import type { App } from './app';
 import { CARD_H, CARD_T, CARD_W, type Card } from './state/types';
-import { gridLayout, looseStackLayout, nextQuarterClockwise, overlaps, shuffled, snapYaw, spreadLayout, uprightYaw, type Footprint, type Placed } from './state/piles';
+import { gridLayout, layOrder, looseStackLayout, nextQuarterClockwise, overlaps, shuffled, snapYaw, spreadLayout, uprightYaw, type Footprint, type Placed } from './state/piles';
 import type { Spread } from './state/store';
 import { colourGroup, curveLayout, type CurveCard } from './state/curve';
 import { fanLayout, handLayout } from './state/fan';
@@ -328,7 +328,7 @@ export class Commands {
    * grid there, top card first. A whole pile remembers where it came from,
    * so a double-click or X on it stacks it back there.
    */
-  spreadTo(cards: string[], layout: (count: number) => Placed[]): void {
+  spreadTo(cards: string[], layout: (count: number) => Placed[], reverse = false): void {
     const store = this.app.store;
     if (!cards.length) return;
     const pile = store.pileOf(cards[0]);
@@ -341,7 +341,10 @@ export class Commands {
       store.spreads.set(spread.id, spread);
       for (const u of ordered) store.cards.get(u)!.spreadOf = spread.id;
     }
-    const landings = placeSequential(this.app, ordered, layout(ordered.length));
+    // X X lays each row right to left, so the mana costs show instead of the names (decision 215).
+    const spots = layout(ordered.length);
+    const order = layOrder(spots, reverse);
+    const landings = placeSequential(this.app, order.map((i) => ordered[i]), order.map((i) => spots[i]));
     // Overlapping cards would tip to rest on each other; these stay flat where they are laid (decision 160).
     for (const l of landings) store.cards.get(l.uid)!.laidAt = { x: l.x, y: l.y };
     land(this.app, landings, { stagger: Math.min(4, 300 / ordered.length), arc: 6 });

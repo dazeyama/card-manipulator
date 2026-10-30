@@ -54,8 +54,8 @@ export class App {
   drawing: { count: number; source: string[] } | null = null;
   /** The action gesture the cursor shows for a moment after a key (decision 164), and when it began. */
   gesture: { name: Gesture; at: number; settle?: string[] } | null = null;
-  /** X was pressed: the next click or dragged box on the table spreads these cards there (decision 159). */
-  spreading: { source: string[] } | null = null;
+  /** X was pressed: the next click or dragged box on the table spreads these cards there (decision 159); X X, reversed (decision 215). */
+  spreading: { source: string[]; reverse?: boolean } | null = null;
   /** Pointer mode: the next click on the table stacks these cards there (decision 189). */
   placing: { source: string[] } | null = null;
   /** Per-frame hooks run before rendering. */

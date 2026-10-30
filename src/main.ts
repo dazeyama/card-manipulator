@@ -299,7 +299,8 @@ keyboard.bind('s', () => {
 });
 // X (decision 159): the pointing glove; the next click spreads the selection (or the hovered
 // pile) centred there, or a dragged box spreads it to fit inside the box. X on a spread
-// restacks it at once; X twice quickly spreads in place, as X used to. Esc cancels.
+// restacks it at once; X twice quickly arms the reverse spread, rows laid right to left so
+// the mana costs show (decision 215). Esc cancels.
 let lastX = 0;
 const startSpread = (source: string[]) => {
   app.drawing = null;
@@ -312,9 +313,8 @@ keyboard.bind('x', () => {
   const twice = now - lastX < 400;
   lastX = now;
   if (twice && app.spreading) {
-    const { source } = app.spreading;
-    app.spreading = null;
-    return commands.spread(source);
+    app.spreading = { source: app.spreading.source, reverse: true };
+    return;
   }
   const card = !store.selection.size && mouse.hovered ? store.cards.get(mouse.hovered) : undefined;
   if (card?.spreadOf && store.spreads.has(card.spreadOf)) return commands.restack(card.spreadOf);
@@ -458,7 +458,7 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
     });
     const box = tableBox(x0, y0, x1, y1);
     const count = spreading.source.filter((u) => store.cards.has(u)).length;
-    if (box && count) spreadPreview.show(fitLayout(count, box));
+    if (box && count) spreadPreview.show(fitLayout(count, box), !!spreading.reverse);
     else spreadPreview.hide();
   };
   const end = () => {
@@ -474,11 +474,11 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
     app.spreading = null;
     if (boxed) {
       const box = tableBox(x0, y0, x1, y1);
-      if (box) commands.spreadTo(spreading.source, (n) => fitLayout(n, box));
+      if (box) commands.spreadTo(spreading.source, (n) => fitLayout(n, box), !!spreading.reverse);
       return;
     }
     const at = app.rig.screenToPlane(x0, y0, 0);
-    if (at) commands.spreadTo(spreading.source, (n) => gridLayout(n, at));
+    if (at) commands.spreadTo(spreading.source, (n) => gridLayout(n, at), !!spreading.reverse);
   };
   endSpreadGesture = end;
   window.addEventListener('pointermove', move, true);

@@ -186,6 +186,21 @@ export function gridLayout(count: number, centre: { x: number; y: number }, gap 
 }
 
 /**
+ * The order to lay a spread's spots in (decision 215); each card laid lands on
+ * top of those before it. Plain: as given, so each card covers the right side
+ * of the one before and the names along the left show. Reversed: rows still
+ * top to bottom, so each card's top shows, but right to left within a row, so
+ * each card covers the left side of the one after it and the mana costs along
+ * the right show, the first card whole at the far left.
+ */
+export function layOrder(spots: Placed[], reverse: boolean): number[] {
+  const order = spots.map((_, i) => i);
+  if (!reverse) return order;
+  const row = (i: number) => Math.round(spots[i].y * 100);
+  return order.sort((a, b) => row(b) - row(a) || spots[b].x - spots[a].x);
+}
+
+/**
  * A grid that fits inside a box on the table (decision 159), top card first,
  * left to right and rows top to bottom. With room to spare the cards keep the
  * usual gap, centred in the box; short of room they overlap evenly, so they

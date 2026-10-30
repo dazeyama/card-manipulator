@@ -4,16 +4,16 @@
 // overlap, only the edges that will show are drawn (decision 208). It looks
 // like a hologram projected by a laser (decision 209): light blue glowing
 // edges, a faint fill with scan lines drifting across it, a slight flicker.
+// A reverse spread (X X, decision 215) is laid right to left and glows magenta.
 
 import type { App } from '../app';
-import type { Placed } from '../state/piles';
+import { layOrder, type Placed } from '../state/piles';
 import { CARD_H, CARD_W } from '../state/types';
 
-/** The laser's colours: a bright core and a softer glow around it. */
-const CORE = 'rgba(70, 190, 255, 0.9)';
-const GLOW = 'rgba(120, 215, 255, 0.85)';
-const FILL = 'rgba(120, 210, 255, 0.10)';
-const SCAN = 'rgba(90, 200, 255, 0.16)';
+/** The laser's colours: a bright core, a softer glow around it, the fill and its scan lines. */
+const BLUE = { core: 'rgba(70, 190, 255, 0.9)', glow: 'rgba(120, 215, 255, 0.85)', fill: 'rgba(120, 210, 255, 0.10)', scan: 'rgba(90, 200, 255, 0.16)' };
+/** A reverse spread's: a red-ish magenta (decision 215). */
+const MAGENTA = { core: 'rgba(235, 50, 160, 0.9)', glow: 'rgba(255, 110, 190, 0.85)', fill: 'rgba(255, 100, 180, 0.10)', scan: 'rgba(240, 70, 160, 0.16)' };
 /** Scan lines: one every this many pixels, drifting this many pixels a second. */
 const SCAN_GAP = 4;
 const SCAN_SPEED = 12;
@@ -27,6 +27,7 @@ export class SpreadPreview {
   /** The whole shape, filled, for the faint fill and the scan lines. */
   private readonly shape = document.createElement('canvas');
   private visible = false;
+  private colours = BLUE;
 
   constructor(private readonly app: App) {
     Object.assign(this.canvas.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none' });
@@ -37,7 +38,9 @@ export class SpreadPreview {
     });
   }
 
-  show(spots: Placed[]): void {
+  show(spots: Placed[], reverse = false): void {
+    this.colours = reverse ? MAGENTA : BLUE;
+    const order = layOrder(spots, reverse);
     const rig = this.app.rig;
     const w = this.app.overlay.clientWidth, h = this.app.overlay.clientHeight;
     const dpr = window.devicePixelRatio || 1;
@@ -60,7 +63,7 @@ export class SpreadPreview {
     };
     // Later cards land on top (decision 208): each one first wipes out the outlines
     // under it, then draws its own, so only the edges that will show are left.
-    const layers = [[this.edges, CORE, 1.25], [this.glow, GLOW, 3.5]] as const;
+    const layers = [[this.edges, this.colours.core, 1.25], [this.glow, this.colours.glow, 3.5]] as const;
     for (const [canvas, colour, width] of layers) {
       const e = canvas.getContext('2d')!;
       e.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -70,9 +73,9 @@ export class SpreadPreview {
       e.lineJoin = 'round';
       // Erasing needs an opaque fill.
       e.fillStyle = '#000';
-      for (const s of spots) {
+      for (const i of order) {
         e.beginPath();
-        outline(e, s);
+        outline(e, spots[i]);
         e.globalCompositeOperation = 'destination-out';
         e.fill();
         e.globalCompositeOperation = 'source-over';
@@ -110,12 +113,12 @@ export class SpreadPreview {
     // The shape, tinted: the faint fill.
     ctx.drawImage(this.shape, 0, 0);
     ctx.globalCompositeOperation = 'source-in';
-    ctx.fillStyle = FILL;
+    ctx.fillStyle = this.colours.fill;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     // Scan lines drifting down the shape, only where the shape is.
     ctx.globalCompositeOperation = 'source-atop';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = SCAN;
+    ctx.fillStyle = this.colours.scan;
     const off = (t * SCAN_SPEED) % SCAN_GAP;
     for (let y = off - SCAN_GAP; y < h; y += SCAN_GAP) ctx.fillRect(0, y, w, 1);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
