@@ -358,6 +358,11 @@ export class Physics {
     pose.yaw = this.e.z;
   }
 
+  /** True while a card is falling under physics. */
+  falling(uid: string): boolean {
+    return this.sessions.some((s) => s.bodies.some((b) => b.uid === uid));
+  }
+
   /**
    * Take cards out of any fall in progress (decision 219): a command or a drag
    * that moves a card still falling owns it now, so the fall must neither keep

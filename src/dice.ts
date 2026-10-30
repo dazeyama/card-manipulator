@@ -23,6 +23,12 @@ const GLIDE_RATE = 18;
 const SWAY_PER_SPEED = 0.0012;
 const SWAY_MAX = 0.5;
 const SWAY_RATE = 10;
+/** Dice carried with cards ride this far clear of the cards' clump, mm (decision 274). */
+const ASIDE_GAP = 10;
+/** Dice let go with cards wait at most this long for them to come to rest, ms. */
+const SETTLE_MAX_MS = 3000;
+
+type HeldDie = { uid: string; ox: number; oy: number; die: Die };
 
 export class Dice {
   readonly selected = new Set<string>();
@@ -34,6 +40,14 @@ export class Dice {
   private readonly sway = new Map<string, { vx: number; vy: number; phase: number }>();
   /** Dice being dragged, and where each is heading under the cursor. */
   private carrying: { uid: string; x: number; y: number; die: Die }[] | null = null;
+  /** Dice let go with cards, hanging where they were let go until those cards come to rest (decision 274). */
+  private landing: { dice: { uid: string; x: number; y: number; die: Die }[]; cards: string[]; since: number }[] = [];
+  /**
+   * Dragging selected dice brings the selected cards along (decision 274): main.ts
+   * starts their drag from the press, gathered `aside` from the cursor, or
+   * in formation with Alt.
+   */
+  cardsAlong: ((sx: number, sy: number, alt: boolean, aside: { x: number; y: number }) => CustomGesture | null) | null = null;
 
   /** True while dice are being carried (for the cursor, decision 260). */
   get dragging(): boolean {
@@ -46,9 +60,9 @@ export class Dice {
       const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
       this.hovered = inside && app.store.dice.size ? layer.pick(e.clientX - r.left, e.clientY - r.top) : null;
     });
-    // Choosing cards takes the selection away from the dice.
+    // Choosing cards takes the selection away from the dice, but not cards swept up while carrying dice with them (decision 274).
     app.store.events.on('selection', () => {
-      if (app.store.selection.size) this.select([]);
+      if (app.store.selection.size && !this.carrying) this.select([]);
     });
     app.onFrame((_now, dt) => this.glide(dt));
     app.store.events.on('dice', () => {
@@ -59,15 +73,17 @@ export class Dice {
 
   /** Held dice close in on their places under the cursor, a share each frame. */
   private glide(dt: number): void {
-    if (!this.carrying) {
+    this.settle();
+    const moving = [...(this.carrying ?? []), ...this.landing.flatMap((l) => l.dice)];
+    if (!moving.length) {
       this.sway.clear();
       return;
     }
     const k = 1 - Math.exp(-GLIDE_RATE * dt);
     const ease = 1 - Math.exp(-SWAY_RATE * dt);
-    const skip = new Set(this.carrying.map((c) => c.uid));
+    const skip = new Set(moving.map((c) => c.uid));
     const t = performance.now() / 1000;
-    for (const c of this.carrying) {
+    for (const c of moving) {
       const now = this.layer.drawnAt(c.uid)?.position;
       const x = now ? now.x + (c.x - now.x) * k : c.x, y = now ? now.y + (c.y - now.y) * k : c.y;
       // Loose in the hand (decision 261): it leans and tips the way it is moving,
@@ -87,6 +103,42 @@ export class Dice {
       const bob = tidy ? 0 : Math.min(6, speed * 0.012) + Math.sin(t * 4.3 + sw.phase) * 0.8;
       this.layer.pose(c.uid, { x, y, z: this.surfaceAt(x, y, skip) + DIE_SIZE / 2 + CARRY + bob }, q);
     }
+  }
+
+  /**
+   * Dice let go with cards land once those cards have come to rest, on top of
+   * them if they are under (decision 274), or after a few seconds whatever happens.
+   */
+  private settle(): void {
+    if (!this.landing.length) return;
+    const app = this.app;
+    const now = performance.now();
+    const still = (u: string) => !app.motion.isAnimating(u) && !app.motion.held.has(u) && !app.physics?.falling(u);
+    const done = this.landing.filter((l) => now - l.since > SETTLE_MAX_MS || l.cards.every(still));
+    if (!done.length) return;
+    this.landing = this.landing.filter((l) => !done.includes(l));
+    const skip = new Set(done.flatMap((l) => l.dice.map((d) => d.uid)));
+    const moved = done.flatMap((l) => l.dice).filter((d) => app.store.dice.has(d.uid))
+      .map((d) => ({ ...d.die, x: d.x, y: d.y, z: this.surfaceAt(d.x, d.y, skip) + DIE_SIZE / 2, yaw: this.square(d.die.yaw) }));
+    for (const u of skip) {
+      this.busy.delete(u);
+      this.layer.carried.delete(u);
+    }
+    app.store.setDice(moved);
+  }
+
+  /**
+   * Where dice carried with cards ride (decision 274): a block this far to the
+   * right of the cursor as you see it, clear of the cards' clump; on the table.
+   */
+  asideFor(count: number, sx: number, sy: number): { x: number; y: number } {
+    const a = this.app.rig.screenToPlane(sx, sy, 0), b = this.app.rig.screenToPlane(sx + 60, sy, 0);
+    if (!a || !b) return { x: 0, y: 0 };
+    const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    const spots = gatherOffsets(count);
+    const half = Math.max(...spots.map((p) => Math.max(Math.abs(p.x), Math.abs(p.y)))) + DIE_SIZE / 2;
+    const far = CARD_H / 2 + ASIDE_GAP + half;
+    return { x: ((b.x - a.x) / len) * far, y: ((b.y - a.y) / len) * far };
   }
 
   /** In Tidy mode (Ctrl held, or Shift + T), a turn snapped to the nearest quarter (decision 262). */
@@ -200,44 +252,103 @@ export class Dice {
   }
 
   /**
+   * Pick up the selected dice from a grab point on the table. Several gather
+   * into a block under the cursor, as cards gather into a stack, or `aside` of
+   * it when cards come too; Alt keeps them as they lay, like a card formation
+   * (decisions 256, 274).
+   */
+  private pickUp(grab: { x: number; y: number }, lead: string | null, alt: boolean, aside: { x: number; y: number }): HeldDie[] {
+    const store = this.app.store;
+    const held = [...this.selected].map((u) => store.dice.get(u)).filter((d): d is Die => !!d && !this.busy.has(d.uid)).map((d) => ({ uid: d.uid, ox: d.x - grab.x, oy: d.y - grab.y, die: { ...d } }));
+    // Picked up from the other side of the table: it turns round to face you (decision 267).
+    const side = this.app.side;
+    for (const h of held) {
+      if ((h.die.side ?? 0) === side) continue;
+      h.die.yaw += Math.PI;
+      h.die.side = side || undefined;
+    }
+    if (!alt && (held.length > 1 || aside.x || aside.y)) {
+      const spots = gatherOffsets(held.length);
+      // Square to the die picked up, so the block is neat and no corners clash.
+      const yaw = (held.find((h) => h.uid === lead) ?? held[0])?.die.yaw ?? 0;
+      held.forEach((h, i) => {
+        h.ox = spots[i].x + aside.x;
+        h.oy = spots[i].y + aside.y;
+        h.die.yaw = yaw;
+      });
+    }
+    for (const h of held) {
+      this.busy.add(h.uid);
+      this.layer.carried.add(h.uid);
+    }
+    return held;
+  }
+
+  /**
+   * A card drag that takes the selected dice along (decision 274): beside the
+   * gathered cards, or in formation with them (`alt`). Landing waits for the cards.
+   */
+  along(cards: CustomGesture | null, sx: number, sy: number, alt: boolean): CustomGesture | null {
+    const grab = this.app.rig.screenToPlane(sx, sy, 0);
+    if (!grab) return cards;
+    const held = this.pickUp(grab, null, alt, alt ? { x: 0, y: 0 } : this.asideFor(this.selected.size, sx, sy));
+    if (!held.length) return cards;
+    return this.carry(held, sx, sy, cards);
+  }
+
+  /**
    * A press on a die: a click selects it (Ctrl + click adds or takes it away),
-   * a drag carries it, or all the selected dice if it is one of them.
+   * a drag carries it, or all the selected dice if it is one of them, and any
+   * selected cards with them (decision 274).
    */
   press(uid: string, sx: number, sy: number, mods: Mods): CustomGesture {
     const app = this.app;
     const store = app.store;
     const grab = app.rig.screenToPlane(sx, sy, 0) ?? new THREE.Vector3();
-    let held: { uid: string; ox: number; oy: number; die: Die }[] | null = null;
+    let inner: CustomGesture | null = null;
     const begin = () => {
       if (!this.selected.has(uid)) {
         store.clearSelection();
         this.select([uid], mods.ctrl);
       }
-      held = [...this.selected].map((u) => store.dice.get(u)).filter((d): d is Die => !!d && !this.busy.has(d.uid)).map((d) => ({ uid: d.uid, ox: d.x - grab.x, oy: d.y - grab.y, die: { ...d } }));
-      // Picked up from the other side of the table: it turns round to face you (decision 267).
-      const side = app.side;
-      for (const h of held) {
-        if ((h.die.side ?? 0) === side) continue;
-        h.die.yaw += Math.PI;
-        h.die.side = side || undefined;
+      // The selected cards come too: gathered beside the dice, which keep the cursor, or in formation with Alt.
+      let cards: CustomGesture | null = null;
+      if (store.selection.size && this.cardsAlong) {
+        const right = this.asideFor(this.selected.size, sx, sy);
+        cards = this.cardsAlong(sx, sy, mods.alt, mods.alt ? { x: 0, y: 0 } : { x: -right.x, y: -right.y });
       }
-      // Several dice gather together under the cursor, as cards gather into a stack;
-      // Alt keeps them as they lay, like a card formation (decision 256).
-      if (held.length > 1 && !mods.alt) {
-        const spots = gatherOffsets(held.length);
-        // Square to the die picked up, so the block is neat and no corners clash.
-        const yaw = store.dice.get(uid)?.yaw ?? 0;
-        held.forEach((h, i) => {
-          h.ox = spots[i].x;
-          h.oy = spots[i].y;
-          h.die.yaw = yaw;
-        });
-      }
-      for (const h of held) {
-        this.busy.add(h.uid);
-        this.layer.carried.add(h.uid);
-      }
+      inner = this.carry(this.pickUp(grab, uid, mods.alt, { x: 0, y: 0 }), sx, sy, cards);
     };
+    return {
+      kind: 'custom',
+      move: (x, y, e) => {
+        if (!inner && Math.hypot(x - sx, y - sy) <= 4) return;
+        if (!inner) begin();
+        inner!.move(x, y, e);
+      },
+      up: (x, y, e) => {
+        if (inner) return inner.up(x, y, e);
+        // A click: select this die, or add it or take it away with Ctrl.
+        store.clearSelection();
+        if (mods.ctrl) {
+          if (this.selected.has(uid)) this.selected.delete(uid);
+          else this.selected.add(uid);
+          this.layer.setSelected(this.selected);
+        } else this.select([uid]);
+      },
+      cancel: () => inner?.cancel(),
+    };
+  }
+
+  /**
+   * Carry picked-up dice under the cursor, with a card drag running alongside if
+   * `cards` (decision 274). The shake that flips held cards rolls held dice
+   * (decision 257); let go, they land on what is under them.
+   */
+  private carry(picked: HeldDie[], sx: number, sy: number, cards: CustomGesture | null): CustomGesture {
+    const app = this.app;
+    const store = app.store;
+    let held: HeldDie[] | null = picked;
     const at = (x: number, y: number) => app.rig.screenToPlane(x, y, 0);
     // The shake that flips held cards rolls held dice (decision 257).
     let last = { x: sx, y: sy, t: performance.now() };
@@ -267,6 +378,15 @@ export class Dice {
     const finish = (keep: boolean, x: number, y: number) => {
       if (!held) return;
       const p = keep ? at(x, y) : null;
+      // Let go with cards: they hang where they were let go until the cards come to rest,
+      // then land on them, or on what else is there (decision 274).
+      if (p && cards) {
+        const uids = [...store.selection];
+        this.landing.push({ dice: held.map((h) => ({ uid: h.uid, x: p.x + h.ox, y: p.y + h.oy, die: h.die })), cards: uids, since: performance.now() });
+        held = null;
+        this.carrying = null;
+        return;
+      }
       const moved = held.map((h) => {
         this.busy.delete(h.uid);
         this.layer.carried.delete(h.uid);
@@ -280,28 +400,23 @@ export class Dice {
     };
     return {
       kind: 'custom',
-      move: (x, y) => {
-        if (tossed) return;
-        if (!held && Math.hypot(x - sx, y - sy) <= 4) return;
-        if (!held) begin();
-        if (shake(x, y)) return;
+      move: (x, y, e) => {
+        cards?.move(x, y, e);
+        if (tossed || shake(x, y)) return;
         const p = at(x, y);
-        if (!p) return;
+        if (!p || !held) return;
         // Each frame they glide in to their places (glide), so the gathering shows.
-        this.carrying = held!.map((h) => ({ uid: h.uid, x: p.x + h.ox, y: p.y + h.oy, die: h.die }));
+        this.carrying = held.map((h) => ({ uid: h.uid, x: p.x + h.ox, y: p.y + h.oy, die: h.die }));
       },
-      up: (x, y) => {
-        if (tossed) return;
-        if (held) return finish(true, x, y);
-        // A click: select this die, or add it or take it away with Ctrl.
-        store.clearSelection();
-        if (mods.ctrl) {
-          if (this.selected.has(uid)) this.selected.delete(uid);
-          else this.selected.add(uid);
-          this.layer.setSelected(this.selected);
-        } else this.select([uid]);
+      up: (x, y, e) => {
+        // The cards first, so the dice can wait for where they land.
+        cards?.up(x, y, e);
+        if (!tossed) finish(true, x, y);
       },
-      cancel: () => finish(false, sx, sy),
+      cancel: () => {
+        cards?.cancel();
+        finish(false, sx, sy);
+      },
     };
   }
 }

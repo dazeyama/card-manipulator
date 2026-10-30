@@ -224,9 +224,10 @@ export class DragController {
   /**
    * Begin a drag of these cards. `sx, sy` is the press point on screen.
    * `pressed` is the card the drag began on: if Shift sweeps from the start,
-   * its pile counts as already reached, its top card taken.
+   * its pile counts as already reached, its top card taken. `aside` moves a
+   * gathered clump off the cursor, to make room for dice carried with it (decision 274).
    */
-  begin(uids: string[], mode: DragMode, sx: number, sy: number, pressed?: string): CustomGesture | null {
+  begin(uids: string[], mode: DragMode, sx: number, sy: number, pressed?: string, aside = { x: 0, y: 0 }): CustomGesture | null {
     const store = this.app.store;
     const grab = this.app.rig.screenToPlane(sx, sy, 0);
     if (!grab || !uids.length) return null;
@@ -265,8 +266,8 @@ export class DragController {
         // and slower springs further back so the clump trails the cursor.
         const a = i * 2.399963;
         const r = Math.min(14, 1.5 * Math.sqrt(n - 1 - i));
-        ox = Math.cos(a) * r;
-        oy = Math.sin(a) * r;
+        ox = Math.cos(a) * r + aside.x;
+        oy = Math.sin(a) * r + aside.y;
         dz = i * CARD_T;
         omega = tidy ? OMEGA_TIDY_TAIL + (OMEGA_LEAD - OMEGA_TIDY_TAIL) * rank : OMEGA_TAIL + (OMEGA_MESSY_LEAD - OMEGA_TAIL) * rank;
       } else if (mode === 'single') {

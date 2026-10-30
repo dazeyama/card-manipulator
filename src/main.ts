@@ -114,6 +114,8 @@ const dice = new Dice(app, diceLayer);
 app.dice = dice;
 // The number over a die when hovered, or over every die when they're small on screen (decision 265).
 new DiceNumbers(app, dice, diceLayer);
+// Dragging selected dice brings the selected cards too (decision 274).
+dice.cardsAlong = (x, y, alt, aside) => (drag.dragging ? null : drag.begin([...store.selection], alt ? 'formation' : 'gather', x, y, undefined, aside));
 mouse.hooks.objectPress = (x, y, mods) => {
   const uid = diceLayer.pick(x, y);
   return uid ? dice.press(uid, x, y, mods) : null;
@@ -176,9 +178,12 @@ mouse.hooks.hover = (uid) => {
 mouse.hooks.cardDrag = (uid, x, y, mods) => {
   // Holding Shift at any moment of a drag sweeps up the cards the cursor passes
   // over (decisions 89, 110). Ctrl + Shift is the formation fallback (decision 29).
-  if (store.selection.has(uid) && store.selection.size > 1) {
+  // Selected dice come along with the selected cards (decision 274).
+  const withDice = store.selection.has(uid) && dice.selected.size > 0;
+  if (store.selection.has(uid) && (store.selection.size > 1 || withDice)) {
     const formation = mods.alt || (mods.ctrl && mods.shift);
-    return drag.begin([...store.selection], formation ? 'formation' : 'gather', x, y, uid);
+    const g = drag.begin([...store.selection], formation ? 'formation' : 'gather', x, y, uid);
+    return withDice ? dice.along(g, x, y, formation) : g;
   }
   // Dragging an unselected card selects only it; on a stack this peels the top card.
   store.setSelection([uid]);
