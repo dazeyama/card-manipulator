@@ -312,19 +312,25 @@ keyboard.bind('ctrl+f', () => hud.focus());
 keyboard.bind('/', () => hud.focus());
 // With nothing selected, the keys act on what is under the cursor (decisions 102, 103):
 // F and R on that card, S, X and T on the whole pile it is in.
-const hoveredCard = (): string[] => (store.selection.size ? [...store.selection] : mouse.hovered ? [mouse.hovered] : []);
+/**
+ * Hover comes before the selection (decisions 247, 254): a key pressed over a card
+ * that isn't selected drops the selection first, so it acts on that card or its
+ * pile; over a selected card or bare table it acts on the selection.
+ */
+const hoverFirst = () => {
+  if (mouse.hovered && !store.selection.has(mouse.hovered)) store.clearSelection();
+};
+const hoveredCard = (): string[] => {
+  hoverFirst();
+  return store.selection.size ? [...store.selection] : mouse.hovered ? [mouse.hovered] : [];
+};
 const hoveredPile = (): string[] => {
+  hoverFirst();
   if (store.selection.size || !mouse.hovered) return [...store.selection];
   return store.pileOf(mouse.hovered)?.cardUids.slice() ?? [mouse.hovered];
 };
-/**
- * What 1-9 and 0 draw from (decision 247): the pile under the cursor when it isn't
- * selected, dropping the selection first; otherwise the selection, or that pile.
- */
-const drawSource = (): string[] => {
-  if (mouse.hovered && !store.selection.has(mouse.hovered)) store.clearSelection();
-  return hoveredPile();
-};
+/** What 1-9 and 0 draw from (decision 247). */
+const drawSource = hoveredPile;
 // While dragging, S, X, T and F act on the cards in the hand (decision 104).
 // S twice quickly shuffles: the stack's cards in a random order (decision 106).
 let lastS = 0;
