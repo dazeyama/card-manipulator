@@ -1,5 +1,6 @@
 // Life counters (decision 239): every playmat has a life total, a chunky
-// cartoon badge floating just off its top-left corner, never over its cards
+// cartoon badge floating just beside its top-left corner (top-right on a mat
+// facing the far side, decision 273), never over its cards
 // (decision 240), always facing you and
 // sized with the mat. Click +1, right-click -1, the wheel either way, Shift
 // for 5 at a time; hold a button to keep counting. Ctrl + click types a
@@ -7,7 +8,7 @@
 // it; the number pops green or red, and at 5 or less it stays red.
 
 import type { App } from '../app';
-import { MAT_T, type Mats } from '../mats';
+import { lifeCorner, MAT_T, type Mats } from '../mats';
 import type { CameraRig } from '../render/camera';
 import { isStand } from '../state/stand';
 import { MAT_H, MAT_W, type Mat } from '../state/types';
@@ -65,6 +66,27 @@ export function offCorner(rig: CameraRig, corner: P3, edgeA: P3, edgeB: P3, mm: 
   const half = Math.acos(Math.max(-1, Math.min(1, u1.x * u2.x + u1.y * u2.y))) / 2;
   const reach = Math.min(size * 3, (size / 2 + GAP_PX) / Math.max(0.2, Math.sin(half)));
   return { p: { x: k.x + out.x * reach, y: k.y + out.y * reach }, out, size };
+}
+
+/**
+ * Where a round badge goes beside a corner on screen (decision 273): just outside
+ * the side edge from `corner` to `down`, its top level with the corner, so it
+ * stays by its own mat rather than reaching past the top edge. Also the direction
+ * out from that edge, and its size, `mm` across at the corner within px limits.
+ */
+function besideCorner(rig: CameraRig, corner: P3, along: P3, down: P3, mm: number, minPx: number, maxPx: number): { p: { x: number; y: number }; out: { x: number; y: number }; size: number } {
+  const k = rig.worldToScreen(corner.x, corner.y, corner.z);
+  const a = rig.worldToScreen(along.x, along.y, along.z), e = rig.worldToScreen(down.x, down.y, down.z);
+  const l = Math.hypot(e.x - k.x, e.y - k.y) || 1;
+  const d = { x: (e.x - k.x) / l, y: (e.y - k.y) / l };
+  // Square to the side edge, away from the mat.
+  let out = { x: -d.y, y: d.x };
+  if (out.x * (a.x - k.x) + out.y * (a.y - k.y) > 0) out = { x: -out.x, y: -out.y };
+  const q = rig.worldToScreen(corner.x + mm, corner.y, corner.z);
+  const size = Math.max(minPx, Math.min(maxPx, Math.hypot(q.x - k.x, q.y - k.y)));
+  const down2 = Math.min(size / 2, l / 2);
+  const reach = size / 2 + GAP_PX;
+  return { p: { x: k.x + d.x * down2 + out.x * reach, y: k.y + d.y * down2 + out.y * reach }, out, size };
 }
 
 export function lifeOf(m: Mat): number {
@@ -175,17 +197,19 @@ export class LifeCounters {
       const at = this.mats.drawnAt(m.uid) ?? m;
       const c = Math.cos(at.yaw), s = Math.sin(at.yaw);
       const pt = (a: number, d: number) => ({ x: at.x + a * c - d * s, y: at.y + a * s + d * c });
-      // Off the mat, never over its cards (decision 240): just outside its top-left
-      // corner on screen, along the corner's outside, clear of both its edges.
-      const k = pt(-MAT_W / 2, MAT_H / 2);
+      // Off the mat, never over its cards (decision 240): beside its top-left corner, or
+      // top-right on a mat facing the far side, just outside the side edge and level
+      // with the top, so back-to-back mats each keep theirs on their own side (decision 273).
+      const sx = lifeCorner(m);
+      const k = pt((sx * MAT_W) / 2, MAT_H / 2);
       // Hidden with the mat's ❤️ button (decision 241).
       if (m.lifeHidden || !rig.inFront(k.x, k.y, MAT_T)) {
         b.el.hidden = true;
         continue;
       }
       b.el.hidden = false;
-      const along = pt(MAT_W / 2, MAT_H / 2), down = pt(-MAT_W / 2, -MAT_H / 2);
-      const { p, out, size } = offCorner(rig, { ...k, z: MAT_T }, { ...along, z: MAT_T }, { ...down, z: MAT_T }, BADGE_MM, BADGE_MIN_PX, BADGE_MAX_PX);
+      const along = pt((-sx * MAT_W) / 2, MAT_H / 2), down = pt((sx * MAT_W) / 2, -MAT_H / 2);
+      const { p, out, size } = besideCorner(rig, { ...k, z: MAT_T }, { ...along, z: MAT_T }, { ...down, z: MAT_T }, BADGE_MM, BADGE_MIN_PX, BADGE_MAX_PX);
       b.el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -50%)`;
       // The bubble sits on the badge's far side from the mat, so it never covers it either.
       if (b.bubble.classList.contains('show')) {

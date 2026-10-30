@@ -584,10 +584,12 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
         at(this.editButton, STAND_W / 2 - BUTTON_INSET, -STAND_D / 2 + 4, LIP_H);
       } else {
         const ix = MAT_W / 2 - BUTTON_INSET, iy = MAT_H / 2 - BUTTON_INSET;
-        at(this.button, ix, iy, MAT_T);
+        // ❤️ stays by the life total, which changes top corners on a turned mat (decision 273).
+        const lx = lifeCorner(m);
+        at(this.button, -lx * ix, iy, MAT_T);
         at(this.untapButton, ix, -iy, MAT_T);
         at(this.lockButton, -ix, -iy, MAT_T);
-        at(this.lifeButton, -ix, iy, MAT_T);
+        at(this.lifeButton, lx * ix, iy, MAT_T);
         const shown = !m.lifeHidden;
         if (this.lifeButton.textContent !== (shown ? '❤️' : '🤍')) {
           this.lifeButton.textContent = shown ? '❤️' : '🤍';
@@ -700,6 +702,15 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
 /** An angle brought into -pi..pi. */
 function shortTurn(a: number): number {
   return a - 2 * Math.PI * Math.round(a / (2 * Math.PI));
+}
+
+/**
+ * The top corner a playmat's life total sits by (decision 273): -1 its top left,
+ * or +1 its top right when the mat faces the far side of the table. So two mats
+ * back to back have their totals on the same side, each beside its own mat.
+ */
+export function lifeCorner(m: Mat): -1 | 1 {
+  return Math.cos(m.yaw) < -1e-6 ? 1 : -1;
 }
 
 /** A rounded rectangle, centred, half w by half h with corner radius r. */
