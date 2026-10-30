@@ -15,8 +15,8 @@ import { CARD_H, CARD_T, CARD_W } from './state/types';
 
 /** Held dice ride this far above what is under them, mm. */
 const CARRY = 16;
-/** Each mouse move, held dice close this share of the way to their place (decision 256). */
-const GLIDE = 0.4;
+/** How quickly held dice close in on their places under the cursor, 1/s (decision 256). */
+const GLIDE_RATE = 18;
 
 export class Dice {
   readonly selected = new Set<string>();
@@ -24,6 +24,8 @@ export class Dice {
   hovered: string | null = null;
   /** Dice being dragged or rolled: hands off. */
   private readonly busy = new Set<string>();
+  /** Dice being dragged, and where each is heading under the cursor. */
+  private carrying: { uid: string; x: number; y: number; die: Die }[] | null = null;
 
   constructor(private readonly app: App, private readonly layer: DiceLayer) {
     window.addEventListener('pointermove', (e) => {
@@ -35,10 +37,23 @@ export class Dice {
     app.store.events.on('selection', () => {
       if (app.store.selection.size) this.select([]);
     });
+    app.onFrame((_now, dt) => this.glide(dt));
     app.store.events.on('dice', () => {
       for (const u of [...this.selected]) if (!app.store.dice.has(u)) this.selected.delete(u);
       layer.setSelected(this.selected);
     });
+  }
+
+  /** Held dice close in on their places under the cursor, a share each frame. */
+  private glide(dt: number): void {
+    if (!this.carrying) return;
+    const k = 1 - Math.exp(-GLIDE_RATE * dt);
+    const skip = new Set(this.carrying.map((c) => c.uid));
+    for (const c of this.carrying) {
+      const now = this.layer.drawnAt(c.uid)?.position;
+      const x = now ? now.x + (c.x - now.x) * k : c.x, y = now ? now.y + (c.y - now.y) * k : c.y;
+      this.layer.pose(c.uid, { x, y, z: this.surfaceAt(x, y, skip) + DIE_SIZE / 2 + CARRY }, dieTurn(c.die.value, c.die.yaw));
+    }
   }
 
   /** What keys act on: the die under the cursor unless it is one of the selected, else the selected dice. */
@@ -176,6 +191,7 @@ export class Dice {
         return { ...h.die, x: nx, y: ny, z: this.surfaceAt(nx, ny, skip()) + DIE_SIZE / 2 };
       });
       held = null;
+      this.carrying = null;
       store.setDice(moved);
     };
     return {
@@ -185,14 +201,8 @@ export class Dice {
         if (!held) begin();
         const p = at(x, y);
         if (!p) return;
-        for (const h of held!) {
-          const nx = p.x + h.ox, ny = p.y + h.oy;
-          // Gliding in to its place, so the gathering shows.
-          const now = this.layer.drawnAt(h.uid)?.position;
-          const k = now ? GLIDE : 1;
-          const gx = now ? now.x + (nx - now.x) * k : nx, gy = now ? now.y + (ny - now.y) * k : ny;
-          this.layer.pose(h.uid, { x: gx, y: gy, z: this.surfaceAt(gx, gy, skip()) + DIE_SIZE / 2 + CARRY }, dieTurn(h.die.value, h.die.yaw));
-        }
+        // Each frame they glide in to their places (glide), so the gathering shows.
+        this.carrying = held!.map((h) => ({ uid: h.uid, x: p.x + h.ox, y: p.y + h.oy, die: h.die }));
       },
       up: (x, y) => {
         if (held) return finish(true, x, y);
