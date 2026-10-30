@@ -28,10 +28,25 @@ function inkOn(color: string): string {
   return isDark(color) ? '#f4f1ea' : '#111';
 }
 
+/** The graphics mode's anisotropic filtering, and every dice texture made, to update when it changes (decision 287). */
+let anisotropy = 8;
+const textures = new Set<THREE.Texture>();
+
+/** Follow the graphics mode's anisotropic filtering (decision 287). */
+export function setDiceAnisotropy(n: number): void {
+  anisotropy = n;
+  for (const t of textures) {
+    t.anisotropy = n;
+    t.needsUpdate = true;
+  }
+}
+
 function canvasTexture(c: HTMLCanvasElement): THREE.CanvasTexture {
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
+  tex.anisotropy = anisotropy;
+  textures.add(tex);
+  tex.addEventListener('dispose', () => textures.delete(tex));
   return tex;
 }
 

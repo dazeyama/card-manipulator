@@ -58,6 +58,9 @@ export class Dice {
    */
   cardsAlong: ((sx: number, sy: number, alt: boolean, aside: { x: number; y: number }) => CustomGesture | null) | null = null;
 
+  /** Ctrl (or Cmd) is held now: choosing cards adds to a mixed selection rather than replacing the dice's (decision 286). */
+  private ctrl = false;
+
   /** True while dice are being carried (for the cursor, decision 260). */
   get dragging(): boolean {
     return !!this.carrying;
@@ -69,9 +72,13 @@ export class Dice {
       const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
       this.hovered = inside && app.store.dice.size ? layer.pick(e.clientX - r.left, e.clientY - r.top) : null;
     });
-    // Choosing cards takes the selection away from the dice, but not cards swept up while carrying dice with them (decision 274).
+    // Choosing cards takes the selection away from the dice, but not cards swept up while carrying
+    // dice with them (decision 274), nor cards added with Ctrl, which makes a mixed selection (decision 286).
+    const mods = (e: KeyboardEvent | PointerEvent) => (this.ctrl = e.ctrlKey || e.metaKey);
+    for (const type of ['keydown', 'keyup', 'pointerdown', 'pointerup'] as const) window.addEventListener(type, mods, true);
+    window.addEventListener('blur', () => (this.ctrl = false));
     app.store.events.on('selection', () => {
-      if (app.store.selection.size && !this.carrying) this.select([]);
+      if (app.store.selection.size && !this.carrying && !this.ctrl) this.select([]);
     });
     app.onFrame((_now, dt) => this.glide(dt));
     app.store.events.on('dice', () => {
@@ -395,7 +402,8 @@ export class Dice {
     let inner: CustomGesture | null = null;
     const begin = () => {
       if (!this.selected.has(uid)) {
-        store.clearSelection();
+        // With Ctrl it joins what is selected, cards too (decision 286).
+        if (!mods.ctrl) store.clearSelection();
         this.select([uid], mods.ctrl);
       }
       // The selected cards come too: gathered beside the dice, which keep the cursor, or in formation with Alt.
@@ -415,8 +423,8 @@ export class Dice {
       },
       up: (x, y, e) => {
         if (inner) return inner.up(x, y, e);
-        // A click: select this die, or add it or take it away with Ctrl.
-        store.clearSelection();
+        // A click: select this die, or add it or take it away with Ctrl, keeping any cards selected (decision 286).
+        if (!mods.ctrl) store.clearSelection();
         if (mods.ctrl) {
           if (this.selected.has(uid)) this.selected.delete(uid);
           else this.selected.add(uid);

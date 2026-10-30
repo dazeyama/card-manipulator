@@ -5,6 +5,7 @@
 
 import type { App } from './app';
 import type { Mats } from './mats';
+import { setDiceAnisotropy } from './render/dice';
 import { setWoodQuality } from './render/standMesh';
 import type { HiRes } from './render/hires';
 import { AUTO_LOW_ABOVE, effectiveMode, GRAPHICS, pixelRatioFor, type GraphicsMode } from './render/quality';
@@ -96,5 +97,6 @@ export class Graphics {
     this.hires.setQuality({ abovePx: p.hiresAbovePx, max: p.hiresMax, pool: p.hiresPool, image: p.hiresImage, anisotropy });
     this.mats.setQuality({ mirrorEveryMs: p.mirrorEveryMs, mirrorMax: p.mirrorMax, mirrorSamples: p.mirrorSamples, anisotropy });
     setWoodQuality(p.woodPx, anisotropy);
+    setDiceAnisotropy(anisotropy);
   }
 }

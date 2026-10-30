@@ -27,6 +27,8 @@ const PLATE_PX = 3;
 const WOOD_COLOUR = 0x4a1a10;
 let woodPx: 1024 | 512 = 512;
 let woodAniso = 8;
+/** Every name plate's texture, to follow the graphics mode's filtering as the wood does (decision 287). */
+const plates = new Set<THREE.Texture>();
 let wood: THREE.Texture | null = null;
 const woodLoader = new THREE.TextureLoader();
 
@@ -58,6 +60,10 @@ export function setWoodQuality(px: 1024 | 512, anisotropy: number): void {
   if (wood) {
     wood.anisotropy = anisotropy;
     wood.needsUpdate = true;
+  }
+  for (const t of plates) {
+    t.anisotropy = anisotropy;
+    t.needsUpdate = true;
   }
   if (px === woodPx && (wood || !sharedWood)) return;
   woodPx = px;
@@ -142,7 +148,9 @@ export function drawPlate(text: string, width = STAND_W): THREE.CanvasTexture {
   }
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
+  tex.anisotropy = woodAniso;
+  plates.add(tex);
+  tex.addEventListener('dispose', () => plates.delete(tex));
   return tex;
 }
 

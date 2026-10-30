@@ -207,7 +207,8 @@ mouse.hooks.cardDrag = (uid, x, y, mods) => {
     const g = drag.begin([...store.selection], formation ? 'formation' : 'gather', x, y, uid);
     return withDice ? dice.along(g, x, y, formation) : g;
   }
-  // Dragging an unselected card selects only it; on a stack this peels the top card.
+  // Dragging an unselected card selects only it, even with Ctrl held; on a stack this peels the top card.
+  dice.select([]);
   store.setSelection([uid]);
   return drag.begin([uid], 'single', x, y, uid);
 };
