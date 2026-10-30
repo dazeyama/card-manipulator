@@ -3,6 +3,9 @@
 // border and gold lettering, like an executive desk nameplate.
 
 import * as THREE from 'three';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { BACK, RIDGE, STAND_D, STAND_H, STAND_W, standProfile } from '../state/stand';
 
 /** The name plate: inset from the back face's edges, mm. */
@@ -78,9 +81,19 @@ function wedgeGeometry(): THREE.BufferGeometry {
 }
 
 let sharedWedge: THREE.BufferGeometry | null = null;
-/** Its outline (decision 230): a black line along every edge where two faces meet. */
-let sharedEdges: THREE.EdgesGeometry | null = null;
-const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
+/**
+ * Its outline (decisions 230, 231): a bold black line, OUTLINE_PX wide on
+ * screen at any zoom, along every edge where two faces meet, for a cartoon look.
+ * Plain lines are only ever one pixel wide, so these are three.js's fat lines.
+ */
+const OUTLINE_PX = 5;
+let sharedEdges: LineSegmentsGeometry | null = null;
+const edgeMaterial = new LineMaterial({ color: 0x000000, linewidth: OUTLINE_PX, worldUnits: false });
+
+/** The canvas size in CSS pixels, which the outline's width is measured against. */
+export function setOutlineResolution(width: number, height: number): void {
+  if (edgeMaterial.resolution.x !== width || edgeMaterial.resolution.y !== height) edgeMaterial.resolution.set(width, height);
+}
 let sharedWood: THREE.MeshLambertMaterial | null = null;
 
 /** Draw the name plate's face: black, a gold border, the text in gold serif capitals' style. */
@@ -126,7 +139,7 @@ export function drawPlate(text: string): THREE.CanvasTexture {
 /** A stand to put on the table: the wedge and its plate, centred on its footprint, on the table. */
 export function standGroup(plate: THREE.MeshLambertMaterial): THREE.Group {
   sharedWedge ??= wedgeGeometry();
-  sharedEdges ??= new THREE.EdgesGeometry(sharedWedge, 20);
+  sharedEdges ??= new LineSegmentsGeometry().fromEdgesGeometry(new THREE.EdgesGeometry(sharedWedge, 20));
   if (!sharedWood) {
     // Pushed back a touch in depth, so the outline on its edges never flickers into it.
     sharedWood = new THREE.MeshLambertMaterial({ color: WOOD_COLOUR, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
@@ -136,7 +149,7 @@ export function standGroup(plate: THREE.MeshLambertMaterial): THREE.Group {
   const wedge = new THREE.Mesh(sharedWedge, sharedWood);
   wedge.castShadow = true;
   wedge.receiveShadow = true;
-  const edges = new THREE.LineSegments(sharedEdges, edgeMaterial);
+  const edges = new LineSegments2(sharedEdges, edgeMaterial);
   const geo = new THREE.PlaneGeometry(PLATE_W, PLATE_H);
   // Turned to face the back: readable from across the table, right way up (decision 220).
   geo.rotateZ(Math.PI);

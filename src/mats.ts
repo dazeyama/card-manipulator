@@ -11,7 +11,7 @@ import { ACCENT, type App } from './app';
 import type { CustomGesture, Mods } from './input/mouse';
 import { ImageLoader } from './render/images';
 import { inSpace, land, placeSequential } from './commands';
-import { drawPlate, standGroup } from './render/standMesh';
+import { drawPlate, setOutlineResolution, standGroup } from './render/standMesh';
 import { isStand, LIP_H, onStand, STAND_D, STAND_H, STAND_W, standHeightAt } from './state/stand';
 import { textDialog } from './ui/confirm';
 import { MAT_H, MAT_W, type Mat } from './state/types';
@@ -484,6 +484,8 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
   private frame(now: number): void {
     const rig = this.app.rig;
     const store = this.app.store;
+    // The stands' outlines keep their width in screen pixels (decision 231).
+    setOutlineResolution(rig.viewport.width, rig.viewport.height);
     // The selected mat's blue rim follows it, even mid-drag.
     const sel = this.selected ? this.drawn.get(this.selected) : undefined;
     const rim = sel?.stand ? this.standRim : this.rim;
