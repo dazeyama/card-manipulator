@@ -420,8 +420,18 @@ const togglePointer = (source: string[]) => {
 };
 pointBtn.addEventListener('click', () => togglePointer([...store.selection]));
 // P does the same, for the selection or the pile under the cursor, like the other keys (decision 195).
+// P P: the cards land face down, every one, like a pack of draft cards (decision 226).
+let lastP = 0;
 keyboard.bind('p', () => {
-  if (!drag.dragging) togglePointer(hoveredPile());
+  if (drag.dragging) return;
+  const now = performance.now();
+  const twice = now - lastP < DOUBLE_TAP_MS;
+  lastP = twice ? 0 : now;
+  if (twice && app.placing) {
+    app.placing = { ...app.placing, faceDown: true };
+    return;
+  }
+  togglePointer(hoveredPile());
 });
 app.onFrame(() => pointBtn.classList.toggle('on', !!app.placing));
 hud.addBesideSearch(pointBtn);
@@ -445,7 +455,7 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
   const slope = slopeUnder(e.clientX - r.left, e.clientY - r.top);
   const at = slope?.at ?? app.rig.screenToPlane(e.clientX - r.left, e.clientY - r.top, 0);
   const cards = place.source.filter((u) => store.cards.has(u));
-  if (at && cards.length) commands.stackAt(cards, at, slope?.m ?? null);
+  if (at && cards.length) commands.stackAt(cards, at, slope?.m ?? null, !!place.faceDown);
 }, true);
 app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
   const draw = app.drawing;

@@ -490,11 +490,14 @@ export class Commands {
    * Pointer mode (decision 189): move cards to a spot as one stack, on top of
    * whatever is there, loose or (in Tidy mode) squared, keeping their order.
    */
-  stackAt(cards: string[], at: { x: number; y: number }, stand: Mat | null = null): void {
+  stackAt(cards: string[], at: { x: number; y: number }, stand: Mat | null = null, faceDown = false): void {
     if (!cards.length) return;
     const ordered = byHeight(this.app, cards);
     leaveSpreads(this.app, ordered);
-    land(this.app, inSpace(stand?.uid ?? null, () => pileAt(this.app, ordered, { x: at.x, y: at.y, yaw: stand?.yaw ?? 0 })), { stagger: Math.min(3, 300 / ordered.length), arc: 10 });
+    const landings = inSpace(stand?.uid ?? null, () => pileAt(this.app, ordered, { x: at.x, y: at.y, yaw: stand?.yaw ?? 0 }));
+    // P P: every card face down, like a sealed draft pack (decision 226).
+    if (faceDown) for (const l of landings) l.faceUp = false;
+    land(this.app, landings, { stagger: Math.min(3, 300 / ordered.length), arc: 10 });
   }
 
   /** T: square up each pile the selection touches, without merging piles. Loose cards snap to a quarter turn. */

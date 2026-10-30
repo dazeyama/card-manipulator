@@ -157,6 +157,8 @@ export class Cursors {
   private reverseCursor = '';
   /** The plain pointing glove, for pointer mode (decision 189). */
   private pointCursor = '';
+  /** P P: the pointing glove with a 📦, the cards going down face down like a pack (decision 226). */
+  private packCursor = '';
   private gestureCursors: Partial<Record<Gesture, string>> = {};
 
   constructor(private readonly app: App, private readonly mouse: MouseInput, private readonly drag: DragController) {
@@ -189,6 +191,12 @@ export class Cursors {
     c.width = c.height = SIZE;
     c.getContext('2d')!.drawImage(point, 0, 0, SIZE, SIZE);
     this.pointCursor = `url(${c.toDataURL()}) ${px} ${py}, pointer`;
+    const pk = document.createElement('canvas');
+    pk.width = pk.height = SIZE;
+    const pg = pk.getContext('2d')!;
+    pg.drawImage(point, 0, 0, SIZE, SIZE);
+    drawEmoji(pg, '📦', SIZE);
+    this.packCursor = `url(${pk.toDataURL()}) ${px} ${py}, pointer`;
     document.documentElement.style.setProperty('--cursor-point', this.pointCursor);
     // Drawing a hand: the pointing glove with the number as a keycap (decision 143);
     // 0 (any number, decision 162) shows the numbers keycap.
@@ -286,7 +294,7 @@ export class Cursors {
       : this.app.spreading
         ? (this.app.spreading.reverse ? this.reverseCursor : this.spreadCursor) || 'pointer'
         : this.app.placing
-          ? this.pointCursor || 'pointer'
+          ? (this.app.placing.faceDown ? this.packCursor : this.pointCursor) || 'pointer'
           : this.cursors[state] ?? STATES[state][2];
     if (next === this.shown) return;
     this.shown = next;
