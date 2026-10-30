@@ -8,6 +8,7 @@
 
 import type { App } from '../app';
 import { MAT_T, type Mats } from '../mats';
+import type { CameraRig } from '../render/camera';
 import { isStand } from '../state/stand';
 import { MAT_H, MAT_W, type Mat } from '../state/types';
 import { numberDialog } from './confirm';
@@ -40,6 +41,30 @@ interface Badge {
   delta: number;
   fade: number;
   shown: number;
+}
+
+type P3 = { x: number; y: number; z: number };
+
+/**
+ * Where a round badge goes just outside a corner on screen (decision 240): along
+ * the corner's outside, between its two edges as the camera sees them, far
+ * enough out to clear both, `mm` across at the corner within px limits. Also
+ * the direction it went out in, for things that stay further out still.
+ */
+export function offCorner(rig: CameraRig, corner: P3, edgeA: P3, edgeB: P3, mm: number, minPx: number, maxPx: number): { p: { x: number; y: number }; out: { x: number; y: number }; size: number } {
+  const k = rig.worldToScreen(corner.x, corner.y, corner.z);
+  const e1 = rig.worldToScreen(edgeA.x, edgeA.y, edgeA.z), e2 = rig.worldToScreen(edgeB.x, edgeB.y, edgeB.z);
+  const unit = (vx: number, vy: number) => {
+    const l = Math.hypot(vx, vy) || 1;
+    return { x: vx / l, y: vy / l };
+  };
+  const u1 = unit(k.x - e1.x, k.y - e1.y), u2 = unit(k.x - e2.x, k.y - e2.y);
+  const out = unit(u1.x + u2.x, u1.y + u2.y);
+  const q = rig.worldToScreen(corner.x + mm, corner.y, corner.z);
+  const size = Math.max(minPx, Math.min(maxPx, Math.hypot(q.x - k.x, q.y - k.y)));
+  const half = Math.acos(Math.max(-1, Math.min(1, u1.x * u2.x + u1.y * u2.y))) / 2;
+  const reach = Math.min(size * 3, (size / 2 + GAP_PX) / Math.max(0.2, Math.sin(half)));
+  return { p: { x: k.x + out.x * reach, y: k.y + out.y * reach }, out, size };
 }
 
 export function lifeOf(m: Mat): number {
@@ -159,22 +184,8 @@ export class LifeCounters {
         continue;
       }
       b.el.hidden = false;
-      const corner = rig.worldToScreen(k.x, k.y, MAT_T);
       const along = pt(MAT_W / 2, MAT_H / 2), down = pt(-MAT_W / 2, -MAT_H / 2);
-      const e1 = rig.worldToScreen(along.x, along.y, MAT_T), e2 = rig.worldToScreen(down.x, down.y, MAT_T);
-      const unit = (vx: number, vy: number) => {
-        const l = Math.hypot(vx, vy) || 1;
-        return { x: vx / l, y: vy / l };
-      };
-      const u1 = unit(corner.x - e1.x, corner.y - e1.y), u2 = unit(corner.x - e2.x, corner.y - e2.y);
-      const out = unit(u1.x + u2.x, u1.y + u2.y);
-      // As big as BADGE_MM at the mat's corner looks here, within limits.
-      const q = rig.worldToScreen(k.x + BADGE_MM, k.y, MAT_T);
-      const size = Math.max(BADGE_MIN_PX, Math.min(BADGE_MAX_PX, Math.hypot(q.x - corner.x, q.y - corner.y)));
-      // Far enough out along the corner's outside that the circle clears both edges.
-      const half = Math.acos(Math.max(-1, Math.min(1, u1.x * u2.x + u1.y * u2.y))) / 2;
-      const reach = Math.min(size * 3, (size / 2 + GAP_PX) / Math.max(0.2, Math.sin(half)));
-      const p = { x: corner.x + out.x * reach, y: corner.y + out.y * reach };
+      const { p, out, size } = offCorner(rig, { ...k, z: MAT_T }, { ...along, z: MAT_T }, { ...down, z: MAT_T }, BADGE_MM, BADGE_MIN_PX, BADGE_MAX_PX);
       b.el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -50%)`;
       // The bubble sits on the badge's far side from the mat, so it never covers it either.
       if (b.bubble.classList.contains('show')) {

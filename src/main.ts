@@ -30,6 +30,7 @@ import { Mats } from './mats';
 import { buildStandSection } from './ui/standTab';
 import { installStandSnap } from './standSnap';
 import { LifeCounters } from './ui/lifeCounter';
+import { HandCount } from './ui/handCount';
 import { fromSlope, isStand, raySlope, raySlopeLocal, SLOPE_BOX } from './state/stand';
 import { uprightYaw, type Placed } from './state/piles';
 import type { Mat } from './state/types';
@@ -105,6 +106,8 @@ app.mats = mats;
 installStandSnap(app);
 // A life counter on every playmat (decision 239).
 new LifeCounters(app, mats);
+// A hovered stand counts the cards on it (decision 250).
+new HandCount(app, mats);
 // Pressing on the play space collapses the side panels for more room, unless pinned open
 // (decisions 137, 139). The table widens under the press, so the camera shifts to keep the
 // table point under the cursor where it was, before the press itself is handled.
