@@ -18,6 +18,10 @@ import { CARD_H, CARD_T, CARD_W } from './state/types';
 const CARRY = 16;
 /** How quickly held dice close in on their places under the cursor, 1/s (decision 256). */
 const GLIDE_RATE = 18;
+/** Held dice lean into their motion (decision 261): radians per mm/s, at most this much, eased at this rate (1/s). */
+const SWAY_PER_SPEED = 0.0012;
+const SWAY_MAX = 0.5;
+const SWAY_RATE = 10;
 
 export class Dice {
   readonly selected = new Set<string>();
@@ -25,6 +29,8 @@ export class Dice {
   hovered: string | null = null;
   /** Dice being dragged or rolled: hands off. */
   private readonly busy = new Set<string>();
+  /** Each carried die's smoothed speed on the table, mm/s, and its own wobble's phase (decision 261). */
+  private readonly sway = new Map<string, { vx: number; vy: number; phase: number }>();
   /** Dice being dragged, and where each is heading under the cursor. */
   private carrying: { uid: string; x: number; y: number; die: Die }[] | null = null;
 
@@ -52,13 +58,31 @@ export class Dice {
 
   /** Held dice close in on their places under the cursor, a share each frame. */
   private glide(dt: number): void {
-    if (!this.carrying) return;
+    if (!this.carrying) {
+      this.sway.clear();
+      return;
+    }
     const k = 1 - Math.exp(-GLIDE_RATE * dt);
+    const ease = 1 - Math.exp(-SWAY_RATE * dt);
     const skip = new Set(this.carrying.map((c) => c.uid));
+    const t = performance.now() / 1000;
     for (const c of this.carrying) {
       const now = this.layer.drawnAt(c.uid)?.position;
       const x = now ? now.x + (c.x - now.x) * k : c.x, y = now ? now.y + (c.y - now.y) * k : c.y;
-      this.layer.pose(c.uid, { x, y, z: this.surfaceAt(x, y, skip) + DIE_SIZE / 2 + CARRY }, dieTurn(c.die.value, c.die.yaw));
+      // Loose in the hand (decision 261): it leans and tips the way it is moving,
+      // rises a little with speed, and wobbles a touch, as held cards do.
+      const sw = this.sway.get(c.uid) ?? { vx: 0, vy: 0, phase: Math.random() * 6 };
+      if (now && dt > 0) {
+        sw.vx += ((x - now.x) / dt - sw.vx) * ease;
+        sw.vy += ((y - now.y) / dt - sw.vy) * ease;
+      }
+      this.sway.set(c.uid, sw);
+      const speed = Math.hypot(sw.vx, sw.vy);
+      const lean = Math.min(SWAY_MAX, speed * SWAY_PER_SPEED);
+      const q = dieTurn(c.die.value, c.die.yaw + Math.sin(t * 3.1 + sw.phase) * 0.06);
+      if (lean > 1e-4) q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(-sw.vy / speed, sw.vx / speed, 0), lean));
+      const bob = Math.min(6, speed * 0.012) + Math.sin(t * 4.3 + sw.phase) * 0.8;
+      this.layer.pose(c.uid, { x, y, z: this.surfaceAt(x, y, skip) + DIE_SIZE / 2 + CARRY + bob }, q);
     }
   }
 
