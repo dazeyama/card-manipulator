@@ -6,7 +6,10 @@ import { CARD_H, CARD_T, CARD_W, type Card } from './state/types';
 import { gridLayout, layOrder, looseStackLayout, nextQuarterClockwise, overlaps, shuffled, snapYaw, spreadLayout, uprightYaw, type Footprint, type Placed } from './state/piles';
 import type { Spread } from './state/store';
 import { colourGroup, curveLayout, type CurveCard } from './state/curve';
-import { arcHand, fanLayout, handLayout } from './state/fan';
+import { arcHand, fanLayout, HAND_ROW, handLayout } from './state/fan';
+
+/** The gap between the face-down piles 0 deals (decision 236), mm. */
+const PILE_GAP = 10;
 import { rankLayout, type RankCard, type RankMode } from './state/rankLayout';
 import { colourLayout, type ColourCard } from './state/colourLayout';
 import { alignTo, fitOnStand, fromSlope, inFrontOf, isStand, SLOPE_LEN, slopePose, STAND_W } from './state/stand';
@@ -402,6 +405,27 @@ export class Commands {
     land(this.app, landings, { stagger: Math.min(30, 300 / uids.length), arc: 14 });
     const spots = new Map(landings.map((l) => [l.uid, { x: l.x, y: l.y }]));
     for (const uid of uids) this.fanOf.set(uid, spots);
+  }
+
+  /**
+   * 0 with Face down? ticked (decision 236): the top `count` cards of `source`
+   * dealt face down at `at` as messy piles of up to 15, close together in a
+   * grid, like packs (squared stacks in Tidy mode). On a stand's slope if
+   * clicked there, or in front of it if they don't fit.
+   */
+  dealPiles(source: string[], count: number, at: { x: number; y: number }, stand: Mat | null = null): void {
+    const store = this.app.store;
+    const top = byHeight(this.app, source.filter((u) => store.cards.has(u))).slice(-count);
+    if (!top.length) return;
+    leaveSpreads(this.app, top);
+    const packs: string[][] = [];
+    for (let i = 0; i < top.length; i += HAND_ROW) packs.push(top.slice(i, i + HAND_ROW));
+    // One spot per pile, close together, upright to a stand if on one.
+    const spots = alignTo(gridLayout(packs.length, at, PILE_GAP), at, stand?.yaw ?? 0);
+    const exclude = new Set(top);
+    const landings = inSpace(stand?.uid ?? null, () => packs.flatMap((pack, i) => pileAt(this.app, pack, spots[i], exclude)));
+    for (const l of landings) l.faceUp = false;
+    land(this.app, landings, { stagger: Math.min(6, 300 / top.length), arc: 10 });
   }
 
   /**

@@ -391,6 +391,7 @@ for (let n = 1; n <= 9; n++) {
 }
 // 0: the same, for any number of cards, asked for in a dialog: a whole sealed pool at once (decision 162).
 let askingCount = false;
+let zeroFaceDown = false;
 keyboard.bind('0', () => {
   if (drag.dragging || askingCount) return;
   const source = hoveredPile();
@@ -399,9 +400,12 @@ keyboard.bind('0', () => {
   app.drawing = null;
   askingCount = true;
   const all = source.length;
-  void numberDialog(`How many cards to draw? This pile has ${all.toLocaleString()}.`, { min: 1, max: all, value: all, ok: 'Draw' })
-    .then((n) => {
-      if (n && source.some((u) => store.cards.has(u))) app.drawing = { count: n, source };
+  // Face down? deals them as face-down messy piles instead of a hand (decision 236); the tick is remembered.
+  void numberDialog(`How many cards to draw? This pile has ${all.toLocaleString()}.`, { min: 1, max: all, value: all, ok: 'Draw', check: { label: 'Face down? (in piles of 15, not a hand)', checked: zeroFaceDown } })
+    .then((r) => {
+      if (!r) return;
+      zeroFaceDown = r.checked;
+      if (source.some((u) => store.cards.has(u))) app.drawing = { count: r.value, source, faceDown: r.checked };
     })
     .finally(() => (askingCount = false));
 });
@@ -466,7 +470,8 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
   const at = slope?.at ?? app.rig.screenToPlane(e.clientX - r.left, e.clientY - r.top, 0);
   if (at) {
     app.showGesture('draw');
-    commands.dealHand(draw.source, draw.count, at, slope?.m ?? null);
+    if (draw.faceDown) commands.dealPiles(draw.source, draw.count, at, slope?.m ?? null);
+    else commands.dealHand(draw.source, draw.count, at, slope?.m ?? null);
   }
 }, true);
 // Spreading (decision 159): a click spreads the cards centred there; a drag draws a box they fit inside.

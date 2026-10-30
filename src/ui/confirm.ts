@@ -58,22 +58,27 @@ export function textDialog(message: string, opts: { value: string; ok?: string }
 
 /**
  * A small modal asking for a whole number from `min` to `max` (0 to draw
- * any number of cards, decision 162). Resolves with the number, or null if
+ * any number of cards, decision 162), with an optional checkbox (Face down?,
+ * decision 236). Resolves with the number and the box's tick, or null if
  * cancelled. Out-of-range numbers are brought into range.
  */
-export function numberDialog(message: string, opts: { min: number; max: number; value: number; ok?: string }): Promise<number | null> {
+export function numberDialog(message: string, opts: { min: number; max: number; value: number; ok?: string; check?: { label: string; checked: boolean } }): Promise<{ value: number; checked: boolean } | null> {
   return new Promise((resolve) => {
     const input = h('input', { type: 'number', class: 'grow', min: String(opts.min), max: String(opts.max), step: '1', value: String(opts.value), 'aria-label': message });
     const yes = h('button', { class: 'btn primary' }, opts.ok ?? 'OK');
     const no = h('button', { class: 'btn' }, 'Cancel');
-    const box = h('div', { class: 'modal' }, h('p', {}, message), h('div', { class: 'row' }, input), h('div', { class: 'row end' }, no, yes));
+    const tick = h('input', { type: 'checkbox' });
+    tick.checked = !!opts.check?.checked;
+    const box = h('div', { class: 'modal' }, h('p', {}, message), h('div', { class: 'row' }, input),
+      ...(opts.check ? [h('div', { class: 'row' }, h('label', { class: 'inline' }, tick, opts.check.label))] : []),
+      h('div', { class: 'row end' }, no, yes));
     const back = h('div', { class: 'modal-back' }, box);
     document.body.append(back);
     input.focus();
     input.select();
     const done = (v: number | null) => {
       back.remove();
-      resolve(v);
+      resolve(v === null ? null : { value: v, checked: tick.checked });
     };
     const accept = () => {
       const n = Math.round(Number(input.value));

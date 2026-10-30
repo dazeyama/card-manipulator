@@ -51,7 +51,7 @@ export class App {
   /** Ctrl is held: Tidy mode is on while it is (decision 129). */
   ctrlHeld = false;
   /** A number was pressed over a pile: the next click deals that many of its top cards as a hand (decision 143). */
-  drawing: { count: number; source: string[] } | null = null;
+  drawing: { count: number; source: string[]; faceDown?: boolean } | null = null;
   /** The action gesture the cursor shows for a moment after a key (decision 164), and when it began. */
   gesture: { name: Gesture; at: number; settle?: string[] } | null = null;
   /** X was pressed: the next click or dragged box on the table spreads these cards there (decision 159); X X, reversed (decision 215). */
