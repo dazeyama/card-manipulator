@@ -41,6 +41,7 @@ import { Undo } from './undo';
 import { fitLayout, gridLayout } from './state/piles';
 import { Graphics } from './graphics';
 import { SelectionMarkers } from './render/markers';
+import { SpreadPreview } from './ui/spreadPreview';
 import { ACCENT } from './app';
 import { loadDoc, toDoc, validateDoc } from './io/saveFile';
 import { downloadText, pickFile, slug } from './io/download';
@@ -431,6 +432,8 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
 const spreadBox = h('div', { class: 'marquee' });
 spreadBox.hidden = true;
 app.overlay.append(spreadBox);
+// While the box is dragged, the outlines of where the cards will land (decision 207).
+const spreadPreview = new SpreadPreview(app);
 let endSpreadGesture: (() => void) | null = null;
 app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
   const spreading = app.spreading;
@@ -452,11 +455,16 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
       width: `${Math.abs(x1 - x0)}px`,
       height: `${Math.abs(y1 - y0)}px`,
     });
+    const box = tableBox(x0, y0, x1, y1);
+    const count = spreading.source.filter((u) => store.cards.has(u)).length;
+    if (box && count) spreadPreview.show(fitLayout(count, box));
+    else spreadPreview.hide();
   };
   const end = () => {
     window.removeEventListener('pointermove', move, true);
     window.removeEventListener('pointerup', up, true);
     spreadBox.hidden = true;
+    spreadPreview.hide();
     endSpreadGesture = null;
   };
   const up = (ev: PointerEvent) => {
