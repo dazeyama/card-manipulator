@@ -17,6 +17,6 @@ export function buildStandTab(app: App, mats: Mats): HTMLElement {
   return h('div', {},
     h('div', { class: 'row' }, name),
     h('div', { class: 'row' }, go),
-    h('p', { class: 'muted small' }, 'A 45 × 20 cm wooden wedge. Cards dropped on it lie at 25°, facing you; the name plate on its back faces the player across the table. It moves like a playmat: drag it, Alt + drag to carry its cards, R turns it, 🔒 locks it, ✏️ changes the name.'),
+    h('p', { class: 'muted small' }, 'A 45 × 20 cm wooden wedge whose 25° slope is a second little table, facing you: cards dragged over it tilt onto it and snap flat on it, and S, T, H, X, P and 1–9 lay them out there. The name plate on its back faces the player across the table. It moves like a playmat and always takes its cards along: drag it, R turns it, 🔒 locks it, ✏️ changes the name, Delete puts its cards down on the table.'),
   );
 }

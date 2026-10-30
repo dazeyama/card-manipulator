@@ -9,6 +9,8 @@ import { colourGroup, curveLayout, type CurveCard } from './state/curve';
 import { fanLayout, handLayout } from './state/fan';
 import { rankLayout, type RankCard, type RankMode } from './state/rankLayout';
 import { colourLayout, type ColourCard } from './state/colourLayout';
+import { alignTo, fitOnStand, isStand, slopePose } from './state/stand';
+import type { Mat } from './state/types';
 
 export interface Landing {
   uid: string;
@@ -17,6 +19,40 @@ export interface Landing {
   z: number;
   yaw: number;
   faceUp?: boolean;
+  /** The card stand it lands on, or null for the table (decision 221); left out, it stays where it is. */
+  stand?: string | null;
+}
+
+/**
+ * Where landings worked out now go (decision 221): the table (null) or a card
+ * stand's slope. Cards there stack only on each other, and a group laid out
+ * there is kept on the slope. Set around a placement with `inSpace`.
+ */
+let space: string | null = null;
+
+/** Work out landings on a card stand's slope (or the table, null). */
+export function inSpace<T>(stand: string | null, fn: () => T): T {
+  const was = space;
+  space = stand;
+  try {
+    return fn();
+  } finally {
+    space = was;
+  }
+}
+
+/** The stand landings go to now, if any. */
+function spaceStand(app: App): Mat | null {
+  const m = space ? app.store.mats.get(space) : undefined;
+  return m && isStand(m) ? m : null;
+}
+
+/** The card stand every one of these cards is on, or null (decision 221). */
+export function standOf(app: App, uids: string[]): Mat | null {
+  const first = uids.length ? app.store.cards.get(uids[0])?.stand : undefined;
+  if (!first || !uids.every((u) => app.store.cards.get(u)?.stand === first)) return null;
+  const m = app.store.mats.get(first);
+  return m && isStand(m) ? m : null;
 }
 
 /** Two presses of R within this long stand the cards upright (decision 102), ms. */
@@ -33,14 +69,22 @@ export function land(app: App, landings: Landing[], opts: { stagger?: number; du
   if (!landings.length) return;
   // A card still falling is the landing's now, not the fall's (decision 219).
   app.physics?.release(landings.map((l) => l.uid));
+  // Onto a card stand, or off one onto the table (decision 221).
+  for (const l of landings) {
+    const c = app.store.cards.get(l.uid);
+    if (c && l.stand !== undefined) c.stand = l.stand ?? undefined;
+  }
   app.store.moveCards(landings);
   const stagger = opts.stagger ?? Math.min(1.5, 200 / landings.length);
   landings.forEach((l, i) => {
     app.motion.held.delete(l.uid);
     const card = app.store.cards.get(l.uid);
+    // On a stand, straight to where it lies on the slope.
+    const m = card?.stand ? app.store.mats.get(card.stand) : undefined;
+    const to = m ? slopePose(m, l) : { x: l.x, y: l.y, z: l.z, yaw: l.yaw };
     app.motion.animate(
       l.uid,
-      { x: l.x, y: l.y, z: l.z, yaw: l.yaw, roll: (l.faceUp ?? card?.faceUp ?? true) ? 0 : Math.PI },
+      { ...to, roll: (l.faceUp ?? card?.faceUp ?? true) ? 0 : Math.PI },
       { duration: opts.duration ?? SETTLE_MS, delay: i * stagger, arc: opts.arc ?? 0, bounce: 0.8 },
     );
   });
@@ -61,6 +105,8 @@ function nearby(app: App, exclude: Set<string>, around: Footprint[]): Card[] {
   const out: Card[] = [];
   for (const c of app.store.cards.values()) {
     if (exclude.has(c.uid)) continue;
+    // Cards on a stand and on the table never lie on each other (decision 221).
+    if ((c.stand ?? null) !== space) continue;
     if (c.x < minX - pad || c.x > maxX + pad || c.y < minY - pad || c.y > maxY + pad) continue;
     out.push(c);
   }
@@ -79,20 +125,25 @@ function topOf(cards: Placed[], at: Footprint): number {
  * beneath it, including the cards placed before it (messy drops, formation).
  */
 export function placeSequential(app: App, uids: string[], spots: Footprint[], exclude = new Set(uids)): Landing[] {
+  // On a stand the whole group is kept on its slope (decision 221).
+  const m = spaceStand(app);
+  if (m) spots = fitOnStand(m, spots.slice(0, uids.length));
   const surface: Placed[] = nearby(app, exclude, spots);
   return uids.map((uid, i) => {
     const s = spots[i];
     const z = topOf(surface, s) + CARD_T / 2;
     const placed = { x: s.x, y: s.y, yaw: s.yaw, z };
     surface.push(placed);
-    return { uid, ...placed };
+    return { uid, ...placed, stand: space };
   });
 }
 
 /** A neat stack at a spot, bottom card first, on top of whatever is there. */
 export function stackAt(app: App, uids: string[], at: Footprint, exclude = new Set(uids)): Landing[] {
+  const m = spaceStand(app);
+  if (m) at = fitOnStand(m, [at])[0];
   const base = topOf(nearby(app, exclude, [at]), at);
-  return uids.map((uid, i) => ({ uid, x: at.x, y: at.y, yaw: at.yaw, z: base + CARD_T / 2 + i * CARD_T }));
+  return uids.map((uid, i) => ({ uid, x: at.x, y: at.y, yaw: at.yaw, z: base + CARD_T / 2 + i * CARD_T, stand: space }));
 }
 
 /**
@@ -107,6 +158,11 @@ export function pileAt(app: App, uids: string[], at: Footprint, exclude = new Se
 /** Selected cards ordered bottom to top. */
 export function byHeight(app: App, uids: Iterable<string>): string[] {
   return [...uids].map((u) => app.store.cards.get(u)!).filter(Boolean).sort((a, b) => a.z - b.z).map((c) => c.uid);
+}
+
+/** Where a big table layout (curve, rank, colour) of these cards goes: where they are, or the middle of the view for cards on a stand (decision 221). */
+function layoutCentre(app: App, uids: string[]): { x: number; y: number } {
+  return uids.some((u) => app.store.cards.get(u)?.stand) ? { x: app.rig.target.x, y: app.rig.target.y } : centroid(app, uids);
 }
 
 function centroid(app: App, uids: string[]): { x: number; y: number } {
@@ -156,7 +212,9 @@ export class Commands {
     if (uids.length < 1) return;
     leaveSpreads(this.app, uids);
     const c = centroid(this.app, uids);
-    land(this.app, pileAt(this.app, uids, { x: c.x, y: c.y, yaw: 0 }));
+    // Cards all on one stand stack there, square to it (decision 221).
+    const m = standOf(this.app, uids);
+    land(this.app, inSpace(m?.uid ?? null, () => pileAt(this.app, uids, { x: c.x, y: c.y, yaw: m?.yaw ?? 0 })));
   }
 
   /**
@@ -178,7 +236,7 @@ export class Commands {
     });
     leaveSpreads(this.app, cards);
     // Centred where the cards are, or at `centre` (Shift + C: the middle of the view, decision 191).
-    const layout = curveLayout(info, centre ?? centroid(this.app, cards), { byColour, split: store.settings.curveSplit });
+    const layout = curveLayout(info, centre ?? layoutCentre(this.app, cards), { byColour, split: store.settings.curveSplit });
     const uids = layout.map((p) => p.uid);
     const landings = placeSequential(this.app, uids, layout.map((p) => p.at));
     land(this.app, landings, { stagger: Math.min(2, 400 / uids.length), arc: 10 });
@@ -233,7 +291,7 @@ export class Commands {
       return { uid, name: r?.name ?? '', creature: /\bCreature\b/.test((r?.type_line ?? '').split('//')[0]), value: mode === 'elo' ? store.eloOf(card) : rank };
     });
     leaveSpreads(this.app, cards);
-    const layout = rankLayout(info, centroid(this.app, cards), { mode, split: store.settings.curveSplit });
+    const layout = rankLayout(info, layoutCentre(this.app, cards), { mode, split: store.settings.curveSplit });
     const uids = layout.map((p) => p.uid);
     const landings = placeSequential(this.app, uids, layout.map((p) => p.at));
     land(this.app, landings, { stagger: Math.min(2, 400 / uids.length), arc: 10 });
@@ -259,7 +317,7 @@ export class Commands {
       return { uid, name: r?.name ?? '', mv: r?.cmc ?? 0, land: /\bLand\b/.test(type), creature: /\bCreature\b/.test(type), colours };
     });
     leaveSpreads(this.app, cards);
-    const layout = colourLayout(info, centroid(this.app, cards), { split: store.settings.curveSplit });
+    const layout = colourLayout(info, layoutCentre(this.app, cards), { split: store.settings.curveSplit });
     const uids = layout.map((p) => p.uid);
     const landings = placeSequential(this.app, uids, layout.map((p) => p.at));
     land(this.app, landings, { stagger: Math.min(2, 400 / uids.length), arc: 10 });
@@ -294,7 +352,10 @@ export class Commands {
     if (cards.length < 2) return;
     const uids = byHeight(this.app, cards);
     leaveSpreads(this.app, uids);
-    const landings = placeSequential(this.app, uids, fanLayout(uids.length, centroid(this.app, uids)));
+    // On a stand, fanned on its slope, upright to it (decision 221).
+    const m = standOf(this.app, uids);
+    const centre = centroid(this.app, uids);
+    const landings = inSpace(m?.uid ?? null, () => placeSequential(this.app, uids, alignTo(fanLayout(uids.length, centre), centre, m?.yaw ?? 0)));
     land(this.app, landings, { stagger: Math.min(3, 300 / uids.length), arc: 6 });
     const spots = new Map(landings.map((l) => [l.uid, { x: l.x, y: l.y }]));
     for (const uid of uids) this.fanOf.set(uid, spots);
@@ -305,13 +366,14 @@ export class Commands {
    * and lay them out at `at` as a fanned hand, like H, always face up. H on
    * the hand stacks it back up.
    */
-  dealHand(source: string[], count: number, at: { x: number; y: number }): void {
+  dealHand(source: string[], count: number, at: { x: number; y: number }, stand: Mat | null = null): void {
     const store = this.app.store;
     const top = byHeight(this.app, source.filter((u) => store.cards.has(u))).slice(-count);
     if (!top.length) return;
     leaveSpreads(this.app, top);
     // More than 15 cards are dealt as packs of 15, one under the next (decision 205).
-    const landings = placeSequential(this.app, top, handLayout(top.length, at));
+    // Clicked on a card stand's slope: dealt onto it, upright to it (decision 221).
+    const landings = inSpace(stand?.uid ?? null, () => placeSequential(this.app, top, alignTo(handLayout(top.length, at), at, stand?.yaw ?? 0)));
     // A hand is for reading: face down cards come up.
     for (const l of landings) l.faceUp = true;
     land(this.app, landings, { stagger: Math.min(30, 300 / top.length), arc: 14 });
@@ -334,7 +396,8 @@ export class Commands {
     const uids = shuffled(cards);
     leaveSpreads(this.app, uids);
     const c = centroid(this.app, uids);
-    land(this.app, pileAt(this.app, uids, { x: c.x, y: c.y, yaw: 0 }), { stagger: Math.min(3, 300 / uids.length), arc: 8 });
+    const m = standOf(this.app, uids);
+    land(this.app, inSpace(m?.uid ?? null, () => pileAt(this.app, uids, { x: c.x, y: c.y, yaw: m?.yaw ?? 0 })), { stagger: Math.min(3, 300 / uids.length), arc: 8 });
   }
 
   /** X: spread the selection in a grid at its centroid. A selection that is exactly one stack spreads beside it instead. */
@@ -348,8 +411,10 @@ export class Commands {
     }
     const ordered = byHeight(this.app, uids).reverse();
     leaveSpreads(this.app, ordered);
-    const grid = gridLayout(ordered.length, centroid(this.app, ordered));
-    land(this.app, placeSequential(this.app, ordered, grid));
+    const centre = centroid(this.app, ordered);
+    const m = standOf(this.app, ordered);
+    const grid = alignTo(gridLayout(ordered.length, centre), centre, m?.yaw ?? 0);
+    land(this.app, inSpace(m?.uid ?? null, () => placeSequential(this.app, ordered, grid)));
   }
 
   /**
@@ -357,7 +422,7 @@ export class Commands {
    * grid there, top card first. A whole pile remembers where it came from,
    * so a double-click or X on it stacks it back there.
    */
-  spreadTo(cards: string[], layout: (count: number) => Placed[], reverse = false): void {
+  spreadTo(cards: string[], layout: (count: number) => Placed[], reverse = false, stand: string | null = null): void {
     const store = this.app.store;
     if (!cards.length) return;
     const pile = store.pileOf(cards[0]);
@@ -373,7 +438,8 @@ export class Commands {
     // X X lays each row right to left, so the mana costs show instead of the names (decision 215).
     const spots = layout(ordered.length);
     const order = layOrder(spots, reverse);
-    const landings = placeSequential(this.app, order.map((i) => ordered[i]), order.map((i) => spots[i]));
+    // Onto a stand's slope when clicked there (decision 221).
+    const landings = inSpace(stand, () => placeSequential(this.app, order.map((i) => ordered[i]), order.map((i) => spots[i])));
     // Overlapping cards would tip to rest on each other; these stay flat where they are laid (decision 160).
     for (const l of landings) store.cards.get(l.uid)!.laidAt = { x: l.x, y: l.y };
     land(this.app, landings, { stagger: Math.min(4, 300 / ordered.length), arc: 6 });
@@ -383,11 +449,11 @@ export class Commands {
    * Pointer mode (decision 189): move cards to a spot as one stack, on top of
    * whatever is there, loose or (in Tidy mode) squared, keeping their order.
    */
-  stackAt(cards: string[], at: { x: number; y: number }): void {
+  stackAt(cards: string[], at: { x: number; y: number }, stand: Mat | null = null): void {
     if (!cards.length) return;
     const ordered = byHeight(this.app, cards);
     leaveSpreads(this.app, ordered);
-    land(this.app, pileAt(this.app, ordered, { x: at.x, y: at.y, yaw: 0 }), { stagger: Math.min(3, 300 / ordered.length), arc: 10 });
+    land(this.app, inSpace(stand?.uid ?? null, () => pileAt(this.app, ordered, { x: at.x, y: at.y, yaw: stand?.yaw ?? 0 })), { stagger: Math.min(3, 300 / ordered.length), arc: 10 });
   }
 
   /** T: square up each pile the selection touches, without merging piles. Loose cards snap to a quarter turn. */
@@ -402,7 +468,7 @@ export class Commands {
         pile.cardUids.forEach((id) => done.add(id));
         const bottom = store.cards.get(pile.cardUids[0])!;
         const at = { x: bottom.x, y: bottom.y, yaw: snapYaw(bottom.yaw) };
-        landings.push(...stackAt(this.app, pile.cardUids, at, new Set(pile.cardUids)));
+        landings.push(...inSpace(bottom.stand ?? null, () => stackAt(this.app, pile.cardUids, at, new Set(pile.cardUids))));
       } else {
         done.add(u);
         const c = store.cards.get(u)!;
@@ -502,7 +568,7 @@ export class Commands {
     store.spreads.set(spread.id, spread);
     for (const u of topFirst) store.cards.get(u)!.spreadOf = spread.id;
     const spots = spreadLayout(topFirst.length, spread.anchor);
-    land(this.app, placeSequential(this.app, topFirst, spots), { stagger: Math.min(4, 300 / topFirst.length), arc: 6 });
+    land(this.app, inSpace(bottom.stand ?? null, () => placeSequential(this.app, topFirst, spots)), { stagger: Math.min(4, 300 / topFirst.length), arc: 6 });
   }
 
   /** Put a spread back into a (loose) stack at its anchor, in the same order. */
@@ -514,6 +580,7 @@ export class Commands {
     store.spreads.delete(spreadId);
     for (const u of uids) store.cards.get(u)!.spreadOf = null;
     const bottomFirst = [...uids].reverse();
-    land(this.app, pileAt(this.app, bottomFirst, { x: sp.anchor.x, y: sp.anchor.y, yaw: sp.yaw }), { stagger: Math.min(4, 300 / Math.max(1, uids.length)), arc: 6 });
+    const m = standOf(this.app, bottomFirst);
+    land(this.app, inSpace(m?.uid ?? null, () => pileAt(this.app, bottomFirst, { x: sp.anchor.x, y: sp.anchor.y, yaw: sp.yaw })), { stagger: Math.min(4, 300 / Math.max(1, uids.length)), arc: 6 });
   }
 }

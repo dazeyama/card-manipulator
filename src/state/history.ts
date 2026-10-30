@@ -6,7 +6,7 @@ import type { Spread, Store } from './store';
 import type { Card, Mat, NamedPile } from './types';
 
 /** A card as undo keeps it: everything an action can change. */
-export type CardSnap = Pick<Card, 'uid' | 'scryfallId' | 'finish' | 'x' | 'y' | 'z' | 'yaw' | 'faceUp' | 'pileId' | 'spreadOf' | 'laidAt'>;
+export type CardSnap = Pick<Card, 'uid' | 'scryfallId' | 'finish' | 'x' | 'y' | 'z' | 'yaw' | 'faceUp' | 'pileId' | 'spreadOf' | 'laidAt' | 'stand'>;
 
 export interface TableSnap {
   cards: CardSnap[];
@@ -20,7 +20,7 @@ export function snapshot(store: Store): TableSnap {
     cards: [...store.cards.values()].map((c) => ({
       uid: c.uid, scryfallId: c.scryfallId, finish: c.finish,
       x: c.x, y: c.y, z: c.z, yaw: c.yaw, faceUp: c.faceUp,
-      pileId: c.pileId, spreadOf: c.spreadOf, laidAt: c.laidAt ? { ...c.laidAt } : undefined,
+      pileId: c.pileId, spreadOf: c.spreadOf, laidAt: c.laidAt ? { ...c.laidAt } : undefined, stand: c.stand,
     })),
     named: [...store.named.values()].map((p) => ({ ...p, anchor: { ...p.anchor } })),
     spreads: [...store.spreads.values()].map((s) => ({ ...s, anchor: { ...s.anchor }, uids: [...s.uids] })),
@@ -37,7 +37,7 @@ export interface CardDiff {
 
 function same(a: CardSnap, b: CardSnap): boolean {
   return a.x === b.x && a.y === b.y && a.z === b.z && a.yaw === b.yaw && a.faceUp === b.faceUp
-    && a.pileId === b.pileId && a.spreadOf === b.spreadOf
+    && a.pileId === b.pileId && a.spreadOf === b.spreadOf && a.stand === b.stand
     && a.laidAt?.x === b.laidAt?.x && a.laidAt?.y === b.laidAt?.y;
 }
 

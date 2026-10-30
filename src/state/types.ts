@@ -30,6 +30,11 @@ export interface Card {
    * flat, even over other cards, instead of tipping to rest on them.
    */
   laidAt?: { x: number; y: number };
+  /**
+   * The card stand it lies on (decision 221). Its x, y and yaw are then the
+   * stand's slope unrolled flat, and z its height above the slope (stand.ts).
+   */
+  stand?: string;
 }
 
 export type PileKind = 'stack' | 'messy';
@@ -183,6 +188,8 @@ export interface TableDoc {
     faceUp: boolean;
     pileId: string | null;
     spreadOf?: string | null;
+    /** The card stand it lies on (decision 221). */
+    stand?: string;
   }[];
   /** Open spreads (agent decision 61); older files have none. */
   spreads?: { id: string; anchor: { x: number; y: number }; yaw: number; uids: string[]; pileId: string | null }[];

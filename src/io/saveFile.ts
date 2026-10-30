@@ -16,6 +16,8 @@ export function toDoc(app: App, withCardData: boolean): TableDoc {
     spreadOf: c.spreadOf,
     // Rounded like x and y, so a card still where an X spread laid it stays flat after loading (decision 160).
     ...(c.laidAt ? { laidAt: { x: round(c.laidAt.x), y: round(c.laidAt.y) } } : {}),
+    // On a card stand's slope (decision 221).
+    ...(c.stand ? { stand: c.stand } : {}),
   }));
   const cardData: Record<string, CardRecord> = {};
   if (withCardData) {

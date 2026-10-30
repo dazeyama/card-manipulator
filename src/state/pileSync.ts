@@ -16,9 +16,14 @@ export function redetect(store: Store, moved: Set<string> = new Set()): void {
     if (sp.pileId && named.has(sp.pileId)) for (const u of sp.uids) spreadMember.set(u, sp.pileId);
   }
   const prev = new Map<string, string[]>();
-  const cards = [];
+  // Cards on each card stand, and on the table, form piles apart (decision 221):
+  // a stand's cards are laid out in its slope's own frame.
+  const spaces = new Map<string, { uid: string; x: number; y: number; z: number; yaw: number }[]>();
   for (const c of store.cards.values()) {
     if (spreadMember.has(c.uid)) continue;
+    const key = c.stand ?? '';
+    let cards = spaces.get(key);
+    if (!cards) spaces.set(key, (cards = []));
     cards.push({ uid: c.uid, x: c.x, y: c.y, z: c.z, yaw: c.yaw });
     if (c.pileId) {
       let list = prev.get(c.pileId);
@@ -26,7 +31,7 @@ export function redetect(store: Store, moved: Set<string> = new Set()): void {
       list.push(c.uid);
     }
   }
-  const found = detectPiles(cards, prev, undefined, { named, moved });
+  const found = [...spaces.values()].flatMap((cards) => detectPiles(cards, prev, undefined, { named, moved }));
   const piles = new Map<string, Pile>();
   for (const d of found) {
     const n = store.named.get(d.id);

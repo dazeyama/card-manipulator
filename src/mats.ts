@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { ACCENT, type App } from './app';
 import type { CustomGesture, Mods } from './input/mouse';
 import { ImageLoader } from './render/images';
+import { inSpace, land, placeSequential } from './commands';
 import { drawPlate, standGroup } from './render/standMesh';
 import { isStand, LIP_H, onStand, STAND_D, STAND_H, STAND_W, standHeightAt } from './state/stand';
 import { textDialog } from './ui/confirm';
@@ -175,9 +176,22 @@ export class Mats {
 
   /** R over a mat: a quarter turn clockwise, like a card. */
   rotate(uid: string): void {
-    const m = this.app.store.mats.get(uid);
+    const store = this.app.store;
+    const m = store.mats.get(uid);
     if (!m) return;
-    this.app.store.moveMat(uid, m.x, m.y, Math.round((m.yaw - Math.PI / 2) / (Math.PI / 2)) * (Math.PI / 2));
+    const yaw = Math.round((m.yaw - Math.PI / 2) / (Math.PI / 2)) * (Math.PI / 2);
+    // A card stand turns its cards with it, about its centre (decision 221).
+    const members = isStand(m) ? this.cardsOn(uid) : [];
+    if (members.length) {
+      const d = yaw - m.yaw, c = Math.cos(d), s = Math.sin(d);
+      store.moveCards(members.map((u) => {
+        const card = store.cards.get(u)!;
+        const dx = card.x - m.x, dy = card.y - m.y;
+        return { uid: u, x: m.x + dx * c - dy * s, y: m.y + dx * s + dy * c, yaw: card.yaw + d };
+      }));
+    }
+    store.moveMat(uid, m.x, m.y, yaw);
+    if (members.length) store.events.emit('settled', members);
     this.select(uid);
   }
 
@@ -205,7 +219,14 @@ export class Mats {
   }
 
   remove(uid: string): void {
-    this.app.store.removeMat(uid);
+    const store = this.app.store;
+    const m = store.mats.get(uid);
+    // A card stand's cards drop to the table where it stood (decision 221).
+    const members = m && isStand(m) ? this.cardsOn(uid).map((u) => store.cards.get(u)!).sort((a, b) => a.z - b.z) : [];
+    store.removeMat(uid);
+    if (members.length) {
+      land(this.app, inSpace(null, () => placeSequential(this.app, members.map((c) => c.uid), members.map((c) => ({ x: c.x, y: c.y, yaw: c.yaw })))));
+    }
   }
 
   // ---- drawing ----
@@ -367,7 +388,9 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
   cardsOn(uid: string): string[] {
     const m = this.app.store.mats.get(uid);
     if (!m) return [];
-    return ridersOf(m, this.app.store.cards.values());
+    // A card stand's are its own cards (decision 221); a mat carries none of those.
+    if (isStand(m)) return [...this.app.store.cards.values()].filter((c) => c.stand === uid).map((c) => c.uid);
+    return ridersOf(m, [...this.app.store.cards.values()].filter((c) => !c.stand));
   }
 
   // ---- dragging ----
@@ -382,7 +405,8 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
     const mat = app.store.mats.get(uid)!;
     const grab = app.rig.screenToPlane(sx, sy, 0)!;
     const start = { x: mat.x, y: mat.y };
-    let riders: { uid: string; x: number; y: number }[] | null = null;
+    /** The cards carried: where they are in the model, and where they are drawn (px, py). */
+    let riders: { uid: string; x: number; y: number; px: number; py: number }[] | null = null;
     let moved = false;
     const finish = (dx: number, dy: number, keep: boolean) => {
       this.dragging = null;
@@ -396,8 +420,8 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
           app.motion.held.delete(r.uid);
           const pose = app.layer.pose(r.uid);
           if (pose) {
-            pose.x = r.x + dx;
-            pose.y = r.y + dy;
+            pose.x = r.px + dx;
+            pose.y = r.py + dy;
             app.layer.touch(r.uid);
           }
         }
@@ -413,13 +437,14 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
         if (!moved && Math.hypot(x - sx, y - sy) <= 4) return;
         if (!moved) {
           moved = true;
-          // Alt carries the cards lying on the mat (owner's choice).
-          if (mods.alt) {
+          // Alt carries the cards lying on the mat (owner's choice); a card stand always carries its own (decision 221).
+          if (mods.alt || isStand(mat)) {
             riders = this.cardsOn(uid).map((u) => {
               const c = app.store.cards.get(u)!;
               app.motion.cancel(u);
               app.motion.held.add(u);
-              return { uid: u, x: c.x, y: c.y };
+              const pose = app.layer.pose(u);
+              return { uid: u, x: c.x, y: c.y, px: pose?.x ?? c.x, py: pose?.y ?? c.y };
             });
           }
           this.dragging = { uid, carrying: !!riders?.length };
@@ -432,8 +457,8 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
         for (const r of riders ?? []) {
           const pose = app.layer.pose(r.uid);
           if (!pose) continue;
-          pose.x = r.x + last.dx;
-          pose.y = r.y + last.dy;
+          pose.x = r.px + last.dx;
+          pose.y = r.py + last.dy;
           app.layer.touch(r.uid);
         }
       },

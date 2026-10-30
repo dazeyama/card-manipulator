@@ -28,6 +28,8 @@ import { confirmDialog, numberDialog } from './ui/confirm';
 import { Cursors } from './ui/cursors';
 import { Mats } from './mats';
 import { buildStandTab } from './ui/standTab';
+import { alignTo, isStand, raySlope } from './state/stand';
+import type { Mat } from './state/types';
 import { buildPlaymatTab } from './ui/playmatTab';
 import { ContextHints } from './ui/hints';
 import { HelpPanel } from './ui/helpPanel';
@@ -419,6 +421,16 @@ keyboard.bind('p', () => {
 });
 app.onFrame(() => pointBtn.classList.toggle('on', !!app.placing));
 hud.addBesideSearch(pointBtn);
+/** A card stand's slope under a screen point, and the spot on it (the slope unrolled), or null (decision 221). */
+const slopeUnder = (sx: number, sy: number): { m: Mat; at: { x: number; y: number } } | null => {
+  const r = app.rig.rayFrom(sx, sy);
+  for (const m of store.mats.values()) {
+    if (!isStand(m)) continue;
+    const at = raySlope(m, r.origin, r.direction);
+    if (at) return { m, at };
+  }
+  return null;
+};
 app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
   const place = app.placing;
   if (!place || e.button !== 0) return;
@@ -426,9 +438,10 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
   e.preventDefault();
   app.placing = null;
   const r = app.canvas.getBoundingClientRect();
-  const at = app.rig.screenToPlane(e.clientX - r.left, e.clientY - r.top, 0);
+  const slope = slopeUnder(e.clientX - r.left, e.clientY - r.top);
+  const at = slope?.at ?? app.rig.screenToPlane(e.clientX - r.left, e.clientY - r.top, 0);
   const cards = place.source.filter((u) => store.cards.has(u));
-  if (at && cards.length) commands.stackAt(cards, at);
+  if (at && cards.length) commands.stackAt(cards, at, slope?.m ?? null);
 }, true);
 app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
   const draw = app.drawing;
@@ -437,10 +450,11 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
   e.preventDefault();
   app.drawing = null;
   const r = app.canvas.getBoundingClientRect();
-  const at = app.rig.screenToPlane(e.clientX - r.left, e.clientY - r.top, 0);
+  const slope = slopeUnder(e.clientX - r.left, e.clientY - r.top);
+  const at = slope?.at ?? app.rig.screenToPlane(e.clientX - r.left, e.clientY - r.top, 0);
   if (at) {
     app.showGesture('draw');
-    commands.dealHand(draw.source, draw.count, at);
+    commands.dealHand(draw.source, draw.count, at, slope?.m ?? null);
   }
 }, true);
 // Spreading (decision 159): a click spreads the cards centred there; a drag draws a box they fit inside.
@@ -498,6 +512,12 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
     if (boxed) {
       const box = tableBox(x0, y0, x1, y1);
       if (box) commands.spreadTo(spreading.source, (n) => fitLayout(n, box), !!spreading.reverse);
+      return;
+    }
+    // Clicked on a card stand's slope: spread on it, square to it (decision 221).
+    const slope = slopeUnder(x0, y0);
+    if (slope) {
+      commands.spreadTo(spreading.source, (n) => alignTo(gridLayout(n, slope.at), slope.at, slope.m.yaw), !!spreading.reverse, slope.m.uid);
       return;
     }
     const at = app.rig.screenToPlane(x0, y0, 0);

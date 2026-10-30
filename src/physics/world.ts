@@ -11,11 +11,11 @@
 import type RAPIER_NS from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import type { App } from '../app';
-import { land, placeSequential } from '../commands';
+import { inSpace, land, placeSequential, type Landing } from '../commands';
 import { snapYaw } from '../state/piles';
 import { restingTop } from './restSync';
 import { CARD_H, CARD_T, CARD_W, type Mat } from '../state/types';
-import { isStand, LIP_D, LIP_H, STAND_D, STAND_W, standProfile, standWorld } from '../state/stand';
+import { isStand, LIP_D, LIP_H, STAND_D, STAND_W, standProfile, standWorld, unrollPoint } from '../state/stand';
 import type { Pose } from '../render/cards';
 
 // Rapier (with its WASM inlined) is loaded on demand so the table shows first.
@@ -309,7 +309,28 @@ export class Physics {
     const live = results.filter((r) => app.store.cards.has(r.uid));
     // Lowest first, so the model stacks them the way they came to rest.
     live.sort((a, b) => a.z - b.z);
-    const landings = placeSequential(app, live.map((r) => r.uid), live.map((r) => ({ x: r.x, y: r.y, yaw: r.yaw })));
+    // A card that came to rest on a card stand's slope joins it there (decision 221).
+    const groups = new Map<string | null, { uid: string; x: number; y: number; yaw: number }[]>();
+    for (const r of live) {
+      let at: { x: number; y: number } | null = null;
+      let stand: string | null = null;
+      for (const m of app.store.mats.values()) {
+        if (!isStand(m) || r.z < 2) continue;
+        at = unrollPoint(m, r.x, r.y);
+        if (at) {
+          stand = m.uid;
+          break;
+        }
+      }
+      const spot = { uid: r.uid, x: at?.x ?? r.x, y: at?.y ?? r.y, yaw: r.yaw };
+      if (!groups.has(stand)) groups.set(stand, []);
+      groups.get(stand)!.push(spot);
+    }
+    const byUid = new Map<string, Landing>();
+    for (const [stand, spots] of groups) {
+      for (const l of inSpace(stand, () => placeSequential(app, spots.map((s) => s.uid), spots))) byUid.set(l.uid, l);
+    }
+    const landings = live.map((r) => byUid.get(r.uid)!);
     landings.forEach((l, i) => {
       l.faceUp = live[i].faceUp;
       // Keep the drawn roll on the same side of the turn so the snap doesn't spin.

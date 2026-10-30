@@ -16,7 +16,9 @@ import { shortAngle } from './motion';
 import { restingTop } from './restSync';
 import { CASCADE_STEP } from '../state/curve';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
-import { isStand, standTopUnder } from '../state/stand';
+import { isStand, raySlope, slopePose, standTopUnder } from '../state/stand';
+import type { Mat } from '../state/types';
+import { inSpace } from '../commands';
 
 export type DragMode = 'single' | 'gather' | 'formation' | 'rigid';
 
@@ -92,7 +94,19 @@ interface Held {
   rollTo: number;
   /** Height still to close to the group's plane after pick-up (NaN until the first frame). */
   ez: number;
+  /**
+   * Where the springs carry it, in model terms (NaN until the first frame): on
+   * the table its drawn spot; over a card stand, its spot on the slope unrolled,
+   * which is then drawn on the slope (decision 221).
+   */
+  sx?: number;
+  sy?: number;
 }
+
+/** Held cards ride this far above a card stand's slope, mm (decision 221)... */
+const SLOPE_HOVER = 8;
+/** ...and swing onto it, or back flat, at this rate (1/s). */
+const SLOPE_SWING = 14;
 
 /** Sweep (decision 89): a pile gives up its top card at once, more after this long... */
 export const SWEEP_MORE_MS = 350;
@@ -139,6 +153,11 @@ export class DragController {
   private held: Held[] = [];
   private mode: DragMode = 'single';
   private cursor = { x: 0, y: 0 };
+  /** The card stand whose slope is under the cursor, if any (decision 221). */
+  private overStand: Mat | null = null;
+  /** The last stand the held cards were over, and how far they have swung onto its slope (0 to 1). */
+  private slopeOf: Mat | null = null;
+  private slopeMix = 0;
   private active = false;
   private readonly label: HTMLDivElement;
   /** Smoothed cursor velocity on screen, px/s, for flick detection. */
@@ -221,7 +240,13 @@ export class DragController {
     const tidy = this.tidy;
     const n = cards.length;
     this.mode = mode;
-    this.cursor = { x: grab.x, y: grab.y };
+    // Picked up from a card stand's slope: the grab point is on the slope, and the cards start on it (decision 221).
+    const at = this.pointAt(sx, sy);
+    this.cursor = at ? { x: at.x, y: at.y } : { x: grab.x, y: grab.y };
+    if (at?.stand) grab.set(at.x, at.y, 0);
+    this.overStand = at?.stand ?? null;
+    this.slopeOf = this.overStand;
+    this.slopeMix = this.overStand ? 1 : 0;
     this.held = cards.map((c, i) => {
       const rank = n === 1 ? 1 : i / (n - 1);
       let ox = c.x - grab.x;
@@ -279,8 +304,10 @@ export class DragController {
         this.shift = e.shiftKey;
         this.ctrl = e.ctrlKey || e.metaKey;
         if (!this.active) return;
-        const p = this.app.rig.screenToPlane(x, y, 0);
+        const p = this.pointAt(x, y);
         if (p) this.cursor = { x: p.x, y: p.y };
+        this.overStand = p?.stand ?? null;
+        if (this.overStand) this.slopeOf = this.overStand;
         this.screen = { x, y };
         const now = performance.now();
         const dt = Math.max(4, now - last.t) / 1000;
@@ -296,6 +323,21 @@ export class DragController {
         if (this.active) this.cancel();
       },
     };
+  }
+
+  /**
+   * The model point under the cursor (decision 221): on a card stand's slope,
+   * the slope unrolled, with the stand; otherwise on the table.
+   */
+  private pointAt(sx: number, sy: number): { x: number; y: number; stand: Mat | null } | null {
+    const r = this.app.rig.rayFrom(sx, sy);
+    for (const m of this.app.store.mats.values()) {
+      if (!isStand(m)) continue;
+      const hit = raySlope(m, r.origin, r.direction);
+      if (hit) return { ...hit, stand: m };
+    }
+    const p = this.app.rig.screenToPlane(sx, sy, 0);
+    return p ? { x: p.x, y: p.y, stand: null } : null;
   }
 
   private showLabel(sx: number, sy: number): void {
@@ -640,22 +682,35 @@ export class DragController {
     for (const c of this.held) {
       const pose = layer.pose(c.uid);
       if (!pose) continue;
+      if (c.sx === undefined || Number.isNaN(c.sx) || c.sy === undefined) {
+        // From a stand's slope, its model spot; from the table, where it is drawn.
+        const card = this.app.store.cards.get(c.uid);
+        const fromSlope = !!card?.stand && this.slopeMix > 0;
+        c.sx = fromSlope ? card!.x : pose.x;
+        c.sy = fromSlope ? card!.y : pose.y;
+      }
       const tx = this.cursor.x + c.ox;
       const ty = this.cursor.y + c.oy;
       for (let s = 0; s < steps; s++) {
         const w = c.omega;
-        c.vx += (w * w * (tx - pose.x) - 2 * w * c.vx) * h;
-        c.vy += (w * w * (ty - pose.y) - 2 * w * c.vy) * h;
-        pose.x += c.vx * h;
-        pose.y += c.vy * h;
+        c.vx += (w * w * (tx - c.sx) - 2 * w * c.vx) * h;
+        c.vy += (w * w * (ty - c.sy) - 2 * w * c.vy) * h;
+        c.sx += c.vx * h;
+        c.sy += c.vy * h;
       }
       avx += c.vx;
       avy += c.vy;
       n++;
-      minX = Math.min(minX, pose.x);
-      maxX = Math.max(maxX, pose.x);
-      minY = Math.min(minY, pose.y);
-      maxY = Math.max(maxY, pose.y);
+      minX = Math.min(minX, c.sx);
+      maxX = Math.max(maxX, c.sx);
+      minY = Math.min(minY, c.sy);
+      maxY = Math.max(maxY, c.sy);
+    }
+    // Over a card stand the cards swing onto its slope; off it, back flat (decision 221).
+    this.slopeMix += ((this.overStand ? 1 : 0) - this.slopeMix) * Math.min(1, dt * SLOPE_SWING);
+    if (this.slopeMix < 0.001) {
+      this.slopeMix = 0;
+      this.slopeOf = this.overStand;
     }
     if (!n) return;
     // One lean for the group: the leading edge rises a little, as before.
@@ -700,6 +755,8 @@ export class DragController {
           pose.roll += d * Math.min(1, dt * FLIP_RATE);
         }
       }
+      pose.x = c.sx ?? pose.x;
+      pose.y = c.sy ?? pose.y;
       const planeZ = this.base + c.dz + sx * (pose.x - cx) + sy * (pose.y - cy);
       // Picked-up cards close the gap to the plane quickly, then ride on it.
       c.ez = Number.isNaN(c.ez) ? pose.z - planeZ : c.ez * join;
@@ -713,6 +770,18 @@ export class DragController {
       pose.tiltX = this.euler.x;
       pose.tiltY = wrapAngle(this.euler.y - pose.roll);
       pose.yaw = c.yaw + wrapAngle(this.euler.z - c.yaw);
+      // On a card stand: lying in its slope's plane, just above it, as far as the swing has gone.
+      const m = this.slopeOf;
+      const k = this.slopeMix;
+      if (m && k > 0) {
+        const on = slopePose(m, { x: pose.x, y: pose.y, z: SLOPE_HOVER + c.dz, yaw: c.yaw });
+        pose.x += (on.x - pose.x) * k;
+        pose.y += (on.y - pose.y) * k;
+        pose.z += (on.z - pose.z) * k;
+        pose.yaw += shortAngle(on.yaw - pose.yaw) * k;
+        pose.tiltX += (on.tiltX - pose.tiltX) * k;
+        pose.tiltY += (on.tiltY - pose.tiltY) * k;
+      }
       layer.touch(c.uid);
     }
   }
@@ -727,13 +796,14 @@ export class DragController {
     for (const c of this.held) {
       const pose = layer.pose(c.uid);
       if (!pose) continue;
-      const fx = pose.x + c.vx * LOOK_AHEAD_S, fy = pose.y + c.vy * LOOK_AHEAD_S;
+      const px = c.sx ?? pose.x, py = c.sy ?? pose.y;
+      const fx = px + c.vx * LOOK_AHEAD_S, fy = py + c.vy * LOOK_AHEAD_S;
       ahead.push({ x: fx, y: fy, yaw: pose.yaw });
-      out.push({ x: pose.x, y: pose.y, dz: c.dz, surface: 0 });
-      minX = Math.min(minX, pose.x, fx);
-      maxX = Math.max(maxX, pose.x, fx);
-      minY = Math.min(minY, pose.y, fy);
-      maxY = Math.max(maxY, pose.y, fy);
+      out.push({ x: px, y: py, dz: c.dz, surface: 0 });
+      minX = Math.min(minX, px, fx);
+      maxX = Math.max(maxX, px, fx);
+      minY = Math.min(minY, py, fy);
+      maxY = Math.max(maxY, py, fy);
     }
     // Only the table's cards near the group can be under it.
     const pad = HALF_DIAG * 2;
@@ -797,7 +867,8 @@ export class DragController {
     // Let go mid-motion: the cards drop where they are drawn, strung out along
     // the drag, instead of finishing the planned landing (decision 95). A quick
     // drag of a gathered stack fans it out this way.
-    if (!this.app.tidy && inMotion(held)) {
+    // Over a card stand they always land by layout, on its slope (decision 221).
+    if (!this.app.tidy && !this.overStand && inMotion(held)) {
       // In the hand's own order, bottom to top, not by drawn height: the held
       // group leans as it moves, and the lean is more than a card's thickness,
       // so sorting by height swapped cards of a cascade and the card under
@@ -935,7 +1006,8 @@ export class DragController {
   private dropLoose(held: Held[], mode: DragMode, sx: number, sy: number, keep = new Set<string>()): boolean {
     const app = this.app;
     const physics = app.physics;
-    if (!physics || app.tidy || mode === 'formation' || mode === 'rigid') return false;
+    // Onto a card stand's slope: no physics, they snap onto it (decision 221).
+    if (!physics || app.tidy || mode === 'formation' || mode === 'rigid' || this.overStand) return false;
     const spots = this.landings(held, mode, sx, sy, keep);
     const byUid = new Map(held.map((c) => [c.uid, c]));
     const tosses = spots.map((l, i) => {
@@ -958,6 +1030,11 @@ export class DragController {
 
   /** Where released cards come to rest (spec 10.4). */
   private landings(held: Held[], mode: DragMode, sx: number, sy: number, keep = new Set<string>()): Landing[] {
+    // Over a card stand's slope, everything lands on it (decision 221); otherwise on the table.
+    return inSpace(this.overStand?.uid ?? null, () => this.landingsHere(held, mode, sx, sy, keep));
+  }
+
+  private landingsHere(held: Held[], mode: DragMode, sx: number, sy: number, keep: Set<string>): Landing[] {
     const app = this.app;
     const store = app.store;
     const uids = held.map((c) => c.uid);

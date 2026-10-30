@@ -111,6 +111,7 @@ export class Undo {
       card.pileId = c.pileId;
       card.spreadOf = c.spreadOf;
       card.laidAt = c.laidAt ? { ...c.laidAt } : undefined;
+      card.stand = c.stand;
     }
     store.named.clear();
     for (const p of then.named) store.named.set(p.id, { ...p, anchor: { ...p.anchor } });
