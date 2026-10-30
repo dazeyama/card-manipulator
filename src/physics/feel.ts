@@ -94,6 +94,8 @@ interface Held {
   rollTo: number;
   /** Height still to close to the group's plane after pick-up (NaN until the first frame). */
   ez: number;
+  /** Turn still to swing through on screen, picked up from the other side of the table (decision 275). */
+  face: number;
   /**
    * Where the springs carry it, in model terms (NaN until the first frame): on
    * the table its drawn spot; over a card stand, its spot on the slope unrolled,
@@ -175,6 +177,8 @@ export class DragController {
   private turnVel = 0;
   /** How far R has turned a held group, so a gathered group lands turned too. */
   private groupTurn = 0;
+  /** An Alt pick-up (formation) doesn't turn cards to face you, so where they land they stay the other side's (decision 275). */
+  private keepSide = false;
   /** Cursor on the table last frame and its smoothed velocity, mm/s. */
   private lastCursor = { x: 0, y: 0 };
   private cursorVel = { x: 0, y: 0 };
@@ -233,12 +237,17 @@ export class DragController {
     if (!grab || !uids.length) return null;
     // Bottom to top, so the stacking order survives the trip.
     const cards = uids.map((u) => store.cards.get(u)!).filter(Boolean).sort((a, b) => a.z - b.z);
-    // Picked up from the other side of the table: it turns round to face you (decision 267).
+    // Picked up from the other side of the table: it turns round to face you (decision 267),
+    // swinging round clockwise as R turns cards (decision 275). Not with Alt: a formation
+    // moves exactly as it lay.
     const side = this.app.side;
+    const turned = new Set<string>();
+    this.keepSide = mode === 'formation';
     for (const c of cards) {
-      if ((c.side ?? 0) === side) continue;
+      if (this.keepSide || (c.side ?? 0) === side) continue;
       c.yaw += Math.PI;
       c.side = side || undefined;
+      turned.add(c.uid);
     }
     leaveSpreads(this.app, cards.map((c) => c.uid));
     const minZ = cards[0].z;
@@ -276,7 +285,7 @@ export class DragController {
         // A messy stack: top card leads, lower cards trail, heavier (decisions 95, 96).
         omega = OMEGA_TAIL + (OMEGA_MESSY_LEAD - OMEGA_TAIL) * rank;
       }
-      return { uid: c.uid, ox, oy, dz, omega, vx: 0, vy: 0, vz: 0, home: { x: c.x, y: c.y, z: c.z, yaw: c.yaw }, bx: ox, by: oy, yaw: c.yaw, yawTo: tidy ? snapYaw(c.yaw) : c.yaw, base: c.yaw, rollTo: NaN, ez: NaN };
+      return { uid: c.uid, ox, oy, dz, omega, vx: 0, vy: 0, vz: 0, home: { x: c.x, y: c.y, z: c.z, yaw: c.yaw }, bx: ox, by: oy, yaw: c.yaw, yawTo: tidy ? snapYaw(c.yaw) : c.yaw, base: c.yaw, rollTo: NaN, ez: NaN, face: turned.has(c.uid) ? Math.PI : 0 };
     });
     // Picked up mid-fall, a card is the hand's, not the physics' (decision 219).
     this.app.physics?.release(this.held.map((h) => h.uid));
@@ -459,7 +468,7 @@ export class DragController {
     this.held.push({
       uid, ox: Math.cos(a) * r, oy: Math.sin(a) * r, dz: top + CARD_T, omega: this.tidy ? OMEGA_TIDY_TAIL : OMEGA_TAIL,
       vx: 0, vy: 0, vz: 0, home: { x: card.x, y: card.y, z: card.z, yaw: card.yaw }, bx: 0, by: 0,
-      yaw: card.yaw, yawTo: this.tidy ? snapYaw(card.yaw) : card.yaw, base: card.yaw, rollTo: NaN, ez: NaN,
+      yaw: card.yaw, yawTo: this.tidy ? snapYaw(card.yaw) : card.yaw, base: card.yaw, rollTo: NaN, ez: NaN, face: 0,
     });
     app.motion.cancel(uid);
     app.motion.held.add(uid);
@@ -632,7 +641,7 @@ export class DragController {
     this.app.motion.held.delete(c.uid);
     const keep = new Set(this.held.map((h) => h.uid));
     if (!this.dropLoose([c], 'single', this.screen.x, this.screen.y, keep)) {
-      land(this.app, this.landings([c], 'single', this.screen.x, this.screen.y, keep));
+      land(this.app, this.landings([c], 'single', this.screen.x, this.screen.y, keep), { keepSide: this.keepSide });
     }
     if (stand) this.onDealt?.(stand, [c.uid]);
     this.showLabel(this.screen.x, this.screen.y);
@@ -776,20 +785,23 @@ export class DragController {
       // Picked-up cards close the gap to the plane quickly, then ride on it.
       c.ez = Number.isNaN(c.ez) ? pose.z - planeZ : c.ez * join;
       pose.z = planeZ + c.ez;
+      // Still swinging round to face you (decision 275).
+      if (c.face) c.face = Math.abs(c.face) < 1e-3 ? 0 : c.face - c.face * square;
+      const yaw = c.yaw + c.face;
       // The card's own turn and side, then the group's lean.
-      this.euler.set(0, 0, c.yaw, 'ZXY');
+      this.euler.set(0, 0, yaw, 'ZXY');
       this.qCard.setFromEuler(this.euler);
       this.qPart.setFromAxisAngle(DragController.AXIS_Y, pose.roll);
       this.qCard.premultiply(this.qTilt).multiply(this.qPart);
       this.euler.setFromQuaternion(this.qCard, 'ZXY');
       pose.tiltX = this.euler.x;
       pose.tiltY = wrapAngle(this.euler.y - pose.roll);
-      pose.yaw = c.yaw + wrapAngle(this.euler.z - c.yaw);
+      pose.yaw = yaw + wrapAngle(this.euler.z - yaw);
       // On a card stand: lying in its slope's plane, just above it, as far as the swing has gone.
       const m = this.slopeOf;
       const k = this.slopeMix;
       if (m && k > 0) {
-        const on = slopePose(m, { x: pose.x, y: pose.y, z: SLOPE_HOVER + c.dz, yaw: c.yaw });
+        const on = slopePose(m, { x: pose.x, y: pose.y, z: SLOPE_HOVER + c.dz, yaw });
         pose.x += (on.x - pose.x) * k;
         pose.y += (on.y - pose.y) * k;
         pose.z += (on.z - pose.z) * k;
@@ -892,7 +904,7 @@ export class DragController {
         .map((c) => ({ c, pose: this.app.layer.pose(c.uid) }))
         .filter((e) => e.pose);
       const spots = stopWhereTheyAre(ordered.map(({ c, pose }) => ({ x: pose!.x, y: pose!.y, yaw: pose!.yaw, vx: c.vx, vy: c.vy })));
-      land(this.app, placeSequential(this.app, ordered.map((e) => e.c.uid), spots), { duration: 150, stagger: 0 });
+      land(this.app, placeSequential(this.app, ordered.map((e) => e.c.uid), spots), { duration: 150, stagger: 0, keepSide: this.keepSide });
       return;
     }
     if (mode !== 'formation') {
@@ -910,7 +922,7 @@ export class DragController {
       }
     }
     if (this.dropLoose(held, mode, sx, sy)) return;
-    land(this.app, this.landings(held, mode, sx, sy));
+    land(this.app, this.landings(held, mode, sx, sy), { keepSide: this.keepSide });
   }
 
   /**

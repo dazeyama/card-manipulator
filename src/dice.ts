@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import type { App } from './app';
 import type { CustomGesture, Mods } from './input/mouse';
 import { FLICK_SPEED, flickDirection } from './physics/feel';
+import { shortAngle } from './physics/motion';
 import type { DiceLayer } from './render/dice';
 import { DIE_SIZE, dieTurn, gatherOffsets, valueUp, yawOf, type Die } from './state/dice';
 import { newUid } from './state/store';
@@ -23,6 +24,8 @@ const GLIDE_RATE = 18;
 const SWAY_PER_SPEED = 0.0012;
 const SWAY_MAX = 0.5;
 const SWAY_RATE = 10;
+/** A held die swings round to its new turn at this rate, 1/s, as cards do (decision 275). */
+const FACE_RATE = 14;
 /** Dice carried with cards ride this far clear of the cards' clump, mm (decision 274). */
 const ASIDE_GAP = 10;
 /** Dice let go with cards wait at most this long for them to come to rest, ms. */
@@ -38,6 +41,8 @@ export class Dice {
   private readonly busy = new Set<string>();
   /** Each carried die's smoothed speed on the table, mm/s, and its own wobble's phase (decision 261). */
   private readonly sway = new Map<string, { vx: number; vy: number; phase: number }>();
+  /** Turn each held die still has to swing through on screen: turned to face you, or squared to a gathered block (decision 275). */
+  private readonly face = new Map<string, number>();
   /** Dice being dragged, and where each is heading under the cursor. */
   private carrying: { uid: string; x: number; y: number; die: Die }[] | null = null;
   /** Dice let go with cards, hanging where they were let go until those cards come to rest (decision 274). */
@@ -77,6 +82,7 @@ export class Dice {
     const moving = [...(this.carrying ?? []), ...this.landing.flatMap((l) => l.dice)];
     if (!moving.length) {
       this.sway.clear();
+      this.face.clear();
       return;
     }
     const k = 1 - Math.exp(-GLIDE_RATE * dt);
@@ -98,7 +104,12 @@ export class Dice {
       const tidy = this.app.tidy;
       const speed = Math.hypot(sw.vx, sw.vy);
       const lean = tidy ? 0 : Math.min(SWAY_MAX, speed * SWAY_PER_SPEED);
-      const q = dieTurn(c.die.value, tidy ? this.square(c.die.yaw) : c.die.yaw + Math.sin(t * 3.1 + sw.phase) * 0.06);
+      let face = this.face.get(c.uid) ?? 0;
+      if (face) {
+        face = Math.abs(face) < 1e-3 ? 0 : face - face * Math.min(1, dt * FACE_RATE);
+        this.face.set(c.uid, face);
+      }
+      const q = dieTurn(c.die.value, tidy ? this.square(c.die.yaw) + face : c.die.yaw + face + Math.sin(t * 3.1 + sw.phase) * 0.06);
       if (lean > 1e-4) q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(-sw.vy / speed, sw.vx / speed, 0), lean));
       const bob = tidy ? 0 : Math.min(6, speed * 0.012) + Math.sin(t * 4.3 + sw.phase) * 0.8;
       this.layer.pose(c.uid, { x, y, z: this.surfaceAt(x, y, skip) + DIE_SIZE / 2 + CARRY + bob }, q);
@@ -260,10 +271,11 @@ export class Dice {
   private pickUp(grab: { x: number; y: number }, lead: string | null, alt: boolean, aside: { x: number; y: number }): HeldDie[] {
     const store = this.app.store;
     const held = [...this.selected].map((u) => store.dice.get(u)).filter((d): d is Die => !!d && !this.busy.has(d.uid)).map((d) => ({ uid: d.uid, ox: d.x - grab.x, oy: d.y - grab.y, die: { ...d } }));
-    // Picked up from the other side of the table: it turns round to face you (decision 267).
+    // Picked up from the other side of the table: it turns round to face you (decision 267),
+    // but not with Alt, which moves them exactly as they lay (decision 275).
     const side = this.app.side;
     for (const h of held) {
-      if ((h.die.side ?? 0) === side) continue;
+      if (alt || (h.die.side ?? 0) === side) continue;
       h.die.yaw += Math.PI;
       h.die.side = side || undefined;
     }
@@ -277,7 +289,11 @@ export class Dice {
         h.die.yaw = yaw;
       });
     }
+    // Each swings round to its new turn rather than snapping (decision 275); half a turn goes clockwise, as R does.
     for (const h of held) {
+      const was = store.dice.get(h.uid)!.yaw;
+      const d = shortAngle(was - h.die.yaw);
+      this.face.set(h.uid, Math.abs(Math.abs(d) - Math.PI) < 1e-3 ? Math.PI : d);
       this.busy.add(h.uid);
       this.layer.carried.add(h.uid);
     }
