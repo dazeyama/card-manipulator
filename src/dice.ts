@@ -28,6 +28,11 @@ export class Dice {
   /** Dice being dragged, and where each is heading under the cursor. */
   private carrying: { uid: string; x: number; y: number; die: Die }[] | null = null;
 
+  /** True while dice are being carried (for the cursor, decision 260). */
+  get dragging(): boolean {
+    return !!this.carrying;
+  }
+
   constructor(private readonly app: App, private readonly layer: DiceLayer) {
     window.addEventListener('pointermove', (e) => {
       const r = app.canvas.getBoundingClientRect();

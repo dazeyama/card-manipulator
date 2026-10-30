@@ -109,6 +109,7 @@ installStandSnap(app);
 // Dice (decision 255): D drops one at the cursor; they select and drag like cards, above them.
 const diceLayer = new DiceLayer(app);
 const dice = new Dice(app, diceLayer);
+app.dice = dice;
 mouse.hooks.objectPress = (x, y, mods) => {
   const uid = diceLayer.pick(x, y);
   return uid ? dice.press(uid, x, y, mods) : null;

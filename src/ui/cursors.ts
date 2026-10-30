@@ -248,6 +248,10 @@ export class Cursors {
     // Dragging a playmat: the fist, linked when it carries its cards (decision 144).
     const mats = this.app.mats;
     if (mats?.dragging) return mats.dragging.carrying ? 'fistFormation' : 'fist';
+    // Dice (decision 260): the fist while carrying any, the open hand over one.
+    const dice = this.app.dice;
+    if (dice?.dragging) return 'fist';
+    if (dice?.hovered && !this.drag.dragging && gesture !== 'marquee') return 'open';
     if (this.drag.dragging) {
       if (shift && !ctrl) return 'fistSweep';
       if (this.drag.heldMode === 'formation') return 'fistFormation';
