@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { slopesOf } from '../src/state/rest';
-import { fanLayout } from '../src/state/fan';
+import { arcHand } from '../src/state/fan';
 import {
-  alignTo, fitOnStand, LIP_H, onStand, profileHeight, raySlope, SLOPE, SLOPE_LEN, SLOPE_START, slopePose,
+  alignTo, fitOnStand, FRONT_GAP, fromSlope, inFrontOf, liftOntoSlope, underStand, LIP_H, onStand, profileHeight, raySlope, SLOPE, SLOPE_LEN, SLOPE_START, slopePose,
   STAND_D, STAND_H, STAND_W, standHeightAt, standLocal, standTopUnder, unrollPoint,
 } from '../src/state/stand';
 import { CARD_H, CARD_T, CARD_W, type Mat } from '../src/state/types';
@@ -80,24 +80,40 @@ describe('the slope as a second table (decision 221)', () => {
 
   it('keeps a card that would hang off the slope on it', () => {
     const s = stand();
-    const [p] = fitOnStand(s, [{ x: STAND_W, y: SLOPE_START, yaw: 0 }]);
+    const [p] = fitOnStand(s, [{ x: STAND_W, y: SLOPE_START, yaw: 0 }])!;
     expect(p.x).toBeCloseTo(STAND_W / 2 - CARD_W / 2, 6);
     expect(p.y).toBeCloseTo(SLOPE_START + CARD_H / 2, 6);
   });
 
-  it('moves a fan in whole, and squeezes one too tall for the slope', () => {
+  it('fits a hand the slope wide, and not a layout too big for it (decision 222)', () => {
     const s = stand();
-    const fan = fanLayout(15, { x: 0, y: SLOPE_START + SLOPE_LEN / 2 });
-    const fitted = fitOnStand(s, fan);
-    expect(fitted).toHaveLength(15);
-    // Every card lies within the slope, the lip below it.
-    for (const p of fitted) {
-      const r = Math.abs(Math.sin(p.yaw)) * (CARD_W / 2) + Math.abs(Math.cos(p.yaw)) * (CARD_H / 2);
-      expect(p.y - r).toBeGreaterThanOrEqual(SLOPE_START - 1e-6);
-      expect(p.y + r).toBeLessThanOrEqual(SLOPE_START + SLOPE_LEN + 1e-6);
+    for (const n of [2, 7, 15, 30]) {
+      const hand = arcHand(n, STAND_W, { x: 0, y: SLOPE_LEN / 2 });
+      const ext = (p: { yaw: number }, w: number, h: number) => Math.abs(Math.cos(p.yaw)) * w + Math.abs(Math.sin(p.yaw)) * h;
+      // Edge to edge exactly the slope's width.
+      const left = Math.min(...hand.map((p) => p.x - ext(p, CARD_W / 2, CARD_H / 2)));
+      const right = Math.max(...hand.map((p) => p.x + ext(p, CARD_W / 2, CARD_H / 2)));
+      expect(right - left).toBeCloseTo(STAND_W, 3);
+      expect(fitOnStand(s, fromSlope(s, hand))).not.toBeNull();
     }
-    // Across, it keeps its shape.
-    expect(fitted[14].x - fitted[0].x).toBeCloseTo(fan[14].x - fan[0].x, 6);
+    // A wide grid doesn't fit: it goes in front of the stand, centred, clear of it.
+    const big = Array.from({ length: 12 }, (_, i) => ({ x: (i - 5.5) * 70, y: SLOPE_START + 80, yaw: 0 }));
+    expect(fitOnStand(s, big)).toBeNull();
+    const front = inFrontOf(s, big);
+    expect(front.every((p) => !underStand(s, p))).toBe(true);
+    expect((front[0].x + front[11].x) / 2).toBeCloseTo(0, 6);
+    expect(Math.max(...front.map((p) => p.y))).toBeCloseTo(-STAND_D / 2 - FRONT_GAP - CARD_H / 2, 6);
+  });
+
+  it('finds cards under a stand and lifts them onto its slope', () => {
+    const s = stand();
+    expect(underStand(s, { x: 0, y: 0, yaw: 0 })).toBe(true);
+    // Overlapping its front edge only a little still counts.
+    expect(underStand(s, { x: 0, y: -STAND_D / 2 - CARD_H / 2 + 10, yaw: 0 })).toBe(true);
+    expect(underStand(s, { x: 0, y: -STAND_D / 2 - CARD_H / 2 - 5, yaw: 0 })).toBe(false);
+    // Under the back: up at the top of the slope; under the lip: at its foot.
+    expect(liftOntoSlope(s, 0, STAND_D / 2 - 1).y).toBeCloseTo(SLOPE_START + SLOPE_LEN, 6);
+    expect(liftOntoSlope(s, 0, -STAND_D / 2).y).toBeCloseTo(SLOPE_START, 6);
   });
 
   it('turns a layout to a stand', () => {

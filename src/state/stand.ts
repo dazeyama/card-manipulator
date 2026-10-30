@@ -132,10 +132,11 @@ export function slopePose(m: Mat, card: { x: number; y: number; z: number; yaw: 
 }
 
 /**
- * Where a ray first meets a stand's slope, as a model spot on it (the slope
- * unrolled), or null if it misses the slope.
+ * Where a ray meets the plane of a stand's slope, in the slope's own frame:
+ * across (a) and up the slope along it (s, 0 just behind the lip). Off the
+ * slope too, for boxes drawn past its edge; null if it never meets the plane.
  */
-export function raySlope(m: Mat, origin: { x: number; y: number; z: number }, dir: { x: number; y: number; z: number }): { x: number; y: number } | null {
+export function raySlopeLocal(m: Mat, origin: { x: number; y: number; z: number }, dir: { x: number; y: number; z: number }): { a: number; s: number } | null {
   const o = standLocal(m, origin.x, origin.y);
   // The direction in the stand's frame (no translation).
   const c = Math.cos(m.yaw), s = Math.sin(m.yaw);
@@ -146,9 +147,33 @@ export function raySlope(m: Mat, origin: { x: number; y: number; z: number }, di
   if (Math.abs(den) < 1e-9) return null;
   const k = ((o.b - SLOPE_START) * t - origin.z) / den;
   if (k <= 0) return null;
-  const a = o.a + da * k, b = o.b + db * k;
-  if (Math.abs(a) > STAND_W / 2 || b < SLOPE_START || b > RIDGE) return null;
-  return standWorld(m, a, SLOPE_START + (b - SLOPE_START) / Math.cos(SLOPE));
+  return { a: o.a + da * k, s: (o.b + db * k - SLOPE_START) / Math.cos(SLOPE) };
+}
+
+/**
+ * Where a ray first meets a stand's slope, as a model spot on it (the slope
+ * unrolled), or null if it misses the slope.
+ */
+export function raySlope(m: Mat, origin: { x: number; y: number; z: number }, dir: { x: number; y: number; z: number }): { x: number; y: number } | null {
+  const hit = raySlopeLocal(m, origin, dir);
+  if (!hit || Math.abs(hit.a) > STAND_W / 2 || hit.s < 0 || hit.s > SLOPE_LEN) return null;
+  return standWorld(m, hit.a, SLOPE_START + hit.s);
+}
+
+/** A spot given in the slope's own frame (across, up the slope; yaw upright to the stand) as a model spot on it. */
+export function fromSlope<T extends Footprint>(m: Mat, spots: T[]): T[] {
+  return spots.map((p) => ({ ...p, ...standWorld(m, p.x, SLOPE_START + p.y), yaw: p.yaw + m.yaw }));
+}
+
+/** The whole slope as a box in its own frame, for layouts that fill it. */
+export const SLOPE_BOX = { minX: -STAND_W / 2, maxX: STAND_W / 2, minY: 0, maxY: SLOPE_LEN };
+
+/** A model spot on a slope (the slope unrolled), `h` above it, in the world: for drawing outlines on it. */
+export function slopePoint(m: Mat, x: number, y: number, h: number): { x: number; y: number; z: number } {
+  const { a, b } = standLocal(m, x, y);
+  const s = b - SLOPE_START;
+  const at = standWorld(m, a, SLOPE_START + s * Math.cos(SLOPE) - h * Math.sin(SLOPE));
+  return { ...at, z: s * Math.sin(SLOPE) + h * Math.cos(SLOPE) };
 }
 
 /** A point on the slope's surface, seen from above, as a model spot on it (the slope unrolled); null off the slope. */
@@ -159,12 +184,12 @@ export function unrollPoint(m: Mat, x: number, y: number): { x: number; y: numbe
 }
 
 /**
- * Keep cards on a stand's slope (decision 221): a group laid out there moves
- * in whole so every card sits fully on the slope, above the lip, and squeezes
- * together along a side it is too big for. Spots are model spots (the slope
- * unrolled), in order; the result keeps their order and turns.
+ * Keep cards on a stand's slope (decisions 221, 222): a group laid out there
+ * slides in whole so every card sits fully on the slope, above the lip. A
+ * group too big for the slope doesn't fit: null. Spots are model spots (the
+ * slope unrolled), in order; the result keeps their order and turns.
  */
-export function fitOnStand<T extends Footprint>(m: Mat, spots: T[]): T[] {
+export function fitOnStand<T extends Footprint>(m: Mat, spots: T[]): T[] | null {
   if (!spots.length) return spots;
   const local = spots.map((p) => {
     const { a, b } = standLocal(m, p.x, p.y);
@@ -172,21 +197,63 @@ export function fitOnStand<T extends Footprint>(m: Mat, spots: T[]): T[] {
     const ca = Math.abs(Math.cos(r)), sa = Math.abs(Math.sin(r));
     return { a, s: b - SLOPE_START, ea: ca * (CARD_W / 2) + sa * (CARD_H / 2), es: sa * (CARD_W / 2) + ca * (CARD_H / 2) };
   });
+  // Slide the group into range; too big for it (allowing for rounding), no fit.
   const fit = (lo: number, hi: number, pos: number[], ext: number[]) => {
-    // Squeeze the centres together if the group is too big, then slide it into range.
-    const minC = Math.min(...pos), maxC = Math.max(...pos), e = Math.max(...ext);
-    const room = hi - lo - 2 * e;
-    const k = maxC - minC > room && maxC > minC ? Math.max(0, room) / (maxC - minC) : 1;
-    const mid = (minC + maxC) / 2;
-    let out = pos.map((p) => mid + (p - mid) * k);
-    const low = Math.min(...out.map((p, i) => p - ext[i])), high = Math.max(...out.map((p, i) => p + ext[i]));
+    const low = Math.min(...pos.map((p, i) => p - ext[i])), high = Math.max(...pos.map((p, i) => p + ext[i]));
+    if (high - low > hi - lo + 0.5) return null;
     const shift = low < lo ? lo - low : high > hi ? hi - high : 0;
-    out = out.map((p) => p + shift);
-    return out;
+    return pos.map((p) => p + shift);
   };
   const as = fit(-STAND_W / 2, STAND_W / 2, local.map((l) => l.a), local.map((l) => l.ea));
   const ss = fit(0, SLOPE_LEN, local.map((l) => l.s), local.map((l) => l.es));
+  if (!as || !ss) return null;
   return spots.map((p, i) => ({ ...p, ...standWorld(m, as[i], SLOPE_START + ss[i]) }));
+}
+
+/** The gap between a stand's front and a layout put on the table in front of it, mm (decision 222). */
+export const FRONT_GAP = 12;
+
+/**
+ * A layout too big for a stand's slope goes on the table just in front of the
+ * stand instead (decision 222): the same shape, centred across the stand, its
+ * far edge FRONT_GAP in front of the stand's lip.
+ */
+export function inFrontOf<T extends Footprint>(m: Mat, spots: T[]): T[] {
+  if (!spots.length) return spots;
+  const local = spots.map((p) => {
+    const { a, b } = standLocal(m, p.x, p.y);
+    const r = p.yaw - m.yaw;
+    const ca = Math.abs(Math.cos(r)), sa = Math.abs(Math.sin(r));
+    return { a, b, ea: ca * (CARD_W / 2) + sa * (CARD_H / 2), eb: sa * (CARD_W / 2) + ca * (CARD_H / 2) };
+  });
+  const minA = Math.min(...local.map((l) => l.a - l.ea)), maxA = Math.max(...local.map((l) => l.a + l.ea));
+  const maxB = Math.max(...local.map((l) => l.b + l.eb));
+  const da = -(minA + maxA) / 2, db = -STAND_D / 2 - FRONT_GAP - maxB;
+  return spots.map((p, i) => ({ ...p, ...standWorld(m, local[i].a + da, local[i].b + db) }));
+}
+
+/** True if any part of a card on the table lies over a stand's footprint (decision 222). */
+export function underStand(m: Mat, card: { x: number; y: number; yaw: number }): boolean {
+  const c = Math.cos(card.yaw), s = Math.sin(card.yaw);
+  for (const u of [-1, 0, 1]) {
+    for (const v of [-1, 0, 1]) {
+      const px = (u * (CARD_W / 2 - 2)), py = (v * (CARD_H / 2 - 2));
+      const { a, b } = standLocal(m, card.x + px * c - py * s, card.y + px * s + py * c);
+      if (Math.abs(a) < STAND_W / 2 && Math.abs(b) < STAND_D / 2) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Where a card found under a stand goes on its slope (decision 222): the spot
+ * on the slope above where it lies, the lip and the back counting as the
+ * slope's ends. A model spot (the slope unrolled).
+ */
+export function liftOntoSlope(m: Mat, x: number, y: number): { x: number; y: number } {
+  const { a, b } = standLocal(m, x, y);
+  const s = Math.min(SLOPE_LEN, Math.max(0, (b - SLOPE_START) / Math.cos(SLOPE)));
+  return standWorld(m, Math.max(-STAND_W / 2, Math.min(STAND_W / 2, a)), SLOPE_START + s);
 }
 
 /** Turn a layout made for an upright table spot to a stand's turn: offsets about `centre`, and each card's yaw. */

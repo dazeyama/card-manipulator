@@ -6,10 +6,10 @@ import { CARD_H, CARD_T, CARD_W, type Card } from './state/types';
 import { gridLayout, layOrder, looseStackLayout, nextQuarterClockwise, overlaps, shuffled, snapYaw, spreadLayout, uprightYaw, type Footprint, type Placed } from './state/piles';
 import type { Spread } from './state/store';
 import { colourGroup, curveLayout, type CurveCard } from './state/curve';
-import { fanLayout, handLayout } from './state/fan';
+import { arcHand, fanLayout, handLayout } from './state/fan';
 import { rankLayout, type RankCard, type RankMode } from './state/rankLayout';
 import { colourLayout, type ColourCard } from './state/colourLayout';
-import { alignTo, fitOnStand, isStand, slopePose } from './state/stand';
+import { alignTo, fitOnStand, fromSlope, inFrontOf, isStand, SLOPE_LEN, slopePose, STAND_W } from './state/stand';
 import type { Mat } from './state/types';
 
 export interface Landing {
@@ -125,9 +125,14 @@ function topOf(cards: Placed[], at: Footprint): number {
  * beneath it, including the cards placed before it (messy drops, formation).
  */
 export function placeSequential(app: App, uids: string[], spots: Footprint[], exclude = new Set(uids)): Landing[] {
-  // On a stand the whole group is kept on its slope (decision 221).
+  // On a stand the whole group is kept on its slope (decision 221); one too big
+  // for it goes on the table just in front of the stand instead (decision 222).
   const m = spaceStand(app);
-  if (m) spots = fitOnStand(m, spots.slice(0, uids.length));
+  if (m) {
+    const fitted = fitOnStand(m, spots.slice(0, uids.length));
+    if (!fitted) return inSpace(null, () => placeSequential(app, uids, inFrontOf(m, spots.slice(0, uids.length)), exclude));
+    spots = fitted;
+  }
   const surface: Placed[] = nearby(app, exclude, spots);
   return uids.map((uid, i) => {
     const s = spots[i];
@@ -141,7 +146,7 @@ export function placeSequential(app: App, uids: string[], spots: Footprint[], ex
 /** A neat stack at a spot, bottom card first, on top of whatever is there. */
 export function stackAt(app: App, uids: string[], at: Footprint, exclude = new Set(uids)): Landing[] {
   const m = spaceStand(app);
-  if (m) at = fitOnStand(m, [at])[0];
+  if (m) at = fitOnStand(m, [at])?.[0] ?? at;
   const base = topOf(nearby(app, exclude, [at]), at);
   return uids.map((uid, i) => ({ uid, x: at.x, y: at.y, yaw: at.yaw, z: base + CARD_T / 2 + i * CARD_T, stand: space }));
 }
@@ -158,6 +163,11 @@ export function pileAt(app: App, uids: string[], at: Footprint, exclude = new Se
 /** Selected cards ordered bottom to top. */
 export function byHeight(app: App, uids: Iterable<string>): string[] {
   return [...uids].map((u) => app.store.cards.get(u)!).filter(Boolean).sort((a, b) => a.z - b.z).map((c) => c.uid);
+}
+
+/** A hand on a stand's slope (decision 222): one arc exactly as wide as the slope, in its middle. */
+function slopeHand(m: Mat, count: number): Placed[] {
+  return fromSlope(m, arcHand(count, STAND_W, { x: 0, y: SLOPE_LEN / 2 }));
 }
 
 /** Where a big table layout (curve, rank, colour) of these cards goes: where they are, or the middle of the view for cards on a stand (decision 221). */
@@ -352,10 +362,11 @@ export class Commands {
     if (cards.length < 2) return;
     const uids = byHeight(this.app, cards);
     leaveSpreads(this.app, uids);
-    // On a stand, fanned on its slope, upright to it (decision 221).
+    // On a stand: one arc exactly the slope's width, filling it (decision 222).
     const m = standOf(this.app, uids);
     const centre = centroid(this.app, uids);
-    const landings = inSpace(m?.uid ?? null, () => placeSequential(this.app, uids, alignTo(fanLayout(uids.length, centre), centre, m?.yaw ?? 0)));
+    const layout = m ? slopeHand(m, uids.length) : fanLayout(uids.length, centre);
+    const landings = inSpace(m?.uid ?? null, () => placeSequential(this.app, uids, layout));
     land(this.app, landings, { stagger: Math.min(3, 300 / uids.length), arc: 6 });
     const spots = new Map(landings.map((l) => [l.uid, { x: l.x, y: l.y }]));
     for (const uid of uids) this.fanOf.set(uid, spots);
@@ -372,8 +383,8 @@ export class Commands {
     if (!top.length) return;
     leaveSpreads(this.app, top);
     // More than 15 cards are dealt as packs of 15, one under the next (decision 205).
-    // Clicked on a card stand's slope: dealt onto it, upright to it (decision 221).
-    const landings = inSpace(stand?.uid ?? null, () => placeSequential(this.app, top, alignTo(handLayout(top.length, at), at, stand?.yaw ?? 0)));
+    // Clicked on a card stand's slope: dealt onto it as one arc the slope's width (decisions 221, 222).
+    const landings = inSpace(stand?.uid ?? null, () => placeSequential(this.app, top, stand ? slopeHand(stand, top.length) : handLayout(top.length, at)));
     // A hand is for reading: face down cards come up.
     for (const l of landings) l.faceUp = true;
     land(this.app, landings, { stagger: Math.min(30, 300 / top.length), arc: 14 });

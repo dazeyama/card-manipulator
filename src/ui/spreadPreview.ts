@@ -8,7 +8,8 @@
 
 import type { App } from '../app';
 import { layOrder, type Placed } from '../state/piles';
-import { CARD_H, CARD_W } from '../state/types';
+import { slopePoint } from '../state/stand';
+import { CARD_H, CARD_T, CARD_W, type Mat } from '../state/types';
 
 /** The laser's colours: a bright core, a softer glow around it, the fill and its scan lines. */
 const BLUE = { core: 'rgba(70, 190, 255, 0.9)', glow: 'rgba(120, 215, 255, 0.85)', fill: 'rgba(120, 210, 255, 0.10)', scan: 'rgba(90, 200, 255, 0.16)' };
@@ -38,7 +39,8 @@ export class SpreadPreview {
     });
   }
 
-  show(spots: Placed[], reverse = false): void {
+  /** Outline these spots: on the table, or on a card stand's slope (model spots there, decision 222). */
+  show(spots: Placed[], reverse = false, stand: Mat | null = null): void {
     this.colours = reverse ? MAGENTA : BLUE;
     const order = layOrder(spots, reverse);
     const rig = this.app.rig;
@@ -55,7 +57,9 @@ export class SpreadPreview {
     const outline = (ctx: CanvasRenderingContext2D, s: Placed) => {
       const cos = Math.cos(s.yaw), sin = Math.sin(s.yaw);
       [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]].forEach(([dx, dy], i) => {
-        const p = rig.worldToScreen(s.x + dx * cos - dy * sin, s.y + dx * sin + dy * cos, 0);
+        const x = s.x + dx * cos - dy * sin, y = s.y + dx * sin + dy * cos;
+        const w = stand ? slopePoint(stand, x, y, CARD_T) : { x, y, z: 0 };
+        const p = rig.worldToScreen(w.x, w.y, w.z);
         if (i === 0) ctx.moveTo(p.x, p.y);
         else ctx.lineTo(p.x, p.y);
       });

@@ -28,7 +28,9 @@ import { confirmDialog, numberDialog } from './ui/confirm';
 import { Cursors } from './ui/cursors';
 import { Mats } from './mats';
 import { buildStandTab } from './ui/standTab';
-import { alignTo, isStand, raySlope } from './state/stand';
+import { installStandSnap } from './standSnap';
+import { fromSlope, isStand, raySlope, raySlopeLocal, SLOPE_BOX } from './state/stand';
+import type { Placed } from './state/piles';
 import type { Mat } from './state/types';
 import { buildPlaymatTab } from './ui/playmatTab';
 import { ContextHints } from './ui/hints';
@@ -98,6 +100,8 @@ const inspect = new InspectPanel(app, right);
 // Playmats (decision 144): drawn under the cards, dragged where no card is.
 const mats = new Mats(app);
 app.mats = mats;
+// No card is ever under a card stand (decision 222).
+installStandSnap(app);
 // Pressing on the play space collapses the side panels for more room, unless pinned open
 // (decisions 137, 139). The table widens under the press, so the camera shifts to keep the
 // table point under the cursor where it was, before the press itself is handled.
@@ -488,10 +492,20 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
     });
     preview();
   };
-  const preview = () => {
+  // A box begun on a card stand's slope spreads on the slope, inside the part of it the box covers (decision 222).
+  const onSlope = slopeUnder(x0, y0)?.m ?? null;
+  const layoutFor = (n: number): Placed[] | null => {
+    if (onSlope) {
+      const box = slopeBox(onSlope, x0, y0, x1, y1);
+      return box ? fromSlope(onSlope, fitLayout(n, box)) : null;
+    }
     const box = tableBox(x0, y0, x1, y1);
+    return box ? fitLayout(n, box) : null;
+  };
+  const preview = () => {
     const count = spreading.source.filter((u) => store.cards.has(u)).length;
-    if (box && count) spreadPreview.show(fitLayout(count, box), !!spreading.reverse);
+    const spots = count ? layoutFor(count) : null;
+    if (spots) spreadPreview.show(spots, !!spreading.reverse, onSlope);
     else spreadPreview.hide();
   };
   refreshSpreadPreview = () => {
@@ -510,14 +524,13 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
     end();
     app.spreading = null;
     if (boxed) {
-      const box = tableBox(x0, y0, x1, y1);
-      if (box) commands.spreadTo(spreading.source, (n) => fitLayout(n, box), !!spreading.reverse);
+      const count = spreading.source.filter((u) => store.cards.has(u)).length;
+      if (count && layoutFor(count)) commands.spreadTo(spreading.source, (n) => layoutFor(n) ?? [], !!spreading.reverse, onSlope?.uid ?? null);
       return;
     }
-    // Clicked on a card stand's slope: spread on it, square to it (decision 221).
-    const slope = slopeUnder(x0, y0);
-    if (slope) {
-      commands.spreadTo(spreading.source, (n) => alignTo(gridLayout(n, slope.at), slope.at, slope.m.yaw), !!spreading.reverse, slope.m.uid);
+    // Clicked on a card stand's slope: spread to fill the slope, square to it (decisions 221, 222).
+    if (onSlope) {
+      commands.spreadTo(spreading.source, (n) => fromSlope(onSlope, fitLayout(n, SLOPE_BOX)), !!spreading.reverse, onSlope.uid);
       return;
     }
     const at = app.rig.screenToPlane(x0, y0, 0);
@@ -527,6 +540,24 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
   window.addEventListener('pointermove', move, true);
   window.addEventListener('pointerup', up, true);
 }, true);
+/**
+ * The part of a card stand's slope inside a box drawn on screen, in the slope's
+ * own frame (decision 222): the box's corners where they meet the slope's
+ * plane, cut to the slope.
+ */
+function slopeBox(m: Mat, x0: number, y0: number, x1: number, y1: number): { minX: number; minY: number; maxX: number; maxY: number } | null {
+  const hits = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(([sx, sy]) => {
+    const r = app.rig.rayFrom(sx, sy);
+    return raySlopeLocal(m, r.origin, r.direction);
+  });
+  if (hits.some((h) => !h)) return null;
+  const as = hits.map((h) => h!.a), ss = hits.map((h) => h!.s);
+  return {
+    minX: Math.max(SLOPE_BOX.minX, Math.min(...as)), maxX: Math.min(SLOPE_BOX.maxX, Math.max(...as)),
+    minY: Math.max(SLOPE_BOX.minY, Math.min(...ss)), maxY: Math.min(SLOPE_BOX.maxY, Math.max(...ss)),
+  };
+}
+
 /**
  * The part of the table inside a box drawn on screen: the biggest table-aligned
  * rectangle about the box's centre whose corners all land inside it, since a
