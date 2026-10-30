@@ -24,6 +24,8 @@ export interface GraphicsPreset {
   mirrorEveryMs: number;
   mirrorMax: number;
   mirrorSamples: number;
+  /** The card stand's wood texture, px square (decision 229): its file, the GPU makes the smaller mip levels. */
+  woodPx: 1024 | 512;
 }
 
 export const GRAPHICS: Record<GraphicsMode, GraphicsPreset> = {
@@ -39,6 +41,7 @@ export const GRAPHICS: Record<GraphicsMode, GraphicsPreset> = {
     mirrorEveryMs: 33,
     mirrorMax: 1920,
     mirrorSamples: 4,
+    woodPx: 512,
   },
   high: {
     // Drawn at twice the resolution and scaled down: card text and edges stop shimmering.
@@ -55,6 +58,7 @@ export const GRAPHICS: Record<GraphicsMode, GraphicsPreset> = {
     mirrorEveryMs: 16,
     mirrorMax: 2560,
     mirrorSamples: 8,
+    woodPx: 1024,
   },
 };
 

@@ -14,41 +14,50 @@ const PLATE_H = BACK_LEN - 2 * PLATE_INSET_H;
 /** Texture pixels per mm on the plate. */
 const PLATE_PX = 3;
 
-let wood: THREE.CanvasTexture | null = null;
+/**
+ * The wood (decision 229): a generated, seamless dark-stained cherry, loaded
+ * at 1024 px in High graphics and 512 in Low (public/wood, made by
+ * devtools/makeWood.py). The GPU builds the smaller mip levels, so far and
+ * glancing views read the small ones. Until it loads, plain cherry.
+ */
+const WOOD_COLOUR = 0x4a1a10;
+let woodPx: 1024 | 512 = 512;
+let woodAniso = 8;
+let wood: THREE.Texture | null = null;
+const woodLoader = new THREE.TextureLoader();
 
-/** A polished cherry grain: warm red-brown with long darker streaks. */
-function woodTexture(): THREE.CanvasTexture {
-  if (wood) return wood;
-  const c = document.createElement('canvas');
-  c.width = 1024;
-  c.height = 256;
-  const g = c.getContext('2d')!;
-  const base = g.createLinearGradient(0, 0, 0, c.height);
-  base.addColorStop(0, '#7a2a17');
-  base.addColorStop(0.5, '#8c3520');
-  base.addColorStop(1, '#6b2312');
-  g.fillStyle = base;
-  g.fillRect(0, 0, c.width, c.height);
-  // Grain: thin wavy streaks along the length.
-  let seed = 7;
-  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  for (let i = 0; i < 90; i++) {
-    const y = rnd() * c.height, amp = 2 + rnd() * 6, freq = 0.002 + rnd() * 0.006;
-    g.strokeStyle = `rgba(${rnd() < 0.5 ? '40, 10, 4' : '150, 70, 40'}, ${0.08 + rnd() * 0.18})`;
-    g.lineWidth = 0.6 + rnd() * 2.2;
-    g.beginPath();
-    for (let x = 0; x <= c.width; x += 8) {
-      const yy = y + Math.sin(x * freq + i) * amp;
-      if (x === 0) g.moveTo(x, yy);
-      else g.lineTo(x, yy);
+function loadWood(): void {
+  const px = woodPx;
+  woodLoader.load(`${import.meta.env.BASE_URL}wood/cherry-${px}.webp`, (tex) => {
+    if (px !== woodPx) {
+      tex.dispose();
+      return;
     }
-    g.stroke();
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.anisotropy = woodAniso;
+    tex.generateMipmaps = true;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    wood?.dispose();
+    wood = tex;
+    if (sharedWood) {
+      sharedWood.map = tex;
+      sharedWood.color.set(0xffffff);
+      sharedWood.needsUpdate = true;
+    }
+  });
+}
+
+/** The graphics mode's wood size and filtering (decision 229). */
+export function setWoodQuality(px: 1024 | 512, anisotropy: number): void {
+  woodAniso = anisotropy;
+  if (wood) {
+    wood.anisotropy = anisotropy;
+    wood.needsUpdate = true;
   }
-  wood = new THREE.CanvasTexture(c);
-  wood.colorSpace = THREE.SRGBColorSpace;
-  wood.wrapS = wood.wrapT = THREE.RepeatWrapping;
-  wood.anisotropy = 8;
-  return wood;
+  if (px === woodPx && (wood || !sharedWood)) return;
+  woodPx = px;
+  if (sharedWood) loadWood();
 }
 
 /** The wedge's body: its side profile run across its width, the grain running across. */
@@ -59,10 +68,11 @@ function wedgeGeometry(): THREE.BufferGeometry {
   const geo = new THREE.ExtrudeGeometry(shape, { depth: STAND_W, bevelEnabled: false });
   // Shape x is front to back (b), shape y is height, the extrusion is across (a).
   geo.applyMatrix4(new THREE.Matrix4().set(0, 0, 1, -STAND_W / 2, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1));
-  // Grain along the width on every face: u across, v from the side profile.
+  // Grain along the width on every face: u across, v from the side profile; the texture
+  // spans the stand's width once, square texels on the faces (decision 229).
   const pos = geo.getAttribute('position');
   const uv = geo.getAttribute('uv') as THREE.BufferAttribute;
-  for (let i = 0; i < pos.count; i++) uv.setXY(i, pos.getX(i) / STAND_W + 0.5, (pos.getY(i) + pos.getZ(i)) / STAND_D);
+  for (let i = 0; i < pos.count; i++) uv.setXY(i, pos.getX(i) / STAND_W + 0.5, (pos.getY(i) + pos.getZ(i)) / STAND_W);
   geo.computeVertexNormals();
   return geo;
 }
@@ -113,7 +123,10 @@ export function drawPlate(text: string): THREE.CanvasTexture {
 /** A stand to put on the table: the wedge and its plate, centred on its footprint, on the table. */
 export function standGroup(plate: THREE.MeshLambertMaterial): THREE.Group {
   sharedWedge ??= wedgeGeometry();
-  sharedWood ??= new THREE.MeshLambertMaterial({ map: woodTexture() });
+  if (!sharedWood) {
+    sharedWood = new THREE.MeshLambertMaterial({ color: WOOD_COLOUR });
+    loadWood();
+  }
   const group = new THREE.Group();
   const wedge = new THREE.Mesh(sharedWedge, sharedWood);
   wedge.castShadow = true;
