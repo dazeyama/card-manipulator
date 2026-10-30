@@ -30,10 +30,11 @@ function faceTexture(value: number): THREE.CanvasTexture {
   g.fillRect(0, 0, n, n);
   g.fillStyle = '#111';
   // The 1 is a big bold pip, as on most dice.
-  const r = value === 1 ? n * 0.13 : n * 0.085;
+  // Chunky pips (decision 258), as close to the edges as the rounding allows.
+  const r = value === 1 ? n * 0.17 : n * 0.11;
   for (const [x, y] of PIPS[value]) {
     g.beginPath();
-    g.arc(n / 2 + x * n * 0.27, n / 2 + y * n * 0.27, r, 0, Math.PI * 2);
+    g.arc(n / 2 + x * n * 0.26, n / 2 + y * n * 0.26, r, 0, Math.PI * 2);
     g.fill();
   }
   const tex = new THREE.CanvasTexture(c);
