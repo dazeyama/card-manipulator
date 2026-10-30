@@ -4,7 +4,7 @@
 
 import type { App } from '../app';
 import type { Mats } from '../mats';
-import { SMALL_STAND_W } from '../state/stand';
+import { SMALL_STAND_NAME, SMALL_STAND_W } from '../state/stand';
 import { h } from './dom';
 
 export function buildStandSection(app: App, mats: Mats): HTMLElement {
@@ -12,9 +12,11 @@ export function buildStandSection(app: App, mats: Mats): HTMLElement {
   const go = h('button', { class: 'btn primary' }, 'Spawn stand');
   // The same stand at a quarter of the width, for scrying a few cards (decisions 282, 283).
   const half = h('button', { class: 'btn', title: 'A quarter as wide: for looking at a few cards, like scry' }, 'Small stand');
-  const spawn = (width?: number) => mats.spawnStand(name.value.trim(), { x: app.rig.target.x, y: app.rig.target.y }, width);
-  go.addEventListener('click', () => spawn());
-  half.addEventListener('click', () => spawn(SMALL_STAND_W));
+  const at = () => ({ x: app.rig.target.x, y: app.rig.target.y });
+  const spawn = () => mats.spawnStand(name.value.trim(), at());
+  go.addEventListener('click', spawn);
+  // The small stand reads "Scry" whatever the name field says; its ✏️ changes the word (decision 285).
+  half.addEventListener('click', () => mats.spawnStand(SMALL_STAND_NAME, at(), SMALL_STAND_W));
   name.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') spawn();
   });

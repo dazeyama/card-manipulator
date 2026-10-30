@@ -20,6 +20,9 @@ import { CARD_H, CARD_W, type Mat } from './types';
 export const STAND_W = 450;
 /** The small stand's width, a quarter of the full one, for looking at a few cards (decisions 282, 283). */
 export const SMALL_STAND_W = STAND_W / 4;
+/** A small stand's plate (decision 285): "Scry" unless changed, and at most this many letters, so the word stays readable. */
+export const SMALL_STAND_NAME = 'Scry';
+export const SMALL_NAME_MAX = 10;
 export const STAND_D = 200;
 /** The lip along the front edge that stops cards sliding off: its depth and height, mm. */
 export const LIP_D = 8;
@@ -43,6 +46,11 @@ export function isStand(m: Mat): boolean {
 /** A stand's width across, mm: the full width unless it is a small one (decisions 282, 283). */
 export function standW(m: Mat): number {
   return m.width ?? STAND_W;
+}
+
+/** A small stand, whose plate holds one short word (decision 285). */
+export function isSmallStand(m: Mat): boolean {
+  return standW(m) <= SMALL_STAND_W;
 }
 
 /** A table point in a stand's own frame: across (a) and front to back (b, positive toward the back). */

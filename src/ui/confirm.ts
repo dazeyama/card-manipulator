@@ -29,9 +29,9 @@ export function confirmDialog(message: string, ok = 'OK'): Promise<boolean> {
 }
 
 /** A small modal asking for one line of text (a card stand's name plate, decision 220). Resolves with it, or null if cancelled. */
-export function textDialog(message: string, opts: { value: string; ok?: string }): Promise<string | null> {
+export function textDialog(message: string, opts: { value: string; ok?: string; maxLength?: number }): Promise<string | null> {
   return new Promise((resolve) => {
-    const input = h('input', { class: 'grow', value: opts.value, maxlength: '60', spellcheck: 'false', 'aria-label': message });
+    const input = h('input', { class: 'grow', value: opts.value, maxlength: String(opts.maxLength ?? 60), spellcheck: 'false', 'aria-label': message });
     const yes = h('button', { class: 'btn primary' }, opts.ok ?? 'OK');
     const no = h('button', { class: 'btn' }, 'Cancel');
     const box = h('div', { class: 'modal' }, h('p', {}, message), h('div', { class: 'row' }, input), h('div', { class: 'row end' }, no, yes));

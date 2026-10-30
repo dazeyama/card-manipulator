@@ -12,7 +12,7 @@ import type { CustomGesture, Mods } from './input/mouse';
 import { ImageLoader } from './render/images';
 import { inSpace, land, placeSequential } from './commands';
 import { drawPlate, setOutlineResolution, standGroup } from './render/standMesh';
-import { isStand, LIP_H, onStand, STAND_D, STAND_H, STAND_W, standHeightAt, standW } from './state/stand';
+import { isSmallStand, isStand, LIP_H, onStand, SMALL_NAME_MAX, STAND_D, STAND_H, STAND_W, standHeightAt, standW } from './state/stand';
 import { textDialog } from './ui/confirm';
 import { MAT_H, MAT_W, type Mat } from './state/types';
 import { newUid } from './state/store';
@@ -150,7 +150,10 @@ export class Mats {
     this.editButton.addEventListener('click', () => {
       const m = this.hovered ? app.store.mats.get(this.hovered) : undefined;
       if (!m) return;
-      void textDialog('The name on the plate, read from across the table:', { value: m.name, ok: 'Save' }).then((text) => {
+      // A small stand's plate takes one short word (decision 285).
+      const small = isSmallStand(m);
+      const ask = small ? `A short word for the plate, up to ${SMALL_NAME_MAX} letters:` : 'The name on the plate, read from across the table:';
+      void textDialog(ask, { value: m.name, ok: 'Save', ...(small ? { maxLength: SMALL_NAME_MAX } : {}) }).then((text) => {
         if (text !== null) app.store.setMatName(m.uid, text.trim());
       });
     });
