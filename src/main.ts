@@ -306,6 +306,14 @@ const hoveredPile = (): string[] => {
   if (store.selection.size || !mouse.hovered) return [...store.selection];
   return store.pileOf(mouse.hovered)?.cardUids.slice() ?? [mouse.hovered];
 };
+/**
+ * What 1-9 and 0 draw from (decision 247): the pile under the cursor when it isn't
+ * selected, dropping the selection first; otherwise the selection, or that pile.
+ */
+const drawSource = (): string[] => {
+  if (mouse.hovered && !store.selection.has(mouse.hovered)) store.clearSelection();
+  return hoveredPile();
+};
 // While dragging, S, X, T and F act on the cards in the hand (decision 104).
 // S twice quickly shuffles: the stack's cards in a random order (decision 106).
 let lastS = 0;
@@ -396,7 +404,7 @@ keyboard.bind('shift+c', curveAll);
 for (let n = 1; n <= 9; n++) {
   keyboard.bind(String(n), () => {
     if (drag.dragging) return;
-    const source = hoveredPile();
+    const source = drawSource();
     app.spreading = null;
     app.placing = null;
     app.drawing = source.length ? { count: n, source } : null;
@@ -407,7 +415,7 @@ let askingCount = false;
 let zeroFaceDown = false;
 keyboard.bind('0', () => {
   if (drag.dragging || askingCount) return;
-  const source = hoveredPile();
+  const source = drawSource();
   if (!source.length) return;
   app.spreading = null;
   app.drawing = null;
