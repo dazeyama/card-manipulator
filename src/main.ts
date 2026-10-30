@@ -790,6 +790,7 @@ keyboard.bind('r', (e) => {
   }, R_WAIT_MS);
 }, { repeatMs: 250 });
 // Z frames the selection; with no cards selected, the playmat last moved (decision 214).
+// Z again, before the camera has moved, swings back to the view from before (decision 276).
 keyboard.bind('z', () => {
   const box = !store.selection.size && mats.selected ? mats.box(mats.selected) : null;
   if (box) app.rig.frame(box.minX, box.minY, box.maxX, box.maxY, box.top);

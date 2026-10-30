@@ -39,7 +39,7 @@ const GROUPS: [string, Line[]][] = [
     ['🖐️', '1 – 9', 'draw that many from the pile under the cursor, then click to lay them out as a hand, face up · Shift + 1 – 9 deals them face down'],
     ['🔢', '0', 'draw any number: type how many (a whole sealed pool), then click · Shift + 0 ticks Face down?'],
     ['📐', 'Shift + T', 'Tidy mode on or off'],
-    ['🎥', 'V', 'camera angle · Z frames · Home resets'],
+    ['🎥', 'V', 'camera angle · Z frames, Z again goes back · Home resets'],
     ['🏷️', 'N', 'name a pile'],
     ['🗑️', 'Delete', 'remove to the tray'],
     ['🔎', 'Ctrl + F or /', 'search the table'],

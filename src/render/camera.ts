@@ -42,6 +42,11 @@ interface View {
   yaw: number;
 }
 
+/** Two views the same, give or take rounding: the camera hasn't been moved between them. */
+function sameView(a: View, b: View): boolean {
+  return Math.abs(a.x - b.x) < 0.01 && Math.abs(a.y - b.y) < 0.01 && Math.abs(a.distance / b.distance - 1) < 1e-4 && Math.abs(a.pitch - b.pitch) < 1e-3 && Math.abs(a.yaw - b.yaw) < 1e-3;
+}
+
 export class CameraRig {
   readonly camera: THREE.PerspectiveCamera;
   readonly target = new THREE.Vector3();
@@ -64,6 +69,8 @@ export class CameraRig {
   private turnStart = 0;
   /** A smooth move to another view in progress (cycling and resetting). */
   private swing: { from: View; to: View; start: number } | null = null;
+  /** The last Z (decision 276): the view before it, the view it made, and the box it framed. */
+  private framed: { from: View; at: View; box: number[] } | null = null;
   private readonly ray = new THREE.Raycaster();
   private readonly ndc = new THREE.Vector2();
   private readonly tmp = new THREE.Vector3();
@@ -264,6 +271,16 @@ export class CameraRig {
    * Never closer than one card's framing, which stays as it was.
    */
   frame(minX: number, minY: number, maxX: number, maxY: number, top = 0): void {
+    // Z again on the same thing, the camera untouched since: back to the view from before (decision 276).
+    const box = [minX, minY, maxX, maxY, top];
+    const before = this.view();
+    const f = this.framed;
+    const still = !!f && !this.swing && sameView(before, f.at);
+    this.framed = null;
+    if (still && f.box.every((v, i) => Math.abs(v - box[i]) < 0.5)) {
+      this.swingTo(f.from, performance.now());
+      return;
+    }
     this.swing = null;
     const aspect = this.camera.aspect || 1;
     const nearest = this.distanceFor(Math.max(90 * 1.35, 120 * 1.35 * aspect * 1.25)) + top;
@@ -319,6 +336,8 @@ export class CameraRig {
       this.distance *= FRAME_BACK;
       this.update();
     }
+    // Framing one thing after another keeps the view from before the first.
+    this.framed = { from: still ? f.from : before, at: this.view(), box };
   }
 
   /** Visible table width in millimetres at the target. */
