@@ -14,6 +14,10 @@ const MIN_WIDTH = 150;
 const MAX_WIDTH = 3600;
 export const DEFAULT_DISTANCE = 1400;
 const SWING_MS = 450;
+/** Z leaves this share of the view clear on each side (decision 212)... */
+const FRAME_MARGIN = 0.04;
+/** ...and this many pixels more along the bottom, where the hints sit. */
+const FRAME_BOTTOM = 40;
 
 /** The view angles the View button cycles through; Home and double right-click return to the current one. */
 export interface ViewPreset {
@@ -221,16 +225,64 @@ export class CameraRig {
     return this.swing !== null;
   }
 
-  /** Move the camera to fit a table-space box (spec 7.2, Z). */
+  /**
+   * Move the camera to fit a table-space box (spec 7.2, Z). The box is fitted
+   * as the tilted camera actually sees it (decision 212): as close as keeps all
+   * its corners on screen with a small margin, and centred in the view, so a
+   * big group fills the screen. Never closer than one card's framing, which
+   * stays as it was.
+   */
   frame(minX: number, minY: number, maxX: number, maxY: number, top = 0): void {
     this.swing = null;
-    this.target.set((minX + maxX) / 2, (minY + maxY) / 2, 0);
-    const w = Math.max(maxX - minX, 90) * 1.35;
-    const h = Math.max(maxY - minY, 120) * 1.35;
     const aspect = this.camera.aspect || 1;
-    const fitWidth = Math.max(w, h * aspect * 1.25);
-    this.distance = this.distanceFor(fitWidth) + top;
-    this.update();
+    const nearest = this.distanceFor(Math.max(90 * 1.35, 120 * 1.35 * aspect * 1.25)) + top;
+    const corners: [number, number, number][] = [];
+    for (const z of [0, top]) for (const x of [minX, maxX]) for (const y of [minY, maxY]) corners.push([x, y, z]);
+    // The part of the canvas to fit into: a small margin, and room for the hints along the bottom.
+    const left = this.width * FRAME_MARGIN, right = this.width * (1 - FRAME_MARGIN);
+    const upper = this.height * FRAME_MARGIN, lower = this.height * (1 - FRAME_MARGIN) - FRAME_BOTTOM;
+    const s = new THREE.Vector2();
+    const bounds = () => {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const [x, y, z] of corners) {
+        this.worldToScreen(x, y, z, s);
+        x0 = Math.min(x0, s.x); x1 = Math.max(x1, s.x);
+        y0 = Math.min(y0, s.y); y1 = Math.max(y1, s.y);
+      }
+      return { x0, y0, x1, y1 };
+    };
+    const fits = (d: number) => {
+      this.distance = d;
+      this.update();
+      const b = bounds();
+      return b.x0 >= left && b.x1 <= right && b.y0 >= upper && b.y1 <= lower;
+    };
+    const fit = () => {
+      let lo = nearest, hi = this.distanceFor(MAX_WIDTH);
+      if (!fits(lo)) {
+        for (let i = 0; i < 30; i++) {
+          const mid = (lo + hi) / 2;
+          if (fits(mid)) hi = mid;
+          else lo = mid;
+        }
+        lo = hi;
+      }
+      this.distance = lo;
+      this.update();
+    };
+    this.target.set((minX + maxX) / 2, (minY + maxY) / 2, 0);
+    // The near side of a tilted box looks bigger, so its centre is not the view's: nudge and fit again.
+    for (let pass = 0; pass < 3; pass++) {
+      fit();
+      if (pass === 2) break;
+      const b = bounds();
+      const cx = (left + right) / 2, cy = (upper + lower) / 2;
+      const from = this.screenToPlane(cx, cy, 0);
+      const to = this.screenToPlane(cx + (b.x0 + b.x1) / 2 - cx, cy + (b.y0 + b.y1) / 2 - cy, 0);
+      if (!from || !to) break;
+      this.target.x += to.x - from.x;
+      this.target.y += to.y - from.y;
+    }
   }
 
   /** Visible table width in millimetres at the target. */
