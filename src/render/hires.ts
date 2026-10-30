@@ -5,12 +5,14 @@
 // drawn as a plane just above the card's face. The plane is inset 2 mm so the
 // instanced card's border, selection rim and rounded corners still show. Any
 // card with at least 5% of its face showing qualifies, so every card of a fan
-// sharpens, not just the top one (decision 101).
+// sharpens, not just the top one (decision 101). A foil card's close-up
+// image carries the same foil sheen as the card under it (decision 211).
 
 import * as THREE from 'three';
 import type { App } from '../app';
 import { visibleShare } from '../state/piles';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
+import { FOIL_GLSL } from './cards';
 import { ImageLoader } from './images';
 
 /** How close-up images behave; the graphics mode sets these (decision 152). */
@@ -30,6 +32,7 @@ const INSET = 2;
 interface Overlay {
   uid: string;
   url: string;
+  foil: boolean;
   mesh: THREE.Mesh;
 }
 
@@ -121,7 +124,8 @@ export class HiRes {
       if (this.showing(s.uid) >= MIN_SHOWING) want.add(s.uid);
     }
     for (const [uid, o] of this.overlays) {
-      if (!want.has(uid)) {
+      // A card that turned foil or nonfoil gets a fresh overlay.
+      if (!want.has(uid) || o.foil !== this.isFoil(uid)) {
         this.group.remove(o.mesh);
         (o.mesh.material as THREE.Material).dispose();
         this.overlays.delete(uid);
@@ -160,12 +164,34 @@ export class HiRes {
       this.request(url);
       return;
     }
+    const foil = this.isFoil(uid);
     const mat = new THREE.MeshLambertMaterial({ map: tex });
+    if (foil) this.addFoil(mat);
     const mesh = new THREE.Mesh(this.geometry, mat);
     mesh.matrixAutoUpdate = false;
     mesh.receiveShadow = true;
     this.group.add(mesh);
-    this.overlays.set(uid, { uid, url, mesh });
+    this.overlays.set(uid, { uid, url, foil, mesh });
+  }
+
+  private isFoil(uid: string): boolean {
+    const card = this.app.store.cards.get(uid);
+    return !!card && card.finish !== 'nonfoil';
+  }
+
+  /** The card's own foil sheen, drawn over the close-up image (decision 211). */
+  private addFoil(mat: THREE.MeshLambertMaterial): void {
+    const time = this.app.layer.timeUniform;
+    mat.customProgramCacheKey = () => 'hires-foil';
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uTime = time;
+      shader.vertexShader = 'varying vec3 vLocal;\nvarying vec3 vWorldN;\nvarying vec3 vWorldP;\n' + shader.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+vLocal = position;
+vWorldP = (modelMatrix * vec4(position, 1.0)).xyz;
+vWorldN = normalize(mat3(modelMatrix) * normal);`);
+      shader.fragmentShader = 'uniform float uTime;\nvarying vec3 vLocal;\nvarying vec3 vWorldN;\nvarying vec3 vWorldP;\n' + FOIL_GLSL + shader.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+totalEmissiveRadiance += foilSheen(vLocal.xy, normalize(vWorldN), vWorldP);`);
+    };
   }
 
   private request(url: string): void {

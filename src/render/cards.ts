@@ -64,6 +64,28 @@ vWorldN = normalize(mat3(modelMatrix * instanceMatrix) * normal);
 if (aFlags.w > 0.5) transformed = vec3(0.0);
 `;
 
+/**
+ * The foil sheen (spec 7.1): a moving rainbow band that shifts as the view
+ * does, plus a faint wash so a foil reads even between bands. Shared with the
+ * close-up images, which draw over the card's face (decision 211).
+ * Needs `uniform float uTime;` declared before it.
+ */
+export const FOIL_GLSL = /* glsl */ `
+vec3 hue(float h) {
+  return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+}
+
+/** p: the point on the card, mm from its centre; n and wp: world normal and position. */
+vec3 foilSheen(vec2 p, vec3 n, vec3 wp) {
+  vec3 V = normalize(cameraPosition - wp);
+  float facing = dot(n, V);
+  float band = sin((p.x * 0.035 + p.y * 0.05) + facing * 9.0 + V.x * 4.0 + V.y * 3.0 + uTime * 0.25);
+  float s = smoothstep(0.35, 1.0, band);
+  vec3 tint = hue(fract(p.y * 0.006 + facing * 1.4 + V.x * 0.6));
+  return tint * (s * 0.3 + 0.05);
+}
+`;
+
 const fragmentHead = /* glsl */ `
 precision highp sampler2DArray;
 uniform sampler2DArray uAtlas;
@@ -91,10 +113,7 @@ vec4 sampleSlot(vec3 slot, vec2 uv) {
   vec2 t = slot.xy + vec2(uv.x, 1.0 - uv.y) * uSlotUV;
   return texture(uAtlas, vec3(t, slot.z));
 }
-
-vec3 hue(float h) {
-  return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
-}
+${FOIL_GLSL}
 `;
 
 const mapFragment = /* glsl */ `
@@ -130,15 +149,7 @@ if (abs(vFace) < 0.5) {
 }
 diffuseColor.rgb = mix(diffuseColor.rgb, uAccent, rim * 0.85 + vFlags.x * 0.06);
 totalEmissiveRadiance += uAccent * rim * 0.55;
-if (vFlags.z > 0.5 && vFace > 0.5) {
-  vec3 V = normalize(cameraPosition - vWorldP);
-  float facing = dot(normalize(vWorldN), V);
-  float band = sin((vLocal.x * 0.035 + vLocal.y * 0.05) + facing * 9.0 + V.x * 4.0 + V.y * 3.0 + uTime * 0.25);
-  float s = smoothstep(0.35, 1.0, band);
-  vec3 tint = hue(fract(vLocal.y * 0.006 + facing * 1.4 + V.x * 0.6));
-  // A moving rainbow band, plus a faint wash so a foil reads even between bands.
-  totalEmissiveRadiance += tint * (s * 0.3 + 0.05);
-}
+if (vFlags.z > 0.5 && vFace > 0.5) totalEmissiveRadiance += foilSheen(vLocal.xy, normalize(vWorldN), vWorldP);
 `;
 
 // A soft contact shadow under cards that rest on the table, so single cards
@@ -288,6 +299,11 @@ export class CardLayer {
 
   setTime(t: number): void {
     this.uniforms.uTime.value = t;
+  }
+
+  /** The foil sheen's clock, shared with the close-up images so their foil moves in step (decision 211). */
+  get timeUniform(): { value: number } {
+    return this.uniforms.uTime;
   }
 
   has(uid: string): boolean {
