@@ -157,6 +157,8 @@ export class DragController {
   private cursor = { x: 0, y: 0 };
   /** The card stand whose slope is under the cursor, if any (decision 221). */
   private overStand: Mat | null = null;
+  /** The held cards were picked up from a card stand's slope (for Ctrl's turn face down leaving it, decision 284). */
+  private fromStand = false;
   /** The last stand the held cards were over, and how far they have swung onto its slope (0 to 1). */
   private slopeOf: Mat | null = null;
   private slopeMix = 0;
@@ -262,6 +264,7 @@ export class DragController {
     this.cursor = at ? { x: at.x, y: at.y } : { x: grab.x, y: grab.y };
     if (at?.stand) grab.set(at.x, at.y, 0);
     this.overStand = at?.stand ?? null;
+    this.fromStand = !!this.overStand;
     this.slopeOf = this.overStand;
     this.slopeMix = this.overStand ? 1 : 0;
     this.held = cards.map((c, i) => {
@@ -323,7 +326,11 @@ export class DragController {
         if (!this.active) return;
         const p = this.pointAt(x, y);
         if (p) this.cursor = { x: p.x, y: p.y };
+        // Taken off a stand with Ctrl held: face down as they leave its slope, as when
+        // putting scried cards back unseen (decision 284).
+        const left = !!this.overStand && !p?.stand;
         this.overStand = p?.stand ?? null;
+        if (left && this.fromStand && (e.ctrlKey || e.metaKey)) this.faceDownHeld();
         if (this.overStand) this.slopeOf = this.overStand;
         this.screen = { x, y };
         const now = performance.now();
@@ -541,6 +548,23 @@ export class DragController {
       // Always the same way round, to the matching side's roll nearest half a turn on.
       const side = card.faceUp ? 0 : Math.PI;
       c.rollTo = side + 2 * Math.PI * Math.round((pose.roll + Math.PI - side) / (2 * Math.PI));
+    }
+  }
+
+  /**
+   * Every held card that is face up turns face down in the hand (decision 284),
+   * each on its own, so the hand's order stays as it was.
+   */
+  faceDownHeld(): void {
+    if (!this.active) return;
+    const store = this.app.store;
+    const up = this.held.filter((c) => store.cards.get(c.uid)?.faceUp);
+    if (!up.length) return;
+    store.moveCards(up.map((c) => ({ uid: c.uid, faceUp: false })));
+    for (const c of up) {
+      const pose = this.app.layer.pose(c.uid);
+      if (!pose) continue;
+      c.rollTo = Math.PI + 2 * Math.PI * Math.round((pose.roll - Math.PI) / (2 * Math.PI));
     }
   }
 
