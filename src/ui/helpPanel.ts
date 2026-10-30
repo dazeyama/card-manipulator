@@ -21,7 +21,7 @@ const GROUPS: [string, Line[]][] = [
     ['📚', 'Drag a pile’s number', 'lift the whole pile (hold Alt to see numbers)'],
     ['🃏', 'Middle-click', 'flip a card, or the cards in your hand'],
     ['👇', 'Right-click or Space while holding', 'dealing: deal the bottom card (squared with Ctrl); hold to keep dealing, one every quarter second'],
-    ['📖', 'Double-click', 'spread a pile, or restack it; a card on its own turns a quarter (a tap)'],
+    ['📖', 'Double-click', 'spread a pile, or restack it; a card on its own taps a quarter turn, and untaps back to 0° next time'],
     ['↔️', 'Right-drag', 'pan (or Space + drag); double right-click straightens the view'],
     ['🔄', 'Middle-drag', 'orbit'],
     ['🔍', 'Wheel', 'zoom toward the cursor'],

@@ -31,7 +31,7 @@ import { buildStandSection } from './ui/standTab';
 import { installStandSnap } from './standSnap';
 import { LifeCounters } from './ui/lifeCounter';
 import { fromSlope, isStand, raySlope, raySlopeLocal, SLOPE_BOX } from './state/stand';
-import type { Placed } from './state/piles';
+import { uprightYaw, type Placed } from './state/piles';
 import type { Mat } from './state/types';
 import { buildPlaymatTab } from './ui/playmatTab';
 import { ContextHints } from './ui/hints';
@@ -150,13 +150,15 @@ mouse.hooks.cardDrag = (uid, x, y, mods) => {
   store.setSelection([uid]);
   return drag.begin([uid], 'single', x, y, uid);
 };
-// Double-click: a card on its own turns a quarter, a tap (decision 245); a pile spreads, a spread restacks.
+// Double-click: a card on its own taps, a quarter turn, and untaps back to 0 degrees the next
+// time (decisions 245, 246); a pile spreads, a spread restacks.
 mouse.hooks.doubleClickCard = (uid) => {
   const card = store.cards.get(uid);
   const pile = store.pileOf(uid);
   if (card && !card.spreadOf && (!pile || pile.cardUids.length < 2)) {
     app.showGesture('rotate');
-    commands.rotate([uid]);
+    const upright = Math.abs(card.yaw - uprightYaw(card.yaw)) < 1e-3;
+    commands.rotate([uid], !upright);
   } else commands.toggleSpread(uid);
 };
 mouse.hooks.matPress = (x, y, mods) => {
