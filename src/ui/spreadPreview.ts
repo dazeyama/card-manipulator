@@ -1,6 +1,7 @@
 // While an X box is being dragged (decision 207), the outline of every card
 // where it will land: the same layout the spread uses, drawn flat on the
-// table on a 2D canvas over the scene. Just outlines, redrawn as the box moves.
+// table on a 2D canvas over the scene. Just outlines, redrawn as the box moves;
+// where cards overlap, only the edges that will show are drawn (decision 208).
 
 import type { App } from '../app';
 import type { Placed } from '../state/piles';
@@ -28,9 +29,9 @@ export class SpreadPreview {
     canvas.hidden = false;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    ctx.beginPath();
     const hw = CARD_W / 2, hh = CARD_H / 2;
-    for (const s of spots) {
+    /** Adds one card's outline to the current path. */
+    const outline = (s: Placed) => {
       const cos = Math.cos(s.yaw), sin = Math.sin(s.yaw);
       [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]].forEach(([dx, dy], i) => {
         const p = rig.worldToScreen(s.x + dx * cos - dy * sin, s.y + dx * sin + dy * cos, 0);
@@ -38,12 +39,28 @@ export class SpreadPreview {
         else ctx.lineTo(p.x, p.y);
       });
       ctx.closePath();
-    }
-    ctx.fillStyle = 'rgba(37, 99, 235, 0.06)';
-    ctx.fill();
+    };
+    // Later cards land on top (decision 208): each one first wipes out the outlines
+    // under it, then draws its own, so only the edges that will show are left.
     ctx.strokeStyle = 'rgba(37, 99, 235, 0.85)';
     ctx.lineWidth = 1;
-    ctx.stroke();
+    // Erasing needs an opaque fill.
+    ctx.fillStyle = '#000';
+    for (const s of spots) {
+      ctx.beginPath();
+      outline(s);
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.stroke();
+    }
+    // A faint fill behind the outlines, over the whole shape.
+    ctx.globalCompositeOperation = 'destination-over';
+    ctx.fillStyle = 'rgba(37, 99, 235, 0.06)';
+    ctx.beginPath();
+    for (const s of spots) outline(s);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
   }
 
   hide(): void {
