@@ -1,5 +1,6 @@
 // Life counters (decision 239): every playmat has a life total, a chunky
-// cartoon badge floating over its top-left corner, always facing you and
+// cartoon badge floating just off its top-left corner, never over its cards
+// (decision 240), always facing you and
 // sized with the mat. Click +1, right-click -1, the wheel either way, Shift
 // for 5 at a time; hold a button to keep counting. Ctrl + click types a
 // number, middle-click resets to 20. Quick changes add up in a bubble beside
@@ -20,8 +21,8 @@ const LOW_LIFE = 5;
 const BADGE_MM = 56;
 const BADGE_MIN_PX = 40;
 const BADGE_MAX_PX = 150;
-/** Its centre, in from the mat's top-left corner, mm. */
-const INSET = 44;
+/** Its gap from the mat's outline on screen, and the bubble's from it, px. */
+const GAP_PX = 6;
 /** Holding a button: the first repeat after this long, then one this often, ms. */
 const HOLD_MS = 400;
 const REPEAT_MS = 120;
@@ -142,18 +143,39 @@ export class LifeCounters {
       // Following the mat as it is drawn, mid-drag too.
       const at = this.mats.drawnAt(m.uid) ?? m;
       const c = Math.cos(at.yaw), s = Math.sin(at.yaw);
-      const a = -MAT_W / 2 + INSET, d = MAT_H / 2 - INSET;
-      const x = at.x + a * c - d * s, y = at.y + a * s + d * c;
-      if (!rig.inFront(x, y, MAT_T)) {
+      const pt = (a: number, d: number) => ({ x: at.x + a * c - d * s, y: at.y + a * s + d * c });
+      // Off the mat, never over its cards (decision 240): just outside its top-left
+      // corner on screen, along the corner's outside, clear of both its edges.
+      const k = pt(-MAT_W / 2, MAT_H / 2);
+      if (!rig.inFront(k.x, k.y, MAT_T)) {
         b.el.hidden = true;
         continue;
       }
       b.el.hidden = false;
-      const p = rig.worldToScreen(x, y, MAT_T);
-      // As big as BADGE_MM on the mat looks here, within limits.
-      const q = rig.worldToScreen(x + BADGE_MM, y, MAT_T);
-      const size = Math.max(BADGE_MIN_PX, Math.min(BADGE_MAX_PX, Math.hypot(q.x - p.x, q.y - p.y)));
+      const corner = rig.worldToScreen(k.x, k.y, MAT_T);
+      const along = pt(MAT_W / 2, MAT_H / 2), down = pt(-MAT_W / 2, -MAT_H / 2);
+      const e1 = rig.worldToScreen(along.x, along.y, MAT_T), e2 = rig.worldToScreen(down.x, down.y, MAT_T);
+      const unit = (vx: number, vy: number) => {
+        const l = Math.hypot(vx, vy) || 1;
+        return { x: vx / l, y: vy / l };
+      };
+      const u1 = unit(corner.x - e1.x, corner.y - e1.y), u2 = unit(corner.x - e2.x, corner.y - e2.y);
+      const out = unit(u1.x + u2.x, u1.y + u2.y);
+      // As big as BADGE_MM at the mat's corner looks here, within limits.
+      const q = rig.worldToScreen(k.x + BADGE_MM, k.y, MAT_T);
+      const size = Math.max(BADGE_MIN_PX, Math.min(BADGE_MAX_PX, Math.hypot(q.x - corner.x, q.y - corner.y)));
+      // Far enough out along the corner's outside that the circle clears both edges.
+      const half = Math.acos(Math.max(-1, Math.min(1, u1.x * u2.x + u1.y * u2.y))) / 2;
+      const reach = Math.min(size * 3, (size / 2 + GAP_PX) / Math.max(0.2, Math.sin(half)));
+      const p = { x: corner.x + out.x * reach, y: corner.y + out.y * reach };
       b.el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -50%)`;
+      // The bubble sits on the badge's far side from the mat, so it never covers it either.
+      if (b.bubble.classList.contains('show')) {
+        const bw = b.bubble.offsetWidth / 2, bh = b.bubble.offsetHeight / 2;
+        const off = size / 2 + GAP_PX + bw * Math.abs(out.x) + bh * Math.abs(out.y);
+        b.bubble.style.left = `calc(50% + ${(out.x * off).toFixed(1)}px)`;
+        b.bubble.style.top = `calc(50% + ${(out.y * off).toFixed(1)}px)`;
+      }
       b.el.style.width = b.el.style.height = `${size.toFixed(0)}px`;
       b.el.style.fontSize = `${(size * 0.44).toFixed(1)}px`;
       const life = lifeOf(m);
