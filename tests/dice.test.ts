@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { dieTurn, FACE_VALUES, valueUp, yawOf } from '../src/state/dice';
+import { DIE_SIZE, dieTurn, FACE_VALUES, gatherOffsets, valueUp, yawOf } from '../src/state/dice';
 
 describe('dice (decision 255)', () => {
   it('has opposite faces adding up to 7', () => {
@@ -15,6 +15,21 @@ describe('dice (decision 255)', () => {
         expect(valueUp(q)).toBe(v);
         expect(Math.cos(yawOf(q) - yaw)).toBeCloseTo(1, 6);
       }
+    }
+  });
+
+  it('gathers dice into a tight block about the cursor (decision 256)', () => {
+    for (const n of [2, 4, 5, 9]) {
+      const spots = gatherOffsets(n);
+      expect(spots).toHaveLength(n);
+      // Centred, and no two touching.
+      expect(spots.reduce((s, p) => s + p.x, 0) / n).toBeCloseTo(0, 6);
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+        expect(Math.max(Math.abs(spots[i].x - spots[j].x), Math.abs(spots[i].y - spots[j].y))).toBeGreaterThanOrEqual(DIE_SIZE);
+      }
+      // Tight: within a block about sqrt(n) dice across.
+      const span = Math.max(...spots.map((p) => Math.abs(p.x)));
+      expect(span).toBeLessThanOrEqual(Math.ceil(Math.sqrt(n)) * DIE_SIZE);
     }
   });
 

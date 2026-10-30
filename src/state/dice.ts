@@ -28,6 +28,28 @@ export const FACE_VALUES = [3, 4, 2, 5, 1, 6];
 const NORMALS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]].map(([x, y, z]) => new THREE.Vector3(x, y, z));
 const UP = new THREE.Vector3(0, 0, 1);
 
+/** Gathered dice sit this far apart, edge to edge, mm (decision 256). */
+export const GATHER_GAP = 1.5;
+
+/**
+ * Where `count` gathered dice sit about the cursor (decision 256): a tight,
+ * nearly square block, rows of up to ceil(sqrt(count)), centred, first die at
+ * the top left, as cards gather into one stack.
+ */
+export function gatherOffsets(count: number): { x: number; y: number }[] {
+  const cols = Math.max(1, Math.ceil(Math.sqrt(count)));
+  const rows = Math.ceil(count / cols);
+  const step = DIE_SIZE + GATHER_GAP;
+  const out: { x: number; y: number }[] = [];
+  for (let i = 0; i < count; i++) {
+    const r = Math.floor(i / cols), c = i % cols;
+    // The last row centred on its own when it is short.
+    const inRow = r === rows - 1 ? count - r * cols : cols;
+    out.push({ x: (c - (inRow - 1) / 2) * step, y: ((rows - 1) / 2 - r) * step });
+  }
+  return out;
+}
+
 /** The number on top of a die turned this way: the face whose normal points most nearly up. */
 export function valueUp(q: { x: number; y: number; z: number; w: number }): number {
   const rot = new THREE.Quaternion(q.x, q.y, q.z, q.w);

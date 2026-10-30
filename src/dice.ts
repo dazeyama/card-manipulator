@@ -8,13 +8,15 @@ import * as THREE from 'three';
 import type { App } from './app';
 import type { CustomGesture, Mods } from './input/mouse';
 import type { DiceLayer } from './render/dice';
-import { DIE_SIZE, dieTurn, valueUp, yawOf, type Die } from './state/dice';
+import { DIE_SIZE, dieTurn, gatherOffsets, valueUp, yawOf, type Die } from './state/dice';
 import { newUid } from './state/store';
 import { isStand, standHeightAt } from './state/stand';
 import { CARD_H, CARD_T, CARD_W } from './state/types';
 
 /** Held dice ride this far above what is under them, mm. */
 const CARRY = 16;
+/** Each mouse move, held dice close this share of the way to their place (decision 256). */
+const GLIDE = 0.4;
 
 export class Dice {
   readonly selected = new Set<string>();
@@ -144,6 +146,18 @@ export class Dice {
         this.select([uid], mods.ctrl);
       }
       held = [...this.selected].map((u) => store.dice.get(u)).filter((d): d is Die => !!d && !this.busy.has(d.uid)).map((d) => ({ uid: d.uid, ox: d.x - grab.x, oy: d.y - grab.y, die: { ...d } }));
+      // Several dice gather together under the cursor, as cards gather into a stack;
+      // Alt keeps them as they lay, like a card formation (decision 256).
+      if (held.length > 1 && !mods.alt) {
+        const spots = gatherOffsets(held.length);
+        // Square to the die picked up, so the block is neat and no corners clash.
+        const yaw = store.dice.get(uid)?.yaw ?? 0;
+        held.forEach((h, i) => {
+          h.ox = spots[i].x;
+          h.oy = spots[i].y;
+          h.die.yaw = yaw;
+        });
+      }
       for (const h of held) {
         this.busy.add(h.uid);
         this.layer.carried.add(h.uid);
@@ -173,7 +187,11 @@ export class Dice {
         if (!p) return;
         for (const h of held!) {
           const nx = p.x + h.ox, ny = p.y + h.oy;
-          this.layer.pose(h.uid, { x: nx, y: ny, z: this.surfaceAt(nx, ny, skip()) + DIE_SIZE / 2 + CARRY }, dieTurn(h.die.value, h.die.yaw));
+          // Gliding in to its place, so the gathering shows.
+          const now = this.layer.drawnAt(h.uid)?.position;
+          const k = now ? GLIDE : 1;
+          const gx = now ? now.x + (nx - now.x) * k : nx, gy = now ? now.y + (ny - now.y) * k : ny;
+          this.layer.pose(h.uid, { x: gx, y: gy, z: this.surfaceAt(gx, gy, skip()) + DIE_SIZE / 2 + CARRY }, dieTurn(h.die.value, h.die.yaw));
         }
       },
       up: (x, y) => {
