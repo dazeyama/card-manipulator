@@ -3,7 +3,7 @@
 // (decision 240), always facing you and
 // sized with the mat. Click +1, right-click -1, the wheel either way, Shift
 // for 5 at a time; hold a button to keep counting. Ctrl + click types a
-// number, middle-click resets to 20. Quick changes add up in a bubble beside
+// number, middle-click resets to 20 (at 20, to 40, decision 244). Quick changes add up in a bubble beside
 // it; the number pops green or red, and at 5 or less it stays red.
 
 import type { App } from '../app';
@@ -15,6 +15,8 @@ import { h } from './dom';
 
 /** A new playmat's life. */
 export const START_LIFE = 20;
+/** Middle-click on 20 goes to this (decision 244). */
+const COMMANDER_LIFE = 40;
 /** At this or less the number shows red. */
 const LOW_LIFE = 5;
 /** The badge's size on the mat, mm, and the smallest it gets on screen, px. */
@@ -65,7 +67,7 @@ export class LifeCounters {
     const num = h('span', { class: 'life-num' });
     const skull = h('span', { class: 'life-skull', hidden: '' }, '💀');
     const bubble = h('span', { class: 'life-delta' });
-    const el = h('div', { class: 'life-badge', title: 'Life: click +1, right-click −1, wheel up or down; Shift for 5. Hold to keep counting. Ctrl + click to type a number, middle-click resets to 20.' }, skull, num, bubble);
+    const el = h('div', { class: 'life-badge', title: 'Life: click +1, right-click −1, wheel up or down; Shift for 5. Hold to keep counting. Ctrl + click to type a number, middle-click resets to 20 (at 20, to 40).' }, skull, num, bubble);
     b = { el, num, skull, bubble, delta: 0, fade: 0, shown: NaN };
     const uid = m.uid;
     el.addEventListener('pointerdown', (e) => {
@@ -73,7 +75,11 @@ export class LifeCounters {
       e.stopPropagation();
       e.preventDefault();
       const step = e.shiftKey ? 5 : 1;
-      if (e.button === 1) return this.set(uid, START_LIFE);
+      // Middle-click resets to 20; at 20 already, to 40, a Commander game (decision 244).
+      if (e.button === 1) {
+        const m = this.app.store.mats.get(uid);
+        return this.set(uid, m && lifeOf(m) === START_LIFE ? COMMANDER_LIFE : START_LIFE);
+      }
       if (e.button === 0 && (e.ctrlKey || e.metaKey)) return this.ask(uid);
       if (e.button !== 0 && e.button !== 2) return;
       const by = e.button === 0 ? step : -step;
