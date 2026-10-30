@@ -305,6 +305,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 - [ ] Hover a card at an odd angle and press R: it squares to the next quarter turn clockwise; R again turns it 90°; R twice quickly stands it upright (decision 102).
 - [ ] With nothing selected, hover a pile and press T, X, X, S, F; drag a stack and press R mid-drag: it turns in your hand and lands turned (decision 103).
 - [ ] Spawn the cube, press `Shift + C`: colours two to a row (W U, B R, G colourless, multicolour and lands; decision 113), columns by mana value lined up, lands stacked at the start, title bars readable. Hover one colour's pile and press `C`. Toggle **Split creatures** and press `Shift + C` again (decision 107). Press `C` on a curved pile: it stacks back up; cascades show more of each card (decision 108).
+- [ ] **Untap** (decision 237): tap a few cards on a playmat (R), hover the mat, click 🔄: they all turn back upright. Works on a locked mat too; a stand has no 🔄.
 - [ ] **0 face down** (decision 236): over a big pile press 0, enter 45, tick Face down?, Draw, click the table: three face-down messy piles of 15 side by side, close together. Press 0 again: the box is still ticked. Untick: a face-up hand as before.
 - [ ] **Stand in the Playmat tab** (decision 235): the Spawn panel's tabs all fit (no Stand tab); the Playmat tab ends with a Card stand section that spawns one.
 - [ ] **Hide control hints** (decision 234): open ?, tick Hide control hints: the hint line along the bottom goes; reload: still hidden; untick: back.

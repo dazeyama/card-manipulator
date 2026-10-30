@@ -93,6 +93,7 @@ export class Mats {
   /** A selected card stand's rim, on the table round its foot (decision 220). */
   private readonly standRim = new THREE.Mesh(new THREE.ShapeGeometry(roundedRect(STAND_W / 2 + RIM, STAND_D / 2 + RIM, 6 + RIM), 4), new THREE.MeshBasicMaterial({ color: ACCENT, depthTest: false, depthWrite: false }));
   private readonly editButton: HTMLButtonElement;
+  private readonly untapButton: HTMLButtonElement;
   private readonly button: HTMLButtonElement;
   private readonly lockButton: HTMLButtonElement;
   private readonly buttons: HTMLDivElement;
@@ -147,7 +148,16 @@ export class Mats {
         if (text !== null) app.store.setMatName(m.uid, text.trim());
       });
     });
-    this.buttons.append(this.lockButton, this.button, this.editButton);
+    // 🔄 untaps: every card on the playmat turns upright to it (decision 237).
+    this.untapButton = document.createElement('button');
+    this.untapButton.className = 'mat-mirror-btn';
+    this.untapButton.textContent = '🔄';
+    this.untapButton.title = 'Untap: turn every card on it upright';
+    this.untapButton.addEventListener('pointerdown', (e) => e.stopPropagation());
+    this.untapButton.addEventListener('click', () => {
+      if (this.hovered) this.untap(this.hovered);
+    });
+    this.buttons.append(this.lockButton, this.untapButton, this.button, this.editButton);
     app.overlay.append(this.buttons);
 
     window.addEventListener('pointermove', (e) => {
@@ -210,6 +220,17 @@ export class Mats {
     const twice = !!uid && uid === this.lastClick.uid && now - this.lastClick.at < DOUBLE_CLICK_MS;
     this.lastClick = { uid: twice ? '' : uid ?? '', at: now };
     if (twice) this.app.store.setSelection(this.cardsOn(uid!));
+  }
+
+  /** Untap (decision 237): every card on a playmat turned upright to it, 0 degrees from the mat's own turn. */
+  untap(uid: string): void {
+    const store = this.app.store;
+    const m = store.mats.get(uid);
+    if (!m) return;
+    const turned = this.cardsOn(uid).map((u) => store.cards.get(u)!).filter((c) => Math.abs(shortTurn(c.yaw - m.yaw)) > 1e-4);
+    if (!turned.length) return;
+    this.app.showGesture('rotate');
+    land(this.app, turned.map((c) => ({ uid: c.uid, x: c.x, y: c.y, z: c.z, yaw: m.yaw + Math.round((c.yaw - m.yaw) / (2 * Math.PI)) * 2 * Math.PI })), { stagger: Math.min(3, 200 / turned.length) });
   }
 
   /** Make a mat the selected one, or none (decision 214). A locked mat can't be. */
@@ -525,6 +546,8 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
         : locked ? corner(m, -MAT_W / 2 + 22, -MAT_H / 2 + 22) : corner(m, MAT_W / 2 - 22, MAT_H / 2 - 22);
       const s = rig.worldToScreen(c.x, c.y, stand ? LIP_H : MAT_T);
       this.button.hidden = stand;
+      // Untap is for playmats only (decision 237).
+      this.untapButton.hidden = stand;
       this.editButton.hidden = !stand;
       // The corner point is the middle of the button nearest the corner: the 📺 at top right, the lock at bottom left.
       const shift = locked ? 'translate(-16px, -50%)' : 'translate(calc(-100% + 16px), -50%)';
@@ -629,6 +652,11 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
       if (ctx) ctx.putImageData(new ImageData(new Uint8ClampedArray(mirror.pixels.buffer as ArrayBuffer), width, height), 0, 0);
     }
   }
+}
+
+/** An angle brought into -pi..pi. */
+function shortTurn(a: number): number {
+  return a - 2 * Math.PI * Math.round(a / (2 * Math.PI));
 }
 
 /** A rounded rectangle, centred, half w by half h with corner radius r. */
