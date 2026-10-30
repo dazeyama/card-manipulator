@@ -150,16 +150,22 @@ mouse.hooks.cardDrag = (uid, x, y, mods) => {
   store.setSelection([uid]);
   return drag.begin([uid], 'single', x, y, uid);
 };
-// Double-click: a card on its own taps, a quarter turn, and untaps back to 0 degrees the next
-// time (decisions 245, 246); a pile spreads, a spread restacks.
-mouse.hooks.doubleClickCard = (uid) => {
-  const card = store.cards.get(uid);
-  const pile = store.pileOf(uid);
-  if (card && !card.spreadOf && (!pile || pile.cardUids.length < 2)) {
-    app.showGesture('rotate');
-    const upright = Math.abs(card.yaw - uprightYaw(card.yaw)) < 1e-3;
-    commands.rotate([uid], !upright);
-  } else commands.toggleSpread(uid);
+// Double-click taps, a quarter turn each, and untaps back to 0 degrees the next time (decisions
+// 245, 246, 248): the selection if the card was in it, else the card's stack, else the card.
+mouse.hooks.doubleClickCard = (uid, before) => {
+  if (!store.cards.has(uid)) return;
+  let targets: string[];
+  if (before.length > 1 && before.includes(uid)) {
+    targets = before.filter((u) => store.cards.has(u));
+    store.setSelection(targets);
+  } else targets = store.pileOf(uid)?.cardUids.slice() ?? [uid];
+  // All upright: tap them; any turned: untap them all.
+  const upright = targets.every((u) => {
+    const c = store.cards.get(u)!;
+    return Math.abs(c.yaw - uprightYaw(c.yaw)) < 1e-3;
+  });
+  app.showGesture('rotate', targets);
+  commands.rotate(targets, !upright);
 };
 mouse.hooks.matPress = (x, y, mods) => {
   // A locked mat acts as empty table (decision 154).

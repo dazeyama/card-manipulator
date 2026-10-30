@@ -38,8 +38,8 @@ export interface MouseHooks {
   middleWhileHolding?: () => boolean;
   /** A right press while cards are held: return true if it dropped one (decision 180). */
   rightWhileHolding?: () => boolean;
-  /** Double-click on a card (spread, spec 10.6). */
-  doubleClickCard?: (uid: string) => void;
+  /** Double-click on a card (tap or untap, decision 248), with the selection from before its first click. */
+  doubleClickCard?: (uid: string, selectionBefore: string[]) => void;
   /** The hovered card changed. */
   hover?: (uid: string | null) => void;
   /** A left press where no card is: a playmat may take it (decision 144). */
@@ -54,7 +54,7 @@ export class MouseInput {
   readonly hooks: MouseHooks = {};
   hovered: string | null = null;
   private readonly marqueeEl: HTMLDivElement;
-  private lastClick = { uid: '', at: 0 };
+  private lastClick = { uid: '', at: 0, selection: [] as string[] };
   private lastRight = { x: 0, y: 0, at: 0 };
   /** A Ctrl + click has checked a card in or out since Ctrl went down: the cursor shows the tick (decision 170). */
   ctrlChecking = false;
@@ -174,14 +174,16 @@ export class MouseInput {
     }
     if (e.button !== 0) return;
     if (onCard) {
-      // Double-click toggles a spread (spec 10.6).
+      // Double-click taps or untaps (decision 248), given the selection from before the
+      // first click, which that click narrowed to the one card.
       const now = performance.now();
       if (this.lastClick.uid === onCard && now - this.lastClick.at < 350 && this.hooks.doubleClickCard) {
-        this.lastClick = { uid: '', at: 0 };
-        this.hooks.doubleClickCard(onCard);
+        const before = this.lastClick.selection;
+        this.lastClick = { uid: '', at: 0, selection: [] };
+        this.hooks.doubleClickCard(onCard, before);
         return;
       }
-      this.lastClick = { uid: onCard, at: now };
+      this.lastClick = { uid: onCard, at: now, selection: [...this.app.store.selection] };
       this.gesture = { kind: 'card-press', uid: onCard, x, y, mods: this.mods(e) };
     } else {
       this.gesture = this.hooks.matPress?.(x, y, this.mods(e)) ?? { kind: 'empty-press', x, y, mods: this.mods(e) };
