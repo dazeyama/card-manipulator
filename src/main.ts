@@ -405,11 +405,16 @@ keyboard.bind('0', () => {
 });
 // Pointer mode (decision 189): the finger button beside the search box, then a click on the
 // table moves the selection there as one stack (squared in Tidy mode). Esc cancels.
-const pointBtn = h('button', { class: 'btn small point-btn', title: 'Move the selection (P): click here, then click the table where it should go, as a stack' }, h('img', { src: pointUrl, alt: 'Point' }), ' (P)');
-/** Turn pointer mode on for some cards, or off. */
+const pointBtn = h('button', { class: 'btn small point-btn', title: 'Move the selection (P): click here, then click the table where it should go, as a stack. Click again (or P) to switch to face down, like a pack, and back; Esc cancels' }, h('img', { src: pointUrl, alt: 'Point' }), ' (P)');
+/**
+ * Turn pointer mode on for some cards; once on, each press switches between
+ * placing them as they are and face down like a pack, as X switches its two
+ * spreads (decisions 216, 228). Esc turns it off.
+ */
 const togglePointer = (source: string[]) => {
   if (app.placing) {
-    app.placing = null;
+    // The same object, as the click reads it.
+    app.placing.faceDown = !app.placing.faceDown;
   } else if (source.length) {
     app.drawing = null;
     app.spreading = null;
@@ -419,19 +424,10 @@ const togglePointer = (source: string[]) => {
   }
 };
 pointBtn.addEventListener('click', () => togglePointer([...store.selection]));
-// P does the same, for the selection or the pile under the cursor, like the other keys (decision 195).
-// P P: the cards land face down, every one, like a pack of draft cards (decision 226).
-let lastP = 0;
+// P does the same, for the selection or the pile under the cursor, like the other keys (decision 195);
+// pressed again while armed, it switches to face down, like a pack of draft cards, and back (decisions 226, 228).
 keyboard.bind('p', () => {
-  if (drag.dragging) return;
-  const now = performance.now();
-  const twice = now - lastP < DOUBLE_TAP_MS;
-  lastP = twice ? 0 : now;
-  if (twice && app.placing) {
-    app.placing = { ...app.placing, faceDown: true };
-    return;
-  }
-  togglePointer(hoveredPile());
+  if (!drag.dragging) togglePointer(hoveredPile());
 });
 app.onFrame(() => pointBtn.classList.toggle('on', !!app.placing));
 hud.addBesideSearch(pointBtn);

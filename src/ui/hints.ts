@@ -127,9 +127,9 @@ export class ContextHints {
     const hints: Hint[] = context === 'draw'
       ? [['👆', `Click the table to lay out a hand of ${n}`], ['🃏', 'They land face up'], ['⎋', 'Esc cancels']]
       : context === 'place' && this.app.placing?.faceDown
-        ? [['📦', `Click the table to put ${placeCount} card${placeCount === 1 ? '' : 's'} there face down, as a pack`], ['⎋', 'Esc cancels']]
+        ? [['📦', `Click the table to put ${placeCount} card${placeCount === 1 ? '' : 's'} there face down, as a pack`], ['👆', 'P switches back to as they are'], ['⎋', 'Esc cancels']]
       : context === 'place'
-        ? [['👆', `Click the table to move ${placeCount} card${placeCount === 1 ? '' : 's'} there as a stack`], ['📦', 'P again: face down, like a pack'], ['⎋', 'Esc cancels']]
+        ? [['👆', `Click the table to move ${placeCount} card${placeCount === 1 ? '' : 's'} there as a stack`], ['📦', 'P switches to face down, like a pack'], ['⎋', 'Esc cancels']]
       : context === 'spread' && this.app.spreading?.reverse
         ? [['👉', `Click to reverse-spread ${spreadCount} card${spreadCount === 1 ? '' : 's'} there, mana costs showing`], ['🔲', 'Drag a box to fit them inside it'], ['🪟', 'X switches back to the plain spread'], ['⎋', 'Esc cancels']]
       : context === 'spread'
