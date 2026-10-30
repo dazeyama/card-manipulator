@@ -73,6 +73,18 @@ export class TopBar {
     app.store.events.on('settings', syncTidy);
     syncTidy();
     this.actions.append(tidy);
+
+    // Mirror mode (decision 267): the far side of the table; lit while you sit there.
+    const mirror = h('button', { class: 'btn small', title: 'Mirror mode (M): sit at the far side of the table. Cards you move from there turn to face you, and new things face you.' }, 'Mirror (M)');
+    let mirrored = false;
+    app.onFrame(() => {
+      if (app.rig.mirrored === mirrored) return;
+      mirrored = app.rig.mirrored;
+      mirror.classList.toggle('on', mirrored);
+      mirror.setAttribute('aria-pressed', String(mirrored));
+    });
+    mirror.addEventListener('click', () => app.rig.setMirrored(!app.rig.mirrored));
+    this.actions.append(mirror);
   }
 
   /** Graphics mode (decision 152): a button beside the camera angle that switches High and Low. */

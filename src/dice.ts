@@ -126,7 +126,8 @@ export class Dice {
 
   /** D: a new die at the cursor, showing 1, on whatever is there. */
   spawn(at: { x: number; y: number }): void {
-    const die: Die = { uid: newUid('d'), x: at.x, y: at.y, z: this.surfaceAt(at.x, at.y) + DIE_SIZE / 2, yaw: this.square((Math.random() - 0.5) * 0.6), value: 1 };
+    // Facing the side that spawns it (decision 267).
+    const die: Die = { uid: newUid('d'), x: at.x, y: at.y, z: this.surfaceAt(at.x, at.y) + DIE_SIZE / 2, yaw: this.square(this.app.facing + (Math.random() - 0.5) * 0.6), value: 1, side: this.app.side || undefined };
     this.app.store.setDice([die]);
   }
 
@@ -213,6 +214,13 @@ export class Dice {
         this.select([uid], mods.ctrl);
       }
       held = [...this.selected].map((u) => store.dice.get(u)).filter((d): d is Die => !!d && !this.busy.has(d.uid)).map((d) => ({ uid: d.uid, ox: d.x - grab.x, oy: d.y - grab.y, die: { ...d } }));
+      // Picked up from the other side of the table: it turns round to face you (decision 267).
+      const side = app.side;
+      for (const h of held) {
+        if ((h.die.side ?? 0) === side) continue;
+        h.die.yaw += Math.PI;
+        h.die.side = side || undefined;
+      }
       // Several dice gather together under the cursor, as cards gather into a stack;
       // Alt keeps them as they lay, like a card formation (decision 256).
       if (held.length > 1 && !mods.alt) {

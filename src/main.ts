@@ -35,7 +35,7 @@ import { Dice } from './dice';
 import { DiceLayer } from './render/dice';
 import { DiceNumbers } from './ui/diceNumbers';
 import { HandCount } from './ui/handCount';
-import { fromSlope, isStand, raySlope, raySlopeLocal, SLOPE_BOX } from './state/stand';
+import { alignTo, fromSlope, isStand, raySlope, raySlopeLocal, SLOPE_BOX } from './state/stand';
 import { uprightYaw, type Placed } from './state/piles';
 import type { Mat } from './state/types';
 import { buildPlaymatTab } from './ui/playmatTab';
@@ -127,6 +127,11 @@ mouse.hooks.marquee = (rect, mode) => {
     dice.select(dice.selected, true);
   }
 };
+// M: mirror mode, the far side of the table (decision 267).
+keyboard.bind('m', () => {
+  app.rig.setMirrored(!app.rig.mirrored);
+  toast(app.rig.mirrored ? 'Mirror mode: the far side of the table' : 'Back to your side of the table', 'info', 1400);
+});
 keyboard.bind('d', () => {
   if (!drag.dragging) dice.spawn(app.lastTablePoint);
 });
@@ -598,7 +603,8 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
       return box ? fromSlope(onSlope, fitLayout(n, box)) : null;
     }
     const box = tableBox(x0, y0, x1, y1);
-    return box ? fitLayout(n, box) : null;
+    // The right way up from your side, mirror mode too (decision 267).
+    return box ? alignTo(fitLayout(n, box), { x: (box.minX + box.maxX) / 2, y: (box.minY + box.maxY) / 2 }, app.facing) : null;
   };
   const preview = () => {
     const count = spreading.source.filter((u) => store.cards.has(u)).length;
@@ -632,7 +638,7 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
       return;
     }
     const at = app.rig.screenToPlane(x0, y0, 0);
-    if (at) commands.spreadTo(spreading.source, (n) => gridLayout(n, at), !!spreading.reverse);
+    if (at) commands.spreadTo(spreading.source, (n) => alignTo(gridLayout(n, at), at, app.facing), !!spreading.reverse);
   };
   endSpreadGesture = end;
   window.addEventListener('pointermove', move, true);

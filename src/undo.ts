@@ -113,6 +113,7 @@ export class Undo {
       card.spreadOf = c.spreadOf;
       card.laidAt = c.laidAt ? { ...c.laidAt } : undefined;
       card.stand = c.stand;
+      card.side = c.side;
     }
     store.named.clear();
     for (const p of then.named) store.named.set(p.id, { ...p, anchor: { ...p.anchor } });
@@ -122,7 +123,7 @@ export class Undo {
     // Dice as they were (decision 255).
     if (JSON.stringify([...store.dice.values()]) !== JSON.stringify(then.dice)) store.replaceDice(then.dice);
     if (d.move.length) {
-      land(app, d.move.map((c) => ({ uid: c.uid, x: c.x, y: c.y, z: c.z, yaw: c.yaw, faceUp: c.faceUp })), { stagger: Math.min(1.5, 200 / d.move.length), arc: 6 });
+      land(app, d.move.map((c) => ({ uid: c.uid, x: c.x, y: c.y, z: c.z, yaw: c.yaw, faceUp: c.faceUp })), { stagger: Math.min(1.5, 200 / d.move.length), arc: 6, keepSide: true });
     }
     store.events.emit('piles', undefined);
   }

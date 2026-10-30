@@ -67,6 +67,16 @@ export class App {
   /** Frame time samples for the performance readout. */
   readonly frameTimes: number[] = [];
 
+  /** Mirror mode (decision 267): 1 on the far side of the table, 0 on the near side. */
+  get side(): 0 | 1 {
+    return this.rig.mirrored ? 1 : 0;
+  }
+
+  /** The turn that reads the right way up from your side: none, or a half turn in mirror mode. */
+  get facing(): number {
+    return this.side ? Math.PI : 0;
+  }
+
   /** Tidy mode right now: switched on, or held on with Ctrl (decisions 98, 129). */
   get tidy(): boolean {
     return this.store.settings.tidyDrops || this.ctrlHeld;

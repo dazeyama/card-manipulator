@@ -33,7 +33,8 @@ export function spawnCards(app: App, items: SpawnItem[], opts: SpawnOptions): st
   if (!flat.length) return [];
 
   const spot = opts.at ?? (opts.where === 'cursor' ? app.lastTablePoint : { x: app.rig.target.x, y: app.rig.target.y });
-  const at = { x: spot.x, y: spot.y, yaw: 0 };
+  // The right way up from the side spawning them (decision 267).
+  const at = { x: spot.x, y: spot.y, yaw: app.facing };
   const base = surfaceTop(app.store.cards.values(), at);
   // Tidy mode (decision 98): new cards always arrive as a squared stack.
   const arrival = app.tidy ? 'stack' : opts.arrival;
@@ -48,6 +49,7 @@ export function spawnCards(app: App, items: SpawnItem[], opts: SpawnOptions): st
     z: places[i].z,
     yaw: places[i].yaw,
     faceUp: opts.faceUp,
+    side: app.side || undefined,
     pileId: null,
     spreadOf: null,
   }));

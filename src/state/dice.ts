@@ -18,6 +18,8 @@ export interface Die {
   yaw: number;
   /** The number on top, 1 to 6. */
   value: number;
+  /** The side of the table that last moved it (decision 267); unset, the near side. */
+  side?: 0 | 1;
 }
 
 /**

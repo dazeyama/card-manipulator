@@ -32,7 +32,7 @@ export function installStandSnap(app: App): void {
       // Bottom first, so piles keep their order on the slope.
       cards.sort((a, b) => a.z - b.z);
       const spots = cards.map((c) => ({ ...liftOntoSlope(m, c.x, c.y), yaw: c.yaw }));
-      land(app, inSpace(m.uid, () => placeSequential(app, cards.map((c) => c.uid), spots)), { arc: 8 });
+      land(app, inSpace(m.uid, () => placeSequential(app, cards.map((c) => c.uid), spots)), { arc: 8, keepSide: true });
     }
   };
   const queue = () => {

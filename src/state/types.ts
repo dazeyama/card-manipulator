@@ -36,6 +36,8 @@ export interface Card {
    * stand's slope unrolled flat, and z its height above the slope (stand.ts).
    */
   stand?: string;
+  /** The side of the table that last moved it (decision 267): 1 the far side, in mirror mode; unset, the near side. */
+  side?: 0 | 1;
 }
 
 export type PileKind = 'stack' | 'messy';
@@ -195,6 +197,8 @@ export interface TableDoc {
     spreadOf?: string | null;
     /** The card stand it lies on (decision 221). */
     stand?: string;
+    /** The side that last moved it (decision 267). */
+    side?: 0 | 1;
   }[];
   /** Open spreads (agent decision 61); older files have none. */
   spreads?: { id: string; anchor: { x: number; y: number }; yaw: number; uids: string[]; pileId: string | null }[];

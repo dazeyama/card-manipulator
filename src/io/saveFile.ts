@@ -18,6 +18,8 @@ export function toDoc(app: App, withCardData: boolean): TableDoc {
     ...(c.laidAt ? { laidAt: { x: round(c.laidAt.x), y: round(c.laidAt.y) } } : {}),
     // On a card stand's slope (decision 221).
     ...(c.stand ? { stand: c.stand } : {}),
+    // Last moved from the far side (decision 267).
+    ...(c.side ? { side: c.side } : {}),
   }));
   const cardData: Record<string, CardRecord> = {};
   if (withCardData) {

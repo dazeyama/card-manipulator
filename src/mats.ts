@@ -121,11 +121,11 @@ export class Mats {
     // Choosing cards takes the selection away from the mat.
     app.store.events.on('selection', () => this.select(null));
 
-    // The 📺 button, shown in the top right corner of the mat under the mouse.
+    // The 📺 Cast button (decision 267), shown in the top right corner of the mat under the mouse.
     this.button = document.createElement('button');
     this.button.className = 'mat-mirror-btn';
     this.button.textContent = '📺';
-    this.button.title = 'Open a top-down mirror of this playmat in its own window, for screen sharing';
+    this.button.title = 'Cast: open a top-down view of this playmat in its own window, for streaming or screen sharing';
     this.button.addEventListener('pointerdown', (e) => e.stopPropagation());
     this.button.addEventListener('click', () => {
       if (this.hovered) this.openMirror(this.hovered);
@@ -192,12 +192,13 @@ export class Mats {
 
   /** Set up a new card stand at a spot, with this name on its plate (decision 220). */
   spawnStand(name: string, at: { x: number; y: number }): void {
-    this.app.store.addMat({ uid: newUid('m'), kind: 'stand', scryfallId: '', name, art: '', x: at.x, y: at.y, yaw: 0 });
+    // Facing whoever sets it up: its slope toward them, its plate away (decision 267).
+    this.app.store.addMat({ uid: newUid('m'), kind: 'stand', scryfallId: '', name, art: '', x: at.x, y: at.y, yaw: this.app.facing });
   }
 
   /** Lay a new mat on the table at a spot. */
   spawn(scryfallId: string, name: string, art: string, at: { x: number; y: number }): void {
-    this.app.store.addMat({ uid: newUid('m'), scryfallId, name, art, x: at.x, y: at.y, yaw: 0 });
+    this.app.store.addMat({ uid: newUid('m'), scryfallId, name, art, x: at.x, y: at.y, yaw: this.app.facing });
   }
 
   /** R over a mat: a quarter turn clockwise, like a card. */
@@ -244,7 +245,7 @@ export class Mats {
     const turned = this.cardsOn(uid).map((u) => store.cards.get(u)!).filter((c) => Math.abs(shortTurn(c.yaw - m.yaw)) > 1e-4);
     if (!turned.length) return;
     this.app.showGesture('rotate');
-    land(this.app, turned.map((c) => ({ uid: c.uid, x: c.x, y: c.y, z: c.z, yaw: m.yaw + Math.round((c.yaw - m.yaw) / (2 * Math.PI)) * 2 * Math.PI })), { stagger: Math.min(3, 200 / turned.length) });
+    land(this.app, turned.map((c) => ({ uid: c.uid, x: c.x, y: c.y, z: c.z, yaw: m.yaw + Math.round((c.yaw - m.yaw) / (2 * Math.PI)) * 2 * Math.PI })), { stagger: Math.min(3, 200 / turned.length), keepSide: true });
   }
 
   /** Make a mat the selected one, or none (decision 214). A locked mat can't be. */
@@ -277,7 +278,7 @@ export class Mats {
     const members = m && isStand(m) ? this.cardsOn(uid).map((u) => store.cards.get(u)!).sort((a, b) => a.z - b.z) : [];
     store.removeMat(uid);
     if (members.length) {
-      land(this.app, inSpace(null, () => placeSequential(this.app, members.map((c) => c.uid), members.map((c) => ({ x: c.x, y: c.y, yaw: c.yaw })))));
+      land(this.app, inSpace(null, () => placeSequential(this.app, members.map((c) => c.uid), members.map((c) => ({ x: c.x, y: c.y, yaw: c.yaw })))), { keepSide: true });
     }
   }
 

@@ -53,6 +53,15 @@ export class CameraRig {
   changed = true;
   /** Index into VIEW_PRESETS of the current default view. */
   preset = 0;
+  /**
+   * Mirror mode (decision 267): a half turn added to the camera's own turn, so
+   * it looks from the far side of the table; the limited orbit (YAW_LIMIT)
+   * swings about that. Degrees, eased from `turnFrom` toward `turnTo`.
+   */
+  private turn = 0;
+  private turnFrom = 0;
+  private turnTo = 0;
+  private turnStart = 0;
   /** A smooth move to another view in progress (cycling and resetting). */
   private swing: { from: View; to: View; start: number } | null = null;
   private readonly ray = new THREE.Raycaster();
@@ -94,7 +103,7 @@ export class CameraRig {
     this.yaw = THREE.MathUtils.clamp(this.yaw, -YAW_LIMIT, YAW_LIMIT);
     this.clampDistance();
     const p = this.pitch * DEG;
-    const y = this.yaw * DEG;
+    const y = (this.yaw + this.turn) * DEG;
     const d = this.distance;
     this.camera.position.set(
       this.target.x + d * Math.cos(p) * Math.sin(y),
@@ -210,8 +219,28 @@ export class CameraRig {
     this.swing = { from: this.view(), to, start: now };
   }
 
+  /** On the far side of the table (decision 267), or turning there. */
+  get mirrored(): boolean {
+    return this.turnTo === 180;
+  }
+
+  /** Swing round to the far side of the table, or back (decision 267). */
+  setMirrored(on: boolean): void {
+    const to = on ? 180 : 0;
+    if (to === this.turnTo) return;
+    this.turnFrom = this.turn;
+    this.turnTo = to;
+    this.turnStart = performance.now();
+  }
+
   /** Advance a swing in progress; called once a frame. */
   step(now: number): void {
+    if (this.turn !== this.turnTo) {
+      const t = Math.min(1, (now - this.turnStart) / (SWING_MS * 1.6));
+      const k = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+      this.turn = t >= 1 ? this.turnTo : this.turnFrom + (this.turnTo - this.turnFrom) * k;
+      this.update();
+    }
     const s = this.swing;
     if (!s) return;
     const t = Math.min(1, (now - s.start) / SWING_MS);

@@ -16,7 +16,7 @@ import { shortAngle } from './motion';
 import { restingTop } from './restSync';
 import { CASCADE_STEP } from '../state/curve';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
-import { isStand, raySlope, slopePose, standTopUnder } from '../state/stand';
+import { alignTo, isStand, raySlope, slopePose, standTopUnder } from '../state/stand';
 import type { Mat } from '../state/types';
 import { inSpace } from '../commands';
 
@@ -232,6 +232,13 @@ export class DragController {
     if (!grab || !uids.length) return null;
     // Bottom to top, so the stacking order survives the trip.
     const cards = uids.map((u) => store.cards.get(u)!).filter(Boolean).sort((a, b) => a.z - b.z);
+    // Picked up from the other side of the table: it turns round to face you (decision 267).
+    const side = this.app.side;
+    for (const c of cards) {
+      if ((c.side ?? 0) === side) continue;
+      c.yaw += Math.PI;
+      c.side = side || undefined;
+    }
     leaveSpreads(this.app, cards.map((c) => c.uid));
     const minZ = cards[0].z;
     // A tidy stack dragged whole stays snappy and rigid (decision 96).
@@ -644,7 +651,7 @@ export class DragController {
   spreadHeld(): void {
     if (!this.active || this.held.length < 2) return;
     const topFirst = [...this.held].reverse();
-    const grid = gridLayout(topFirst.length, { x: 0, y: 0 });
+    const grid = alignTo(gridLayout(topFirst.length, { x: 0, y: 0 }), { x: 0, y: 0 }, this.app.facing);
     topFirst.forEach((c, i) => {
       c.ox = c.bx = grid[i].x;
       c.oy = c.by = grid[i].y;
