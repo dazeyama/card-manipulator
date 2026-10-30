@@ -18,6 +18,8 @@ const SWING_MS = 450;
 const FRAME_MARGIN = 0.04;
 /** ...and this many pixels more along the bottom, where the hints sit. */
 const FRAME_BOTTOM = 40;
+/** One notch of the mouse wheel out (mouse.ts zooms by exp(100 * 0.0015) a notch). */
+const FRAME_BACK = Math.exp(0.15);
 
 /** The view angles the View button cycles through; Home and double right-click return to the current one. */
 export interface ViewPreset {
@@ -229,8 +231,8 @@ export class CameraRig {
    * Move the camera to fit a table-space box (spec 7.2, Z). The box is fitted
    * as the tilted camera actually sees it (decision 212): as close as keeps all
    * its corners on screen with a small margin, and centred in the view, so a
-   * big group fills the screen. Never closer than one card's framing, which
-   * stays as it was.
+   * big group fills the screen, then backed off one wheel notch (decision 213).
+   * Never closer than one card's framing, which stays as it was.
    */
   frame(minX: number, minY: number, maxX: number, maxY: number, top = 0): void {
     this.swing = null;
@@ -282,6 +284,11 @@ export class CameraRig {
       if (!from || !to) break;
       this.target.x += to.x - from.x;
       this.target.y += to.y - from.y;
+    }
+    // A group then sits one mouse-wheel step further out than the tightest fit (decision 213).
+    if (this.distance > nearest + 1e-6) {
+      this.distance *= FRAME_BACK;
+      this.update();
     }
   }
 
