@@ -152,7 +152,8 @@ mouse.hooks.matPress = (x, y, mods) => {
   const mat = mats.movableAt(x, y);
   return mat ? mats.press(mat, x, y, mods) : null;
 };
-mouse.hooks.emptyClick = () => mats.select(null);
+// A click on bare table unselects the mat; on a locked mat or stand, a double-click still selects its cards (decision 233).
+mouse.hooks.emptyClick = (x, y) => mats.clicked(mats.matAt(x, y));
 // Middle-click flips the card, or the whole selection if the card is in it (spec 10.5).
 // Right-click while holding cards drops the bottom one, messy or (Ctrl) squared; held down,
 // another every quarter second until the hand is empty or the button is let go (decisions 180, 182).

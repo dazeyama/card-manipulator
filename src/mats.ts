@@ -25,6 +25,8 @@ import { newUid } from './state/store';
 const MAT_T = 5;
 /** Rounded corners, like a real playmat. */
 const MAT_CORNER = 10;
+/** Two clicks on a mat this close together are a double-click, ms, as on a card. */
+const DOUBLE_CLICK_MS = 350;
 /** How far the selected mat's blue rim shows past its edge, mm (decision 214). */
 const RIM = 6;
 /**
@@ -193,6 +195,21 @@ export class Mats {
     store.moveMat(uid, m.x, m.y, yaw);
     if (members.length) store.events.emit('settled', members);
     this.select(uid);
+  }
+
+  private lastClick = { uid: '', at: 0 };
+
+  /**
+   * A click on a mat or stand where no card is, or on bare table (null): it
+   * unselects the selected mat; a second click on the same one within the
+   * double-click time selects every card on it (decision 233).
+   */
+  clicked(uid: string | null): void {
+    this.select(null);
+    const now = performance.now();
+    const twice = !!uid && uid === this.lastClick.uid && now - this.lastClick.at < DOUBLE_CLICK_MS;
+    this.lastClick = { uid: twice ? '' : uid ?? '', at: now };
+    if (twice) this.app.store.setSelection(this.cardsOn(uid!));
   }
 
   /** Make a mat the selected one, or none (decision 214). A locked mat can't be. */
@@ -470,7 +487,7 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
           this.select(uid);
         } else {
           app.store.clearSelection();
-          this.select(null);
+          this.clicked(uid);
         }
       },
       cancel: () => {
