@@ -15,7 +15,7 @@ import { inSpace, land, placeSequential, type Landing } from '../commands';
 import { snapYaw } from '../state/piles';
 import { restingTop } from './restSync';
 import { CARD_H, CARD_T, CARD_W, type Mat } from '../state/types';
-import { isStand, LIP_D, LIP_H, STAND_D, STAND_W, standProfile, standWorld, unrollPoint } from '../state/stand';
+import { isStand, LIP_D, LIP_H, STAND_D, STAND_W, standProfile, standW, standWorld, unrollPoint } from '../state/stand';
 import { D20_RADIUS, d20Geometry, DIE_SIZE, dieSize, type DieKind } from '../state/dice';
 import type { Pose } from '../render/cards';
 
@@ -299,14 +299,14 @@ export class Physics {
     const out: RAPIER_NS.Collider[] = [];
     const lip = standWorld(m, 0, -STAND_D / 2 + LIP_D / 2);
     out.push(world.createCollider(
-      RAPIER.ColliderDesc.cuboid((STAND_W / 2) * MM, (LIP_D / 2) * MM, (LIP_H / 2) * MM)
+      RAPIER.ColliderDesc.cuboid((standW(m) / 2) * MM, (LIP_D / 2) * MM, (LIP_H / 2) * MM)
         .setTranslation(lip.x * MM, lip.y * MM, (LIP_H / 2) * MM)
         .setRotation(rot)
         .setFriction(0.6),
     ));
     // The wedge: its three profile corners behind the lip, at both ends.
     const pts: number[] = [];
-    for (const a of [-STAND_W / 2, STAND_W / 2]) for (const [b, h] of standProfile().slice(3)) pts.push(a * MM, b * MM, h * MM);
+    for (const a of [-standW(m) / 2, standW(m) / 2]) for (const [b, h] of standProfile().slice(3)) pts.push(a * MM, b * MM, h * MM);
     const hull = RAPIER.ColliderDesc.convexHull(new Float32Array(pts));
     if (hull) out.push(world.createCollider(hull.setTranslation(m.x * MM, m.y * MM, 0).setRotation(rot).setFriction(0.6)));
     return out;

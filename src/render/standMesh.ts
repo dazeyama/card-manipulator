@@ -12,8 +12,9 @@ import { BACK, RIDGE, STAND_D, STAND_H, STAND_W, standProfile } from '../state/s
 const PLATE_INSET_W = 22;
 const PLATE_INSET_H = 9;
 const BACK_LEN = STAND_H / Math.sin(BACK);
-const PLATE_W = STAND_W - 2 * PLATE_INSET_W;
 const PLATE_H = BACK_LEN - 2 * PLATE_INSET_H;
+/** The plate's width on a stand this wide (a half-width stand has a shorter one, decision 282). */
+const plateW = (width: number) => width - 2 * PLATE_INSET_W;
 /** Texture pixels per mm on the plate. */
 const PLATE_PX = 3;
 
@@ -64,15 +65,16 @@ export function setWoodQuality(px: 1024 | 512, anisotropy: number): void {
 }
 
 /** The wedge's body: its side profile run across its width, the grain running across. */
-function wedgeGeometry(): THREE.BufferGeometry {
+function wedgeGeometry(width: number): THREE.BufferGeometry {
   const shape = new THREE.Shape();
   standProfile().forEach(([b, h], i) => (i ? shape.lineTo(b, h) : shape.moveTo(b, h)));
   shape.closePath();
-  const geo = new THREE.ExtrudeGeometry(shape, { depth: STAND_W, bevelEnabled: false });
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: width, bevelEnabled: false });
   // Shape x is front to back (b), shape y is height, the extrusion is across (a).
-  geo.applyMatrix4(new THREE.Matrix4().set(0, 0, 1, -STAND_W / 2, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1));
+  geo.applyMatrix4(new THREE.Matrix4().set(0, 0, 1, -width / 2, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1));
   // Grain along the width on every face: u across, v from the side profile; the texture
-  // spans the stand's width once, square texels on the faces (decision 229).
+  // spans a full stand's width once, square texels on the faces (decision 229), so a
+  // half-width stand has the same grain, half of it.
   const pos = geo.getAttribute('position');
   const uv = geo.getAttribute('uv') as THREE.BufferAttribute;
   for (let i = 0; i < pos.count; i++) uv.setXY(i, pos.getX(i) / STAND_W + 0.5, (pos.getY(i) + pos.getZ(i)) / STAND_W);
@@ -80,14 +82,14 @@ function wedgeGeometry(): THREE.BufferGeometry {
   return geo;
 }
 
-let sharedWedge: THREE.BufferGeometry | null = null;
+/** The wedge and its outline for each width of stand, made when first needed. */
+const wedges = new Map<number, { wedge: THREE.BufferGeometry; edges: LineSegmentsGeometry }>();
 /**
  * Its outline (decisions 230, 231): a bold black line, OUTLINE_PX wide on
  * screen at any zoom, along every edge where two faces meet, for a cartoon look.
  * Plain lines are only ever one pixel wide, so these are three.js's fat lines.
  */
 const OUTLINE_PX = 5;
-let sharedEdges: LineSegmentsGeometry | null = null;
 const outlines: LineMaterial[] = [];
 
 /** A cartoon outline material, OUTLINE_PX wide on screen; the dice use these too (decision 255). */
@@ -105,9 +107,9 @@ export function setOutlineResolution(width: number, height: number): void {
 let sharedWood: THREE.MeshLambertMaterial | null = null;
 
 /** Draw the name plate's face: black, a gold border, the text in gold serif capitals' style. */
-export function drawPlate(text: string): THREE.CanvasTexture {
+export function drawPlate(text: string, width = STAND_W): THREE.CanvasTexture {
   const c = document.createElement('canvas');
-  c.width = Math.round(PLATE_W * PLATE_PX);
+  c.width = Math.round(plateW(width) * PLATE_PX);
   c.height = Math.round(PLATE_H * PLATE_PX);
   const g = c.getContext('2d')!;
   g.fillStyle = '#0c0c0c';
@@ -145,22 +147,26 @@ export function drawPlate(text: string): THREE.CanvasTexture {
 }
 
 /** A stand to put on the table: the wedge and its plate, centred on its footprint, on the table. */
-export function standGroup(plate: THREE.MeshLambertMaterial): THREE.Group {
-  sharedWedge ??= wedgeGeometry();
-  sharedEdges ??= new LineSegmentsGeometry().fromEdgesGeometry(new THREE.EdgesGeometry(sharedWedge, 20));
+export function standGroup(plate: THREE.MeshLambertMaterial, width = STAND_W): THREE.Group {
+  let shape = wedges.get(width);
+  if (!shape) {
+    const wedge = wedgeGeometry(width);
+    shape = { wedge, edges: new LineSegmentsGeometry().fromEdgesGeometry(new THREE.EdgesGeometry(wedge, 20)) };
+    wedges.set(width, shape);
+  }
   if (!sharedWood) {
     // Pushed back a touch in depth, so the outline on its edges never flickers into it.
     sharedWood = new THREE.MeshLambertMaterial({ color: WOOD_COLOUR, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
     loadWood();
   }
   const group = new THREE.Group();
-  const wedge = new THREE.Mesh(sharedWedge, sharedWood);
+  const wedge = new THREE.Mesh(shape.wedge, sharedWood);
   wedge.castShadow = true;
   wedge.receiveShadow = true;
-  const edges = new LineSegments2(sharedEdges, edgeMaterial);
+  const edges = new LineSegments2(shape.edges, edgeMaterial);
   // Half a millimetre up, so the lines round its foot, where it meets the table, aren't hidden by the table (decision 232).
   edges.position.z = 0.5;
-  const geo = new THREE.PlaneGeometry(PLATE_W, PLATE_H);
+  const geo = new THREE.PlaneGeometry(plateW(width), PLATE_H);
   // Turned to face the back: readable from across the table, right way up (decision 220).
   geo.rotateZ(Math.PI);
   geo.rotateX(-BACK);

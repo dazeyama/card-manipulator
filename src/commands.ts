@@ -12,7 +12,7 @@ import { arcHand, fanLayout, HAND_ROW, handLayout } from './state/fan';
 const PILE_GAP = 10;
 import { rankLayout, type RankCard, type RankMode } from './state/rankLayout';
 import { colourLayout, type ColourCard } from './state/colourLayout';
-import { alignTo, fitOnStand, fromSlope, inFrontOf, isStand, SLOPE_LEN, slopePose, STAND_W } from './state/stand';
+import { alignTo, fitOnStand, fromSlope, inFrontOf, isStand, SLOPE_LEN, slopePose, standW } from './state/stand';
 import type { Mat } from './state/types';
 
 export interface Landing {
@@ -172,7 +172,7 @@ export function byHeight(app: App, uids: Iterable<string>): string[] {
 
 /** A hand on a stand's slope (decision 222): one arc exactly as wide as the slope, in its middle. */
 function slopeHand(m: Mat, count: number): Placed[] {
-  return fromSlope(m, arcHand(count, STAND_W, { x: 0, y: SLOPE_LEN / 2 }));
+  return fromSlope(m, arcHand(count, standW(m), { x: 0, y: SLOPE_LEN / 2 }));
 }
 
 /**

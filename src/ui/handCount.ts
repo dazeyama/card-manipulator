@@ -5,7 +5,7 @@
 
 import type { App } from '../app';
 import type { Mats } from '../mats';
-import { isStand, RIDGE, SLOPE_LEN, SLOPE_START, slopePoint, STAND_H, STAND_W, standWorld } from '../state/stand';
+import { isStand, RIDGE, SLOPE_LEN, SLOPE_START, slopePoint, STAND_H, standW, standWorld } from '../state/stand';
 import { CARD_H, CARD_W } from '../state/types';
 import { h } from './dom';
 import { offCorner } from './lifeCounter';
@@ -42,7 +42,7 @@ export class HandCount {
     const at = this.mats.drawnAt(m.uid) ?? m;
     const s = { ...m, x: at.x, y: at.y, yaw: at.yaw };
     // Just inside the slope's top-left corner, on the slope (decision 252)...
-    const spot = standWorld(s, -STAND_W / 2 + INSET, SLOPE_START + SLOPE_LEN - INSET);
+    const spot = standWorld(s, -standW(s) / 2 + INSET, SLOPE_START + SLOPE_LEN - INSET);
     const rig = this.app.rig;
     const cards = [...store.cards.values()].filter((c) => c.stand === m.uid);
     // ...unless a card lies there: then just outside the corner (decision 253).
@@ -55,9 +55,9 @@ export class HandCount {
     let p: { x: number; y: number };
     let size: number;
     if (blocked) {
-      const k = { ...standWorld(s, -STAND_W / 2, RIDGE), z: STAND_H };
-      const along = { ...standWorld(s, STAND_W / 2, RIDGE), z: STAND_H };
-      const down = { ...standWorld(s, -STAND_W / 2, SLOPE_START), z: 0 };
+      const k = { ...standWorld(s, -standW(s) / 2, RIDGE), z: STAND_H };
+      const along = { ...standWorld(s, standW(s) / 2, RIDGE), z: STAND_H };
+      const down = { ...standWorld(s, -standW(s) / 2, SLOPE_START), z: 0 };
       if (!rig.inFront(k.x, k.y, k.z)) {
         this.el.hidden = true;
         return;

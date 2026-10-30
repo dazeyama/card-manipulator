@@ -157,6 +157,8 @@ export interface Mat {
   uid: string;
   /** A card stand (decision 220): a wedge cards lie on, its name plate's text in `name`. Otherwise a playmat. */
   kind?: 'stand';
+  /** A card stand's width across, mm (decision 282); unset, the full 450. */
+  width?: number;
   scryfallId: string;
   /** The card's name, for the hint and the mirror window's title; a stand's name plate text. */
   name: string;

@@ -37,7 +37,7 @@ import { Dice } from './dice';
 import { DiceLayer } from './render/dice';
 import { DiceNumbers } from './ui/diceNumbers';
 import { HandCount } from './ui/handCount';
-import { alignTo, fromSlope, isStand, raySlope, raySlopeLocal, SLOPE_BOX } from './state/stand';
+import { alignTo, fromSlope, isStand, raySlope, raySlopeLocal, slopeArea } from './state/stand';
 import { uprightYaw, type Placed } from './state/piles';
 import type { Mat } from './state/types';
 import { buildPlaymatTab } from './ui/playmatTab';
@@ -693,7 +693,7 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
     }
     // Clicked on a card stand's slope: spread to fill the slope, square to it (decisions 221, 222).
     if (onSlope) {
-      commands.spreadTo(spreading.source, (n) => fromSlope(onSlope, fitLayout(n, SLOPE_BOX)), !!spreading.reverse, onSlope.uid);
+      commands.spreadTo(spreading.source, (n) => fromSlope(onSlope, fitLayout(n, slopeArea(onSlope))), !!spreading.reverse, onSlope.uid);
       return;
     }
     const at = app.rig.screenToPlane(x0, y0, 0);
@@ -715,9 +715,10 @@ function slopeBox(m: Mat, x0: number, y0: number, x1: number, y1: number): { min
   });
   if (hits.some((h) => !h)) return null;
   const as = hits.map((h) => h!.a), ss = hits.map((h) => h!.s);
+  const all = slopeArea(m);
   return {
-    minX: Math.max(SLOPE_BOX.minX, Math.min(...as)), maxX: Math.min(SLOPE_BOX.maxX, Math.max(...as)),
-    minY: Math.max(SLOPE_BOX.minY, Math.min(...ss)), maxY: Math.min(SLOPE_BOX.maxY, Math.max(...ss)),
+    minX: Math.max(all.minX, Math.min(...as)), maxX: Math.min(all.maxX, Math.max(...as)),
+    minY: Math.max(all.minY, Math.min(...ss)), maxY: Math.min(all.maxY, Math.max(...ss)),
   };
 }
 

@@ -12,7 +12,7 @@ import type { CustomGesture, Mods } from './input/mouse';
 import { ImageLoader } from './render/images';
 import { inSpace, land, placeSequential } from './commands';
 import { drawPlate, setOutlineResolution, standGroup } from './render/standMesh';
-import { isStand, LIP_H, onStand, STAND_D, STAND_H, STAND_W, standHeightAt } from './state/stand';
+import { isStand, LIP_H, onStand, STAND_D, STAND_H, STAND_W, standHeightAt, standW } from './state/stand';
 import { textDialog } from './ui/confirm';
 import { MAT_H, MAT_W, type Mat } from './state/types';
 import { newUid } from './state/store';
@@ -190,10 +190,21 @@ export class Mats {
 
   // ---- spawning, turning, removing ----
 
-  /** Set up a new card stand at a spot, with this name on its plate (decision 220). */
-  spawnStand(name: string, at: { x: number; y: number }): void {
+  /** Set up a new card stand at a spot, with this name on its plate (decision 220); `width` for a half-width one (decision 282). */
+  spawnStand(name: string, at: { x: number; y: number }, width?: number): void {
     // Facing whoever sets it up: its slope toward them, its plate away (decision 267).
-    this.app.store.addMat({ uid: newUid('m'), kind: 'stand', scryfallId: '', name, art: '', x: at.x, y: at.y, yaw: this.app.facing });
+    this.app.store.addMat({ uid: newUid('m'), kind: 'stand', scryfallId: '', name, art: '', x: at.x, y: at.y, yaw: this.app.facing, ...(width ? { width } : {}) });
+  }
+
+  /** The selection rim for a stand this wide, made when first needed. */
+  private readonly standRims = new Map<number, THREE.ShapeGeometry>();
+  private standRimFor(width: number): THREE.ShapeGeometry {
+    let g = this.standRims.get(width);
+    if (!g) {
+      g = width === STAND_W ? this.standRim.geometry : new THREE.ShapeGeometry(roundedRect(width / 2 + RIM, STAND_D / 2 + RIM, 6 + RIM), 4);
+      this.standRims.set(width, g);
+    }
+    return g;
   }
 
   /** Lay a new mat on the table at a spot. */
@@ -262,7 +273,7 @@ export class Mats {
     const m = this.app.store.mats.get(uid);
     if (!m) return null;
     const stand = isStand(m);
-    const w = stand ? STAND_W : MAT_W, h = stand ? STAND_D : MAT_H;
+    const w = stand ? standW(m) : MAT_W, h = stand ? STAND_D : MAT_H;
     const pts = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => corner(m, (a * w) / 2, (b * h) / 2));
     return {
       top: stand ? STAND_H : 0,
@@ -348,7 +359,7 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
     let d = this.drawn.get(m.uid);
     if (!d) {
       const material = new THREE.MeshLambertMaterial({ color: 0xffffff });
-      const mesh = standGroup(material);
+      const mesh = standGroup(material, standW(m));
       const base = new THREE.Object3D();
       this.group.add(mesh, base);
       d = { mesh, base, material, art: '', stand: true };
@@ -357,7 +368,7 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
     if (d.art !== m.name || !d.material.map) {
       d.art = m.name;
       d.material.map?.dispose();
-      d.material.map = drawPlate(m.name);
+      d.material.map = drawPlate(m.name, standW(m));
       d.material.needsUpdate = true;
     }
     this.place(d, m.x, m.y, m.yaw);
@@ -550,6 +561,9 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
     const rim = sel?.stand ? this.standRim : this.rim;
     this.rim.visible = !!sel && !sel.stand;
     this.standRim.visible = !!sel?.stand;
+    // A half-width stand's rim is half as wide (decision 282).
+    const selMat = this.selected ? store.mats.get(this.selected) : undefined;
+    if (sel?.stand && selMat) this.standRim.geometry = this.standRimFor(standW(selMat));
     if (sel) {
       rim.position.set(sel.base.position.x, sel.base.position.y, 0);
       rim.rotation.copy(sel.base.rotation);
@@ -580,8 +594,8 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
       this.lifeButton.hidden = stand;
       this.editButton.hidden = !stand;
       if (stand) {
-        at(this.lockButton, -STAND_W / 2 + BUTTON_INSET, -STAND_D / 2 + 4, LIP_H);
-        at(this.editButton, STAND_W / 2 - BUTTON_INSET, -STAND_D / 2 + 4, LIP_H);
+        at(this.lockButton, -standW(m) / 2 + BUTTON_INSET, -STAND_D / 2 + 4, LIP_H);
+        at(this.editButton, standW(m) / 2 - BUTTON_INSET, -STAND_D / 2 + 4, LIP_H);
       } else {
         const ix = MAT_W / 2 - BUTTON_INSET, iy = MAT_H / 2 - BUTTON_INSET;
         // ❤️ stays by the life total, which changes top corners on a turned mat (decision 273).
@@ -619,7 +633,7 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
       }
       el.hidden = false;
       el.textContent = `${mat.name.split(' // ')[0]} · ${this.cardsOn(mat.uid).length}`;
-      const c = isStand(mat) ? corner(mat, -STAND_W / 2 + 40, -STAND_D / 2 + 4) : corner(mat, -MAT_W / 2 + 40, MAT_H / 2 - 16);
+      const c = isStand(mat) ? corner(mat, -standW(mat) / 2 + 40, -STAND_D / 2 + 4) : corner(mat, -MAT_W / 2 + 40, MAT_H / 2 - 16);
       const s = rig.worldToScreen(c.x, c.y, isStand(mat) ? LIP_H : MAT_T);
       el.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) translate(0, -50%)`;
     }

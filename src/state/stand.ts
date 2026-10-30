@@ -18,6 +18,8 @@ import { CARD_H, CARD_W, type Mat } from './types';
 
 /** Width across, and depth front to back, mm. */
 export const STAND_W = 450;
+/** The half-width stand's width (decision 282). */
+export const HALF_STAND_W = STAND_W / 2;
 export const STAND_D = 200;
 /** The lip along the front edge that stops cards sliding off: its depth and height, mm. */
 export const LIP_D = 8;
@@ -38,6 +40,11 @@ export function isStand(m: Mat): boolean {
   return m.kind === 'stand';
 }
 
+/** A stand's width across, mm: the full width unless it is a half-width one (decision 282). */
+export function standW(m: Mat): number {
+  return m.width ?? STAND_W;
+}
+
 /** A table point in a stand's own frame: across (a) and front to back (b, positive toward the back). */
 export function standLocal(m: Mat, x: number, y: number): { a: number; b: number } {
   const dx = x - m.x, dy = y - m.y;
@@ -54,12 +61,12 @@ export function standWorld(m: Mat, a: number, b: number): { x: number; y: number
 /** True if a table point lies on the stand's footprint. */
 export function onStand(m: Mat, x: number, y: number): boolean {
   const { a, b } = standLocal(m, x, y);
-  return Math.abs(a) <= STAND_W / 2 && Math.abs(b) <= STAND_D / 2;
+  return Math.abs(a) <= standW(m) / 2 && Math.abs(b) <= STAND_D / 2;
 }
 
 /** Height of the stand's surface above a point in its own frame: the lip, the slope or the back; 0 off it. */
-export function profileHeight(a: number, b: number): number {
-  if (Math.abs(a) > STAND_W / 2 || Math.abs(b) > STAND_D / 2) return 0;
+export function profileHeight(a: number, b: number, width = STAND_W): number {
+  if (Math.abs(a) > width / 2 || Math.abs(b) > STAND_D / 2) return 0;
   if (b < SLOPE_START) return LIP_H;
   if (b <= RIDGE) return Math.max(0, (b - SLOPE_START) * Math.tan(SLOPE));
   return (STAND_D / 2 - b) * Math.tan(BACK);
@@ -68,7 +75,7 @@ export function profileHeight(a: number, b: number): number {
 /** Height of a stand's surface above a table point. */
 export function standHeightAt(m: Mat, x: number, y: number): number {
   const { a, b } = standLocal(m, x, y);
-  return profileHeight(a, b);
+  return profileHeight(a, b, standW(m));
 }
 
 /** The side profile, front to back, as (b, height) corners: for drawing and the physics. */
@@ -157,7 +164,7 @@ export function raySlopeLocal(m: Mat, origin: { x: number; y: number; z: number 
  */
 export function raySlope(m: Mat, origin: { x: number; y: number; z: number }, dir: { x: number; y: number; z: number }): { x: number; y: number } | null {
   const hit = raySlopeLocal(m, origin, dir);
-  if (!hit || Math.abs(hit.a) > STAND_W / 2 || hit.s < 0 || hit.s > SLOPE_LEN) return null;
+  if (!hit || Math.abs(hit.a) > standW(m) / 2 || hit.s < 0 || hit.s > SLOPE_LEN) return null;
   return standWorld(m, hit.a, SLOPE_START + hit.s);
 }
 
@@ -167,7 +174,9 @@ export function fromSlope<T extends Footprint>(m: Mat, spots: T[]): T[] {
 }
 
 /** The whole slope as a box in its own frame, for layouts that fill it. */
-export const SLOPE_BOX = { minX: -STAND_W / 2, maxX: STAND_W / 2, minY: 0, maxY: SLOPE_LEN };
+export function slopeArea(m: Mat): { minX: number; maxX: number; minY: number; maxY: number } {
+  return { minX: -standW(m) / 2, maxX: standW(m) / 2, minY: 0, maxY: SLOPE_LEN };
+}
 
 /** A model spot on a slope (the slope unrolled), `h` above it, in the world: for drawing outlines on it. */
 export function slopePoint(m: Mat, x: number, y: number, h: number): { x: number; y: number; z: number } {
@@ -180,7 +189,7 @@ export function slopePoint(m: Mat, x: number, y: number, h: number): { x: number
 /** A point on the slope's surface, seen from above, as a model spot on it (the slope unrolled); null off the slope. */
 export function unrollPoint(m: Mat, x: number, y: number): { x: number; y: number } | null {
   const { a, b } = standLocal(m, x, y);
-  if (Math.abs(a) > STAND_W / 2 || b < SLOPE_START - 4 || b > RIDGE) return null;
+  if (Math.abs(a) > standW(m) / 2 || b < SLOPE_START - 4 || b > RIDGE) return null;
   return standWorld(m, a, SLOPE_START + Math.max(0, b - SLOPE_START) / Math.cos(SLOPE));
 }
 
@@ -205,7 +214,7 @@ export function fitOnStand<T extends Footprint>(m: Mat, spots: T[]): T[] | null 
     const shift = low < lo ? lo - low : high > hi ? hi - high : 0;
     return pos.map((p) => p + shift);
   };
-  const as = fit(-STAND_W / 2, STAND_W / 2, local.map((l) => l.a), local.map((l) => l.ea));
+  const as = fit(-standW(m) / 2, standW(m) / 2, local.map((l) => l.a), local.map((l) => l.ea));
   const ss = fit(0, SLOPE_LEN, local.map((l) => l.s), local.map((l) => l.es));
   if (!as || !ss) return null;
   return spots.map((p, i) => ({ ...p, ...standWorld(m, as[i], SLOPE_START + ss[i]) }));
@@ -240,7 +249,7 @@ export function underStand(m: Mat, card: { x: number; y: number; yaw: number }):
     for (const v of [-1, 0, 1]) {
       const px = (u * (CARD_W / 2 - 2)), py = (v * (CARD_H / 2 - 2));
       const { a, b } = standLocal(m, card.x + px * c - py * s, card.y + px * s + py * c);
-      if (Math.abs(a) < STAND_W / 2 && Math.abs(b) < STAND_D / 2) return true;
+      if (Math.abs(a) < standW(m) / 2 && Math.abs(b) < STAND_D / 2) return true;
     }
   }
   return false;
@@ -254,7 +263,7 @@ export function underStand(m: Mat, card: { x: number; y: number; yaw: number }):
 export function liftOntoSlope(m: Mat, x: number, y: number): { x: number; y: number } {
   const { a, b } = standLocal(m, x, y);
   const s = Math.min(SLOPE_LEN, Math.max(0, (b - SLOPE_START) / Math.cos(SLOPE)));
-  return standWorld(m, Math.max(-STAND_W / 2, Math.min(STAND_W / 2, a)), SLOPE_START + s);
+  return standWorld(m, Math.max(-standW(m) / 2, Math.min(standW(m) / 2, a)), SLOPE_START + s);
 }
 
 /**
