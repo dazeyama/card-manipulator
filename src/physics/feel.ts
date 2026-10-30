@@ -786,10 +786,13 @@ export class DragController {
     // the drag, instead of finishing the planned landing (decision 95). A quick
     // drag of a gathered stack fans it out this way.
     if (!this.app.tidy && inMotion(held)) {
+      // In the hand's own order, bottom to top, not by drawn height: the held
+      // group leans as it moves, and the lean is more than a card's thickness,
+      // so sorting by height swapped cards of a cascade and the card under
+      // poked through the one over it (decision 218).
       const ordered = held
         .map((c) => ({ c, pose: this.app.layer.pose(c.uid) }))
-        .filter((e) => e.pose)
-        .sort((a, b) => a.pose!.z - b.pose!.z);
+        .filter((e) => e.pose);
       const spots = stopWhereTheyAre(ordered.map(({ c, pose }) => ({ x: pose!.x, y: pose!.y, yaw: pose!.yaw, vx: c.vx, vy: c.vy })));
       land(this.app, placeSequential(this.app, ordered.map((e) => e.c.uid), spots), { duration: 150, stagger: 0 });
       return;
