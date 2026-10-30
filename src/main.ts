@@ -791,10 +791,12 @@ keyboard.bind('r', (e) => {
 }, { repeatMs: 250 });
 // Z frames the selection; with no cards selected, the playmat last moved (decision 214).
 // Z again, before the camera has moved, swings back to the view from before (decision 276).
+// Selected dice are framed as if each were a card (decision 277).
 keyboard.bind('z', () => {
-  const box = !store.selection.size && mats.selected ? mats.box(mats.selected) : null;
+  const picked = [...dice.selected].map((u) => store.dice.get(u)).filter((d) => !!d);
+  const box = !store.selection.size && !picked.length && mats.selected ? mats.box(mats.selected) : null;
   if (box) app.rig.frame(box.minX, box.minY, box.maxX, box.maxY, box.top);
-  else commands.frame();
+  else commands.frame(picked);
 });
 // F twice quickly faces every card up, so a mixed stack is fronted (decision 105). Like R, F
 // waits a moment to tell one press from two (decision 206): a single press flips after

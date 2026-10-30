@@ -640,17 +640,19 @@ export class Commands {
     this.flip(uids.filter((u) => this.app.store.cards.get(u)?.faceUp === false), true);
   }
 
-  /** Z: move the camera to fit the selection (or the whole table). */
-  frame(): void {
+  /**
+   * Z: move the camera to fit the selection (or the whole table). Selected
+   * `dice` count too, each framed as if it were a card (decision 277).
+   */
+  frame(dice: { x: number; y: number; z: number }[] = []): void {
     const store = this.app.store;
-    const uids = store.selection.size ? this.sel : [...store.cards.keys()];
-    if (!uids.length) {
+    const uids = store.selection.size || dice.length ? this.sel : [...store.cards.keys()];
+    if (!uids.length && !dice.length) {
       this.app.rig.reset();
       return;
     }
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, top = 0;
-    for (const u of uids) {
-      const c = store.cards.get(u)!;
+    for (const c of [...uids.map((u) => store.cards.get(u)!), ...dice]) {
       minX = Math.min(minX, c.x - CARD_W / 2);
       maxX = Math.max(maxX, c.x + CARD_W / 2);
       minY = Math.min(minY, c.y - CARD_H / 2);
