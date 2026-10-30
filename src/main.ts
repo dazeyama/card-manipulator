@@ -464,6 +464,7 @@ const curveAll = () => {
 keyboard.bind('shift+c', curveAll);
 // 1-9: draw that many cards from the hovered pile (or the selection); the next click on the
 // table lays them out there as a fanned hand, face up (decision 143). Esc cancels.
+// Shift + 1-9 deals them face down instead, as 0 with Face down? ticked does (decision 271).
 for (let n = 1; n <= 9; n++) {
   keyboard.bind(String(n), () => {
     if (drag.dragging) return;
@@ -478,11 +479,19 @@ for (let n = 1; n <= 9; n++) {
     app.placing = null;
     app.drawing = source.length ? { count: n, source } : null;
   });
+  keyboard.bind(`shift+${n}`, () => {
+    if (drag.dragging) return;
+    const source = drawSource();
+    app.spreading = null;
+    app.placing = null;
+    app.drawing = source.length ? { count: n, source, faceDown: true } : null;
+  });
 }
 // 0: the same, for any number of cards, asked for in a dialog: a whole sealed pool at once (decision 162).
+// Shift + 0 opens it with Face down? ticked (decision 271).
 let askingCount = false;
 let zeroFaceDown = false;
-keyboard.bind('0', () => {
+const askCount = (faceDown: boolean) => {
   if (drag.dragging || askingCount) return;
   const source = drawSource();
   if (!source.length) return;
@@ -491,14 +500,16 @@ keyboard.bind('0', () => {
   askingCount = true;
   const all = source.length;
   // Face down? deals them as face-down messy piles instead of a hand (decision 236); the tick is remembered.
-  void numberDialog(`How many cards to draw? This pile has ${all.toLocaleString()}.`, { min: 1, max: all, value: all, ok: 'Draw', check: { label: 'Face down? (in piles of 15, not a hand)', checked: zeroFaceDown } })
+  void numberDialog(`How many cards to draw? This pile has ${all.toLocaleString()}.`, { min: 1, max: all, value: all, ok: 'Draw', check: { label: 'Face down? (in piles of 15, not a hand)', checked: faceDown } })
     .then((r) => {
       if (!r) return;
       zeroFaceDown = r.checked;
       if (source.some((u) => store.cards.has(u))) app.drawing = { count: r.value, source, faceDown: r.checked };
     })
     .finally(() => (askingCount = false));
-});
+};
+keyboard.bind('0', () => askCount(zeroFaceDown));
+keyboard.bind('shift+0', () => askCount(true));
 // Pointer mode (decision 189): the finger button beside the search box, then a click on the
 // table moves the selection there as one stack (squared in Tidy mode). Esc cancels.
 const pointBtn = h('button', { class: 'btn small point-btn', title: 'Move the selection (P): click here, then click the table where it should go, as a stack. Click again (or P) to switch to face down, like a pack, and back; Esc cancels' }, h('img', { src: pointUrl, alt: 'Point' }), ' (P)');

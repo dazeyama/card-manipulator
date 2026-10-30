@@ -72,9 +72,11 @@ export class KeyboardInput {
   }
 
   private nameOf(e: KeyboardEvent): string {
-    const key = e.key.toLowerCase();
-    // Shift counts only with letters, so `?` and the like still match their own key.
-    const shift = e.shiftKey && /^[a-z]$/.test(key) ? 'shift+' : '';
+    // A digit with Shift is its digit, not the symbol above it (Shift + 1-9, 0, decision 271).
+    const digit = e.shiftKey ? /^Digit(\d)$/.exec(e.code) : null;
+    const key = digit ? digit[1] : e.key.toLowerCase();
+    // Shift counts only with letters and digits, so `?` and the like still match their own key.
+    const shift = e.shiftKey && /^[a-z0-9]$/.test(key) ? 'shift+' : '';
     return (e.ctrlKey || e.metaKey ? 'ctrl+' : '') + shift + key;
   }
 
