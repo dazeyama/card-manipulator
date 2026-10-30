@@ -27,7 +27,7 @@ import { ExportPanel } from './ui/exportPanel';
 import { confirmDialog, numberDialog } from './ui/confirm';
 import { Cursors } from './ui/cursors';
 import { Mats } from './mats';
-import { buildStandTab } from './ui/standTab';
+import { buildStandSection } from './ui/standTab';
 import { installStandSnap } from './standSnap';
 import { fromSlope, isStand, raySlope, raySlopeLocal, SLOPE_BOX } from './state/stand';
 import type { Placed } from './state/piles';
@@ -118,9 +118,10 @@ spawnPanel.addTab('query', 'Query', buildQueryTab(app, () => spawnPanel.options(
 // Ctrl + C copies the selection as a decklist; Ctrl + V spawns the clipboard's cards at the cursor (decision 202).
 installClipboard(app, () => spawnPanel.options());
 // The 4th tab: playmats from a card's art (decision 144).
-spawnPanel.addTab('playmat', 'Playmat', buildPlaymatTab(app, mats));
-// Card stands: a wedge that holds cards up, with a name plate (decision 220).
-spawnPanel.addTab('stand', 'Stand', buildStandTab(app, mats));
+// Card stands are spawned from the Playmat tab too, below the playmat (decisions 220, 235).
+const playmatPane = buildPlaymatTab(app, mats);
+playmatPane.append(buildStandSection(app, mats));
+spawnPanel.addTab('playmat', 'Playmat', playmatPane);
 // A whole CubeCobra cube, with each card's Elo (decision 192), second after List (decision 193).
 spawnPanel.addTab('cube', 'Cube', buildCubeTab(app, () => spawnPanel.options()), { after: 'list' });
 const hires = new HiRes(app);

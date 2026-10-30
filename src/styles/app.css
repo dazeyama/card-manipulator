@@ -241,6 +241,8 @@ label.inline { display: inline-flex; flex-direction: row; align-items: center; g
 .modal { background: var(--panel); border-radius: var(--radius); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25); padding: 16px 18px; width: 380px; }
 .modal p { margin: 0 0 8px; }
 .context-hints[hidden] { display: none; }
+.panel-section { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 10px; }
+.panel-section-title { font-weight: 600; }
 .help-hide { margin: 2px 0 4px; }
 
 /* ---- basic lands on the Card tab (decision 210) ---- */
