@@ -27,3 +27,12 @@ describe('mirror mode (decision 267)', () => {
     expect(far[0].yaw).toBeCloseTo(Math.PI, 6);
   });
 });
+
+describe('upright from either side (decision 268)', () => {
+  it('stands a card upright for the side looking', async () => {
+    const { uprightYaw } = await import('../src/state/piles');
+    expect(uprightYaw(0.4)).toBeCloseTo(0, 6);
+    expect(uprightYaw(0.4, Math.PI)).toBeCloseTo(Math.PI, 6);
+    expect(uprightYaw(Math.PI + 0.2, Math.PI)).toBeCloseTo(Math.PI, 6);
+  });
+});

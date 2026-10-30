@@ -198,7 +198,7 @@ mouse.hooks.doubleClickCard = (uid, before) => {
   // All upright: tap them; any turned: untap them all.
   const upright = targets.every((u) => {
     const c = store.cards.get(u)!;
-    return Math.abs(c.yaw - uprightYaw(c.yaw)) < 1e-3;
+    return Math.abs(c.yaw - uprightYaw(c.yaw, app.facing)) < 1e-3;
   });
   app.showGesture('rotate', targets);
   commands.rotate(targets, !upright);

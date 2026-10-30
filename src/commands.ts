@@ -564,7 +564,7 @@ export class Commands {
     if (!uids.length) return;
     const landings = uids.map((u) => {
       const c = this.app.store.cards.get(u)!;
-      return { uid: u, x: c.x, y: c.y, z: c.z, yaw: upright ? uprightYaw(c.yaw) : nextQuarterClockwise(c.yaw) };
+      return { uid: u, x: c.x, y: c.y, z: c.z, yaw: upright ? uprightYaw(c.yaw, this.app.facing) : nextQuarterClockwise(c.yaw) };
     });
     land(this.app, landings, { stagger: 0, keepSide: true });
   }

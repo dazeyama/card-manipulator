@@ -417,8 +417,9 @@ export function nextQuarterClockwise(yaw: number): number {
 }
 
 /** Double-tap R (decision 102): upright, the way the card reads from the default camera, by the shortest turn. */
-export function uprightYaw(yaw: number): number {
-  return Math.round(yaw / (2 * Math.PI)) * 2 * Math.PI;
+export function uprightYaw(yaw: number, facing = 0): number {
+  // Upright for whoever is looking: `facing` is a half turn in mirror mode (decision 268).
+  return facing + Math.round((yaw - facing) / (2 * Math.PI)) * 2 * Math.PI;
 }
 
 /** A shuffled copy (Fisher-Yates): every order equally likely (decision 106). */

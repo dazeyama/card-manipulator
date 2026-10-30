@@ -502,7 +502,7 @@ export class DragController {
   rotate(upright: boolean): void {
     if (!this.active || !this.held.length) return;
     const lead = this.held[this.held.length - 1];
-    const turnTo = (yaw: number) => (upright ? uprightYaw(yaw) : nextQuarterClockwise(yaw));
+    const turnTo = (yaw: number) => (upright ? uprightYaw(yaw, this.app.facing) : nextQuarterClockwise(yaw));
     const delta = turnTo(lead.base) - lead.base;
     const cos = Math.cos(delta), sin = Math.sin(delta);
     for (const c of this.held) {
