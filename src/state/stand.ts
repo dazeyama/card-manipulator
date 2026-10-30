@@ -18,8 +18,8 @@ import { CARD_H, CARD_W, type Mat } from './types';
 
 /** Width across, and depth front to back, mm. */
 export const STAND_W = 450;
-/** The half-width stand's width (decision 282). */
-export const HALF_STAND_W = STAND_W / 2;
+/** The small stand's width, a quarter of the full one, for looking at a few cards (decisions 282, 283). */
+export const SMALL_STAND_W = STAND_W / 4;
 export const STAND_D = 200;
 /** The lip along the front edge that stops cards sliding off: its depth and height, mm. */
 export const LIP_D = 8;
@@ -40,7 +40,7 @@ export function isStand(m: Mat): boolean {
   return m.kind === 'stand';
 }
 
-/** A stand's width across, mm: the full width unless it is a half-width one (decision 282). */
+/** A stand's width across, mm: the full width unless it is a small one (decisions 282, 283). */
 export function standW(m: Mat): number {
   return m.width ?? STAND_W;
 }

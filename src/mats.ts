@@ -190,7 +190,7 @@ export class Mats {
 
   // ---- spawning, turning, removing ----
 
-  /** Set up a new card stand at a spot, with this name on its plate (decision 220); `width` for a half-width one (decision 282). */
+  /** Set up a new card stand at a spot, with this name on its plate (decision 220); `width` for a small one (decisions 282, 283). */
   spawnStand(name: string, at: { x: number; y: number }, width?: number): void {
     // Facing whoever sets it up: its slope toward them, its plate away (decision 267).
     this.app.store.addMat({ uid: newUid('m'), kind: 'stand', scryfallId: '', name, art: '', x: at.x, y: at.y, yaw: this.app.facing, ...(width ? { width } : {}) });
@@ -561,7 +561,7 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
     const rim = sel?.stand ? this.standRim : this.rim;
     this.rim.visible = !!sel && !sel.stand;
     this.standRim.visible = !!sel?.stand;
-    // A half-width stand's rim is half as wide (decision 282).
+    // A small stand's rim is as narrow as it is (decisions 282, 283).
     const selMat = this.selected ? store.mats.get(this.selected) : undefined;
     if (sel?.stand && selMat) this.standRim.geometry = this.standRimFor(standW(selMat));
     if (sel) {

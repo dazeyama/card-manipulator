@@ -4,17 +4,17 @@
 
 import type { App } from '../app';
 import type { Mats } from '../mats';
-import { HALF_STAND_W } from '../state/stand';
+import { SMALL_STAND_W } from '../state/stand';
 import { h } from './dom';
 
 export function buildStandSection(app: App, mats: Mats): HTMLElement {
   const name = h('input', { class: 'grow', placeholder: 'Name on the plate', maxlength: '60', spellcheck: 'false', 'aria-label': 'Name on the plate' });
   const go = h('button', { class: 'btn primary' }, 'Spawn stand');
-  // The same stand at half the width (decision 282).
-  const half = h('button', { class: 'btn' }, 'Half-width stand');
+  // The same stand at a quarter of the width, for scrying a few cards (decisions 282, 283).
+  const half = h('button', { class: 'btn', title: 'A quarter as wide: for looking at a few cards, like scry' }, 'Small stand');
   const spawn = (width?: number) => mats.spawnStand(name.value.trim(), { x: app.rig.target.x, y: app.rig.target.y }, width);
   go.addEventListener('click', () => spawn());
-  half.addEventListener('click', () => spawn(HALF_STAND_W));
+  half.addEventListener('click', () => spawn(SMALL_STAND_W));
   name.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') spawn();
   });

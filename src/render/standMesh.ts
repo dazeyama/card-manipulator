@@ -13,7 +13,7 @@ const PLATE_INSET_W = 22;
 const PLATE_INSET_H = 9;
 const BACK_LEN = STAND_H / Math.sin(BACK);
 const PLATE_H = BACK_LEN - 2 * PLATE_INSET_H;
-/** The plate's width on a stand this wide (a half-width stand has a shorter one, decision 282). */
+/** The plate's width on a stand this wide (a small stand has a shorter one, decisions 282, 283). */
 const plateW = (width: number) => width - 2 * PLATE_INSET_W;
 /** Texture pixels per mm on the plate. */
 const PLATE_PX = 3;
@@ -74,7 +74,7 @@ function wedgeGeometry(width: number): THREE.BufferGeometry {
   geo.applyMatrix4(new THREE.Matrix4().set(0, 0, 1, -width / 2, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1));
   // Grain along the width on every face: u across, v from the side profile; the texture
   // spans a full stand's width once, square texels on the faces (decision 229), so a
-  // half-width stand has the same grain, half of it.
+  // small stand has the same grain, a part of it.
   const pos = geo.getAttribute('position');
   const uv = geo.getAttribute('uv') as THREE.BufferAttribute;
   for (let i = 0; i < pos.count; i++) uv.setXY(i, pos.getX(i) / STAND_W + 0.5, (pos.getY(i) + pos.getZ(i)) / STAND_W);

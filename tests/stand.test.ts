@@ -4,7 +4,7 @@ import { POP_MIN, slopesOf } from '../src/state/rest';
 import { arcHand } from '../src/state/fan';
 import {
   alignTo, slopePopLift, fitOnStand, FRONT_GAP, fromSlope, inFrontOf, liftOntoSlope, underStand, LIP_H, onStand, profileHeight, raySlope, SLOPE, SLOPE_LEN, SLOPE_START, slopePose,
-  STAND_D, STAND_H, STAND_W, standHeightAt, standLocal, standTopUnder, unrollPoint, HALF_STAND_W, standW, slopeArea,
+  STAND_D, STAND_H, STAND_W, standHeightAt, standLocal, standTopUnder, unrollPoint, SMALL_STAND_W, standW, slopeArea,
 } from '../src/state/stand';
 import { CARD_H, CARD_T, CARD_W, type Mat } from '../src/state/types';
 
@@ -133,26 +133,26 @@ describe('the slope as a second table (decision 221)', () => {
   });
 });
 
-describe('half-width stand (decision 282)', () => {
-  const half = (): Mat => ({ ...stand(), width: HALF_STAND_W });
+describe('small stand (decisions 282, 283)', () => {
+  const half = (): Mat => ({ ...stand(), width: SMALL_STAND_W });
 
-  it('is half as wide, everything else the same', () => {
+  it('is a quarter as wide, everything else the same', () => {
     const s = half();
-    expect(standW(s)).toBe(STAND_W / 2);
+    expect(standW(s)).toBe(STAND_W / 4);
     expect(standW(stand())).toBe(STAND_W);
-    expect(onStand(s, HALF_STAND_W / 2 - 5, 0)).toBe(true);
-    expect(onStand(s, HALF_STAND_W / 2 + 5, 0)).toBe(false);
-    expect(standHeightAt(s, HALF_STAND_W / 2 + 5, 0)).toBe(0);
+    expect(onStand(s, SMALL_STAND_W / 2 - 5, 0)).toBe(true);
+    expect(onStand(s, SMALL_STAND_W / 2 + 5, 0)).toBe(false);
+    expect(standHeightAt(s, SMALL_STAND_W / 2 + 5, 0)).toBe(0);
     expect(standHeightAt(s, 0, -STAND_D / 2 + 2)).toBe(LIP_H);
-    expect(slopeArea(s)).toEqual({ minX: -HALF_STAND_W / 2, maxX: HALF_STAND_W / 2, minY: 0, maxY: SLOPE_LEN });
+    expect(slopeArea(s)).toEqual({ minX: -SMALL_STAND_W / 2, maxX: SMALL_STAND_W / 2, minY: 0, maxY: SLOPE_LEN });
   });
 
   it('keeps cards on its narrower slope, and a hand its width fits', () => {
     const s = half();
     const [p] = fitOnStand(s, [{ x: STAND_W, y: SLOPE_START, yaw: 0 }])!;
-    expect(p.x).toBeCloseTo(HALF_STAND_W / 2 - CARD_W / 2, 6);
-    for (const n of [2, 5, 9]) expect(fitOnStand(s, fromSlope(s, arcHand(n, HALF_STAND_W, { x: 0, y: SLOPE_LEN / 2 })))).not.toBeNull();
+    expect(p.x).toBeCloseTo(SMALL_STAND_W / 2 - CARD_W / 2, 6);
+    for (const n of [1, 2, 3, 5]) expect(fitOnStand(s, fromSlope(s, arcHand(n, SMALL_STAND_W, { x: 0, y: SLOPE_LEN / 2 })))).not.toBeNull();
     // Off its end, a ray misses it.
-    expect(raySlope(s, { x: HALF_STAND_W / 2 + 10, y: SLOPE_START + 20, z: 500 }, { x: 0, y: 0, z: -1 })).toBeNull();
+    expect(raySlope(s, { x: SMALL_STAND_W / 2 + 10, y: SLOPE_START + 20, z: 500 }, { x: 0, y: 0, z: -1 })).toBeNull();
   });
 });
