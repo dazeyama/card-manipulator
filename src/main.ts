@@ -143,6 +143,7 @@ mouse.hooks.matPress = (x, y, mods) => {
   const mat = mats.movableAt(x, y);
   return mat ? mats.press(mat, x, y, mods) : null;
 };
+mouse.hooks.emptyClick = () => mats.select(null);
 // Middle-click flips the card, or the whole selection if the card is in it (spec 10.5).
 // Right-click while holding cards drops the bottom one, messy or (Ctrl) squared; held down,
 // another every quarter second until the hand is empty or the button is let go (decisions 180, 182).
@@ -577,7 +578,12 @@ keyboard.bind('r', (e) => {
     turn(false, rTargets);
   }, R_WAIT_MS);
 }, { repeatMs: 250 });
-keyboard.bind('z', () => commands.frame());
+// Z frames the selection; with no cards selected, the playmat last moved (decision 214).
+keyboard.bind('z', () => {
+  const box = !store.selection.size && mats.selected ? mats.box(mats.selected) : null;
+  if (box) app.rig.frame(box.minX, box.minY, box.maxX, box.maxY);
+  else commands.frame();
+});
 // F twice quickly faces every card up, so a mixed stack is fronted (decision 105). Like R, F
 // waits a moment to tell one press from two (decision 206): a single press flips after
 // F_WAIT_MS; a second press within F_DOUBLE_MS faces the cards up, straight from the first

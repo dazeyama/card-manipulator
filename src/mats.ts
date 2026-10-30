@@ -7,7 +7,7 @@
 // above, live and clean, for screen sharing.
 
 import * as THREE from 'three';
-import type { App } from './app';
+import { ACCENT, type App } from './app';
 import type { CustomGesture, Mods } from './input/mouse';
 import { ImageLoader } from './render/images';
 import { MAT_H, MAT_W, type Mat } from './state/types';
@@ -21,6 +21,8 @@ import { newUid } from './state/store';
 const MAT_T = 5;
 /** Rounded corners, like a real playmat. */
 const MAT_CORNER = 10;
+/** How far the selected mat's blue rim shows past its edge, mm (decision 214). */
+const RIM = 6;
 /**
  * Mats are drawn by order, not by depth (decision 145): after the table
  * (render order -1), before the cards (0), each later mat over earlier ones.
@@ -73,6 +75,12 @@ export class Mats {
   hovered: string | null = null;
   /** A mat being dragged, and whether it carries its cards. */
   dragging: { uid: string; carrying: boolean } | null = null;
+  /**
+   * The mat last moved or turned (decision 214): it shows a blue rim, and Z
+   * frames it, until cards are selected, the table is clicked, or it is locked.
+   */
+  selected: string | null = null;
+  private readonly rim = new THREE.Mesh(new THREE.ShapeGeometry(matShape(RIM), 8), new THREE.MeshBasicMaterial({ color: ACCENT, depthTest: false, depthWrite: false }));
   private readonly button: HTMLButtonElement;
   private readonly lockButton: HTMLButtonElement;
   private readonly buttons: HTMLDivElement;
@@ -84,8 +92,12 @@ export class Mats {
 
   constructor(private readonly app: App) {
     app.view.scene.add(this.group);
+    this.rim.visible = false;
+    this.group.add(this.rim);
     app.store.events.on('mats', () => this.sync());
     app.store.events.on('reset', () => this.sync());
+    // Choosing cards takes the selection away from the mat.
+    app.store.events.on('selection', () => this.select(null));
 
     // The 📺 button, shown in the top right corner of the mat under the mouse.
     this.button = document.createElement('button');
@@ -134,7 +146,29 @@ export class Mats {
   /** R over a mat: a quarter turn clockwise, like a card. */
   rotate(uid: string): void {
     const m = this.app.store.mats.get(uid);
-    if (m) this.app.store.moveMat(uid, m.x, m.y, Math.round((m.yaw - Math.PI / 2) / (Math.PI / 2)) * (Math.PI / 2));
+    if (!m) return;
+    this.app.store.moveMat(uid, m.x, m.y, Math.round((m.yaw - Math.PI / 2) / (Math.PI / 2)) * (Math.PI / 2));
+    this.select(uid);
+  }
+
+  /** Make a mat the selected one, or none (decision 214). A locked mat can't be. */
+  select(uid: string | null): void {
+    if (uid && this.app.store.mats.get(uid)?.locked) uid = null;
+    if (this.selected === uid) return;
+    this.selected = uid;
+    // Puts the rim in the right place among the mats.
+    this.sync();
+  }
+
+  /** The table-space box around a mat, for Z (decision 214). */
+  box(uid: string): { minX: number; minY: number; maxX: number; maxY: number } | null {
+    const m = this.app.store.mats.get(uid);
+    if (!m) return null;
+    const pts = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => corner(m, (a * MAT_W) / 2, (b * MAT_H) / 2));
+    return {
+      minX: Math.min(...pts.map((p) => p.x)), minY: Math.min(...pts.map((p) => p.y)),
+      maxX: Math.max(...pts.map((p) => p.x)), maxY: Math.max(...pts.map((p) => p.y)),
+    };
   }
 
   remove(uid: string): void {
@@ -146,6 +180,8 @@ export class Mats {
   /** Match the meshes to the store's mats. */
   private sync(): void {
     const mats = this.app.store.mats;
+    // A mat that went away or was locked is no longer selected.
+    if (this.selected && (!mats.has(this.selected) || mats.get(this.selected)!.locked)) this.selected = null;
     for (const [uid, d] of this.drawn) {
       if (!mats.has(uid)) {
         this.group.remove(d.mesh, d.base);
@@ -188,6 +224,8 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
       }
       // Each mat's base, then its art; later mats are drawn over earlier ones where they overlap.
       d.base.renderOrder = MAT_ORDER + order * MAT_ORDER_STEP;
+      // The selected mat's rim goes just under its base, over the mats before it.
+      if (m.uid === this.selected) this.rim.renderOrder = MAT_ORDER + (order - 0.25) * MAT_ORDER_STEP;
       d.mesh.renderOrder = MAT_ORDER + (order + 0.5) * MAT_ORDER_STEP;
       order++;
       d.base.position.set(m.x, m.y, 0);
@@ -327,8 +365,15 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
         }
       },
       up: () => {
-        if (moved) finish(last.dx, last.dy, true);
-        else app.store.clearSelection();
+        if (moved) {
+          finish(last.dx, last.dy, true);
+          // The mat just moved is the selected object (decision 214).
+          app.store.clearSelection();
+          this.select(uid);
+        } else {
+          app.store.clearSelection();
+          this.select(null);
+        }
       },
       cancel: () => {
         if (moved) finish(0, 0, false);
@@ -341,6 +386,13 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
   private frame(now: number): void {
     const rig = this.app.rig;
     const store = this.app.store;
+    // The selected mat's blue rim follows it, even mid-drag.
+    const sel = this.selected ? this.drawn.get(this.selected) : undefined;
+    this.rim.visible = !!sel;
+    if (sel) {
+      this.rim.position.set(sel.base.position.x, sel.base.position.y, 0);
+      this.rim.rotation.copy(sel.base.rotation);
+    }
     // The 🔒 and 📺 buttons sit just inside the hovered mat's top right corner,
     // or its bottom left corner while it is locked (decision 155).
     const m = this.hovered && !this.dragging ? store.mats.get(this.hovered) : undefined;
@@ -454,9 +506,9 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
   }
 }
 
-/** The mat's outline, centred, with rounded corners. */
-function matShape(): THREE.Shape {
-  const w = MAT_W / 2, h = MAT_H / 2, r = MAT_CORNER;
+/** The mat's outline, centred, with rounded corners; `pad` grows it all round (the selection rim). */
+function matShape(pad = 0): THREE.Shape {
+  const w = MAT_W / 2 + pad, h = MAT_H / 2 + pad, r = MAT_CORNER + pad;
   const s = new THREE.Shape();
   s.moveTo(-w + r, -h);
   s.lineTo(w - r, -h);

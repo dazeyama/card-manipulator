@@ -43,6 +43,8 @@ export interface MouseHooks {
   hover?: (uid: string | null) => void;
   /** A left press where no card is: a playmat may take it (decision 144). */
   matPress?: (x: number, y: number, mods: Mods) => CustomGesture | null;
+  /** A plain click on empty table (it unselects the selected playmat, decision 214). */
+  emptyClick?: () => void;
 }
 
 export class MouseInput {
@@ -252,7 +254,10 @@ export class MouseInput {
         } else store.setSelection([g.uid]);
         break;
       case 'empty-press':
-        if (!g.mods.shift && !g.mods.ctrl) store.clearSelection();
+        if (!g.mods.shift && !g.mods.ctrl) {
+          store.clearSelection();
+          this.hooks.emptyClick?.();
+        }
         break;
       case 'marquee':
         this.marqueeEl.hidden = true;
