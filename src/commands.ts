@@ -481,6 +481,8 @@ export class Commands {
     const order = layOrder(spots, reverse);
     // Onto a stand's slope when clicked there (decision 221).
     const landings = inSpace(stand, () => placeSequential(this.app, order.map((i) => ordered[i]), order.map((i) => spots[i])));
+    // Spread onto a slope, every card comes face up, for showing (decision 227).
+    if (stand) for (const l of landings) l.faceUp = true;
     // Overlapping cards would tip to rest on each other; these stay flat where they are laid (decision 160).
     for (const l of landings) store.cards.get(l.uid)!.laidAt = { x: l.x, y: l.y };
     land(this.app, landings, { stagger: Math.min(4, 300 / ordered.length), arc: 6 });
