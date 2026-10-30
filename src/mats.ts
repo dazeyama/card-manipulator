@@ -25,6 +25,9 @@ import { newUid } from './state/store';
 export const MAT_T = 5;
 /** Rounded corners, like a real playmat. */
 const MAT_CORNER = 10;
+/** A corner button shows fully within this many px of the mouse, fading out by the far distance (decision 243). */
+const BUTTON_NEAR_PX = 70;
+const BUTTON_FAR_PX = 170;
 /** How far in from its corner each corner button's centre sits, mm (decisions 238, 242). */
 const BUTTON_INSET = 15;
 /** Two clicks on a mat this close together are a double-click, ms, as on a card. */
@@ -558,10 +561,17 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
     if (m) {
       const locked = !!m.locked;
       const stand = isStand(m);
+      // Each fades in as the mouse nears its corner, and pops in close up (decision 243).
+      const mouse = this.app.pointer;
       const at = (el: HTMLElement, a: number, b: number, h: number) => {
         const c = corner(m, a, b);
         const s = rig.worldToScreen(c.x, c.y, h);
-        el.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) translate(-50%, -50%)`;
+        const d = Math.hypot(mouse.x - s.x, mouse.y - s.y);
+        const t = Math.max(0, Math.min(1, (BUTTON_FAR_PX - d) / (BUTTON_FAR_PX - BUTTON_NEAR_PX)));
+        el.style.opacity = t.toFixed(2);
+        // Too faint to see is too faint to click.
+        el.style.pointerEvents = t > 0.25 ? 'auto' : 'none';
+        el.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) translate(-50%, -50%) scale(${(0.6 + 0.4 * t).toFixed(3)})`;
       };
       this.button.hidden = stand;
       // Untap and the life toggle are for playmats only (decisions 237, 241).
