@@ -8,6 +8,7 @@ import type { Spread } from './state/store';
 import { colourGroup, curveLayout, type CurveCard } from './state/curve';
 import { fanLayout, handLayout } from './state/fan';
 import { rankLayout, type RankCard, type RankMode } from './state/rankLayout';
+import { colourLayout, type ColourCard } from './state/colourLayout';
 
 export interface Landing {
   uid: string;
@@ -237,6 +238,32 @@ export class Commands {
     // Remember the view, so E on it stacks it back up.
     const spots = new Map(landings.map((l) => [l.uid, { x: l.x, y: l.y }]));
     for (const uid of spots.keys()) this.rankOf.set(uid, spots);
+  }
+
+  /**
+   * C C (decision 217): a cascading column per colour, W U B R G, colourless,
+   * multicolour, lands, centred where the cards are. Remembered as a curve, so
+   * C on it stacks it back up.
+   */
+  colourSort(cards: string[]): void {
+    const store = this.app.store;
+    cards = [...new Set(cards)].filter((u) => store.cards.has(u));
+    if (!cards.length) return;
+    const info: ColourCard[] = cards.map((uid) => {
+      const r = store.records.get(store.cards.get(uid)!.scryfallId);
+      // Double-faced cards sort by their front face, as on the curve.
+      const type = (r?.type_line ?? '').split('//')[0];
+      const colours = r ? (r.colors.length ? r.colors : r.faces[0]?.colors ?? []) : [];
+      return { uid, name: r?.name ?? '', mv: r?.cmc ?? 0, land: /\bLand\b/.test(type), creature: /\bCreature\b/.test(type), colours };
+    });
+    leaveSpreads(this.app, cards);
+    const layout = colourLayout(info, centroid(this.app, cards), { split: store.settings.curveSplit });
+    const uids = layout.map((p) => p.uid);
+    const landings = placeSequential(this.app, uids, layout.map((p) => p.at));
+    land(this.app, landings, { stagger: Math.min(2, 400 / uids.length), arc: 10 });
+    for (const u of uids) this.rankOf.delete(u);
+    const spots = new Map(landings.map((l) => [l.uid, { x: l.x, y: l.y }]));
+    for (const uid of spots.keys()) this.curveOf.set(uid, spots);
   }
 
   /** E: the rank view by EDHREC, or stack the cards back up if they are already laid out in one (decision 198). */

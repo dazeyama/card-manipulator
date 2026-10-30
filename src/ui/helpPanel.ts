@@ -32,7 +32,7 @@ const GROUPS: [string, Line[]][] = [
     ['🔃', 'R', 'turn 90° · R R stands upright'],
     ['🧹', 'T', 'tidy'],
     ['🪟', 'X', 'then click to spread there, or drag a box to fit them in it · X again switches to the reverse spread, each row right to left so the mana costs show, and back · X on a spread restacks it'],
-    ['📊', 'C', 'curve by mana value · Shift + C by colour'],
+    ['📊', 'C', 'curve by mana value · C C a column per colour, W U B R G, colourless, multicolour, lands · Shift + C a curve row per colour'],
     ['🎴', 'H', 'fan like a hand of cards · H again stacks it'],
     ['🏆', 'E', 'columns by EDHREC rank · E E by CubeCobra Elo · E again stacks them back'],
     ['🖐️', '1 – 9', 'draw that many from the pile under the cursor, then click to lay them out as a hand, face up'],

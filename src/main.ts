@@ -325,10 +325,22 @@ keyboard.bind('t', () => {
   else commands.tidy(hoveredPile());
 });
 // C: curve out the selection or the hovered pile by mana value; Shift + C: everything
-// (or the selection), sorted into a row per colour (decision 107).
+// (or the selection), sorted into a row per colour (decision 107). C C: the same cards in a
+// column per colour, W U B R G C M L (decision 217), as E E follows E.
+let lastC = 0;
+let cTargets: string[] = [];
 keyboard.bind('c', () => {
+  if (drag.dragging) return;
+  const now = performance.now();
+  if (now - lastC < DOUBLE_TAP_MS) {
+    lastC = 0;
+    commands.colourSort(cTargets);
+    return;
+  }
+  lastC = now;
+  cTargets = curveTargets();
   // C again on a curve stacks it back up, as S would (decision 108).
-  if (!drag.dragging) commands.toggleCurve(curveTargets(), false);
+  commands.toggleCurve(cTargets, false);
 });
 // E: columns by EDHREC rank; E E: by CubeCobra Elo; E on cards already laid out that way
 // stacks them back up (decision 198). E E takes the cards the first E took, wherever they moved.
@@ -682,7 +694,13 @@ hud.addButton('🏆 (E) Rank', 'Rank: columns by EDHREC rank (E), or by CubeCobr
   else commands.toggleRank([...store.selection]);
 });
 hud.addButton('📊 (C) Curve', 'Curve the selection out by mana value, or stack it back up if it already is (C)', () => commands.toggleCurve([...store.selection], false));
-hud.addButton('🎨 (Shift C) Color', 'Color curve (Shift + C): curve everything (or the selection) out by colour, a row per colour (Shift + C)', curveAll);
+// The colour view (decision 217); Shift + C's colour rows stay on the keyboard.
+hud.addButton('🎨 (C C) Color', 'Color: a column per colour, W U B R G, colourless, multicolour, lands (C C); C on it stacks it back up. Shift + C curves everything out in a row per colour', () => {
+  const sel = [...store.selection];
+  const sorted = commands.curvedGroup(sel);
+  if (sorted) commands.toggleCurve(sel, false);
+  else commands.colourSort(sel);
+});
 // Split creatures: curves put creatures and non-creatures in separate bands (decision 107).
 const splitBtn = hud.addButton('🐉 Split', 'Split creatures: curves and the rank view (E) put creatures and non-creatures in separate bands', () => store.updateSettings({ curveSplit: !store.settings.curveSplit }));
 const syncSplit = () => {
