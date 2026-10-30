@@ -95,6 +95,10 @@ const EMOJI_BOTTOM = 0;
  * draw some glyphs below the text baseline, so the font's nominal box isn't
  * enough; a glyph too big for its corner is drawn smaller.
  */
+/** The X spread's 🪟 tints: blue, and pink in the reverse spread, matching the laser preview (decision 216). */
+const SPREAD_TINT = 'rgba(40, 140, 255, 0.55)';
+const REVERSE_TINT = 'rgba(255, 60, 170, 0.55)';
+
 function drawEmoji(g: CanvasRenderingContext2D, emoji: string, size: number): void {
   let px = Math.round(size * EMOJI_SHARE);
   const font = (n: number) => `${n}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
@@ -111,6 +115,18 @@ function drawEmoji(g: CanvasRenderingContext2D, emoji: string, size: number): vo
   }
   // Two pixels in from the right edge and down to the bottom edge, so it lines up with the arrow's marquee box (decision 127).
   g.fillText(emoji, size - EMOJI_RIGHT - m.actualBoundingBoxRight, size - EMOJI_BOTTOM - m.actualBoundingBoxDescent);
+}
+
+/** An emoji in the bottom right corner of its own canvas, tinted a colour (the X spread's 🪟, decision 216). */
+function tintedEmoji(emoji: string, tint: string): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = c.height = SIZE;
+  const g = c.getContext('2d')!;
+  drawEmoji(g, emoji, SIZE);
+  g.globalCompositeOperation = 'source-atop';
+  g.fillStyle = tint;
+  g.fillRect(0, 0, SIZE, SIZE);
+  return c;
 }
 
 /** The glove with its emoji in the bottom right corner, as a CSS cursor value. */
@@ -137,7 +153,7 @@ export class Cursors {
   private readonly drawCursors: string[] = [];
   /** The pointing glove with a window pane, while picking where to spread (decision 159). */
   private spreadCursor = '';
-  /** X X: the same glove mirrored, pointing the other way (decision 215). */
+  /** The reverse spread: the same glove mirrored, pointing the other way (decisions 215, 216). */
   private reverseCursor = '';
   /** The plain pointing glove, for pointer mode (decision 189). */
   private pointCursor = '';
@@ -184,18 +200,23 @@ export class Cursors {
       drawEmoji(g, n ? `${n}️⃣` : '🔢', SIZE);
       this.drawCursors[n] = `url(${d.toDataURL()}) ${px} ${py}, pointer`;
     }
+    // X: the glove with a blue-tinted 🪟; the reverse spread mirrors the glove to point
+    // the other way and tints the 🪟 pink, still in the bottom right corner (decision 216).
     const sp = document.createElement('canvas');
     sp.width = sp.height = SIZE;
     const sg = sp.getContext('2d')!;
     sg.drawImage(point, 0, 0, SIZE, SIZE);
-    drawEmoji(sg, '🪟', SIZE);
+    sg.drawImage(tintedEmoji('🪟', SPREAD_TINT), 0, 0);
     this.spreadCursor = `url(${sp.toDataURL()}) ${px} ${py}, pointer`;
     const rv = document.createElement('canvas');
     rv.width = rv.height = SIZE;
     const rg = rv.getContext('2d')!;
+    rg.save();
     rg.translate(SIZE, 0);
     rg.scale(-1, 1);
-    rg.drawImage(sp, 0, 0);
+    rg.drawImage(point, 0, 0, SIZE, SIZE);
+    rg.restore();
+    rg.drawImage(tintedEmoji('🪟', REVERSE_TINT), 0, 0);
     this.reverseCursor = `url(${rv.toDataURL()}) ${SIZE - 1 - px} ${py}, pointer`;
     for (const [name, [url, emoji]] of Object.entries(GESTURES) as [Gesture, [string, string]][]) {
       // Each at its own size: Shuffle's two hands are drawn bigger (decisions 166, 167).

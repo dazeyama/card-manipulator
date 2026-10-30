@@ -129,9 +129,9 @@ export class ContextHints {
       : context === 'place'
         ? [['👆', `Click the table to move ${placeCount} card${placeCount === 1 ? '' : 's'} there as a stack`], ['⎋', 'Esc cancels']]
       : context === 'spread' && this.app.spreading?.reverse
-        ? [['👈', `Click to reverse-spread ${spreadCount} card${spreadCount === 1 ? '' : 's'} there, mana costs showing`], ['🔲', 'Drag a box to fit them inside it'], ['⎋', 'Esc cancels']]
+        ? [['👉', `Click to reverse-spread ${spreadCount} card${spreadCount === 1 ? '' : 's'} there, mana costs showing`], ['🔲', 'Drag a box to fit them inside it'], ['🪟', 'X switches back to the plain spread'], ['⎋', 'Esc cancels']]
       : context === 'spread'
-        ? [['👆', `Click to spread ${spreadCount} card${spreadCount === 1 ? '' : 's'} there`], ['🔲', 'Drag a box to fit them inside it'], ['🪟', 'X again: reverse spread, mana costs showing'], ['⎋', 'Esc cancels']]
+        ? [['👆', `Click to spread ${spreadCount} card${spreadCount === 1 ? '' : 's'} there`], ['🔲', 'Drag a box to fit them inside it'], ['🪟', 'X switches to the reverse spread, mana costs showing'], ['⎋', 'Esc cancels']]
         : HINTS[context];
     const signature = context + (this.app.spreading?.reverse ? 'r' : '') + n + spreadCount + placeCount + hints.map((hint) => (lit(hint[2]) ? '1' : '0')).join('');
     if (signature === this.shown) return;

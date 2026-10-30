@@ -299,9 +299,9 @@ keyboard.bind('s', () => {
 });
 // X (decision 159): the pointing glove; the next click spreads the selection (or the hovered
 // pile) centred there, or a dragged box spreads it to fit inside the box. X on a spread
-// restacks it at once; X twice quickly arms the reverse spread, rows laid right to left so
-// the mana costs show (decision 215). Esc cancels.
-let lastX = 0;
+// restacks it at once. Once armed, each X switches to the reverse spread, rows laid right to
+// left so the mana costs show, and back, even while the box is being drawn (decisions 215, 216).
+// Esc cancels.
 const startSpread = (source: string[]) => {
   app.drawing = null;
   app.placing = null;
@@ -309,11 +309,10 @@ const startSpread = (source: string[]) => {
 };
 keyboard.bind('x', () => {
   if (drag.dragging) return drag.spreadHeld();
-  const now = performance.now();
-  const twice = now - lastX < 400;
-  lastX = now;
-  if (twice && app.spreading) {
-    app.spreading = { source: app.spreading.source, reverse: true };
+  if (app.spreading) {
+    // The same object, so a box being drawn sees the change.
+    app.spreading.reverse = !app.spreading.reverse;
+    refreshSpreadPreview?.();
     return;
   }
   const card = !store.selection.size && mouse.hovered ? store.cards.get(mouse.hovered) : undefined;
@@ -436,6 +435,8 @@ app.overlay.append(spreadBox);
 // While the box is dragged, the outlines of where the cards will land (decision 207).
 const spreadPreview = new SpreadPreview(app);
 let endSpreadGesture: (() => void) | null = null;
+/** Redraws the box's preview, while a box is being drawn: X switches it between plain and reverse. */
+let refreshSpreadPreview: (() => void) | null = null;
 app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
   const spreading = app.spreading;
   if (!spreading || e.button !== 0) return;
@@ -456,10 +457,16 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
       width: `${Math.abs(x1 - x0)}px`,
       height: `${Math.abs(y1 - y0)}px`,
     });
+    preview();
+  };
+  const preview = () => {
     const box = tableBox(x0, y0, x1, y1);
     const count = spreading.source.filter((u) => store.cards.has(u)).length;
     if (box && count) spreadPreview.show(fitLayout(count, box), !!spreading.reverse);
     else spreadPreview.hide();
+  };
+  refreshSpreadPreview = () => {
+    if (boxed) preview();
   };
   const end = () => {
     window.removeEventListener('pointermove', move, true);
@@ -467,6 +474,7 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
     spreadBox.hidden = true;
     spreadPreview.hide();
     endSpreadGesture = null;
+    refreshSpreadPreview = null;
   };
   const up = (ev: PointerEvent) => {
     if (ev.button !== 0) return;
