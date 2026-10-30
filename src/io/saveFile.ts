@@ -40,6 +40,7 @@ export function toDoc(app: App, withCardData: boolean): TableDoc {
     mats: [...store.mats.values()].map((m) => ({ ...m, x: round(m.x), y: round(m.y), yaw: round(m.yaw, 5) })),
     elo: eloOnTable(store),
     basics: store.basics,
+    dice: [...store.dice.values()].map((d) => ({ ...d, x: round(d.x), y: round(d.y), z: round(d.z), yaw: round(d.yaw, 5) })),
   };
 }
 
@@ -99,6 +100,7 @@ export async function loadDoc(app: App, doc: TableDoc): Promise<void> {
   if (doc.elo) store.setElo(Object.entries(doc.elo));
   // Older files have no basics: they keep the defaults (decision 210).
   store.setBasics(readBasics(doc.basics));
+  store.replaceDice(Array.isArray(doc.dice) ? doc.dice : []);
   if (doc.camera) app.rig.fromState(doc.camera);
   store.events.emit('settled', cards.map((c) => c.uid));
   store.events.emit('piles', undefined);

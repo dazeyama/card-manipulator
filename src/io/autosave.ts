@@ -28,6 +28,7 @@ export class Autosave {
     ev.on('mats', schedule);
     ev.on('basics', schedule);
     ev.on('life', schedule);
+    ev.on('dice', schedule);
     app.onFrame(() => {
       if (app.rig.changed) schedule();
     });

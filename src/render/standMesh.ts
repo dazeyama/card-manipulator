@@ -88,11 +88,19 @@ let sharedWedge: THREE.BufferGeometry | null = null;
  */
 const OUTLINE_PX = 5;
 let sharedEdges: LineSegmentsGeometry | null = null;
-const edgeMaterial = new LineMaterial({ color: 0x000000, linewidth: OUTLINE_PX, worldUnits: false });
+const outlines: LineMaterial[] = [];
 
-/** The canvas size in CSS pixels, which the outline's width is measured against. */
+/** A cartoon outline material, OUTLINE_PX wide on screen; the dice use these too (decision 255). */
+export function outlineMaterial(color: THREE.ColorRepresentation, px = OUTLINE_PX): LineMaterial {
+  const m = new LineMaterial({ color, linewidth: px, worldUnits: false });
+  outlines.push(m);
+  return m;
+}
+const edgeMaterial = outlineMaterial(0x000000);
+
+/** The canvas size in CSS pixels, which the outlines' width is measured against. */
 export function setOutlineResolution(width: number, height: number): void {
-  if (edgeMaterial.resolution.x !== width || edgeMaterial.resolution.y !== height) edgeMaterial.resolution.set(width, height);
+  for (const m of outlines) if (m.resolution.x !== width || m.resolution.y !== height) m.resolution.set(width, height);
 }
 let sharedWood: THREE.MeshLambertMaterial | null = null;
 

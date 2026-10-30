@@ -30,6 +30,8 @@ import { Mats } from './mats';
 import { buildStandSection } from './ui/standTab';
 import { installStandSnap } from './standSnap';
 import { LifeCounters } from './ui/lifeCounter';
+import { Dice } from './dice';
+import { DiceLayer } from './render/dice';
 import { HandCount } from './ui/handCount';
 import { fromSlope, isStand, raySlope, raySlopeLocal, SLOPE_BOX } from './state/stand';
 import { uprightYaw, type Placed } from './state/piles';
@@ -104,6 +106,25 @@ const mats = new Mats(app);
 app.mats = mats;
 // No card is ever under a card stand (decision 222).
 installStandSnap(app);
+// Dice (decision 255): D drops one at the cursor; they select and drag like cards, above them.
+const diceLayer = new DiceLayer(app);
+const dice = new Dice(app, diceLayer);
+mouse.hooks.objectPress = (x, y, mods) => {
+  const uid = diceLayer.pick(x, y);
+  return uid ? dice.press(uid, x, y, mods) : null;
+};
+mouse.hooks.marquee = (rect, mode) => {
+  const inside = dice.inRect(rect);
+  if (mode === 'replace') dice.select(inside);
+  else if (mode === 'add') dice.select(inside, true);
+  else {
+    for (const u of inside) dice.selected.delete(u);
+    dice.select(dice.selected, true);
+  }
+};
+keyboard.bind('d', () => {
+  if (!drag.dragging) dice.spawn(app.lastTablePoint);
+});
 // A life counter on every playmat (decision 239).
 new LifeCounters(app, mats);
 // A hovered stand counts the cards on it (decision 250).
@@ -178,7 +199,11 @@ mouse.hooks.matPress = (x, y, mods) => {
   return mat ? mats.press(mat, x, y, mods) : null;
 };
 // A click on bare table unselects the mat; on a locked mat or stand, a double-click still selects its cards (decision 233).
-mouse.hooks.emptyClick = (x, y) => mats.clicked(mats.matAt(x, y));
+mouse.hooks.emptyClick = (x, y) => {
+  // A click on the table drops the dice selection too (decision 255).
+  dice.select([]);
+  mats.clicked(mats.matAt(x, y));
+};
 // Middle-click flips the card, or the whole selection if the card is in it (spec 10.5).
 // Right-click while holding cards drops the bottom one, messy or (Ctrl) squared; held down,
 // another every quarter second until the hand is empty or the button is let go (decisions 180, 182).
@@ -421,6 +446,12 @@ keyboard.bind('shift+c', curveAll);
 for (let n = 1; n <= 9; n++) {
   keyboard.bind(String(n), () => {
     if (drag.dragging) return;
+    // 1-6 over a die, or with dice selected, set the number on top (decision 255).
+    const set = n <= 6 ? dice.targets() : [];
+    if (set.length) {
+      dice.set(set, n);
+      return;
+    }
     const source = drawSource();
     app.spreading = null;
     app.placing = null;
@@ -674,6 +705,13 @@ const turn = (upright: boolean, targets: string[]) => {
   else commands.rotate(targets, upright);
 };
 keyboard.bind('r', (e) => {
+  // Dice under the cursor or selected roll instead (decision 255).
+  const rolling = drag.dragging || e.repeat ? [] : dice.targets();
+  if (rolling.length) {
+    app.showGesture('shuffle');
+    dice.roll(rolling);
+    return;
+  }
   if (e.repeat) {
     // Held: the wait is over, keep turning.
     clearTimeout(pendingR);
@@ -771,6 +809,13 @@ keyboard.bind('n', () => {
   } else toast('Select one pile to name it (S stacks a selection into one pile)', 'warn');
 });
 const removeSelection = () => {
+  // Dice first (decision 255): the selected ones, or the one under the cursor when nothing is selected.
+  const doomed = dice.selected.size ? [...dice.selected] : !store.selection.size && dice.hovered ? [dice.hovered] : [];
+  if (doomed.length) {
+    app.showGesture('remove');
+    dice.remove(doomed);
+    if (!store.selection.size) return;
+  }
   if (store.selection.size || (!mouse.hovered && mats.movable)) app.showGesture('remove');
   // Over a playmat with nothing selected: remove the mat (decision 144).
   if (!store.selection.size && !mouse.hovered && mats.movable) {

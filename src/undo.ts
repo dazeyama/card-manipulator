@@ -41,6 +41,7 @@ export class Undo {
     store.events.on('removed', changed);
     store.events.on('moved', changed);
     store.events.on('mats', changed);
+    store.events.on('dice', changed);
     store.events.on('reset', () => {
       if (this.restoring) return;
       this.saved = this.pending = null;
@@ -118,6 +119,8 @@ export class Undo {
     store.spreads.clear();
     for (const s of then.spreads) store.spreads.set(s.id, { ...s, anchor: { ...s.anchor }, uids: [...s.uids] });
     this.restoreMats(then);
+    // Dice as they were (decision 255).
+    if (JSON.stringify([...store.dice.values()]) !== JSON.stringify(then.dice)) store.replaceDice(then.dice);
     if (d.move.length) {
       land(app, d.move.map((c) => ({ uid: c.uid, x: c.x, y: c.y, z: c.z, yaw: c.yaw, faceUp: c.faceUp })), { stagger: Math.min(1.5, 200 / d.move.length), arc: 6 });
     }

@@ -3,6 +3,7 @@
 // a browser; src/undo.ts takes the snapshots and puts one back.
 
 import type { Spread, Store } from './store';
+import type { Die } from './dice';
 import type { Card, Mat, NamedPile } from './types';
 
 /** A card as undo keeps it: everything an action can change. */
@@ -13,6 +14,8 @@ export interface TableSnap {
   named: NamedPile[];
   spreads: Spread[];
   mats: Mat[];
+  /** Dice (decision 255). */
+  dice: Die[];
 }
 
 export function snapshot(store: Store): TableSnap {
@@ -25,6 +28,7 @@ export function snapshot(store: Store): TableSnap {
     named: [...store.named.values()].map((p) => ({ ...p, anchor: { ...p.anchor } })),
     spreads: [...store.spreads.values()].map((s) => ({ ...s, anchor: { ...s.anchor }, uids: [...s.uids] })),
     mats: [...store.mats.values()].map((m) => ({ ...m })),
+    dice: [...store.dice.values()].map((d) => ({ ...d })),
   };
 }
 
@@ -60,5 +64,6 @@ export function sameTable(a: TableSnap, b: TableSnap): boolean {
   return !d.add.length && !d.remove.length && !d.move.length
     && JSON.stringify(a.named) === JSON.stringify(b.named)
     && JSON.stringify(a.spreads) === JSON.stringify(b.spreads)
-    && JSON.stringify(a.mats) === JSON.stringify(b.mats);
+    && JSON.stringify(a.mats) === JSON.stringify(b.mats)
+    && JSON.stringify(a.dice) === JSON.stringify(b.dice);
 }

@@ -2,6 +2,7 @@
 // the plane z = 0; x runs right and y runs away from the default camera.
 
 import type { Basics } from './basics';
+import type { Die } from './dice';
 
 export const CARD_W = 63;
 export const CARD_H = 88;
@@ -204,4 +205,6 @@ export interface TableDoc {
   elo?: Record<string, number>;
   /** The basic land printings the Card tab's chips spawn (decision 210); older files have none. */
   basics?: Basics;
+  /** Dice on the table (decision 255); older files have none. */
+  dice?: Die[];
 }

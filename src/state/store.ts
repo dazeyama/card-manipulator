@@ -11,6 +11,7 @@ import {
   type Mat,
 } from './types';
 import { defaultBasics, type Basics } from './basics';
+import type { Die } from './dice';
 
 export interface StoreEvents {
   /** Cards were created. */
@@ -36,6 +37,8 @@ export interface StoreEvents {
   basics: void;
   /** A playmat's life total changed (decision 239). Not a table change for undo. */
   life: void;
+  /** Dice were added, moved, rolled, set or removed (decision 255). */
+  dice: void;
 }
 
 type Listener<T> = (payload: T) => void;
@@ -245,6 +248,29 @@ export class Store {
     this.events.emit('mats', undefined);
   }
 
+  /** Dice on the table (decision 255). */
+  readonly dice = new Map<string, Die>();
+
+  /** Add dice, or put them where these say (replacing any with the same uid). */
+  setDice(dice: Die[]): void {
+    if (!dice.length) return;
+    for (const d of dice) this.dice.set(d.uid, { ...d });
+    this.events.emit('dice', undefined);
+  }
+
+  removeDice(uids: Iterable<string>): void {
+    let any = false;
+    for (const u of uids) any = this.dice.delete(u) || any;
+    if (any) this.events.emit('dice', undefined);
+  }
+
+  /** Every die exactly as given, the rest gone (undo, loading). */
+  replaceDice(dice: Die[]): void {
+    this.dice.clear();
+    for (const d of dice) this.dice.set(d.uid, { ...d });
+    this.events.emit('dice', undefined);
+  }
+
   /** A playmat's life total (decision 239). */
   setMatLife(uid: string, life: number): void {
     const m = this.mats.get(uid);
@@ -284,6 +310,8 @@ export class Store {
     this.cards.clear();
     this.mats.clear();
     this.elo.clear();
+    this.dice.clear();
+    this.events.emit('dice', undefined);
     this.basics = defaultBasics();
     this.events.emit('basics', undefined);
     this.events.emit('mats', undefined);

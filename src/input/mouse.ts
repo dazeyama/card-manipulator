@@ -42,6 +42,10 @@ export interface MouseHooks {
   doubleClickCard?: (uid: string, selectionBefore: string[]) => void;
   /** The hovered card changed. */
   hover?: (uid: string | null) => void;
+  /** A left press on something above the cards, a die (decision 255): return its gesture, or null. */
+  objectPress?: (x: number, y: number, mods: Mods) => CustomGesture | null;
+  /** The marquee changed: dice in it are selected too (decision 255). */
+  marquee?: (rect: { x0: number; y0: number; x1: number; y1: number }, mode: 'replace' | 'add' | 'subtract') => void;
   /** A left press where no card is: a playmat may take it (decision 144). */
   matPress?: (x: number, y: number, mods: Mods) => CustomGesture | null;
   /** A plain click on empty table, where on screen (it unselects the selected playmat, decision 214). */
@@ -163,6 +167,14 @@ export class MouseInput {
       if (grab) this.gesture = { kind: 'pan', grab, button: e.button };
       e.preventDefault();
       return;
+    }
+    // Dice sit above the cards and take the press first (decision 255).
+    if (e.button === 0) {
+      const g = this.hooks.objectPress?.(x, y, this.mods(e));
+      if (g) {
+        this.gesture = g;
+        return;
+      }
     }
     const onCard = pickCard(this.app.rig, this.app.layer, x, y);
     if (e.button === 1) {
@@ -294,6 +306,7 @@ export class MouseInput {
       next = out;
     }
     this.app.store.setSelection(next);
+    this.hooks.marquee?.({ x0: g.x0, y0: g.y0, x1: g.x1, y1: g.y1 }, g.mode);
   }
 
   setHover(uid: string | null): void {
