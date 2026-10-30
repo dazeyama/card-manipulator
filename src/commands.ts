@@ -170,9 +170,15 @@ function slopeHand(m: Mat, count: number): Placed[] {
   return fromSlope(m, arcHand(count, STAND_W, { x: 0, y: SLOPE_LEN / 2 }));
 }
 
-/** Where a big table layout (curve, rank, colour) of these cards goes: where they are, or the middle of the view for cards on a stand (decision 221). */
-function layoutCentre(app: App, uids: string[]): { x: number; y: number } {
-  return uids.some((u) => app.store.cards.get(u)?.stand) ? { x: app.rig.target.x, y: app.rig.target.y } : centroid(app, uids);
+/**
+ * A big table layout (curve, rank, colour) of cards that were on a card stand
+ * goes on the table directly in front of that stand, centred, like any shape
+ * too big for its slope (decision 225); other layouts stay where they are.
+ */
+function offStand(app: App, uids: string[], spots: Placed[]): Placed[] {
+  const id = uids.map((u) => app.store.cards.get(u)?.stand).find(Boolean);
+  const m = id ? app.store.mats.get(id) : undefined;
+  return m && isStand(m) ? inFrontOf(m, spots) : spots;
 }
 
 function centroid(app: App, uids: string[]): { x: number; y: number } {
@@ -246,9 +252,11 @@ export class Commands {
     });
     leaveSpreads(this.app, cards);
     // Centred where the cards are, or at `centre` (Shift + C: the middle of the view, decision 191).
-    const layout = curveLayout(info, centre ?? layoutCentre(this.app, cards), { byColour, split: store.settings.curveSplit });
+    const layout = curveLayout(info, centre ?? centroid(this.app, cards), { byColour, split: store.settings.curveSplit });
     const uids = layout.map((p) => p.uid);
-    const landings = placeSequential(this.app, uids, layout.map((p) => p.at));
+    // Off a card stand: in front of it, unless placed in the middle of the view (Shift + C).
+    const spots = layout.map((p) => p.at);
+    const landings = placeSequential(this.app, uids, centre ? spots : offStand(this.app, uids, spots));
     land(this.app, landings, { stagger: Math.min(2, 400 / uids.length), arc: 10 });
     // Remember the curve (one per colour row), so C on it stacks it back up.
     const groupOf = new Map(info.map((c) => [c.uid, byColour ? c.group : 'all']));
@@ -301,9 +309,9 @@ export class Commands {
       return { uid, name: r?.name ?? '', creature: /\bCreature\b/.test((r?.type_line ?? '').split('//')[0]), value: mode === 'elo' ? store.eloOf(card) : rank };
     });
     leaveSpreads(this.app, cards);
-    const layout = rankLayout(info, layoutCentre(this.app, cards), { mode, split: store.settings.curveSplit });
+    const layout = rankLayout(info, centroid(this.app, cards), { mode, split: store.settings.curveSplit });
     const uids = layout.map((p) => p.uid);
-    const landings = placeSequential(this.app, uids, layout.map((p) => p.at));
+    const landings = placeSequential(this.app, uids, offStand(this.app, uids, layout.map((p) => p.at)));
     land(this.app, landings, { stagger: Math.min(2, 400 / uids.length), arc: 10 });
     // Remember the view, so E on it stacks it back up.
     const spots = new Map(landings.map((l) => [l.uid, { x: l.x, y: l.y }]));
@@ -327,9 +335,9 @@ export class Commands {
       return { uid, name: r?.name ?? '', mv: r?.cmc ?? 0, land: /\bLand\b/.test(type), creature: /\bCreature\b/.test(type), colours };
     });
     leaveSpreads(this.app, cards);
-    const layout = colourLayout(info, layoutCentre(this.app, cards), { split: store.settings.curveSplit });
+    const layout = colourLayout(info, centroid(this.app, cards), { split: store.settings.curveSplit });
     const uids = layout.map((p) => p.uid);
-    const landings = placeSequential(this.app, uids, layout.map((p) => p.at));
+    const landings = placeSequential(this.app, uids, offStand(this.app, uids, layout.map((p) => p.at)));
     land(this.app, landings, { stagger: Math.min(2, 400 / uids.length), arc: 10 });
     for (const u of uids) this.rankOf.delete(u);
     const spots = new Map(landings.map((l) => [l.uid, { x: l.x, y: l.y }]));
