@@ -78,6 +78,9 @@ function wedgeGeometry(): THREE.BufferGeometry {
 }
 
 let sharedWedge: THREE.BufferGeometry | null = null;
+/** Its outline (decision 230): a black line along every edge where two faces meet. */
+let sharedEdges: THREE.EdgesGeometry | null = null;
+const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
 let sharedWood: THREE.MeshLambertMaterial | null = null;
 
 /** Draw the name plate's face: black, a gold border, the text in gold serif capitals' style. */
@@ -123,14 +126,17 @@ export function drawPlate(text: string): THREE.CanvasTexture {
 /** A stand to put on the table: the wedge and its plate, centred on its footprint, on the table. */
 export function standGroup(plate: THREE.MeshLambertMaterial): THREE.Group {
   sharedWedge ??= wedgeGeometry();
+  sharedEdges ??= new THREE.EdgesGeometry(sharedWedge, 20);
   if (!sharedWood) {
-    sharedWood = new THREE.MeshLambertMaterial({ color: WOOD_COLOUR });
+    // Pushed back a touch in depth, so the outline on its edges never flickers into it.
+    sharedWood = new THREE.MeshLambertMaterial({ color: WOOD_COLOUR, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
     loadWood();
   }
   const group = new THREE.Group();
   const wedge = new THREE.Mesh(sharedWedge, sharedWood);
   wedge.castShadow = true;
   wedge.receiveShadow = true;
+  const edges = new THREE.LineSegments(sharedEdges, edgeMaterial);
   const geo = new THREE.PlaneGeometry(PLATE_W, PLATE_H);
   // Turned to face the back: readable from across the table, right way up (decision 220).
   geo.rotateZ(Math.PI);
@@ -140,6 +146,6 @@ export function standGroup(plate: THREE.MeshLambertMaterial): THREE.Group {
   const n = new THREE.Vector3(0, Math.sin(BACK), Math.cos(BACK));
   face.position.set(0, mid, STAND_H / 2).addScaledVector(n, 0.4);
   face.receiveShadow = true;
-  group.add(wedge, face);
+  group.add(wedge, edges, face);
   return group;
 }
