@@ -1,17 +1,18 @@
-// Cards in hand (decision 250): while the mouse is over a card stand, a small
-// badge in the life counter's style floats just off its slope's top-left
-// corner, counting the cards on it.
+// Cards in hand (decisions 250 to 252): while the mouse is over a card stand,
+// a small red count with a thick black outline sits just inside its slope's
+// top-left corner, counting the cards on it.
 
 import type { App } from '../app';
 import type { Mats } from '../mats';
-import { isStand, RIDGE, SLOPE_START, STAND_H, STAND_W, standWorld } from '../state/stand';
+import { isStand, SLOPE_LEN, SLOPE_START, slopePoint, STAND_W, standWorld } from '../state/stand';
 import { h } from './dom';
-import { offCorner } from './lifeCounter';
 
 /** Smaller than the life badge (56 mm): its size at the corner, and on screen, px. */
 const BADGE_MM = 36;
 const BADGE_MIN_PX = 30;
 const BADGE_MAX_PX = 96;
+/** Its centre, in from the slope's top-left corner, mm. */
+const INSET = 24;
 
 export class HandCount {
   private readonly el: HTMLDivElement;
@@ -35,15 +36,17 @@ export class HandCount {
     }
     const at = this.mats.drawnAt(m.uid) ?? m;
     const s = { ...m, x: at.x, y: at.y, yaw: at.yaw };
-    // The slope's top-left corner, at the ridge, with the ridge and the slope's left edge from it.
-    const k = { ...standWorld(s, -STAND_W / 2, RIDGE), z: STAND_H };
-    if (!this.app.rig.inFront(k.x, k.y, k.z)) {
+    // Just inside the slope's top-left corner, on the slope (decision 252).
+    const spot = standWorld(s, -STAND_W / 2 + INSET, SLOPE_START + SLOPE_LEN - INSET);
+    const k = slopePoint(s, spot.x, spot.y, 1);
+    const rig = this.app.rig;
+    if (!rig.inFront(k.x, k.y, k.z)) {
       this.el.hidden = true;
       return;
     }
-    const along = { ...standWorld(s, STAND_W / 2, RIDGE), z: STAND_H };
-    const down = { ...standWorld(s, -STAND_W / 2, SLOPE_START), z: 0 };
-    const { p, size } = offCorner(this.app.rig, k, along, down, BADGE_MM, BADGE_MIN_PX, BADGE_MAX_PX);
+    const p = rig.worldToScreen(k.x, k.y, k.z);
+    const q = rig.worldToScreen(k.x + BADGE_MM, k.y, k.z);
+    const size = Math.max(BADGE_MIN_PX, Math.min(BADGE_MAX_PX, Math.hypot(q.x - p.x, q.y - p.y)));
     this.el.hidden = false;
     this.el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -50%)`;
     this.el.style.width = this.el.style.height = `${size.toFixed(0)}px`;
