@@ -1160,6 +1160,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 242 | Owner (2026-10-30): the mat's corner buttons a bit **closer to the corners**. **(agent)** Each button's centre now sits 15 mm in from its corner (was 24 mm), on playmats and on a stand's lip (was 22 mm from its ends). |
 | 243 | Owner (2026-10-30): show each corner button **only when the mouse gets close to its corner**, with a **fade zone** from a middle distance before it pops in. **(agent)** While a mat or stand is hovered, each button's look follows the mouse's distance from it on screen: unseen beyond 170 px, fading in and growing from 60% size as the mouse comes nearer, and full size and strength within 70 px. Until it is a quarter faded in it can't be clicked, so clicks there still reach the mat. |
 | 244 | Owner (2026-10-30): **middle-clicking** a life total that is **already 20** sets it to **40**. **(agent)** So middle-click resets to 20, and a second middle-click goes to 40 for a Commander game; from 40 (or anything else) it goes back to 20. The badge's tooltip says so. |
+| 245 | Owner (2026-10-30): **double-clicking a single card** turns it **one unit** (a quarter turn). **(agent)** A card on its own, in no pile with other cards and not part of a spread, turns a quarter clockwise, as R does (decision 102), with the rotate glove; so a double-click taps a card and the next four bring it round. On a pile, double-click still spreads it, and on a spread restacks it (spec 10.6). Works on a card stand too. |
 
 ## Appendix B: Open items
 

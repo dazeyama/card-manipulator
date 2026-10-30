@@ -305,6 +305,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 - [ ] Hover a card at an odd angle and press R: it squares to the next quarter turn clockwise; R again turns it 90°; R twice quickly stands it upright (decision 102).
 - [ ] With nothing selected, hover a pile and press T, X, X, S, F; drag a stack and press R mid-drag: it turns in your hand and lands turned (decision 103).
 - [ ] Spawn the cube, press `Shift + C`: colours two to a row (W U, B R, G colourless, multicolour and lands; decision 113), columns by mana value lined up, lands stacked at the start, title bars readable. Hover one colour's pile and press `C`. Toggle **Split creatures** and press `Shift + C` again (decision 107). Press `C` on a curved pile: it stacks back up; cascades show more of each card (decision 108).
+- [ ] **Double-click taps a card** (decision 245): double-click a card lying on its own: it turns a quarter clockwise; again: another quarter. Double-click a pile: it still spreads.
 - [ ] **Middle-click 20 to 40** (decision 244): middle-click a life badge showing 20: 40; again: 20.
 - [ ] **Corner buttons fade in** (decision 243): hover a mat's middle: no buttons. Move toward a corner: its button fades in and grows, fully there close up; move away: it fades.
 - [ ] **❤️ life toggle** (decision 241): hover a playmat: ❤️ in its top-left corner; click: the life badge hides and it shows 🤍; click again: the badge is back with the same life. Save and reload: stays as set.

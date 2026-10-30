@@ -150,7 +150,15 @@ mouse.hooks.cardDrag = (uid, x, y, mods) => {
   store.setSelection([uid]);
   return drag.begin([uid], 'single', x, y, uid);
 };
-mouse.hooks.doubleClickCard = (uid) => commands.toggleSpread(uid);
+// Double-click: a card on its own turns a quarter, a tap (decision 245); a pile spreads, a spread restacks.
+mouse.hooks.doubleClickCard = (uid) => {
+  const card = store.cards.get(uid);
+  const pile = store.pileOf(uid);
+  if (card && !card.spreadOf && (!pile || pile.cardUids.length < 2)) {
+    app.showGesture('rotate');
+    commands.rotate([uid]);
+  } else commands.toggleSpread(uid);
+};
 mouse.hooks.matPress = (x, y, mods) => {
   // A locked mat acts as empty table (decision 154).
   const mat = mats.movableAt(x, y);
