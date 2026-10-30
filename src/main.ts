@@ -79,7 +79,7 @@ const drag = new DragController(app);
 // Cursors that show what the mouse will do (decision 116).
 new Cursors(app, mouse, drag);
 // A hint line in the play space showing the controls that matter right now (decision 134).
-new ContextHints(app, mouse, drag);
+const hints = new ContextHints(app, mouse, drag);
 const tray = new RemovedTray(app, spawnPanel.trayHost);
 // Ctrl + Z: one-step undo; pressed again, redo (decision 204).
 const undo = new Undo(app, tray, drag);
@@ -822,7 +822,7 @@ fileBtn('Open…', 'Load a saved table file', () => void openFile());
 fileBtn('Save', 'Save the table as a file (Ctrl + S)', () => saveFile());
 fileBtn('Export', 'Export the whole table as a decklist or CSV', () => exporter.open([...store.cards.keys()], store.name)).classList.add('export-trigger');
 // ?: the full controls list (decision 135).
-const help = new HelpPanel();
+const help = new HelpPanel(hints);
 fileBtn('?', 'All the controls (?)', () => help.toggle()).classList.add('help-trigger');
 keyboard.bind('?', () => help.toggle());
 

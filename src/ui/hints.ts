@@ -79,14 +79,40 @@ const HINTS: Record<string, Hint[]> = {
   ],
 };
 
+/** Remembered in this browser (decision 234). */
+const HIDDEN_KEY = 'hints.hidden';
+
+function readHidden(): boolean {
+  try {
+    return localStorage.getItem(HIDDEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export class ContextHints {
   private readonly el: HTMLDivElement;
   private readonly keys = { shift: false, ctrl: false, alt: false };
   private shown = '';
 
+  /** The ? panel's "Hide control hints" (decision 234). */
+  get hidden(): boolean {
+    return this.el.hidden;
+  }
+
+  set hidden(on: boolean) {
+    this.el.hidden = on;
+    try {
+      localStorage.setItem(HIDDEN_KEY, on ? '1' : '0');
+    } catch {
+      // Private window or blocked storage: it just isn't remembered.
+    }
+  }
+
   constructor(private readonly app: App, private readonly mouse: MouseInput, private readonly drag: DragController) {
     this.el = document.createElement('div');
     this.el.className = 'context-hints';
+    this.el.hidden = readHidden();
     app.overlay.append(this.el);
     const keys = (e: KeyboardEvent | PointerEvent) => {
       this.keys.shift = e.shiftKey;

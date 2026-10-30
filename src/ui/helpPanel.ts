@@ -3,6 +3,7 @@
 // hint line in the play space shows just what matters now; this lists it all.
 
 import { h } from './dom';
+import type { ContextHints } from './hints';
 
 type Line = [string, string, string];
 
@@ -53,9 +54,14 @@ const GROUPS: [string, Line[]][] = [
 export class HelpPanel {
   private readonly el: HTMLDivElement;
 
-  constructor() {
+  constructor(hints: ContextHints) {
+    // Hide the hint line along the bottom of the table (decision 234).
+    const hide = h('input', { type: 'checkbox' });
+    hide.checked = hints.hidden;
+    hide.addEventListener('change', () => (hints.hidden = hide.checked));
     this.el = h('div', { class: 'help-panel', hidden: '' },
       h('div', { class: 'help-head' }, h('span', { class: 'pe-title' }, 'Controls'), h('span', { class: 'muted small' }, 'Keys act on the selection, or on the pile under the cursor.')),
+      h('label', { class: 'inline help-hide' }, hide, 'Hide control hints'),
       ...GROUPS.map(([title, lines]) =>
         h('div', { class: 'help-group' },
           h('div', { class: 'help-group-title' }, title),
