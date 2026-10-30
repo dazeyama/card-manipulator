@@ -226,6 +226,28 @@ export class Physics {
     pose.yaw = this.e.z;
   }
 
+  /**
+   * Take cards out of any fall in progress (decision 219): a command or a drag
+   * that moves a card still falling owns it now, so the fall must neither keep
+   * steering its drawn pose nor put it back where it lands. The rest of the
+   * fall carries on.
+   */
+  release(uids: Iterable<string>): void {
+    const world = this.world;
+    if (!world || !this.sessions.length) return;
+    const out = new Set(uids);
+    for (const s of [...this.sessions]) {
+      const keep = s.bodies.filter((b) => !out.has(b.uid));
+      if (keep.length === s.bodies.length) continue;
+      for (const b of s.bodies) if (out.has(b.uid)) world.removeRigidBody(b.body);
+      s.bodies = keep;
+      if (!keep.length) {
+        for (const c of s.statics) world.removeCollider(c, false);
+        this.sessions.splice(this.sessions.indexOf(s), 1);
+      }
+    }
+  }
+
   /** Undo (decision 204): drop every fall in progress without landing it; the model's positions stand. */
   abandonAll(): void {
     const world = this.world;

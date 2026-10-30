@@ -31,6 +31,8 @@ const SETTLE_MS = 190;
  */
 export function land(app: App, landings: Landing[], opts: { stagger?: number; duration?: number; arc?: number } = {}): void {
   if (!landings.length) return;
+  // A card still falling is the landing's now, not the fall's (decision 219).
+  app.physics?.release(landings.map((l) => l.uid));
   app.store.moveCards(landings);
   const stagger = opts.stagger ?? Math.min(1.5, 200 / landings.length);
   landings.forEach((l, i) => {

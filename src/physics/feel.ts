@@ -244,6 +244,8 @@ export class DragController {
       }
       return { uid: c.uid, ox, oy, dz, omega, vx: 0, vy: 0, vz: 0, home: { x: c.x, y: c.y, z: c.z, yaw: c.yaw }, bx: ox, by: oy, yaw: c.yaw, yawTo: tidy ? snapYaw(c.yaw) : c.yaw, base: c.yaw, rollTo: NaN, ez: NaN };
     });
+    // Picked up mid-fall, a card is the hand's, not the physics' (decision 219).
+    this.app.physics?.release(this.held.map((h) => h.uid));
     for (const h of this.held) {
       this.app.motion.cancel(h.uid);
       this.app.motion.held.add(h.uid);
