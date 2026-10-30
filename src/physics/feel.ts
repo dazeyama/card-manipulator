@@ -596,10 +596,16 @@ export class DragController {
    * messily, or squared in Tidy mode (Ctrl); from a face-down hand, the top card
    * is dealt instead, as from a deck. The last card ends the drag, as letting go does.
    */
+  /** A card was dealt onto a card stand's slope (decision 249): main makes everything there one hand. */
+  onDealt: ((stand: Mat, uids: string[]) => void) | null = null;
+
   dropBottom(): void {
     if (!this.active || !this.held.length) return;
+    const stand = this.overStand;
     if (this.held.length === 1) {
+      const last = this.held[0].uid;
       this.release(this.screen.x, this.screen.y);
+      if (stand) this.onDealt?.(stand, [last]);
       return;
     }
     const store = this.app.store;
@@ -620,6 +626,7 @@ export class DragController {
     if (!this.dropLoose([c], 'single', this.screen.x, this.screen.y, keep)) {
       land(this.app, this.landings([c], 'single', this.screen.x, this.screen.y, keep));
     }
+    if (stand) this.onDealt?.(stand, [c.uid]);
     this.showLabel(this.screen.x, this.screen.y);
   }
 

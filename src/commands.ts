@@ -393,9 +393,9 @@ export class Commands {
     const top = byHeight(this.app, source.filter((u) => store.cards.has(u))).slice(-count);
     if (!top.length) return;
     leaveSpreads(this.app, top);
-    // Dealt onto a slope that holds a hand: they join it, one hand of everything there (decision 224).
+    // Dealt onto a slope: one new hand of everything there, the dealt cards on the right (decisions 224, 249).
     const dealt = new Set(top);
-    const joined = stand ? (this.handOn(stand) ?? []).filter((u) => !dealt.has(u)) : [];
+    const joined = stand ? this.onStand(stand).filter((u) => !dealt.has(u)) : [];
     const uids = [...joined, ...top];
     // More than 15 cards are dealt as packs of 15, one under the next (decision 205).
     // Clicked on a card stand's slope: dealt onto it as one arc the slope's width (decisions 221, 222).
@@ -428,22 +428,24 @@ export class Commands {
     land(this.app, landings, { stagger: Math.min(6, 300 / top.length), arc: 10 });
   }
 
+  /** A card stand's cards, bottom to top: a hand's left to right. */
+  private onStand(m: Mat): string[] {
+    return [...this.app.store.cards.values()].filter((c) => c.stand === m.uid).sort((a, b) => a.z - b.z).map((c) => c.uid);
+  }
+
   /**
-   * The hand on a card stand (decision 224): its cards, left to right, if every
-   * card on the stand is one hand still where it was laid; otherwise null.
+   * Cards dealt onto a slope by right-click or Space (decision 249): everything
+   * on the stand is laid again as one hand the slope's width, the dealt cards
+   * last, on the right and on top, their faces as they were.
    */
-  private handOn(m: Mat): string[] | null {
-    const store = this.app.store;
-    const cards = [...store.cards.values()].filter((c) => c.stand === m.uid);
-    if (!cards.length) return null;
-    const spots = this.fanOf.get(cards[0].uid);
-    if (!spots) return null;
-    for (const c of cards) {
-      const at = spots.get(c.uid);
-      if (this.fanOf.get(c.uid) !== spots || !at || Math.abs(c.x - at.x) > 0.5 || Math.abs(c.y - at.y) > 0.5) return null;
-    }
-    // Left to right is bottom to top, as the hand was laid.
-    return cards.sort((a, b) => a.z - b.z).map((c) => c.uid);
+  joinSlopeHand(m: Mat, dealt: string[]): void {
+    const set = new Set(dealt);
+    const uids = [...this.onStand(m).filter((u) => !set.has(u)), ...dealt.filter((u) => this.app.store.cards.has(u))];
+    if (!uids.length) return;
+    const landings = inSpace(m.uid, () => placeSequential(this.app, uids, slopeHand(m, uids.length)));
+    land(this.app, landings, { stagger: Math.min(10, 200 / uids.length), arc: 8 });
+    const spots = new Map(landings.map((l) => [l.uid, { x: l.x, y: l.y }]));
+    for (const uid of uids) this.fanOf.set(uid, spots);
   }
 
   toggleCurve(cards: string[], byColour: boolean): void {
