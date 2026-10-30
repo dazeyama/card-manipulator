@@ -33,6 +33,7 @@ import { LifeCounters } from './ui/lifeCounter';
 import { TokenMenu } from './ui/tokenMenu';
 import { Dice } from './dice';
 import { DiceLayer } from './render/dice';
+import { DiceNumbers } from './ui/diceNumbers';
 import { HandCount } from './ui/handCount';
 import { fromSlope, isStand, raySlope, raySlopeLocal, SLOPE_BOX } from './state/stand';
 import { uprightYaw, type Placed } from './state/piles';
@@ -111,6 +112,8 @@ installStandSnap(app);
 const diceLayer = new DiceLayer(app);
 const dice = new Dice(app, diceLayer);
 app.dice = dice;
+// The number over a die when hovered, or over every die when they're small on screen (decision 265).
+new DiceNumbers(app, dice, diceLayer);
 mouse.hooks.objectPress = (x, y, mods) => {
   const uid = diceLayer.pick(x, y);
   return uid ? dice.press(uid, x, y, mods) : null;

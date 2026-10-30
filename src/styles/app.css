@@ -265,6 +265,9 @@ label.inline { display: inline-flex; flex-direction: row; align-items: center; g
 .life-delta.loss { background: #ffd0cc; color: #b71c1c; }
 .panel-section { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 10px; }
 .panel-section-title { font-weight: 600; }
+/* A die's number floating over it (decision 265). */
+.die-number { position: absolute; left: 0; top: 0; z-index: 3; pointer-events: none; color: #fff; font: 900 16px/1 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-text-stroke: 0.18em #111; paint-order: stroke fill; font-variant-numeric: tabular-nums; }
+.die-number[hidden] { display: none; }
 .token-list { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; max-height: 320px; overflow: auto; }
 .token-row { display: flex; align-items: center; gap: 8px; text-align: left; border: 1px solid transparent; background: none; border-radius: 6px; padding: 3px 6px; font-size: 12px; cursor: var(--cursor-point, pointer); }
 .token-row:hover { background: var(--accent-soft); border-color: var(--accent); }
