@@ -305,6 +305,7 @@ The measurements ran in the browser pane (about 700 × 740 px) except the 1080p 
 - [ ] Hover a card at an odd angle and press R: it squares to the next quarter turn clockwise; R again turns it 90°; R twice quickly stands it upright (decision 102).
 - [ ] With nothing selected, hover a pile and press T, X, X, S, F; drag a stack and press R mid-drag: it turns in your hand and lands turned (decision 103).
 - [ ] Spawn the cube, press `Shift + C`: colours two to a row (W U, B R, G colourless, multicolour and lands; decision 113), columns by mana value lined up, lands stacked at the start, title bars readable. Hover one colour's pile and press `C`. Toggle **Split creatures** and press `Shift + C` again (decision 107). Press `C` on a curved pile: it stacks back up; cascades show more of each card (decision 108).
+- [ ] **Tidy dice** (decision 262): drag a die holding Ctrl: it rides perfectly level and square; let go: it lands square to the table. Turn on Tidy mode and roll: they land squared.
 - [ ] **Loose dice in the hand** (decision 261): drag a die around: it leans into the motion, lifts a bit when fast, and bobs and wobbles slightly; held still it settles level.
 - [ ] **Dice cursors** (decision 260): hover a die: the open hand; drag it (or several): the fist.
 - [ ] **Livelier rolls** (decision 259): R on a die: it goes higher, tumbles and bounces longer, and skitters a bit before settling.

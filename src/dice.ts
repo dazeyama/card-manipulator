@@ -11,6 +11,7 @@ import { FLICK_SPEED, flickDirection } from './physics/feel';
 import type { DiceLayer } from './render/dice';
 import { DIE_SIZE, dieTurn, gatherOffsets, valueUp, yawOf, type Die } from './state/dice';
 import { newUid } from './state/store';
+import { snapYaw } from './state/piles';
 import { isStand, standHeightAt } from './state/stand';
 import { CARD_H, CARD_T, CARD_W } from './state/types';
 
@@ -77,13 +78,20 @@ export class Dice {
         sw.vy += ((y - now.y) / dt - sw.vy) * ease;
       }
       this.sway.set(c.uid, sw);
+      // Tidy mode (decision 262): held perfectly level, square to the table, no lean or wobble.
+      const tidy = this.app.tidy;
       const speed = Math.hypot(sw.vx, sw.vy);
-      const lean = Math.min(SWAY_MAX, speed * SWAY_PER_SPEED);
-      const q = dieTurn(c.die.value, c.die.yaw + Math.sin(t * 3.1 + sw.phase) * 0.06);
+      const lean = tidy ? 0 : Math.min(SWAY_MAX, speed * SWAY_PER_SPEED);
+      const q = dieTurn(c.die.value, tidy ? this.square(c.die.yaw) : c.die.yaw + Math.sin(t * 3.1 + sw.phase) * 0.06);
       if (lean > 1e-4) q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(-sw.vy / speed, sw.vx / speed, 0), lean));
-      const bob = Math.min(6, speed * 0.012) + Math.sin(t * 4.3 + sw.phase) * 0.8;
+      const bob = tidy ? 0 : Math.min(6, speed * 0.012) + Math.sin(t * 4.3 + sw.phase) * 0.8;
       this.layer.pose(c.uid, { x, y, z: this.surfaceAt(x, y, skip) + DIE_SIZE / 2 + CARRY + bob }, q);
     }
+  }
+
+  /** In Tidy mode (Ctrl held, or Shift + T), a turn snapped to the nearest quarter (decision 262). */
+  private square(yaw: number): number {
+    return this.app.tidy ? snapYaw(yaw) : yaw;
   }
 
   /** What keys act on: the die under the cursor unless it is one of the selected, else the selected dice. */
@@ -118,7 +126,7 @@ export class Dice {
 
   /** D: a new die at the cursor, showing 1, on whatever is there. */
   spawn(at: { x: number; y: number }): void {
-    const die: Die = { uid: newUid('d'), x: at.x, y: at.y, z: this.surfaceAt(at.x, at.y) + DIE_SIZE / 2, yaw: (Math.random() - 0.5) * 0.6, value: 1 };
+    const die: Die = { uid: newUid('d'), x: at.x, y: at.y, z: this.surfaceAt(at.x, at.y) + DIE_SIZE / 2, yaw: this.square((Math.random() - 0.5) * 0.6), value: 1 };
     this.app.store.setDice([die]);
   }
 
@@ -159,7 +167,7 @@ export class Dice {
         // Where each came to rest, flat on whatever it landed on, showing the face that came up.
         store.setDice(rest.filter((r) => store.dice.has(r.uid)).map((r) => {
           const skip = new Set([r.uid]);
-          return { uid: r.uid, x: r.x, y: r.y, z: this.surfaceAt(r.x, r.y, skip) + DIE_SIZE / 2, yaw: yawOf(r.q), value: valueUp(r.q) };
+          return { uid: r.uid, x: r.x, y: r.y, z: this.surfaceAt(r.x, r.y, skip) + DIE_SIZE / 2, yaw: this.square(yawOf(r.q)), value: valueUp(r.q) };
         }));
       },
       toss,
@@ -256,7 +264,7 @@ export class Dice {
         this.layer.carried.delete(h.uid);
         if (!p) return h.die;
         const nx = p.x + h.ox, ny = p.y + h.oy;
-        return { ...h.die, x: nx, y: ny, z: this.surfaceAt(nx, ny, skip()) + DIE_SIZE / 2 };
+        return { ...h.die, x: nx, y: ny, z: this.surfaceAt(nx, ny, skip()) + DIE_SIZE / 2, yaw: this.square(h.die.yaw) };
       });
       held = null;
       this.carrying = null;
