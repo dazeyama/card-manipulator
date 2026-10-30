@@ -217,7 +217,7 @@ export class Physics {
    * push and tumbles for real, off cards, piles, stands and each other. `pose`
    * draws them each step; `done` gets where each came to rest.
    */
-  rollDice(dice: { uid: string; x: number; y: number; z: number; q: THREE.Quaternion }[], pose: (uid: string, at: THREE.Vector3, q: THREE.Quaternion) => void, done: (rest: { uid: string; x: number; y: number; z: number; q: THREE.Quaternion }[]) => void): boolean {
+  rollDice(dice: { uid: string; x: number; y: number; z: number; q: THREE.Quaternion }[], pose: (uid: string, at: THREE.Vector3, q: THREE.Quaternion) => void, done: (rest: { uid: string; x: number; y: number; z: number; q: THREE.Quaternion }[]) => void, toss?: { x: number; y: number }): boolean {
     const world = this.world;
     if (!world || !dice.length || this.bodyCount + dice.length > MAX_BODIES) return false;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -230,13 +230,15 @@ export class Physics {
     const roll: Roll = { bodies: [], statics: this.staticsAround(minX, minY, maxX, maxY, new Set(dice.map((d) => d.uid))), started: performance.now(), pose, done };
     const r = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
     for (const d of dice) {
-      // A flick: up, a little to one side, spinning hard.
+      // A flick: up, a little to one side, spinning hard; thrown by a shake, mostly the way it went (decision 257).
       const dir = Math.random() * Math.PI * 2, push = r(0.12, 0.3);
+      const vx = Math.cos(dir) * push + (toss ? toss.x * r(0.45, 0.65) : 0);
+      const vy = Math.sin(dir) * push + (toss ? toss.y * r(0.45, 0.65) : 0);
       const body = world.createRigidBody(
         RAPIER.RigidBodyDesc.dynamic()
           .setTranslation(d.x * MM, d.y * MM, (d.z + 4) * MM)
           .setRotation({ x: d.q.x, y: d.q.y, z: d.q.z, w: d.q.w })
-          .setLinvel(Math.cos(dir) * push, Math.sin(dir) * push, r(0.7, 1.0))
+          .setLinvel(vx, vy, r(0.7, 1.0))
           .setAngvel({ x: r(-28, 28), y: r(-28, 28), z: r(-14, 14) })
           .setLinearDamping(0.25)
           .setAngularDamping(0.45)

@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import type { App } from './app';
 import type { CustomGesture, Mods } from './input/mouse';
+import { FLICK_SPEED, flickDirection } from './physics/feel';
 import type { DiceLayer } from './render/dice';
 import { DIE_SIZE, dieTurn, gatherOffsets, valueUp, yawOf, type Die } from './state/dice';
 import { newUid } from './state/store';
@@ -102,13 +103,22 @@ export class Dice {
     this.app.store.removeDice(uids);
   }
 
-  /** R: roll them, a real tumble; without physics yet, they just come up at random. */
-  roll(uids: string[]): void {
+  /**
+   * R: roll them, a real tumble; without physics yet, they just come up at
+   * random. A shake while carrying them throws them its way (`toss`, a unit
+   * direction on the table), from where they are drawn (decision 257).
+   */
+  roll(uids: string[], toss?: { x: number; y: number }): void {
     const store = this.app.store;
-    const dice = uids.map((u) => store.dice.get(u)).filter((d): d is Die => !!d && !this.busy.has(d.uid));
+    const dice = uids.map((u) => store.dice.get(u)).filter((d): d is Die => !!d && (!this.busy.has(d.uid) || !!toss));
     if (!dice.length) return;
     const physics = this.app.physics;
-    const start = dice.map((d) => ({ uid: d.uid, x: d.x, y: d.y, z: d.z, q: dieTurn(d.value, d.yaw) }));
+    const start = dice.map((d) => {
+      const drawn = toss ? this.layer.drawnAt(d.uid) : null;
+      return drawn
+        ? { uid: d.uid, x: drawn.position.x, y: drawn.position.y, z: drawn.position.z, q: drawn.quaternion.clone() }
+        : { uid: d.uid, x: d.x, y: d.y, z: d.z, q: dieTurn(d.value, d.yaw) };
+    });
     const ok = physics?.rollDice(
       start,
       (uid, at, q) => this.layer.pose(uid, at, q),
@@ -123,6 +133,7 @@ export class Dice {
           return { uid: r.uid, x: r.x, y: r.y, z: this.surfaceAt(r.x, r.y, skip) + DIE_SIZE / 2, yaw: yawOf(r.q), value: valueUp(r.q) };
         }));
       },
+      toss,
     );
     if (ok) {
       for (const d of dice) {
@@ -130,6 +141,10 @@ export class Dice {
         this.layer.carried.add(d.uid);
       }
       return;
+    }
+    for (const d of dice) {
+      this.busy.delete(d.uid);
+      this.layer.carried.delete(d.uid);
     }
     store.setDice(dice.map((d) => ({ ...d, value: 1 + Math.floor(Math.random() * 6), yaw: d.yaw + (Math.random() - 0.5) * 2 })));
   }
@@ -179,6 +194,30 @@ export class Dice {
       }
     };
     const at = (x: number, y: number) => app.rig.screenToPlane(x, y, 0);
+    // The shake that flips held cards rolls held dice (decision 257).
+    let last = { x: sx, y: sy, t: performance.now() };
+    let vel = { x: 0, y: 0 };
+    let tossed = false;
+    const shake = (x: number, y: number): boolean => {
+      const now = performance.now();
+      const dt = Math.max(4, now - last.t) / 1000;
+      const v = { x: (x - last.x) / dt, y: (y - last.y) / dt };
+      last = { x, y, t: now };
+      const prev = vel;
+      vel = { x: prev.x * 0.4 + v.x * 0.6, y: prev.y * 0.4 + v.y * 0.6 };
+      const dir = held ? flickDirection(prev, v, FLICK_SPEED[store.settings.flick]) : null;
+      if (!dir) return false;
+      // The screen direction as one on the table.
+      const a = at(x, y), b = at(x + dir.x * 60, y + dir.y * 60);
+      if (!a || !b) return false;
+      const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+      const uids = held!.map((h) => h.uid);
+      held = null;
+      this.carrying = null;
+      tossed = true;
+      this.roll(uids, { x: (b.x - a.x) / len, y: (b.y - a.y) / len });
+      return true;
+    };
     const skip = () => new Set(held?.map((h) => h.uid) ?? []);
     const finish = (keep: boolean, x: number, y: number) => {
       if (!held) return;
@@ -197,14 +236,17 @@ export class Dice {
     return {
       kind: 'custom',
       move: (x, y) => {
+        if (tossed) return;
         if (!held && Math.hypot(x - sx, y - sy) <= 4) return;
         if (!held) begin();
+        if (shake(x, y)) return;
         const p = at(x, y);
         if (!p) return;
         // Each frame they glide in to their places (glide), so the gathering shows.
         this.carrying = held!.map((h) => ({ uid: h.uid, x: p.x + h.ox, y: p.y + h.oy, die: h.die }));
       },
       up: (x, y) => {
+        if (tossed) return;
         if (held) return finish(true, x, y);
         // A click: select this die, or add it or take it away with Ctrl.
         store.clearSelection();

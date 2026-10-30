@@ -147,7 +147,7 @@ interface Dwell {
 }
 
 /** Flick thresholds in screen pixels per second (spec 10.5: Off / Normal / Sensitive). */
-const FLICK_SPEED = { off: Infinity, normal: 1600, sensitive: 1000 };
+export const FLICK_SPEED = { off: Infinity, normal: 1600, sensitive: 1000 };
 
 export class DragController {
   private held: Held[] = [];
