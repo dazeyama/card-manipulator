@@ -166,6 +166,8 @@ export interface Mat {
   locked?: boolean;
   /** A playmat's life total (decision 239); unset is the starting 20. */
   life?: number;
+  /** Its life total hidden by the ❤️ button (decision 241). */
+  lifeHidden?: boolean;
 }
 
 export const MAT_W = 610;

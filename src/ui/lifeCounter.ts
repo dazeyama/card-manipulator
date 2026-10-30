@@ -147,7 +147,8 @@ export class LifeCounters {
       // Off the mat, never over its cards (decision 240): just outside its top-left
       // corner on screen, along the corner's outside, clear of both its edges.
       const k = pt(-MAT_W / 2, MAT_H / 2);
-      if (!rig.inFront(k.x, k.y, MAT_T)) {
+      // Hidden with the mat's ❤️ button (decision 241).
+      if (m.lifeHidden || !rig.inFront(k.x, k.y, MAT_T)) {
         b.el.hidden = true;
         continue;
       }

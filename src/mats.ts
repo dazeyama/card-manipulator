@@ -94,6 +94,7 @@ export class Mats {
   private readonly standRim = new THREE.Mesh(new THREE.ShapeGeometry(roundedRect(STAND_W / 2 + RIM, STAND_D / 2 + RIM, 6 + RIM), 4), new THREE.MeshBasicMaterial({ color: ACCENT, depthTest: false, depthWrite: false }));
   private readonly editButton: HTMLButtonElement;
   private readonly untapButton: HTMLButtonElement;
+  private readonly lifeButton: HTMLButtonElement;
   private readonly button: HTMLButtonElement;
   private readonly lockButton: HTMLButtonElement;
   private readonly buttons: HTMLDivElement;
@@ -157,7 +158,15 @@ export class Mats {
     this.untapButton.addEventListener('click', () => {
       if (this.hovered) this.untap(this.hovered);
     });
-    this.buttons.append(this.lockButton, this.untapButton, this.button, this.editButton);
+    // ❤️ in the free top-left corner shows or hides the mat's life total (decision 241).
+    this.lifeButton = document.createElement('button');
+    this.lifeButton.className = 'mat-mirror-btn';
+    this.lifeButton.addEventListener('pointerdown', (e) => e.stopPropagation());
+    this.lifeButton.addEventListener('click', () => {
+      const m = this.hovered ? app.store.mats.get(this.hovered) : undefined;
+      if (m) app.store.setMatLifeHidden(m.uid, !m.lifeHidden);
+    });
+    this.buttons.append(this.lockButton, this.untapButton, this.button, this.editButton, this.lifeButton);
     app.overlay.append(this.buttons);
 
     window.addEventListener('pointermove', (e) => {
@@ -553,8 +562,9 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
         el.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) translate(-50%, -50%)`;
       };
       this.button.hidden = stand;
-      // Untap is for playmats only (decision 237).
+      // Untap and the life toggle are for playmats only (decisions 237, 241).
       this.untapButton.hidden = stand;
+      this.lifeButton.hidden = stand;
       this.editButton.hidden = !stand;
       if (stand) {
         at(this.lockButton, -STAND_W / 2 + 22, -STAND_D / 2 + 4, LIP_H);
@@ -564,6 +574,13 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
         at(this.button, ix, iy, MAT_T);
         at(this.untapButton, ix, -iy, MAT_T);
         at(this.lockButton, -ix, -iy, MAT_T);
+        at(this.lifeButton, -ix, iy, MAT_T);
+        const shown = !m.lifeHidden;
+        if (this.lifeButton.textContent !== (shown ? '❤️' : '🤍')) {
+          this.lifeButton.textContent = shown ? '❤️' : '🤍';
+          this.lifeButton.title = shown ? 'Hide the life total' : 'Show the life total';
+          this.lifeButton.setAttribute('aria-pressed', String(shown));
+        }
       }
       if (this.lockButton.classList.contains('on') !== locked || !this.lockButton.textContent) {
         this.lockButton.textContent = locked ? '🔒' : '🔓';

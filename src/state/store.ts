@@ -253,6 +253,14 @@ export class Store {
     this.events.emit('life', undefined);
   }
 
+  /** Show or hide a playmat's life total (decision 241). */
+  setMatLifeHidden(uid: string, hidden: boolean): void {
+    const m = this.mats.get(uid);
+    if (!m || !!m.lifeHidden === hidden) return;
+    m.lifeHidden = hidden;
+    this.events.emit('life', undefined);
+  }
+
   /** A card stand's name plate text (decision 220). */
   setMatName(uid: string, name: string): void {
     const m = this.mats.get(uid);
