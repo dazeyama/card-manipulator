@@ -63,7 +63,7 @@ interface Roll {
   done: (rest: { uid: string; x: number; y: number; z: number; q: THREE.Quaternion }[]) => void;
 }
 /** A roll is cut off after this long, ms. */
-const ROLL_MAX_MS = 3500;
+const ROLL_MAX_MS = 5000;
 
 interface Session {
   bodies: { uid: string; body: RAPIER_NS.RigidBody }[];
@@ -231,22 +231,23 @@ export class Physics {
     const r = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
     for (const d of dice) {
       // A flick: up, a little to one side, spinning hard; thrown by a shake, mostly the way it went (decision 257).
-      const dir = Math.random() * Math.PI * 2, push = r(0.12, 0.3);
+      // Livelier since decision 259: higher, further, spinning longer.
+      const dir = Math.random() * Math.PI * 2, push = r(0.2, 0.42);
       const vx = Math.cos(dir) * push + (toss ? toss.x * r(0.45, 0.65) : 0);
       const vy = Math.sin(dir) * push + (toss ? toss.y * r(0.45, 0.65) : 0);
       const body = world.createRigidBody(
         RAPIER.RigidBodyDesc.dynamic()
           .setTranslation(d.x * MM, d.y * MM, (d.z + 4) * MM)
           .setRotation({ x: d.q.x, y: d.q.y, z: d.q.z, w: d.q.w })
-          .setLinvel(vx, vy, r(0.7, 1.0))
-          .setAngvel({ x: r(-28, 28), y: r(-28, 28), z: r(-14, 14) })
-          .setLinearDamping(0.25)
-          .setAngularDamping(0.45)
+          .setLinvel(vx, vy, r(0.95, 1.3))
+          .setAngvel({ x: r(-34, 34), y: r(-34, 34), z: r(-18, 18) })
+          .setLinearDamping(0.08)
+          .setAngularDamping(0.15)
           .setCcdEnabled(true)
           .setCanSleep(true),
       );
       world.createCollider(
-        RAPIER.ColliderDesc.roundCuboid((DIE_SIZE / 2 - 2) * MM, (DIE_SIZE / 2 - 2) * MM, (DIE_SIZE / 2 - 2) * MM, 2 * MM).setFriction(0.5).setRestitution(0.3).setDensity(1200),
+        RAPIER.ColliderDesc.roundCuboid((DIE_SIZE / 2 - 2) * MM, (DIE_SIZE / 2 - 2) * MM, (DIE_SIZE / 2 - 2) * MM, 2 * MM).setFriction(0.35).setRestitution(0.45).setDensity(1200),
         body,
       );
       roll.bodies.push({ uid: d.uid, body });
