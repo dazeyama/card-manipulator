@@ -533,25 +533,32 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
       rim.position.set(sel.base.position.x, sel.base.position.y, 0);
       rim.rotation.copy(sel.base.rotation);
     }
-    // The 🔒 and 📺 buttons sit just inside the hovered mat's top right corner,
-    // or its bottom left corner while it is locked (decision 155).
+    // Each button in its own corner of the hovered mat (decision 238): 📺 top right,
+    // 🔄 bottom right, 🔒 bottom left, staying put whether locked or not. A card
+    // stand's 🔒 and ✏️ sit on its front lip, at the left and right ends.
     const m = this.hovered && !this.dragging ? store.mats.get(this.hovered) : undefined;
     this.buttons.hidden = !m;
     if (m) {
       const locked = !!m.locked;
-      // A card stand's buttons sit on its front lip, at the right, or the left while locked (decision 220).
       const stand = isStand(m);
-      const c = stand
-        ? corner(m, locked ? -STAND_W / 2 + 22 : STAND_W / 2 - 22, -STAND_D / 2 + 4)
-        : locked ? corner(m, -MAT_W / 2 + 22, -MAT_H / 2 + 22) : corner(m, MAT_W / 2 - 22, MAT_H / 2 - 22);
-      const s = rig.worldToScreen(c.x, c.y, stand ? LIP_H : MAT_T);
+      const at = (el: HTMLElement, a: number, b: number, h: number) => {
+        const c = corner(m, a, b);
+        const s = rig.worldToScreen(c.x, c.y, h);
+        el.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) translate(-50%, -50%)`;
+      };
       this.button.hidden = stand;
       // Untap is for playmats only (decision 237).
       this.untapButton.hidden = stand;
       this.editButton.hidden = !stand;
-      // The corner point is the middle of the button nearest the corner: the 📺 at top right, the lock at bottom left.
-      const shift = locked ? 'translate(-16px, -50%)' : 'translate(calc(-100% + 16px), -50%)';
-      this.buttons.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) ${shift}`;
+      if (stand) {
+        at(this.lockButton, -STAND_W / 2 + 22, -STAND_D / 2 + 4, LIP_H);
+        at(this.editButton, STAND_W / 2 - 22, -STAND_D / 2 + 4, LIP_H);
+      } else {
+        const ix = MAT_W / 2 - 24, iy = MAT_H / 2 - 24;
+        at(this.button, ix, iy, MAT_T);
+        at(this.untapButton, ix, -iy, MAT_T);
+        at(this.lockButton, -ix, -iy, MAT_T);
+      }
       if (this.lockButton.classList.contains('on') !== locked || !this.lockButton.textContent) {
         this.lockButton.textContent = locked ? '🔒' : '🔓';
         this.lockButton.classList.toggle('on', locked);
