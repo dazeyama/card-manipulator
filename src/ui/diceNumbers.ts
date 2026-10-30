@@ -8,8 +8,8 @@ import type { Dice } from '../dice';
 import type { DiceLayer } from '../render/dice';
 import { DIE_SIZE } from '../state/dice';
 
-/** Below this size on screen, px, every die shows its number. */
-const SMALL_PX = 26;
+/** Below this size on screen, px, every die shows its number: one wheel notch further out than 26 (decision 266). */
+const SMALL_PX = 22;
 /** The figures' size, px: a share of the die's size on screen, within limits. */
 const FONT_MIN = 13;
 const FONT_MAX = 30;
