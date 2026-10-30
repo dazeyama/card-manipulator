@@ -11,10 +11,10 @@ import { DIE_SIZE, dieSize } from '../state/dice';
 /** Below this size on screen, px, every die shows its number: one wheel notch further out than 26 (decision 266). */
 const SMALL_PX = 22;
 /**
- * A d20's number shows from four and a half wheel notches closer than a
- * six-sided die's (decision 280): a notch zooms by exp(0.15) (mouse.ts).
+ * A d20's number shows from two and a half wheel notches closer than a
+ * six-sided die's (decisions 280, 281): a notch zooms by exp(0.15) (mouse.ts).
  */
-const D20_CLOSER = Math.exp(0.15 * 4.5);
+const D20_CLOSER = Math.exp(0.15 * 2.5);
 /** The figures' size, px: a share of the die's size on screen, within limits. */
 const FONT_MIN = 13;
 const FONT_MAX = 30;
