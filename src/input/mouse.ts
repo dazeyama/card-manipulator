@@ -30,6 +30,8 @@ export type CustomGesture = Extract<Gesture, { kind: 'custom' }>;
 
 /** Hooks other modules plug into the grammar. */
 export interface MouseHooks {
+  /** The wheel turned over the table: return true if something took it, a die's number (decision 278), instead of zooming. */
+  wheelObject?: (x: number, y: number, up: boolean, shift: boolean) => boolean;
   /** A left-drag started on a card. Return a custom gesture to own it, or null. */
   cardDrag?: (uid: string, x: number, y: number, mods: Mods) => CustomGesture | null;
   /** Middle-click without dragging on a card (flip, spec 10.5). */
@@ -329,6 +331,9 @@ export class MouseInput {
   private wheel(e: WheelEvent): void {
     e.preventDefault();
     const { x, y } = this.local(e);
+    // With Shift the browser may turn the wheel sideways, so its turn is then in deltaX.
+    const turn = e.deltaY || (e.shiftKey ? e.deltaX : 0);
+    if (turn && this.hooks.wheelObject?.(x, y, turn < 0, e.shiftKey)) return;
     const delta = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
     this.app.rig.zoomAt(x, y, Math.exp(delta * 0.0015));
   }

@@ -31,6 +31,8 @@ import { buildStandSection } from './ui/standTab';
 import { installStandSnap } from './standSnap';
 import { LifeCounters } from './ui/lifeCounter';
 import { TokenMenu } from './ui/tokenMenu';
+import { DiceColours } from './ui/diceColours';
+import { maxValue } from './state/dice';
 import { Dice } from './dice';
 import { DiceLayer } from './render/dice';
 import { DiceNumbers } from './ui/diceNumbers';
@@ -134,9 +136,29 @@ keyboard.bind('m', () => {
   app.rig.setMirrored(!app.rig.mirrored);
   toast(app.rig.mirrored ? 'Mirror mode: the far side of the table' : 'Back to your side of the table', 'info', 1400);
 });
+// D D: a d20 instead, swapped in where the six-sided die just landed (decision 278).
+let lastD: { at: number; uid: string; spot: { x: number; y: number } } | null = null;
 keyboard.bind('d', () => {
-  if (!drag.dragging) dice.spawn(app.lastTablePoint);
+  if (drag.dragging) return;
+  const now = performance.now();
+  if (lastD && now - lastD.at < DOUBLE_TAP_MS) {
+    dice.remove([lastD.uid]);
+    dice.spawn(lastD.spot, 'd20');
+    lastD = null;
+    return;
+  }
+  const spot = { x: app.lastTablePoint.x, y: app.lastTablePoint.y };
+  lastD = { at: now, uid: dice.spawn(spot), spot };
 });
+// The wheel over a die turns its number up or down, Shift 5 at a time (decision 278).
+mouse.hooks.wheelObject = (x, y, up, shift) => {
+  if (!diceLayer.pick(x, y)) return false;
+  dice.step(dice.targets(), (up ? 1 : -1) * (shift ? 5 : 1));
+  return true;
+};
+// C over a die (or with only dice selected) opens its colour menu (decision 278).
+const diceColours = new DiceColours(dice);
+const colourTargets = (): string[] => (dice.hovered || (!store.selection.size && !mouse.hovered) ? dice.targets() : []);
 // A life counter on every playmat (decision 239).
 new LifeCounters(app, mats);
 // A hovered stand counts the cards on it (decision 250).
@@ -431,6 +453,12 @@ let lastC = 0;
 let cTargets: string[] = [];
 keyboard.bind('c', () => {
   if (drag.dragging) return;
+  const painting = colourTargets();
+  if (painting.length) {
+    const r = app.canvas.getBoundingClientRect();
+    diceColours.show(painting, { x: r.left + app.pointer.x, y: r.top + app.pointer.y });
+    return;
+  }
   const now = performance.now();
   if (now - lastC < DOUBLE_TAP_MS) {
     lastC = 0;
@@ -473,8 +501,9 @@ keyboard.bind('shift+c', curveAll);
 for (let n = 1; n <= 9; n++) {
   keyboard.bind(String(n), () => {
     if (drag.dragging) return;
-    // 1-6 over a die, or with dice selected, set the number on top (decision 255).
-    const set = n <= 6 ? dice.targets() : [];
+    // 1-9 over a die, or with dice selected, set the number on top, on each die that has it (decisions 255, 278).
+    // A number no die there has (7 on a six-sided die) still draws cards.
+    const set = dice.targets().filter((u) => n <= maxValue(store.dice.get(u)?.kind));
     if (set.length) {
       dice.set(set, n);
       return;
@@ -513,7 +542,19 @@ const askCount = (faceDown: boolean) => {
     })
     .finally(() => (askingCount = false));
 };
-keyboard.bind('0', () => askCount(zeroFaceDown));
+// 0 over a die, or with dice selected, asks for the number to show, as for drawing (decision 278).
+keyboard.bind('0', () => {
+  const set = dice.targets();
+  if (!set.length) return askCount(zeroFaceDown);
+  if (drag.dragging || askingCount) return;
+  const top = Math.max(...set.map((u) => maxValue(store.dice.get(u)?.kind)));
+  askingCount = true;
+  void numberDialog('Set the die to:', { min: 1, max: top, value: store.dice.get(set[0])?.value ?? 1, ok: 'Set' })
+    .then((r) => {
+      if (r) dice.set(set, r.value);
+    })
+    .finally(() => (askingCount = false));
+});
 keyboard.bind('shift+0', () => askCount(true));
 // Pointer mode (decision 189): the finger button beside the search box, then a click on the
 // table moves the selection there as one stack (squared in Tidy mode). Esc cancels.

@@ -142,8 +142,10 @@ export class LifeCounters {
     el.addEventListener('wheel', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (!e.deltaY) return;
-      this.change(uid, (e.deltaY < 0 ? 1 : -1) * (e.shiftKey ? 5 : 1));
+      // With Shift the browser may turn the wheel sideways, so its turn is then in deltaX.
+      const turn = e.deltaY || (e.shiftKey ? e.deltaX : 0);
+      if (!turn) return;
+      this.change(uid, (turn < 0 ? 1 : -1) * (e.shiftKey ? 5 : 1));
     }, { passive: false });
     this.app.overlay.append(el);
     this.badges.set(uid, b);

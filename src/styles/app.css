@@ -273,6 +273,12 @@ label.inline { display: inline-flex; flex-direction: row; align-items: center; g
 .token-row:hover { background: var(--accent-soft); border-color: var(--accent); }
 .token-menu { position: fixed; z-index: 45; width: 290px; max-height: 360px; display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18); }
 .token-menu[hidden] { display: none; }
+/* A die's colour menu (decision 278). */
+.die-colours { position: fixed; z-index: 45; display: flex; flex-direction: column; gap: 5px; padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18); }
+.die-colours[hidden] { display: none; }
+.die-swatches { display: flex; gap: 5px; }
+.die-swatch { width: 20px; height: 20px; padding: 0; border: 2px solid #111; border-radius: 5px; cursor: var(--cursor-point, pointer); }
+.die-swatch:hover { transform: scale(1.18); box-shadow: 0 0 0 2px var(--accent); }
 .token-thumb { width: 30px; height: 42px; object-fit: cover; border-radius: 3px; flex: none; background: #ddd; }
 .help-hide { margin: 2px 0 4px; }
 

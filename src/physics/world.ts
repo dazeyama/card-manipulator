@@ -16,7 +16,7 @@ import { snapYaw } from '../state/piles';
 import { restingTop } from './restSync';
 import { CARD_H, CARD_T, CARD_W, type Mat } from '../state/types';
 import { isStand, LIP_D, LIP_H, STAND_D, STAND_W, standProfile, standWorld, unrollPoint } from '../state/stand';
-import { DIE_SIZE } from '../state/dice';
+import { D20_RADIUS, d20Geometry, DIE_SIZE, type DieKind } from '../state/dice';
 import type { Pose } from '../render/cards';
 
 // Rapier (with its WASM inlined) is loaded on demand so the table shows first.
@@ -70,6 +70,15 @@ interface Session {
   statics: RAPIER_NS.Collider[];
   started: number;
   done: (uids: string[]) => void;
+}
+
+/** A d20's solid (decision 278): its twelve corners, a little in, rounded back out to its size. */
+function d20Collider(): RAPIER_NS.ColliderDesc {
+  const round = 1.5;
+  const pos = d20Geometry(D20_RADIUS - round).getAttribute('position');
+  const pts = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count * 3; i++) pts[i] = (pos.array[i] as number) * MM;
+  return RAPIER.ColliderDesc.roundConvexHull(pts, round * MM)!;
 }
 
 export class Physics {
@@ -217,7 +226,7 @@ export class Physics {
    * push and tumbles for real, off cards, piles, stands and each other. `pose`
    * draws them each step; `done` gets where each came to rest.
    */
-  rollDice(dice: { uid: string; x: number; y: number; z: number; q: THREE.Quaternion }[], pose: (uid: string, at: THREE.Vector3, q: THREE.Quaternion) => void, done: (rest: { uid: string; x: number; y: number; z: number; q: THREE.Quaternion }[]) => void, toss?: { x: number; y: number }): boolean {
+  rollDice(dice: { uid: string; x: number; y: number; z: number; q: THREE.Quaternion; kind?: DieKind }[], pose: (uid: string, at: THREE.Vector3, q: THREE.Quaternion) => void, done: (rest: { uid: string; x: number; y: number; z: number; q: THREE.Quaternion }[]) => void, toss?: { x: number; y: number }): boolean {
     const world = this.world;
     if (!world || !dice.length || this.bodyCount + dice.length > MAX_BODIES) return false;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -247,7 +256,8 @@ export class Physics {
           .setCanSleep(true),
       );
       world.createCollider(
-        RAPIER.ColliderDesc.roundCuboid((DIE_SIZE / 2 - 2) * MM, (DIE_SIZE / 2 - 2) * MM, (DIE_SIZE / 2 - 2) * MM, 2 * MM).setFriction(0.35).setRestitution(0.45).setDensity(1200),
+        (d.kind === 'd20' ? d20Collider() : RAPIER.ColliderDesc.roundCuboid((DIE_SIZE / 2 - 2) * MM, (DIE_SIZE / 2 - 2) * MM, (DIE_SIZE / 2 - 2) * MM, 2 * MM))
+          .setFriction(0.35).setRestitution(0.45).setDensity(1200),
         body,
       );
       roll.bodies.push({ uid: d.uid, body });

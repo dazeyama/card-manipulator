@@ -10,7 +10,7 @@ import type { CustomGesture, Mods } from './input/mouse';
 import { FLICK_SPEED, flickDirection } from './physics/feel';
 import { shortAngle } from './physics/motion';
 import type { DiceLayer } from './render/dice';
-import { DIE_SIZE, dieTurn, gatherOffsets, valueUp, yawOf, type Die } from './state/dice';
+import { DARK_COLOURS, DIE_SIZE, dieTurn, gatherOffsets, maxValue, valueUp, yawOf, type Die, type DieKind } from './state/dice';
 import { newUid } from './state/store';
 import { snapYaw } from './state/piles';
 import { isStand, standHeightAt } from './state/stand';
@@ -109,7 +109,7 @@ export class Dice {
         face = Math.abs(face) < 1e-3 ? 0 : face - face * Math.min(1, dt * FACE_RATE);
         this.face.set(c.uid, face);
       }
-      const q = dieTurn(c.die.value, tidy ? this.square(c.die.yaw) + face : c.die.yaw + face + Math.sin(t * 3.1 + sw.phase) * 0.06);
+      const q = dieTurn(c.die.value, tidy ? this.square(c.die.yaw) + face : c.die.yaw + face + Math.sin(t * 3.1 + sw.phase) * 0.06, c.die.kind);
       if (lean > 1e-4) q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(-sw.vy / speed, sw.vx / speed, 0), lean));
       const bob = tidy ? 0 : Math.min(6, speed * 0.012) + Math.sin(t * 4.3 + sw.phase) * 0.8;
       this.layer.pose(c.uid, { x, y, z: this.surfaceAt(x, y, skip) + DIE_SIZE / 2 + CARRY + bob }, q);
@@ -187,17 +187,39 @@ export class Dice {
     return top;
   }
 
-  /** D: a new die at the cursor, showing 1, on whatever is there. */
-  spawn(at: { x: number; y: number }): void {
+  /**
+   * D: a new die at the cursor, on whatever is there: a white six-sided die
+   * showing 1, or (D D, decision 278) a d20 of a dark colour at random, showing 20.
+   */
+  spawn(at: { x: number; y: number }, kind?: DieKind): string {
     // Facing the side that spawns it (decision 267).
-    const die: Die = { uid: newUid('d'), x: at.x, y: at.y, z: this.surfaceAt(at.x, at.y) + DIE_SIZE / 2, yaw: this.square(this.app.facing + (Math.random() - 0.5) * 0.6), value: 1, side: this.app.side || undefined };
+    const d20 = kind === 'd20';
+    const die: Die = {
+      uid: newUid('d'), x: at.x, y: at.y, z: this.surfaceAt(at.x, at.y) + DIE_SIZE / 2, yaw: this.square(this.app.facing + (Math.random() - 0.5) * 0.6),
+      value: d20 ? 20 : 1, side: this.app.side || undefined,
+      ...(d20 ? { kind, color: DARK_COLOURS[Math.floor(Math.random() * DARK_COLOURS.length)] } : {}),
+    };
     this.app.store.setDice([die]);
+    return die.uid;
   }
 
-  /** 1-6: set the number on top. */
+  /** 1-9 and 0 (decisions 255, 278): set the number on top, on each die that has it. */
   set(uids: string[], value: number): void {
     const dice = this.app.store.dice;
-    this.app.store.setDice(uids.map((u) => dice.get(u)).filter((d): d is Die => !!d).map((d) => ({ ...d, value })));
+    this.app.store.setDice(uids.map((u) => dice.get(u)).filter((d): d is Die => !!d && value >= 1 && value <= maxValue(d.kind)).map((d) => ({ ...d, value })));
+  }
+
+  /** The wheel over a die (decision 278): turn the number up or down, kept between 1 and its highest. */
+  step(uids: string[], by: number): void {
+    const dice = this.app.store.dice;
+    this.app.store.setDice(uids.map((u) => dice.get(u)).filter((d): d is Die => !!d && !this.busy.has(d.uid))
+      .map((d) => ({ ...d, value: Math.max(1, Math.min(maxValue(d.kind), d.value + by)) })));
+  }
+
+  /** C's colour menu (decision 278): give dice a colour. */
+  paint(uids: string[], color: string): void {
+    const dice = this.app.store.dice;
+    this.app.store.setDice(uids.map((u) => dice.get(u)).filter((d): d is Die => !!d).map((d) => ({ ...d, color })));
   }
 
   remove(uids: string[]): void {
@@ -218,10 +240,10 @@ export class Dice {
       const drawn = toss ? this.layer.drawnAt(d.uid) : null;
       return drawn
         ? { uid: d.uid, x: drawn.position.x, y: drawn.position.y, z: drawn.position.z, q: drawn.quaternion.clone() }
-        : { uid: d.uid, x: d.x, y: d.y, z: d.z, q: dieTurn(d.value, d.yaw) };
+        : { uid: d.uid, x: d.x, y: d.y, z: d.z, q: dieTurn(d.value, d.yaw, d.kind) };
     });
     const ok = physics?.rollDice(
-      start,
+      start.map((s) => ({ ...s, kind: store.dice.get(s.uid)?.kind })),
       (uid, at, q) => this.layer.pose(uid, at, q),
       (rest) => {
         for (const r of rest) {
@@ -231,7 +253,8 @@ export class Dice {
         // Where each came to rest, flat on whatever it landed on, showing the face that came up.
         store.setDice(rest.filter((r) => store.dice.has(r.uid)).map((r) => {
           const skip = new Set([r.uid]);
-          return { uid: r.uid, x: r.x, y: r.y, z: this.surfaceAt(r.x, r.y, skip) + DIE_SIZE / 2, yaw: this.square(yawOf(r.q)), value: valueUp(r.q) };
+          const kind = store.dice.get(r.uid)!.kind;
+          return { ...store.dice.get(r.uid)!, x: r.x, y: r.y, z: this.surfaceAt(r.x, r.y, skip) + DIE_SIZE / 2, yaw: this.square(yawOf(r.q, kind)), value: valueUp(r.q, kind) };
         }));
       },
       toss,
@@ -247,7 +270,7 @@ export class Dice {
       this.busy.delete(d.uid);
       this.layer.carried.delete(d.uid);
     }
-    store.setDice(dice.map((d) => ({ ...d, value: 1 + Math.floor(Math.random() * 6), yaw: d.yaw + (Math.random() - 0.5) * 2 })));
+    store.setDice(dice.map((d) => ({ ...d, value: 1 + Math.floor(Math.random() * maxValue(d.kind)), yaw: d.yaw + (Math.random() - 0.5) * 2 })));
   }
 
   /** The dice in a screen rectangle, for the marquee. */
