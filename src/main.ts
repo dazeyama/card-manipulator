@@ -570,18 +570,40 @@ keyboard.bind('r', (e) => {
   }, R_WAIT_MS);
 }, { repeatMs: 250 });
 keyboard.bind('z', () => commands.frame());
-// F twice quickly faces every card up, so a mixed stack is fronted (decision 105).
-let lastF = 0;
+// F twice quickly faces every card up, so a mixed stack is fronted (decision 105). Like R, F
+// waits a moment to tell one press from two (decision 206): a single press flips after
+// F_WAIT_MS; a second press within F_DOUBLE_MS faces the cards up, straight from the first
+// press if it comes during the wait, or from the flip if just after.
+const F_WAIT_MS = R_WAIT_MS;
+const F_DOUBLE_MS = R_DOUBLE_MS;
+let pendingF = 0;
+let lastFPress = 0;
+let fTargets: string[] = [];
+const flipOrFront = (front: boolean, targets: string[]) => {
+  if (drag.dragging || targets.length) app.showGesture('flip');
+  if (drag.dragging) {
+    if (front) drag.frontHeld();
+    else drag.flipHeld();
+  } else if (front) commands.faceUp(targets);
+  else commands.flip(targets);
+};
 keyboard.bind('f', () => {
   const now = performance.now();
-  const twice = now - lastF < DOUBLE_TAP_MS;
-  lastF = twice ? 0 : now;
-  if (drag.dragging || hoveredPile().length) app.showGesture('flip');
-  if (drag.dragging) {
-    if (twice) drag.frontHeld();
-    else drag.flipHeld();
-  } else if (twice) commands.faceUp(hoveredCard());
-  else commands.flip(hoveredCard());
+  if (now - lastFPress < F_DOUBLE_MS) {
+    // The second press: face up, whether or not the flip has happened yet.
+    clearTimeout(pendingF);
+    pendingF = 0;
+    lastFPress = 0;
+    flipOrFront(true, fTargets);
+    return;
+  }
+  lastFPress = now;
+  // The cards are the ones under the cursor now, even if it moves while F waits.
+  fTargets = drag.dragging ? [] : hoveredCard();
+  pendingF = window.setTimeout(() => {
+    pendingF = 0;
+    flipOrFront(false, fTargets);
+  }, F_WAIT_MS);
 });
 // N: name the selected pile; with nothing selected, a new empty bin at the cursor (spec 11.3).
 keyboard.bind('n', () => {
