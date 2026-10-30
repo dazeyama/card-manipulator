@@ -382,14 +382,36 @@ export class Commands {
     const top = byHeight(this.app, source.filter((u) => store.cards.has(u))).slice(-count);
     if (!top.length) return;
     leaveSpreads(this.app, top);
+    // Dealt onto a slope that holds a hand: they join it, one hand of everything there (decision 224).
+    const dealt = new Set(top);
+    const joined = stand ? (this.handOn(stand) ?? []).filter((u) => !dealt.has(u)) : [];
+    const uids = [...joined, ...top];
     // More than 15 cards are dealt as packs of 15, one under the next (decision 205).
     // Clicked on a card stand's slope: dealt onto it as one arc the slope's width (decisions 221, 222).
-    const landings = inSpace(stand?.uid ?? null, () => placeSequential(this.app, top, stand ? slopeHand(stand, top.length) : handLayout(top.length, at)));
+    const landings = inSpace(stand?.uid ?? null, () => placeSequential(this.app, uids, stand ? slopeHand(stand, uids.length) : handLayout(uids.length, at)));
     // A hand is for reading: face down cards come up.
-    for (const l of landings) l.faceUp = true;
-    land(this.app, landings, { stagger: Math.min(30, 300 / top.length), arc: 14 });
+    for (const l of landings) if (dealt.has(l.uid)) l.faceUp = true;
+    land(this.app, landings, { stagger: Math.min(30, 300 / uids.length), arc: 14 });
     const spots = new Map(landings.map((l) => [l.uid, { x: l.x, y: l.y }]));
-    for (const uid of top) this.fanOf.set(uid, spots);
+    for (const uid of uids) this.fanOf.set(uid, spots);
+  }
+
+  /**
+   * The hand on a card stand (decision 224): its cards, left to right, if every
+   * card on the stand is one hand still where it was laid; otherwise null.
+   */
+  private handOn(m: Mat): string[] | null {
+    const store = this.app.store;
+    const cards = [...store.cards.values()].filter((c) => c.stand === m.uid);
+    if (!cards.length) return null;
+    const spots = this.fanOf.get(cards[0].uid);
+    if (!spots) return null;
+    for (const c of cards) {
+      const at = spots.get(c.uid);
+      if (this.fanOf.get(c.uid) !== spots || !at || Math.abs(c.x - at.x) > 0.5 || Math.abs(c.y - at.y) > 0.5) return null;
+    }
+    // Left to right is bottom to top, as the hand was laid.
+    return cards.sort((a, b) => a.z - b.z).map((c) => c.uid);
   }
 
   toggleCurve(cards: string[], byColour: boolean): void {
