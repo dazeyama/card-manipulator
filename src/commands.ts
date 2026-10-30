@@ -281,7 +281,7 @@ export class Commands {
     const top = byHeight(this.app, source.filter((u) => store.cards.has(u))).slice(-count);
     if (!top.length) return;
     leaveSpreads(this.app, top);
-    // More than 20 cards are dealt as several fans, one under the next (decision 162).
+    // More than 15 cards are dealt as packs of 15, one under the next (decision 205).
     const landings = placeSequential(this.app, top, handLayout(top.length, at));
     // A hand is for reading: face down cards come up.
     for (const l of landings) l.faceUp = true;

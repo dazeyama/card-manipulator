@@ -41,27 +41,29 @@ describe('fan layout (decision 141)', () => {
   });
 });
 
-describe('big hands drawn with 0 (decision 162)', () => {
-  it('deals up to 20 cards as one fan', () => {
-    expect(handLayout(20, { x: 0, y: 0 })).toEqual(fanLayout(20, { x: 0, y: 0 }));
+describe('big hands drawn with 0, in packs of 15 (decisions 162, 205)', () => {
+  it('deals up to 15 cards as one fan', () => {
+    expect(handLayout(15, { x: 0, y: 0 })).toEqual(fanLayout(15, { x: 0, y: 0 }));
   });
 
-  it('deals 100 cards as five fans of 20, one under the next, centred', () => {
-    const spots = handLayout(100, { x: 50, y: 0 });
-    expect(spots).toHaveLength(100);
-    const rows = [0, 1, 2, 3, 4].map((r) => spots.slice(r * 20, r * 20 + 20));
+  it('deals 90 cards as six fans of 15, one under the next, centred', () => {
+    const spots = handLayout(90, { x: 50, y: 0 });
+    expect(spots).toHaveLength(90);
+    const rows = [0, 1, 2, 3, 4, 5].map((r) => spots.slice(r * 15, r * 15 + 15));
     // Each fan's middle sits one row step below the last.
     const mid = rows.map((row) => Math.max(...row.map((p) => p.y)));
-    for (let r = 1; r < 5; r++) expect(mid[r - 1] - mid[r]).toBeCloseTo(HAND_ROW_STEP, 6);
-    expect((mid[0] + mid[4]) / 2).toBeCloseTo(fanLayout(20, { x: 50, y: 0 }).reduce((m, p) => Math.max(m, p.y), -Infinity), 6);
+    for (let r = 1; r < 6; r++) expect(mid[r - 1] - mid[r]).toBeCloseTo(HAND_ROW_STEP, 6);
+    expect((mid[0] + mid[5]) / 2).toBeCloseTo(fanLayout(15, { x: 50, y: 0 }).reduce((m, p) => Math.max(m, p.y), -Infinity), 6);
   });
 
-  it('splits an awkward count into nearly equal fans', () => {
-    // 41 cards: three fans of 14, 14 and 13.
-    const spots = handLayout(41, { x: 0, y: 0 });
-    expect(spots).toHaveLength(41);
-    const fans = [spots.slice(0, 14), spots.slice(14, 28), spots.slice(28)];
-    expect(fans[2]).toEqual(fanLayout(13, { x: 0, y: -HAND_ROW_STEP }));
-    expect(fans[0]).toEqual(fanLayout(14, { x: 0, y: HAND_ROW_STEP }));
+  it('puts the leftover cards in a last, smaller fan', () => {
+    // 27 cards: a pack of 15, then 12.
+    const spots = handLayout(27, { x: 0, y: 0 });
+    expect(spots).toHaveLength(27);
+    expect(spots.slice(0, 15)).toEqual(fanLayout(15, { x: 0, y: HAND_ROW_STEP / 2 }));
+    expect(spots.slice(15)).toEqual(fanLayout(12, { x: 0, y: -HAND_ROW_STEP / 2 }));
+    // 30 cards: two full packs.
+    const two = handLayout(30, { x: 0, y: 0 });
+    expect(two.slice(15)).toEqual(fanLayout(15, { x: 0, y: -HAND_ROW_STEP / 2 }));
   });
 });
