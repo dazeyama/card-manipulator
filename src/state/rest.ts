@@ -22,6 +22,9 @@ export interface Resting {
   z: number;
   tiltX: number;
   tiltY: number;
+  /** Half its width and length, mm, when it isn't a card: a card stand's slope (decision 220). */
+  hw?: number;
+  hh?: number;
 }
 
 /** Where a card rests: its drawn centre height and tilt (the pose's tiltX, tiltY). */
@@ -129,10 +132,10 @@ function frameOf(c: Resting, at: { x: number; y: number }, ux: number, uy: numbe
   };
 }
 
-/** The part [u0, u1] of a line, where a = a0 + a1 u and b = b0 + b1 u, that lies over the support, or null. */
-function clip(a0: number, a1: number, b0: number, b1: number, u0: number, u1: number): [number, number] | null {
+/** The part [u0, u1] of a line, where a = a0 + a1 u and b = b0 + b1 u, that lies over a support of half size hw x hh, or null. */
+function clip(a0: number, a1: number, b0: number, b1: number, u0: number, u1: number, hw: number, hh: number): [number, number] | null {
   for (let k = 0; k < 2; k++) {
-    const v0 = k ? b0 : a0, v1 = k ? b1 : a1, h = k ? HH : HW;
+    const v0 = k ? b0 : a0, v1 = k ? b1 : a1, h = k ? hh : hw;
     if (Math.abs(v1) < 1e-9) {
       if (Math.abs(v0) > h) return null;
       continue;
@@ -166,18 +169,20 @@ function contacts(at: { x: number; y: number; yaw: number }, supports: Resting[]
   pts.push({ s: -HW, t: 0, z: 0 }, { s: HW, t: 0, z: 0 });
   for (const c of supports) {
     const f = frameOf(c, at, ux, uy, vx, vy);
+    const hw = c.hw ?? HW, hh = c.hh ?? HH;
     // Lines along the card at fixed s, and across it at fixed t.
     for (const s of S_LINES) {
-      const r = clip(f.a0 + f.as * s, f.at, f.b0 + f.bs * s, f.bt, -HH, HH);
+      const r = clip(f.a0 + f.as * s, f.at, f.b0 + f.bs * s, f.bt, -HH, HH, hw, hh);
       if (r) for (const t of r) pts.push({ s, t, z: f.z0 + f.zs * s + f.zt * t });
     }
     for (const t of T_LINES) {
-      const r = clip(f.a0 + f.at * t, f.as, f.b0 + f.bt * t, f.bs, -HW, HW);
+      const r = clip(f.a0 + f.at * t, f.as, f.b0 + f.bt * t, f.bs, -HW, HW, hw, hh);
       if (r) for (const s of r) pts.push({ s, t, z: f.z0 + f.zs * s + f.zt * t });
     }
     // The support's own corners that lie under the card.
     const cc = Math.cos(c.yaw), cs = Math.sin(c.yaw);
-    for (const [a, b] of CORNERS) {
+    for (const [ka, kb] of CORNERS) {
+      const a = (ka / HW) * hw, b = (kb / HH) * hh;
       const px = c.x + a * cc - b * cs - at.x, py = c.y + a * cs + b * cc - at.y;
       const s = px * ux + py * uy;
       const t = px * vx + py * vy;

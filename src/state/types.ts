@@ -147,8 +147,10 @@ export interface CameraState {
 /** A playmat (decision 144): a card's art on a 61 x 35 cm mat lying on the table, under every card. */
 export interface Mat {
   uid: string;
+  /** A card stand (decision 220): a wedge cards lie on, its name plate's text in `name`. Otherwise a playmat. */
+  kind?: 'stand';
   scryfallId: string;
-  /** The card's name, for the hint and the mirror window's title. */
+  /** The card's name, for the hint and the mirror window's title; a stand's name plate text. */
   name: string;
   /** Scryfall's art crop of that printing. */
   art: string;

@@ -9,7 +9,11 @@
 import type { App } from '../app';
 import { overlaps } from '../state/piles';
 import { capRest, laidFlat, restOn, type Rest, type Resting } from '../state/rest';
-import { CARD_T, type Pile } from '../state/types';
+import { isStand, STAND_D, STAND_W, standSupports, standTopUnder } from '../state/stand';
+import { CARD_H, CARD_T, CARD_W, type Card, type Mat, type Pile } from '../state/types';
+
+/** A card stand can be under a card whose centre is this close to the stand's, mm. */
+const STAND_REACH = Math.hypot(STAND_W, STAND_D) / 2 + Math.hypot(CARD_W, CARD_H) / 2;
 
 /** A card rests on at most this many of the cards under it, nearest first. */
 const MAX_SUPPORTS = 20;
@@ -44,6 +48,35 @@ export class RestSync {
       this.rests.clear();
       this.seen.clear();
     });
+    // A card stand moved, turned, came or went (decision 220): the cards where it
+    // was and where it is now rest again, onto it or down to the table.
+    events.on('mats', () => {
+      const now = [...app.store.mats.values()].filter(isStand).map((m) => ({ ...m }));
+      const moved = [...now, ...this.stands].filter((m) => {
+        const was = this.stands.find((o) => o.uid === m.uid);
+        const is = now.find((o) => o.uid === m.uid);
+        return !was || !is || was.x !== is.x || was.y !== is.y || was.yaw !== is.yaw;
+      });
+      this.stands = now;
+      if (!moved.length) return;
+      for (const c of app.store.cards.values()) {
+        if (moved.some((m) => Math.hypot(c.x - m.x, c.y - m.y) < STAND_REACH)) this.dirty.add(c.uid);
+      }
+      this.update();
+    });
+  }
+
+  /** The card stands as last seen, to tell which moved. */
+  private stands: Mat[] = [];
+
+  /** The card stands a card lies over (decision 220). */
+  private standsUnder(c: Card): Mat[] {
+    const out: Mat[] = [];
+    for (const m of this.app.store.mats.values()) {
+      if (!isStand(m) || Math.hypot(c.x - m.x, c.y - m.y) > STAND_REACH) continue;
+      if (standTopUnder(m, c, CARD_W / 2, CARD_H / 2) > 0) out.push(m);
+    }
+    return out;
   }
 
   /** Cards were lifted off the table (a drag began): what rested on them falls now (decision 100). */
@@ -107,8 +140,12 @@ export class RestSync {
       const pile = store.piles.get(id);
       if (pile) this.restPile(pile, z);
     }
-    // A card on its own lies flat on the table.
-    for (const uid of loose) this.apply(uid, null);
+    // A card on its own lies flat on the table, or on the slope of a card stand under it.
+    for (const uid of loose) {
+      const c = store.cards.get(uid);
+      const stands = c ? this.standsUnder(c) : [];
+      this.apply(uid, c && stands.length ? restOn(c, stands.flatMap(standSupports)) : null);
+    }
 
     const seen = new Map<string, Seen>();
     for (const c of store.cards.values()) seen.set(c.uid, { x: c.x, y: c.y, z: c.z, yaw: c.yaw, pile: pileOf.get(c.uid) ?? null });
@@ -120,8 +157,10 @@ export class RestSync {
   private restPile(pile: Pile, fromZ: number): void {
     const store = this.app.store;
     const cards = pile.cardUids.map((u) => store.cards.get(u)!).filter(Boolean).sort((a, b) => a.z - b.z);
-    // A neat stack lies flat, one card on the next.
-    if (pile.kind === 'stack') {
+    const stands = new Map(cards.map((c) => [c.uid, this.standsUnder(c)]));
+    const onStand = cards.some((c) => stands.get(c.uid)!.length);
+    // A neat stack lies flat, one card on the next, unless it is on a card stand.
+    if (pile.kind === 'stack' && !onStand) {
       for (const c of cards) if (c.z >= fromZ - 1e-6) this.apply(c.uid, null);
       return;
     }
@@ -133,8 +172,9 @@ export class RestSync {
     for (let k = 0; k < cards.length; k++) {
       const c = cards[k];
       if (c.z < fromZ - 1e-6) continue;
+      const under = stands.get(c.uid)!;
       // Laid out by an X spread and not moved since: flat at its model height (decision 160).
-      if (laidFlat(c)) {
+      if (laidFlat(c) && !under.length) {
         resting[k] = { x: c.x, y: c.y, yaw: c.yaw, z: c.z, tiltX: 0, tiltY: 0 };
         this.apply(c.uid, null);
         continue;
@@ -144,8 +184,12 @@ export class RestSync {
         if (held.has(cards[j].uid)) continue;
         if (overlaps(resting[j], resting[k])) supports.push(resting[j]);
       }
-      // Never far above its stacked height, so a deep pile can't grow into a tower (decision 194).
-      const rest = capRest(restOn(c, supports), c.z);
+      // A card stand under it is a support too (decision 220).
+      for (const m of under) supports.push(...standSupports(m));
+      // Never far above its stacked height, so a deep pile can't grow into a tower (decision 194);
+      // on a card stand, its stacked height is above the stand's top under it.
+      const raise = under.length ? Math.max(...under.map((m) => standTopUnder(m, c, CARD_W / 2, CARD_H / 2))) : 0;
+      const rest = capRest(restOn(c, supports), c.z + raise);
       resting[k] = { x: c.x, y: c.y, yaw: c.yaw, ...rest };
       const flat = Math.abs(rest.z - c.z) < 0.01 && Math.abs(rest.tiltX) < 1e-4 && Math.abs(rest.tiltY) < 1e-4;
       this.apply(c.uid, flat ? null : rest);

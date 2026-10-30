@@ -133,6 +133,7 @@ export class Undo {
       else {
         if (have.x !== m.x || have.y !== m.y || have.yaw !== m.yaw) store.moveMat(m.uid, m.x, m.y, m.yaw);
         if (!!have.locked !== !!m.locked) store.setMatLocked(m.uid, !!m.locked);
+        if (have.name !== m.name) store.setMatName(m.uid, m.name);
       }
     }
   }

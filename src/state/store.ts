@@ -243,6 +243,14 @@ export class Store {
     this.events.emit('mats', undefined);
   }
 
+  /** A card stand's name plate text (decision 220). */
+  setMatName(uid: string, name: string): void {
+    const m = this.mats.get(uid);
+    if (!m || m.name === name) return;
+    m.name = name;
+    this.events.emit('mats', undefined);
+  }
+
   setMatLocked(uid: string, locked: boolean): void {
     const m = this.mats.get(uid);
     if (!m) return;

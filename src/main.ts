@@ -27,6 +27,7 @@ import { ExportPanel } from './ui/exportPanel';
 import { confirmDialog, numberDialog } from './ui/confirm';
 import { Cursors } from './ui/cursors';
 import { Mats } from './mats';
+import { buildStandTab } from './ui/standTab';
 import { buildPlaymatTab } from './ui/playmatTab';
 import { ContextHints } from './ui/hints';
 import { HelpPanel } from './ui/helpPanel';
@@ -112,6 +113,8 @@ spawnPanel.addTab('query', 'Query', buildQueryTab(app, () => spawnPanel.options(
 installClipboard(app, () => spawnPanel.options());
 // The 4th tab: playmats from a card's art (decision 144).
 spawnPanel.addTab('playmat', 'Playmat', buildPlaymatTab(app, mats));
+// Card stands: a wedge that holds cards up, with a name plate (decision 220).
+spawnPanel.addTab('stand', 'Stand', buildStandTab(app, mats));
 // A whole CubeCobra cube, with each card's Elo (decision 192), second after List (decision 193).
 spawnPanel.addTab('cube', 'Cube', buildCubeTab(app, () => spawnPanel.options()), { after: 'list' });
 const hires = new HiRes(app);
@@ -601,7 +604,7 @@ keyboard.bind('r', (e) => {
 // Z frames the selection; with no cards selected, the playmat last moved (decision 214).
 keyboard.bind('z', () => {
   const box = !store.selection.size && mats.selected ? mats.box(mats.selected) : null;
-  if (box) app.rig.frame(box.minX, box.minY, box.maxX, box.maxY);
+  if (box) app.rig.frame(box.minX, box.minY, box.maxX, box.maxY, box.top);
   else commands.frame();
 });
 // F twice quickly faces every card up, so a mixed stack is fronted (decision 105). Like R, F

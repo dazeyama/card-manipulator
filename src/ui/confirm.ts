@@ -28,6 +28,34 @@ export function confirmDialog(message: string, ok = 'OK'): Promise<boolean> {
   });
 }
 
+/** A small modal asking for one line of text (a card stand's name plate, decision 220). Resolves with it, or null if cancelled. */
+export function textDialog(message: string, opts: { value: string; ok?: string }): Promise<string | null> {
+  return new Promise((resolve) => {
+    const input = h('input', { class: 'grow', value: opts.value, maxlength: '60', spellcheck: 'false', 'aria-label': message });
+    const yes = h('button', { class: 'btn primary' }, opts.ok ?? 'OK');
+    const no = h('button', { class: 'btn' }, 'Cancel');
+    const box = h('div', { class: 'modal' }, h('p', {}, message), h('div', { class: 'row' }, input), h('div', { class: 'row end' }, no, yes));
+    const back = h('div', { class: 'modal-back' }, box);
+    document.body.append(back);
+    input.focus();
+    input.select();
+    const done = (v: string | null) => {
+      back.remove();
+      resolve(v);
+    };
+    yes.addEventListener('click', () => done(input.value));
+    no.addEventListener('click', () => done(null));
+    back.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Escape') done(null);
+      if (e.key === 'Enter') done(input.value);
+    });
+    back.addEventListener('pointerdown', (e) => {
+      if (e.target === back) done(null);
+    });
+  });
+}
+
 /**
  * A small modal asking for a whole number from `min` to `max` (0 to draw
  * any number of cards, decision 162). Resolves with the number, or null if

@@ -10,6 +10,9 @@ import * as THREE from 'three';
 import { ACCENT, type App } from './app';
 import type { CustomGesture, Mods } from './input/mouse';
 import { ImageLoader } from './render/images';
+import { drawPlate, standGroup } from './render/standMesh';
+import { isStand, LIP_H, onStand, STAND_D, STAND_H, STAND_W, standHeightAt } from './state/stand';
+import { textDialog } from './ui/confirm';
 import { MAT_H, MAT_W, type Mat } from './state/types';
 import { newUid } from './state/store';
 
@@ -46,12 +49,15 @@ export interface MatQuality {
 }
 
 interface Drawn {
-  /** The art on top. */
-  mesh: THREE.Mesh;
-  /** The black base under it. */
-  base: THREE.Mesh;
+  /** The art on top; a card stand's wedge and plate (decision 220). */
+  mesh: THREE.Object3D;
+  /** The black base under it; a card stand's spot on the table. */
+  base: THREE.Object3D;
+  /** The art's material; a stand's name plate. */
   material: THREE.MeshLambertMaterial;
+  /** The art loaded; a stand's plate text. */
   art: string;
+  stand: boolean;
 }
 
 interface Mirror {
@@ -81,6 +87,9 @@ export class Mats {
    */
   selected: string | null = null;
   private readonly rim = new THREE.Mesh(new THREE.ShapeGeometry(matShape(RIM), 8), new THREE.MeshBasicMaterial({ color: ACCENT, depthTest: false, depthWrite: false }));
+  /** A selected card stand's rim, on the table round its foot (decision 220). */
+  private readonly standRim = new THREE.Mesh(new THREE.ShapeGeometry(roundedRect(STAND_W / 2 + RIM, STAND_D / 2 + RIM, 6 + RIM), 4), new THREE.MeshBasicMaterial({ color: ACCENT, depthTest: false, depthWrite: false }));
+  private readonly editButton: HTMLButtonElement;
   private readonly button: HTMLButtonElement;
   private readonly lockButton: HTMLButtonElement;
   private readonly buttons: HTMLDivElement;
@@ -93,7 +102,10 @@ export class Mats {
   constructor(private readonly app: App) {
     app.view.scene.add(this.group);
     this.rim.visible = false;
-    this.group.add(this.rim);
+    this.standRim.visible = false;
+    // Over the mats, under everything else.
+    this.standRim.renderOrder = MAT_ORDER + 0.05;
+    this.group.add(this.rim, this.standRim);
     app.store.events.on('mats', () => this.sync());
     app.store.events.on('reset', () => this.sync());
     // Choosing cards takes the selection away from the mat.
@@ -119,7 +131,20 @@ export class Mats {
     this.buttons = document.createElement('div');
     this.buttons.className = 'mat-buttons';
     this.buttons.hidden = true;
-    this.buttons.append(this.lockButton, this.button);
+    // A card stand's ✏️ changes its name plate (decision 220).
+    this.editButton = document.createElement('button');
+    this.editButton.className = 'mat-mirror-btn';
+    this.editButton.textContent = '✏️';
+    this.editButton.title = 'Change the name on the plate';
+    this.editButton.addEventListener('pointerdown', (e) => e.stopPropagation());
+    this.editButton.addEventListener('click', () => {
+      const m = this.hovered ? app.store.mats.get(this.hovered) : undefined;
+      if (!m) return;
+      void textDialog('The name on the plate, read from across the table:', { value: m.name, ok: 'Save' }).then((text) => {
+        if (text !== null) app.store.setMatName(m.uid, text.trim());
+      });
+    });
+    this.buttons.append(this.lockButton, this.button, this.editButton);
     app.overlay.append(this.buttons);
 
     window.addEventListener('pointermove', (e) => {
@@ -137,6 +162,11 @@ export class Mats {
   }
 
   // ---- spawning, turning, removing ----
+
+  /** Set up a new card stand at a spot, with this name on its plate (decision 220). */
+  spawnStand(name: string, at: { x: number; y: number }): void {
+    this.app.store.addMat({ uid: newUid('m'), kind: 'stand', scryfallId: '', name, art: '', x: at.x, y: at.y, yaw: 0 });
+  }
 
   /** Lay a new mat on the table at a spot. */
   spawn(scryfallId: string, name: string, art: string, at: { x: number; y: number }): void {
@@ -160,12 +190,15 @@ export class Mats {
     this.sync();
   }
 
-  /** The table-space box around a mat, for Z (decision 214). */
-  box(uid: string): { minX: number; minY: number; maxX: number; maxY: number } | null {
+  /** The table-space box around a mat, for Z (decision 214), and how tall it is. */
+  box(uid: string): { minX: number; minY: number; maxX: number; maxY: number; top: number } | null {
     const m = this.app.store.mats.get(uid);
     if (!m) return null;
-    const pts = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => corner(m, (a * MAT_W) / 2, (b * MAT_H) / 2));
+    const stand = isStand(m);
+    const w = stand ? STAND_W : MAT_W, h = stand ? STAND_D : MAT_H;
+    const pts = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => corner(m, (a * w) / 2, (b * h) / 2));
     return {
+      top: stand ? STAND_H : 0,
       minX: Math.min(...pts.map((p) => p.x)), minY: Math.min(...pts.map((p) => p.y)),
       maxX: Math.max(...pts.map((p) => p.x)), maxY: Math.max(...pts.map((p) => p.y)),
     };
@@ -193,6 +226,10 @@ export class Mats {
     }
     let order = 0;
     for (const m of mats.values()) {
+      if (isStand(m)) {
+        this.syncStand(m);
+        continue;
+      }
       let d = this.drawn.get(m.uid);
       if (!d) {
         const material = new THREE.MeshLambertMaterial({ color: 0x3a3a3a, depthTest: false, depthWrite: false });
@@ -210,7 +247,7 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
         mesh.receiveShadow = true;
         const base = new THREE.Mesh(this.baseGeometry, this.baseMaterial);
         this.group.add(base, mesh);
-        d = { mesh, base, material, art: '' };
+        d = { mesh, base, material, art: '', stand: false };
         this.drawn.set(m.uid, d);
       }
       if (d.art !== m.art) {
@@ -228,11 +265,36 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
       if (m.uid === this.selected) this.rim.renderOrder = MAT_ORDER + (order - 0.25) * MAT_ORDER_STEP;
       d.mesh.renderOrder = MAT_ORDER + (order + 0.5) * MAT_ORDER_STEP;
       order++;
-      d.base.position.set(m.x, m.y, 0);
-      d.mesh.position.set(m.x, m.y, MAT_T);
-      d.base.rotation.set(0, 0, m.yaw);
-      d.mesh.rotation.set(0, 0, m.yaw);
+      this.place(d, m.x, m.y, m.yaw);
     }
+  }
+
+  /** A card stand's wedge and its name plate (decision 220), drawn by depth like any solid. */
+  private syncStand(m: Mat): void {
+    let d = this.drawn.get(m.uid);
+    if (!d) {
+      const material = new THREE.MeshLambertMaterial({ color: 0xffffff });
+      const mesh = standGroup(material);
+      const base = new THREE.Object3D();
+      this.group.add(mesh, base);
+      d = { mesh, base, material, art: '', stand: true };
+      this.drawn.set(m.uid, d);
+    }
+    if (d.art !== m.name || !d.material.map) {
+      d.art = m.name;
+      d.material.map?.dispose();
+      d.material.map = drawPlate(m.name);
+      d.material.needsUpdate = true;
+    }
+    this.place(d, m.x, m.y, m.yaw);
+  }
+
+  /** Put a drawn mat or stand at a spot. */
+  private place(d: Drawn, x: number, y: number, yaw: number): void {
+    d.base.position.set(x, y, 0);
+    d.mesh.position.set(x, y, d.stand ? 0 : MAT_T);
+    d.base.rotation.set(0, 0, yaw);
+    d.mesh.rotation.set(0, 0, yaw);
   }
 
   /** Switch graphics mode: the art's filtering changes at once, the mirror on its next frame. */
@@ -283,11 +345,22 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
   }
 
   matAt(sx: number, sy: number): string | null {
+    const mats = [...this.app.store.mats.values()];
+    // Card stands stand up over the mats: the first one the ray meets (decision 220).
+    for (let i = mats.length - 1; i >= 0; i--) if (isStand(mats[i]) && this.rayMeetsStand(mats[i], sx, sy)) return mats[i].uid;
     const p = this.app.rig.screenToPlane(sx, sy, MAT_T);
     if (!p) return null;
-    const mats = [...this.app.store.mats.values()];
-    for (let i = mats.length - 1; i >= 0; i--) if (onMat(mats[i], p.x, p.y)) return mats[i].uid;
+    for (let i = mats.length - 1; i >= 0; i--) if (!isStand(mats[i]) && onMat(mats[i], p.x, p.y)) return mats[i].uid;
     return null;
+  }
+
+  /** True if the ray through a screen point meets a card stand: from above its ridge down, the first height inside it. */
+  private rayMeetsStand(m: Mat, sx: number, sy: number): boolean {
+    for (let z = STAND_H + 1; z >= 0; z -= 1.5) {
+      const p = this.app.rig.screenToPlane(sx, sy, z);
+      if (p && standHeightAt(m, p.x, p.y) >= z) return true;
+    }
+    return false;
   }
 
   /** Cards whose centre lies on a mat. */
@@ -317,7 +390,6 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
         dx = 0;
         dy = 0;
       }
-      app.store.moveMat(uid, start.x + dx, start.y + dy, mat.yaw);
       if (riders?.length) {
         app.store.moveCards(riders.map((r) => ({ uid: r.uid, x: r.x + dx, y: r.y + dy })));
         for (const r of riders) {
@@ -331,6 +403,8 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
         }
         app.store.events.emit('settled', riders.map((r) => r.uid));
       }
+      // After its riders, so a card stand's cards rest on it where it is now (decision 220).
+      app.store.moveMat(uid, start.x + dx, start.y + dy, mat.yaw);
     };
     let last = { dx: 0, dy: 0 };
     return {
@@ -354,8 +428,7 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
         if (!p) return;
         last = { dx: p.x - grab.x, dy: p.y - grab.y };
         const d = this.drawn.get(uid);
-        d?.mesh.position.set(start.x + last.dx, start.y + last.dy, MAT_T);
-        d?.base.position.set(start.x + last.dx, start.y + last.dy, 0);
+        if (d) this.place(d, start.x + last.dx, start.y + last.dy, mat.yaw);
         for (const r of riders ?? []) {
           const pose = app.layer.pose(r.uid);
           if (!pose) continue;
@@ -388,10 +461,12 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
     const store = this.app.store;
     // The selected mat's blue rim follows it, even mid-drag.
     const sel = this.selected ? this.drawn.get(this.selected) : undefined;
-    this.rim.visible = !!sel;
+    const rim = sel?.stand ? this.standRim : this.rim;
+    this.rim.visible = !!sel && !sel.stand;
+    this.standRim.visible = !!sel?.stand;
     if (sel) {
-      this.rim.position.set(sel.base.position.x, sel.base.position.y, 0);
-      this.rim.rotation.copy(sel.base.rotation);
+      rim.position.set(sel.base.position.x, sel.base.position.y, 0);
+      rim.rotation.copy(sel.base.rotation);
     }
     // The 🔒 and 📺 buttons sit just inside the hovered mat's top right corner,
     // or its bottom left corner while it is locked (decision 155).
@@ -399,8 +474,14 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
     this.buttons.hidden = !m;
     if (m) {
       const locked = !!m.locked;
-      const c = locked ? corner(m, -MAT_W / 2 + 22, -MAT_H / 2 + 22) : corner(m, MAT_W / 2 - 22, MAT_H / 2 - 22);
-      const s = rig.worldToScreen(c.x, c.y, MAT_T);
+      // A card stand's buttons sit on its front lip, at the right, or the left while locked (decision 220).
+      const stand = isStand(m);
+      const c = stand
+        ? corner(m, locked ? -STAND_W / 2 + 22 : STAND_W / 2 - 22, -STAND_D / 2 + 4)
+        : locked ? corner(m, -MAT_W / 2 + 22, -MAT_H / 2 + 22) : corner(m, MAT_W / 2 - 22, MAT_H / 2 - 22);
+      const s = rig.worldToScreen(c.x, c.y, stand ? LIP_H : MAT_T);
+      this.button.hidden = stand;
+      this.editButton.hidden = !stand;
       // The corner point is the middle of the button nearest the corner: the 📺 at top right, the lock at bottom left.
       const shift = locked ? 'translate(-16px, -50%)' : 'translate(calc(-100% + 16px), -50%)';
       this.buttons.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) ${shift}`;
@@ -408,7 +489,7 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
         this.lockButton.textContent = locked ? '🔒' : '🔓';
         this.lockButton.classList.toggle('on', locked);
         this.lockButton.setAttribute('aria-pressed', String(locked));
-        this.lockButton.title = locked ? 'Locked: it can’t be dragged, turned or removed. Click to unlock.' : 'Lock this playmat in place';
+        this.lockButton.title = locked ? 'Locked: it can’t be dragged, turned or removed. Click to unlock.' : 'Lock it in place';
       }
     }
     // With Alt held, each mat shows how many cards lie on it, like a pile's badge (decision 109).
@@ -426,8 +507,8 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
       }
       el.hidden = false;
       el.textContent = `${mat.name.split(' // ')[0]} · ${this.cardsOn(mat.uid).length}`;
-      const c = corner(mat, -MAT_W / 2 + 40, MAT_H / 2 - 16);
-      const s = rig.worldToScreen(c.x, c.y, MAT_T);
+      const c = isStand(mat) ? corner(mat, -STAND_W / 2 + 40, -STAND_D / 2 + 4) : corner(mat, -MAT_W / 2 + 40, MAT_H / 2 - 16);
+      const s = rig.worldToScreen(c.x, c.y, isStand(mat) ? LIP_H : MAT_T);
       el.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) translate(0, -50%)`;
     }
     if (this.mirrors.length) this.drawMirrors(now);
@@ -506,6 +587,21 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
   }
 }
 
+/** A rounded rectangle, centred, half w by half h with corner radius r. */
+function roundedRect(w: number, h: number, r: number): THREE.Shape {
+  const s = new THREE.Shape();
+  s.moveTo(-w + r, -h);
+  s.lineTo(w - r, -h);
+  s.quadraticCurveTo(w, -h, w, -h + r);
+  s.lineTo(w, h - r);
+  s.quadraticCurveTo(w, h, w - r, h);
+  s.lineTo(-w + r, h);
+  s.quadraticCurveTo(-w, h, -w, h - r);
+  s.lineTo(-w, -h + r);
+  s.quadraticCurveTo(-w, -h, -w + r, -h);
+  return s;
+}
+
 /** The mat's outline, centred, with rounded corners; `pad` grows it all round (the selection rim). */
 function matShape(pad = 0): THREE.Shape {
   const w = MAT_W / 2 + pad, h = MAT_H / 2 + pad, r = MAT_CORNER + pad;
@@ -551,6 +647,7 @@ export function ridersOf(m: Mat, cards: Iterable<{ uid: string; x: number; y: nu
 
 /** True if a table point lies on a mat. */
 export function onMat(m: Mat, x: number, y: number): boolean {
+  if (isStand(m)) return onStand(m, x, y);
   const dx = x - m.x, dy = y - m.y;
   const c = Math.cos(m.yaw), s = Math.sin(m.yaw);
   return Math.abs(dx * c + dy * s) <= MAT_W / 2 && Math.abs(-dx * s + dy * c) <= MAT_H / 2;

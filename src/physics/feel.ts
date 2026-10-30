@@ -16,6 +16,7 @@ import { shortAngle } from './motion';
 import { restingTop } from './restSync';
 import { CASCADE_STEP } from '../state/curve';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
+import { isStand, standTopUnder } from '../state/stand';
 
 export type DragMode = 'single' | 'gather' | 'formation' | 'rigid';
 
@@ -741,6 +742,15 @@ export class DragController {
       if (held.has(uid) || p.x < minX - pad || p.x > maxX + pad || p.y < minY - pad || p.y > maxY + pad) return;
       near.push({ x: p.x, y: p.y, yaw: p.yaw, top: restingTop(p.z, p.tiltX, p.tiltY, HALF_DIAG) });
     });
+    // Card stands under the group are surfaces too (decision 220).
+    const stands = [...this.app.store.mats.values()].filter(isStand);
+    if (stands.length) {
+      out.forEach((spot, i) => {
+        for (const m of stands) {
+          spot.surface = Math.max(spot.surface, standTopUnder(m, { x: spot.x, y: spot.y, yaw: ahead[i].yaw }, CARD_W / 2, CARD_H / 2), standTopUnder(m, ahead[i], CARD_W / 2, CARD_H / 2));
+        }
+      });
+    }
     if (!near.length) return out;
     out.forEach((spot, i) => {
       const now = { x: spot.x, y: spot.y, yaw: ahead[i].yaw };

@@ -14,7 +14,8 @@ import type { App } from '../app';
 import { land, placeSequential } from '../commands';
 import { snapYaw } from '../state/piles';
 import { restingTop } from './restSync';
-import { CARD_H, CARD_T, CARD_W } from '../state/types';
+import { CARD_H, CARD_T, CARD_W, type Mat } from '../state/types';
+import { isStand, LIP_D, LIP_H, STAND_D, STAND_W, standProfile, standWorld } from '../state/stand';
 import type { Pose } from '../render/cards';
 
 // Rapier (with its WASM inlined) is loaded on demand so the table shows first.
@@ -143,6 +144,12 @@ export class Physics {
       session.statics.push(this.staticBox(p?.x ?? c.x, p?.y ?? c.y, top - BODY_HALF_T, p?.yaw ?? c.yaw, BODY_HALF_T, p?.tiltX ?? 0, p?.tiltY ?? 0));
     }
 
+    // Card stands (decision 220): the lip and the wedge, so cards land on the slope.
+    for (const m of app.store.mats.values()) {
+      if (!isStand(m) || m.x < minX - STAND_W || m.x > maxX + STAND_W || m.y < minY - STAND_W || m.y > maxY + STAND_W) continue;
+      session.statics.push(...this.standColliders(m));
+    }
+
     // A dynamic body for every loose card, at its drawn pose.
     for (const c of cards) {
       const pose = app.layer.pose(c.uid)!;
@@ -169,6 +176,26 @@ export class Physics {
     }
     this.sessions.push(session);
     return true;
+  }
+
+  /** A card stand as two solids: its lip, and the wedge behind it. */
+  private standColliders(m: Mat): RAPIER_NS.Collider[] {
+    const world = this.world!;
+    const rot = { x: 0, y: 0, z: Math.sin(m.yaw / 2), w: Math.cos(m.yaw / 2) };
+    const out: RAPIER_NS.Collider[] = [];
+    const lip = standWorld(m, 0, -STAND_D / 2 + LIP_D / 2);
+    out.push(world.createCollider(
+      RAPIER.ColliderDesc.cuboid((STAND_W / 2) * MM, (LIP_D / 2) * MM, (LIP_H / 2) * MM)
+        .setTranslation(lip.x * MM, lip.y * MM, (LIP_H / 2) * MM)
+        .setRotation(rot)
+        .setFriction(0.6),
+    ));
+    // The wedge: its three profile corners behind the lip, at both ends.
+    const pts: number[] = [];
+    for (const a of [-STAND_W / 2, STAND_W / 2]) for (const [b, h] of standProfile().slice(3)) pts.push(a * MM, b * MM, h * MM);
+    const hull = RAPIER.ColliderDesc.convexHull(new Float32Array(pts));
+    if (hull) out.push(world.createCollider(hull.setTranslation(m.x * MM, m.y * MM, 0).setRotation(rot).setFriction(0.6)));
+    return out;
   }
 
   private staticBox(x: number, y: number, z: number, yaw: number, halfZ: number, tiltX = 0, tiltY = 0): RAPIER_NS.Collider {
