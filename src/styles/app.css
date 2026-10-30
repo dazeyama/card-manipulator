@@ -243,6 +243,21 @@ label.inline { display: inline-flex; flex-direction: row; align-items: center; g
 .modal { background: var(--panel); border-radius: var(--radius); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25); padding: 16px 18px; width: 380px; }
 .modal p { margin: 0 0 8px; }
 .context-hints[hidden] { display: none; }
+/* ---- life counters on playmats (decision 239) ---- */
+.life-badge { position: absolute; left: 0; top: 0; z-index: 3; pointer-events: auto; box-sizing: border-box; border-radius: 50%; background: #fff; border: 0.09em solid #111; box-shadow: 0 0.07em 0 #111, 0 0.14em 0.3em rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; align-items: center; justify-content: center; color: #111; font: 900 1em/1 system-ui, -apple-system, "Segoe UI", sans-serif; user-select: none; cursor: var(--cursor-point, pointer); }
+.life-badge[hidden] { display: none; }
+.life-num { font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.life-badge.low .life-num { color: #d32f2f; }
+.life-num.gain { animation: life-gain 0.35s ease-out; }
+.life-num.loss { animation: life-loss 0.35s ease-out; }
+@keyframes life-gain { 0% { transform: scale(1); } 35% { transform: scale(1.3); color: #2e9d3a; } 100% { transform: scale(1); } }
+@keyframes life-loss { 0% { transform: scale(1); } 35% { transform: scale(1.3); color: #e53935; } 100% { transform: scale(1); } }
+.life-skull { font-size: 0.4em; margin-bottom: 0.05em; }
+.life-skull[hidden] { display: none; }
+.life-delta { position: absolute; left: 100%; top: 50%; transform: translate(0.15em, -50%) scale(0.8); font-size: 0.42em; padding: 0.1em 0.45em; border-radius: 1em; border: 0.12em solid #111; background: #fff; color: #111; white-space: nowrap; opacity: 0; transition: opacity 0.25s, transform 0.15s; pointer-events: none; }
+.life-delta.show { opacity: 1; transform: translate(0.15em, -50%) scale(1); }
+.life-delta.gain { background: #c8f2cc; color: #1b5e20; }
+.life-delta.loss { background: #ffd0cc; color: #b71c1c; }
 .panel-section { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 10px; }
 .panel-section-title { font-weight: 600; }
 .help-hide { margin: 2px 0 4px; }

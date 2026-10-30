@@ -34,6 +34,8 @@ export interface StoreEvents {
   mats: void;
   /** The table's basic land printings changed (decision 210). */
   basics: void;
+  /** A playmat's life total changed (decision 239). Not a table change for undo. */
+  life: void;
 }
 
 type Listener<T> = (payload: T) => void;
@@ -241,6 +243,14 @@ export class Store {
     m.y = y;
     m.yaw = yaw;
     this.events.emit('mats', undefined);
+  }
+
+  /** A playmat's life total (decision 239). */
+  setMatLife(uid: string, life: number): void {
+    const m = this.mats.get(uid);
+    if (!m || m.life === life) return;
+    m.life = life;
+    this.events.emit('life', undefined);
   }
 
   /** A card stand's name plate text (decision 220). */

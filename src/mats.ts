@@ -22,7 +22,7 @@ import { newUid } from './state/store';
  * The thickness is for looks only: cards on a mat still lie at table height
  * and are drawn over it.
  */
-const MAT_T = 5;
+export const MAT_T = 5;
 /** Rounded corners, like a real playmat. */
 const MAT_CORNER = 10;
 /** Two clicks on a mat this close together are a double-click, ms, as on a card. */
@@ -346,6 +346,12 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
       d.material.needsUpdate = true;
     }
     this.place(d, m.x, m.y, m.yaw);
+  }
+
+  /** Where a mat is drawn now, following a drag in progress (for its life counter, decision 239). */
+  drawnAt(uid: string): { x: number; y: number; yaw: number } | null {
+    const d = this.drawn.get(uid);
+    return d ? { x: d.base.position.x, y: d.base.position.y, yaw: d.base.rotation.z } : null;
   }
 
   /** Put a drawn mat or stand at a spot. */

@@ -164,6 +164,8 @@ export interface Mat {
   yaw: number;
   /** Locked in place (decision 154): not dragged, turned or removed until unlocked. */
   locked?: boolean;
+  /** A playmat's life total (decision 239); unset is the starting 20. */
+  life?: number;
 }
 
 export const MAT_W = 610;
