@@ -62,3 +62,38 @@ export async function findToken(name: string, set?: string): Promise<CardRecord 
   const found = await search(q, 1);
   return found[0] ?? null;
 }
+
+/** A card's related parts as Scryfall lists them; tokens are the "token" ones (decision 264). */
+interface Related {
+  all_parts?: { id: string; component: string; name: string }[];
+}
+
+/** The ids of the tokens a card's Scryfall data says it makes, its own id left out (pure, tested). */
+export function tokenIds(card: Related & { id?: string }): string[] {
+  const ids = (card.all_parts ?? []).filter((p) => p.component === 'token' && p.id !== card.id).map((p) => p.id);
+  return [...new Set(ids)];
+}
+
+const madeBy = new Map<string, Promise<CardRecord[]>>();
+
+/**
+ * The tokens a card makes (decision 264): one lookup of the card for its
+ * related parts, then the tokens' own data; kept for the session.
+ */
+export function tokensMadeBy(scryfallId: string): Promise<CardRecord[]> {
+  let found = madeBy.get(scryfallId);
+  if (!found) {
+    found = (async () => {
+      const card = await scryfall.getJson<Related & { id: string }>(`/cards/${scryfallId}`);
+      const ids = card ? tokenIds(card) : [];
+      if (!ids.length) return [];
+      const res = await scryfall.postJson<{ data: ScryfallCard[] }>('/cards/collection', { identifiers: ids.slice(0, 75).map((id) => ({ id })) });
+      const records = res.data.map((c) => trimCard(c));
+      void putRecords(records);
+      return records;
+    })();
+    found.catch(() => madeBy.delete(scryfallId));
+    madeBy.set(scryfallId, found);
+  }
+  return found;
+}

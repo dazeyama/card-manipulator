@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { wantsTokens, withoutExtras } from '../src/scryfall/search';
-import { tokenName, tokenQuery } from '../src/scryfall/tokens';
+import { tokenIds, tokenName, tokenQuery } from '../src/scryfall/tokens';
 
 describe('tokens (decision 263)', () => {
   it('turns what is typed into a token search', () => {
@@ -22,5 +22,21 @@ describe('tokens (decision 263)', () => {
     expect(wantsTokens('t:goblin')).toBe(false);
     expect(withoutExtras('t:token')).toBe('(t:token)');
     expect(withoutExtras('t:goblin')).toBe('(t:goblin) -is:extra');
+  });
+});
+
+describe("a card's tokens (decision 264)", () => {
+  it('takes the token parts of a card, once each, not the card itself', () => {
+    const card = {
+      id: 'krenko',
+      all_parts: [
+        { id: 'krenko', component: 'combo_piece', name: 'Krenko' },
+        { id: 'goblin', component: 'token', name: 'Goblin' },
+        { id: 'goblin', component: 'token', name: 'Goblin' },
+        { id: 'meld', component: 'meld_part', name: 'Other' },
+      ],
+    };
+    expect(tokenIds(card)).toEqual(['goblin']);
+    expect(tokenIds({ id: 'x' })).toEqual([]);
   });
 });

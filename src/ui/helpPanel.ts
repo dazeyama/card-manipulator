@@ -44,6 +44,7 @@ const GROUPS: [string, Line[]][] = [
     ['🗑️', 'Delete', 'remove to the tray'],
     ['🔎', 'Ctrl + F or /', 'search the table'],
     ['👆', 'P', 'or the finger button by the search box: then click the table to move the selection (or the pile under the cursor) there as a stack · P again switches to face down, like a pack, and back · Esc cancels'],
+    ['🪙', 'T T', 'over a card: the tokens it makes, from Scryfall; click one to spawn it beside the card'],
     ['🎲', 'D', 'drop a die at the cursor; drag or select dice like cards · R rolls them · 1–6 sets the number · Delete removes'],
     ['↩️', 'Ctrl + Z', 'undo the last move or action · again to redo it (one step)'],
     ['📋', 'Ctrl + C', 'copy the selection · Ctrl + V pastes it at the cursor, as a messy pile (any decklist pastes too)'],

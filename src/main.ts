@@ -30,6 +30,7 @@ import { Mats } from './mats';
 import { buildStandSection } from './ui/standTab';
 import { installStandSnap } from './standSnap';
 import { LifeCounters } from './ui/lifeCounter';
+import { TokenMenu } from './ui/tokenMenu';
 import { Dice } from './dice';
 import { DiceLayer } from './render/dice';
 import { HandCount } from './ui/handCount';
@@ -394,7 +395,18 @@ keyboard.bind('x', () => {
   if (card?.spreadOf && store.spreads.has(card.spreadOf)) return commands.restack(card.spreadOf);
   startSpread(hoveredPile());
 });
+// T T over a card: the tokens it makes, from its Scryfall data (decision 264).
+const tokenMenu = new TokenMenu(app, () => spawnPanel.options());
+let lastT = 0;
 keyboard.bind('t', () => {
+  const now = performance.now();
+  const twice = now - lastT < DOUBLE_TAP_MS;
+  lastT = twice ? 0 : now;
+  if (twice && !drag.dragging && mouse.hovered) {
+    const r = app.canvas.getBoundingClientRect();
+    void tokenMenu.open(mouse.hovered, { x: r.left + app.pointer.x, y: r.top + app.pointer.y });
+    return;
+  }
   if (drag.dragging || hoveredPile().length) app.showGesture('tidy');
   if (drag.dragging) drag.tidyHeld();
   else commands.tidy(hoveredPile());
