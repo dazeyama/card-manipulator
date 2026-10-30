@@ -10,6 +10,9 @@ import { CARD_H, CARD_T, CARD_W } from '../state/types';
 import { SLOT_UV, type Atlas, type Slot } from './atlas';
 import { popLift } from '../state/rest';
 
+/** A card on a playmat is drawn this much higher, on a black base if it lies on the mat itself (decision 270), mm. */
+export const MAT_PAD = 1;
+
 /** The displayed transform of one card. The model position is the target; this is what is drawn. */
 export interface Pose {
   x: number;
@@ -35,13 +38,17 @@ interface Entry {
   lift: number;
   foil: boolean;
   hidden: boolean;
+  /** On a playmat (decision 270): 0 no, 1 raised, 2 raised with a black base under it. */
+  pad: number;
 }
 
 const vertexHead = /* glsl */ `
 attribute vec3 aFront;
 attribute vec3 aBack;
 attribute vec4 aFlags;
+attribute float aPad;
 uniform float uPlain;
+varying float vPad;
 varying vec3 vFront;
 varying vec3 vBack;
 varying vec4 vFlags;
@@ -58,6 +65,10 @@ vBack = aBack;
 vFlags = vec4(aFlags.x * (1.0 - uPlain), aFlags.y * (1.0 - uPlain), aFlags.z, aFlags.w);
 vLocal = position;
 vFace = normal.z > 0.5 ? 1.0 : (normal.z < -0.5 ? -1.0 : 0.0);
+// On a playmat (decision 270): drawn MAT_PAD higher; a card lying on the mat itself
+// keeps its underside where it was, so a black base fills the gap.
+vPad = aPad;
+if (aPad > 0.5 && !(aPad > 1.5 && position.z < 0.0)) transformed.z += ${MAT_PAD.toFixed(2)};
 vec4 wp = modelMatrix * instanceMatrix * vec4(position, 1.0);
 vWorldP = wp.xyz;
 vWorldN = normalize(mat3(modelMatrix * instanceMatrix) * normal);
@@ -88,6 +99,7 @@ vec3 foilSheen(vec2 p, vec3 n, vec3 wp) {
 
 const fragmentHead = /* glsl */ `
 precision highp sampler2DArray;
+varying float vPad;
 uniform sampler2DArray uAtlas;
 uniform vec2 uSlotUV;
 uniform vec3 uAccent;
@@ -146,6 +158,8 @@ if (abs(vFace) < 0.5) {
   float fade = 1.0 - smoothstep(0.04, 0.1, fw);
   totalEmissiveRadiance += vec3(0.40, 0.385, 0.36) * lit * (1.0 - 0.35 * line * fade);
   diffuseColor.rgb = vec3(0.0);
+  // The black base under a card lying on a playmat (decision 270).
+  if (vPad > 1.5) totalEmissiveRadiance = vec3(0.02);
 }
 diffuseColor.rgb = mix(diffuseColor.rgb, uAccent, rim * 0.85 + vFlags.x * 0.06);
 totalEmissiveRadiance += uAccent * rim * 0.55;
@@ -192,6 +206,7 @@ export class CardLayer {
   private aFront: THREE.InstancedBufferAttribute;
   private aBack: THREE.InstancedBufferAttribute;
   private aFlags: THREE.InstancedBufferAttribute;
+  private aPad: THREE.InstancedBufferAttribute;
   private readonly entries = new Map<string, Entry>();
   private byIndex: Entry[] = [];
   private readonly dirtyMatrix = new Set<Entry>();
@@ -237,6 +252,7 @@ export class CardLayer {
     this.aFront = mesh.geometry.getAttribute('aFront') as THREE.InstancedBufferAttribute;
     this.aBack = mesh.geometry.getAttribute('aBack') as THREE.InstancedBufferAttribute;
     this.aFlags = mesh.geometry.getAttribute('aFlags') as THREE.InstancedBufferAttribute;
+    this.aPad = mesh.geometry.getAttribute('aPad') as THREE.InstancedBufferAttribute;
     scene.add(mesh);
   }
 
@@ -254,6 +270,7 @@ export class CardLayer {
     geo.setAttribute('aFront', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3));
     geo.setAttribute('aBack', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3));
     geo.setAttribute('aFlags', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4));
+    geo.setAttribute('aPad', new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1));
     const mesh = new THREE.InstancedMesh(geo, this.material, capacity);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.count = 0;
@@ -313,7 +330,7 @@ export class CardLayer {
   add(uid: string, pose: Pose, front: Slot, back: Slot, foil: boolean): void {
     if (this.entries.has(uid)) return;
     if (this.byIndex.length >= this.capacity) this.grow(this.capacity * 2);
-    const entry: Entry = { uid, index: this.byIndex.length, pose: { ...pose }, selected: false, hovered: false, lift: 0, foil, hidden: false };
+    const entry: Entry = { uid, index: this.byIndex.length, pose: { ...pose }, selected: false, hovered: false, lift: 0, foil, hidden: false, pad: 0 };
     this.byIndex.push(entry);
     this.entries.set(uid, entry);
     this.writeSlots(entry, front, back);
@@ -336,6 +353,7 @@ export class CardLayer {
       copyAttr(this.aFront, from, last.index);
       copyAttr(this.aBack, from, last.index);
       copyAttr(this.aFlags, from, last.index);
+      copyAttr(this.aPad, from, last.index);
       this.slotsDirty = true;
       this.flagsDirty = true;
       this.dirtyMatrix.add(last);
@@ -406,6 +424,20 @@ export class CardLayer {
     e.lift = on ? lift ?? popLift(e.pose, this.posesNear(e)) : 0;
     this.writeFlags(e);
     this.dirtyMatrix.add(e);
+  }
+
+  /** A card on a playmat (decision 270): 0 not, 1 raised by MAT_PAD, 2 raised with a black base under it. */
+  setPad(uid: string, pad: number): void {
+    const e = this.entries.get(uid);
+    if (!e || e.pad === pad) return;
+    e.pad = pad;
+    this.aPad.setX(e.index, pad);
+    this.aPad.needsUpdate = true;
+  }
+
+  /** How much higher a card is drawn for a playmat under it, mm. */
+  padOf(uid: string): number {
+    return (this.entries.get(uid)?.pad ?? 0) > 0.5 ? MAT_PAD : 0;
   }
 
   setFoil(uid: string, on: boolean): void {
@@ -481,6 +513,8 @@ export class CardLayer {
     const nf = mesh.geometry.getAttribute('aFront') as THREE.InstancedBufferAttribute;
     const nb = mesh.geometry.getAttribute('aBack') as THREE.InstancedBufferAttribute;
     const nl = mesh.geometry.getAttribute('aFlags') as THREE.InstancedBufferAttribute;
+    const np = mesh.geometry.getAttribute('aPad') as THREE.InstancedBufferAttribute;
+    (np.array as Float32Array).set(this.aPad.array as Float32Array);
     (nf.array as Float32Array).set(this.aFront.array as Float32Array);
     (nb.array as Float32Array).set(this.aBack.array as Float32Array);
     (nl.array as Float32Array).set(this.aFlags.array as Float32Array);
@@ -493,6 +527,7 @@ export class CardLayer {
     this.aFront = nf;
     this.aBack = nb;
     this.aFlags = nl;
+    this.aPad = np;
     this.capacity = capacity;
     this.slotsDirty = true;
     this.flagsDirty = true;

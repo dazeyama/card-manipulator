@@ -14,7 +14,7 @@ import { inSpace, land, placeSequential } from './commands';
 import { drawPlate, setOutlineResolution, standGroup } from './render/standMesh';
 import { isStand, LIP_H, onStand, STAND_D, STAND_H, STAND_W, standHeightAt } from './state/stand';
 import { textDialog } from './ui/confirm';
-import { MAT_H, MAT_W, type Mat } from './state/types';
+import { CARD_T, MAT_H, MAT_W, type Mat } from './state/types';
 import { newUid } from './state/store';
 
 /**
@@ -120,6 +120,17 @@ export class Mats {
     app.store.events.on('reset', () => this.sync());
     // Choosing cards takes the selection away from the mat.
     app.store.events.on('selection', () => this.select(null));
+    // Cards on a playmat sit on a thin black base (decision 270): worked out again once things settle.
+    let padQueued = false;
+    const pads = () => {
+      if (padQueued) return;
+      padQueued = true;
+      requestAnimationFrame(() => {
+        padQueued = false;
+        this.syncPads();
+      });
+    };
+    for (const ev of ['settled', 'added', 'mats', 'reset'] as const) app.store.events.on(ev, pads);
 
     // The 📺 Cast button (decision 267), shown in the top right corner of the mat under the mouse.
     this.button = document.createElement('button');
@@ -235,6 +246,20 @@ export class Mats {
     const twice = !!uid && uid === this.lastClick.uid && now - this.lastClick.at < DOUBLE_CLICK_MS;
     this.lastClick = { uid: twice ? '' : uid ?? '', at: now };
     if (twice) this.app.store.setSelection(this.cardsOn(uid!));
+  }
+
+  /**
+   * Which cards sit on a playmat (decision 270): drawn MAT_PAD higher, and a
+   * card lying on the mat itself (nothing under it) on a black base that deep,
+   * like a sliver of the mat's own padding. Cards on stands have none.
+   */
+  private syncPads(): void {
+    const store = this.app.store;
+    const mats = [...store.mats.values()].filter((m) => !isStand(m));
+    for (const c of store.cards.values()) {
+      const on = !c.stand && mats.some((m) => onMat(m, c.x, c.y));
+      this.app.layer.setPad(c.uid, on ? (c.z < CARD_T * 0.9 ? 2 : 1) : 0);
+    }
   }
 
   /** Untap (decision 237): every card on a playmat turned upright to it, 0 degrees from the mat's own turn. */
