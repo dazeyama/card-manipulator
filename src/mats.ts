@@ -25,6 +25,8 @@ import { newUid } from './state/store';
 export const MAT_T = 5;
 /** Rounded corners, like a real playmat. */
 const MAT_CORNER = 10;
+/** How far in from its corner each corner button's centre sits, mm (decisions 238, 242). */
+const BUTTON_INSET = 15;
 /** Two clicks on a mat this close together are a double-click, ms, as on a card. */
 const DOUBLE_CLICK_MS = 350;
 /** How far the selected mat's blue rim shows past its edge, mm (decision 214). */
@@ -548,7 +550,7 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
       rim.position.set(sel.base.position.x, sel.base.position.y, 0);
       rim.rotation.copy(sel.base.rotation);
     }
-    // Each button in its own corner of the hovered mat (decision 238): 📺 top right,
+    // Each button in its own corner of the hovered mat (decisions 238, 242): 📺 top right,
     // 🔄 bottom right, 🔒 bottom left, staying put whether locked or not. A card
     // stand's 🔒 and ✏️ sit on its front lip, at the left and right ends.
     const m = this.hovered && !this.dragging ? store.mats.get(this.hovered) : undefined;
@@ -567,10 +569,10 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
       this.lifeButton.hidden = stand;
       this.editButton.hidden = !stand;
       if (stand) {
-        at(this.lockButton, -STAND_W / 2 + 22, -STAND_D / 2 + 4, LIP_H);
-        at(this.editButton, STAND_W / 2 - 22, -STAND_D / 2 + 4, LIP_H);
+        at(this.lockButton, -STAND_W / 2 + BUTTON_INSET, -STAND_D / 2 + 4, LIP_H);
+        at(this.editButton, STAND_W / 2 - BUTTON_INSET, -STAND_D / 2 + 4, LIP_H);
       } else {
-        const ix = MAT_W / 2 - 24, iy = MAT_H / 2 - 24;
+        const ix = MAT_W / 2 - BUTTON_INSET, iy = MAT_H / 2 - BUTTON_INSET;
         at(this.button, ix, iy, MAT_T);
         at(this.untapButton, ix, -iy, MAT_T);
         at(this.lockButton, -ix, -iy, MAT_T);
