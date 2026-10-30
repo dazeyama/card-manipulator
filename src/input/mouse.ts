@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type { App } from '../app';
 import { marqueeCards, pickCard } from '../render/picking';
 import { toggle } from '../state/selection';
+import { slopePopLift } from '../state/stand';
 
 const DRAG_THRESHOLD = 4;
 
@@ -297,8 +298,17 @@ export class MouseInput {
     if (uid === this.hovered) return;
     if (this.hovered) this.app.layer.setHovered(this.hovered, false);
     this.hovered = uid;
-    if (uid) this.app.layer.setHovered(uid, true);
+    if (uid) this.app.layer.setHovered(uid, true, this.standLift(uid));
     this.hooks.hover?.(uid);
+  }
+
+  /** A card on a stand pops by its stacking on the slope (decision 223); undefined for a card on the table. */
+  private standLift(uid: string): number | undefined {
+    const store = this.app.store;
+    const card = store.cards.get(uid);
+    if (!card?.stand) return undefined;
+    const others = [...store.cards.values()].filter((c) => c.stand === card.stand && c.uid !== uid);
+    return slopePopLift(card, others);
   }
 
   private wheel(e: WheelEvent): void {

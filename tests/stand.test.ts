@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { slopesOf } from '../src/state/rest';
+import { POP_MIN, slopesOf } from '../src/state/rest';
 import { arcHand } from '../src/state/fan';
 import {
-  alignTo, fitOnStand, FRONT_GAP, fromSlope, inFrontOf, liftOntoSlope, underStand, LIP_H, onStand, profileHeight, raySlope, SLOPE, SLOPE_LEN, SLOPE_START, slopePose,
+  alignTo, slopePopLift, fitOnStand, FRONT_GAP, fromSlope, inFrontOf, liftOntoSlope, underStand, LIP_H, onStand, profileHeight, raySlope, SLOPE, SLOPE_LEN, SLOPE_START, slopePose,
   STAND_D, STAND_H, STAND_W, standHeightAt, standLocal, standTopUnder, unrollPoint,
 } from '../src/state/stand';
 import { CARD_H, CARD_T, CARD_W, type Mat } from '../src/state/types';
@@ -114,6 +114,15 @@ describe('the slope as a second table (decision 221)', () => {
     // Under the back: up at the top of the slope; under the lip: at its foot.
     expect(liftOntoSlope(s, 0, STAND_D / 2 - 1).y).toBeCloseTo(SLOPE_START + SLOPE_LEN, 6);
     expect(liftOntoSlope(s, 0, -STAND_D / 2).y).toBeCloseTo(SLOPE_START, 6);
+  });
+
+  it('pops the middle card of a hand on a slope as well as the others (decision 223)', () => {
+    const s = stand();
+    const hand = fromSlope(s, arcHand(7, STAND_W, { x: 0, y: SLOPE_LEN / 2 }));
+    const lifts = hand.map((c, i) => slopePopLift(c, hand.filter((_, j) => j !== i)));
+    // Every card with cards over it pops clear of them, the middle one included.
+    for (let i = 0; i < 6; i++) expect(lifts[i]).toBeGreaterThan(POP_MIN);
+    expect(lifts[3]).toBeCloseTo(lifts[2], 0);
   });
 
   it('turns a layout to a stand', () => {

@@ -13,6 +13,7 @@
 
 import * as THREE from 'three';
 import type { Footprint } from './piles';
+import { popLift } from './rest';
 import { CARD_H, CARD_W, type Mat } from './types';
 
 /** Width across, and depth front to back, mm. */
@@ -254,6 +255,18 @@ export function liftOntoSlope(m: Mat, x: number, y: number): { x: number; y: num
   const { a, b } = standLocal(m, x, y);
   const s = Math.min(SLOPE_LEN, Math.max(0, (b - SLOPE_START) / Math.cos(SLOPE)));
   return standWorld(m, Math.max(-STAND_W / 2, Math.min(STAND_W / 2, a)), SLOPE_START + s);
+}
+
+/**
+ * How far a hovered card on a stand pops up (decision 223): as high as clears
+ * the cards lying over it on the slope, judged by their stacking there (the
+ * slope unrolled), not by how high they are drawn, since cards further up the
+ * slope are drawn higher. Returned as a straight-up lift, which takes it that
+ * far off the slope.
+ */
+export function slopePopLift(me: { x: number; y: number; z: number; yaw: number }, others: Iterable<{ x: number; y: number; z: number; yaw: number }>): number {
+  const flat = (c: { x: number; y: number; z: number; yaw: number }) => ({ x: c.x, y: c.y, z: c.z, yaw: c.yaw, tiltX: 0, tiltY: 0 });
+  return popLift(flat(me), [...others].map(flat)) / Math.cos(SLOPE);
 }
 
 /** Turn a layout made for an upright table spot to a stand's turn: offsets about `centre`, and each card's yaw. */

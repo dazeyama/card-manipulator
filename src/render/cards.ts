@@ -397,12 +397,13 @@ export class CardLayer {
     this.writeFlags(e);
   }
 
-  setHovered(uid: string, on: boolean): void {
+  /** Hover a card, or not; `lift` overrides how far it pops (a card on a stand, decision 223). */
+  setHovered(uid: string, on: boolean, lift?: number): void {
     const e = this.entries.get(uid);
     if (!e || e.hovered === on) return;
     e.hovered = on;
     // High enough to clear every card lying on it, so it shows whole (decision 174).
-    e.lift = on ? popLift(e.pose, this.posesNear(e)) : 0;
+    e.lift = on ? lift ?? popLift(e.pose, this.posesNear(e)) : 0;
     this.writeFlags(e);
     this.dirtyMatrix.add(e);
   }
