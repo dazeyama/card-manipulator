@@ -6,10 +6,15 @@
 import type { App } from '../app';
 import type { Dice } from '../dice';
 import type { DiceLayer } from '../render/dice';
-import { dieSize } from '../state/dice';
+import { DIE_SIZE, dieSize } from '../state/dice';
 
 /** Below this size on screen, px, every die shows its number: one wheel notch further out than 26 (decision 266). */
 const SMALL_PX = 22;
+/**
+ * A d20's number shows from four and a half wheel notches closer than a
+ * six-sided die's (decision 280): a notch zooms by exp(0.15) (mouse.ts).
+ */
+const D20_CLOSER = Math.exp(0.15 * 4.5);
 /** The figures' size, px: a share of the die's size on screen, within limits. */
 const FONT_MIN = 13;
 const FONT_MAX = 30;
@@ -50,7 +55,9 @@ export class DiceNumbers {
       // The die's size on screen.
       const c = rig.worldToScreen(at.x, at.y, at.z), q = rig.worldToScreen(at.x + size3d, at.y, at.z);
       const size = Math.hypot(q.x - c.x, q.y - c.y);
-      const show = this.dice.hovered === d.uid || size < SMALL_PX;
+      // Measured as a six-sided die there would be, so the d20's own size doesn't change when its number shows.
+      const unit = (size * DIE_SIZE) / size3d;
+      const show = this.dice.hovered === d.uid || unit < SMALL_PX * (d.kind === 'd20' ? D20_CLOSER : 1);
       el.hidden = !show;
       if (!show) continue;
       el.textContent = d.value.toLocaleString();
