@@ -16,7 +16,7 @@ import { snapYaw } from '../state/piles';
 import { restingTop } from './restSync';
 import { CARD_H, CARD_T, CARD_W, type Mat } from '../state/types';
 import { isStand, LIP_D, LIP_H, STAND_D, STAND_W, standProfile, standWorld, unrollPoint } from '../state/stand';
-import { D20_RADIUS, d20Geometry, DIE_SIZE, type DieKind } from '../state/dice';
+import { D20_RADIUS, d20Geometry, DIE_SIZE, dieSize, type DieKind } from '../state/dice';
 import type { Pose } from '../render/cards';
 
 // Rapier (with its WASM inlined) is loaded on demand so the table shows first.
@@ -212,7 +212,7 @@ export class Physics {
     for (const d of app.store.dice.values()) {
       if (skip.has(d.uid) || d.x < minX || d.x > maxX || d.y < minY || d.y > maxY) continue;
       out.push(this.world!.createCollider(
-        RAPIER.ColliderDesc.cuboid((DIE_SIZE / 2) * MM, (DIE_SIZE / 2) * MM, (DIE_SIZE / 2) * MM)
+        RAPIER.ColliderDesc.cuboid((dieSize(d.kind) / 2) * MM, (dieSize(d.kind) / 2) * MM, (dieSize(d.kind) / 2) * MM)
           .setTranslation(d.x * MM, d.y * MM, d.z * MM)
           .setRotation({ x: 0, y: 0, z: Math.sin(d.yaw / 2), w: Math.cos(d.yaw / 2) })
           .setFriction(0.5),

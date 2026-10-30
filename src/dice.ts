@@ -10,7 +10,7 @@ import type { CustomGesture, Mods } from './input/mouse';
 import { FLICK_SPEED, flickDirection } from './physics/feel';
 import { shortAngle } from './physics/motion';
 import type { DiceLayer } from './render/dice';
-import { DARK_COLOURS, DIE_SIZE, dieTurn, gatherOffsets, maxValue, valueUp, yawOf, type Die, type DieKind } from './state/dice';
+import { d20Yaw, DARK_COLOURS, DIE_SIZE, dieSize, dieTurn, gatherOffsets, maxValue, valueRange, valueUp, yawOf, type Die, type DieKind } from './state/dice';
 import { newUid } from './state/store';
 import { snapYaw } from './state/piles';
 import { isStand, standHeightAt } from './state/stand';
@@ -26,6 +26,8 @@ const SWAY_MAX = 0.5;
 const SWAY_RATE = 10;
 /** A held die swings round to its new turn at this rate, 1/s, as cards do (decision 275). */
 const FACE_RATE = 14;
+/** A rolled d20 turns to read the right way up in this long once it comes to rest, ms (decision 279). */
+const UPRIGHT_MS = 220;
 /** Dice carried with cards ride this far clear of the cards' clump, mm (decision 274). */
 const ASIDE_GAP = 10;
 /** Dice let go with cards wait at most this long for them to come to rest, ms. */
@@ -45,6 +47,8 @@ export class Dice {
   private readonly face = new Map<string, number>();
   /** Dice being dragged, and where each is heading under the cursor. */
   private carrying: { uid: string; x: number; y: number; die: Die }[] | null = null;
+  /** Rolled d20s turning upright where they came to rest (decision 279): from how they lay, since when. */
+  private readonly upright = new Map<string, { at: THREE.Vector3; q: THREE.Quaternion; start: number }>();
   /** Dice let go with cards, hanging where they were let go until those cards come to rest (decision 274). */
   private landing: { dice: { uid: string; x: number; y: number; die: Die }[]; cards: string[]; since: number }[] = [];
   /**
@@ -79,6 +83,7 @@ export class Dice {
   /** Held dice close in on their places under the cursor, a share each frame. */
   private glide(dt: number): void {
     this.settle();
+    this.turnUpright();
     const moving = [...(this.carrying ?? []), ...this.landing.flatMap((l) => l.dice)];
     if (!moving.length) {
       this.sway.clear();
@@ -109,10 +114,12 @@ export class Dice {
         face = Math.abs(face) < 1e-3 ? 0 : face - face * Math.min(1, dt * FACE_RATE);
         this.face.set(c.uid, face);
       }
-      const q = dieTurn(c.die.value, tidy ? this.square(c.die.yaw) + face : c.die.yaw + face + Math.sin(t * 3.1 + sw.phase) * 0.06, c.die.kind);
+      // A d20 never turns (decision 279): only a swing round to face you.
+      const yaw = c.die.kind === 'd20' ? d20Yaw(c.die.side) + face : tidy ? this.square(c.die.yaw) + face : c.die.yaw + face + Math.sin(t * 3.1 + sw.phase) * 0.06;
+      const q = dieTurn(c.die.value, yaw, c.die.kind);
       if (lean > 1e-4) q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(-sw.vy / speed, sw.vx / speed, 0), lean));
       const bob = tidy ? 0 : Math.min(6, speed * 0.012) + Math.sin(t * 4.3 + sw.phase) * 0.8;
-      this.layer.pose(c.uid, { x, y, z: this.surfaceAt(x, y, skip) + DIE_SIZE / 2 + CARRY + bob }, q);
+      this.layer.pose(c.uid, { x, y, z: this.surfaceAt(x, y, skip) + dieSize(c.die.kind) / 2 + CARRY + bob }, q);
     }
   }
 
@@ -130,7 +137,7 @@ export class Dice {
     this.landing = this.landing.filter((l) => !done.includes(l));
     const skip = new Set(done.flatMap((l) => l.dice.map((d) => d.uid)));
     const moved = done.flatMap((l) => l.dice).filter((d) => app.store.dice.has(d.uid))
-      .map((d) => ({ ...d.die, x: d.x, y: d.y, z: this.surfaceAt(d.x, d.y, skip) + DIE_SIZE / 2, yaw: this.square(d.die.yaw) }));
+      .map((d) => this.laid({ ...d.die, x: d.x, y: d.y, z: this.surfaceAt(d.x, d.y, skip) + dieSize(d.die.kind) / 2 }));
     for (const u of skip) {
       this.busy.delete(u);
       this.layer.carried.delete(u);
@@ -146,10 +153,40 @@ export class Dice {
     const a = this.app.rig.screenToPlane(sx, sy, 0), b = this.app.rig.screenToPlane(sx + 60, sy, 0);
     if (!a || !b) return { x: 0, y: 0 };
     const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-    const spots = gatherOffsets(count);
-    const half = Math.max(...spots.map((p) => Math.max(Math.abs(p.x), Math.abs(p.y)))) + DIE_SIZE / 2;
+    const size = this.biggest([...this.selected]);
+    const spots = gatherOffsets(count, size);
+    const half = Math.max(...spots.map((p) => Math.max(Math.abs(p.x), Math.abs(p.y)))) + size / 2;
     const far = CARD_H / 2 + ASIDE_GAP + half;
     return { x: ((b.x - a.x) / len) * far, y: ((b.y - a.y) / len) * far };
+  }
+
+  /** The size of the biggest of these dice, so a gathered block has room for a d20. */
+  private biggest(uids: string[]): number {
+    return Math.max(DIE_SIZE, ...uids.map((u) => dieSize(this.app.store.dice.get(u)?.kind)));
+  }
+
+  /** A die as it lies once put down: a d20 the right way up (decision 279), any other squared in Tidy mode. */
+  private laid(d: Die): Die {
+    return { ...d, yaw: d.kind === 'd20' ? d20Yaw(d.side) : this.square(d.yaw) };
+  }
+
+  /** Rolled d20s that came to rest at an angle turn the right way up where they lie (decision 279). */
+  private turnUpright(): void {
+    if (!this.upright.size) return;
+    const now = performance.now();
+    for (const [uid, u] of this.upright) {
+      const d = this.app.store.dice.get(uid);
+      const t = Math.min(1, (now - u.start) / UPRIGHT_MS);
+      if (!d || t >= 1 || this.busy.has(uid)) {
+        this.upright.delete(uid);
+        if (!this.busy.has(uid)) this.layer.carried.delete(uid);
+        if (d && !this.busy.has(uid)) this.layer.place(uid, d);
+        continue;
+      }
+      const k = 1 - (1 - t) * (1 - t);
+      const to = new THREE.Vector3(d.x, d.y, d.z);
+      this.layer.pose(uid, u.at.clone().lerp(to, k), u.q.clone().slerp(dieTurn(d.value, d.yaw, d.kind), k));
+    }
   }
 
   /** In Tidy mode (Ctrl held, or Shift + T), a turn snapped to the nearest quarter (decision 262). */
@@ -181,39 +218,47 @@ export class Dice {
     });
     for (const m of this.app.store.mats.values()) if (isStand(m)) top = Math.max(top, standHeightAt(m, x, y));
     for (const d of this.app.store.dice.values()) {
-      if (skip.has(d.uid) || Math.abs(d.x - x) > DIE_SIZE || Math.abs(d.y - y) > DIE_SIZE) continue;
-      top = Math.max(top, d.z + DIE_SIZE / 2);
+      if (skip.has(d.uid) || Math.abs(d.x - x) > dieSize(d.kind) || Math.abs(d.y - y) > dieSize(d.kind)) continue;
+      top = Math.max(top, d.z + dieSize(d.kind) / 2);
     }
     return top;
   }
 
   /**
    * D: a new die at the cursor, on whatever is there: a white six-sided die
-   * showing 1, or (D D, decision 278) a d20 of a dark colour at random, showing 20.
+   * showing 1, or (D D, decision 278) a d20 of a dark colour at random, showing 20,
+   * the right way up (decision 279).
    */
   spawn(at: { x: number; y: number }, kind?: DieKind): string {
     // Facing the side that spawns it (decision 267).
     const d20 = kind === 'd20';
-    const die: Die = {
-      uid: newUid('d'), x: at.x, y: at.y, z: this.surfaceAt(at.x, at.y) + DIE_SIZE / 2, yaw: this.square(this.app.facing + (Math.random() - 0.5) * 0.6),
+    const die: Die = this.laid({
+      uid: newUid('d'), x: at.x, y: at.y, z: this.surfaceAt(at.x, at.y) + dieSize(kind) / 2, yaw: this.app.facing + (Math.random() - 0.5) * 0.6,
       value: d20 ? 20 : 1, side: this.app.side || undefined,
       ...(d20 ? { kind, color: DARK_COLOURS[Math.floor(Math.random() * DARK_COLOURS.length)] } : {}),
-    };
+    });
     this.app.store.setDice([die]);
     return die.uid;
   }
 
-  /** 1-9 and 0 (decisions 255, 278): set the number on top, on each die that has it. */
+  /** 1-9 and 0 (decisions 255, 278): set the number on top, on each die that can show it; a d20 any up to 999,999 (decision 279). */
   set(uids: string[], value: number): void {
     const dice = this.app.store.dice;
-    this.app.store.setDice(uids.map((u) => dice.get(u)).filter((d): d is Die => !!d && value >= 1 && value <= maxValue(d.kind)).map((d) => ({ ...d, value })));
+    this.app.store.setDice(uids.map((u) => dice.get(u)).filter((d): d is Die => {
+      if (!d) return false;
+      const r = valueRange(d.kind);
+      return value >= r.min && value <= r.max;
+    }).map((d) => ({ ...d, value })));
   }
 
-  /** The wheel over a die (decision 278): turn the number up or down, kept between 1 and its highest. */
+  /** The wheel over a die (decision 278): turn the number up or down, kept within what it can show (a d20 past 20, decision 279). */
   step(uids: string[], by: number): void {
     const dice = this.app.store.dice;
     this.app.store.setDice(uids.map((u) => dice.get(u)).filter((d): d is Die => !!d && !this.busy.has(d.uid))
-      .map((d) => ({ ...d, value: Math.max(1, Math.min(maxValue(d.kind), d.value + by)) })));
+      .map((d) => {
+        const r = valueRange(d.kind);
+        return { ...d, value: Math.max(r.min, Math.min(r.max, d.value + by)) };
+      }));
   }
 
   /** C's colour menu (decision 278): give dice a colour. */
@@ -248,13 +293,15 @@ export class Dice {
       (rest) => {
         for (const r of rest) {
           this.busy.delete(r.uid);
-          this.layer.carried.delete(r.uid);
+          // A d20 that came to rest at an angle turns the right way up from there (decision 279).
+          if (store.dice.get(r.uid)?.kind === 'd20') this.upright.set(r.uid, { at: new THREE.Vector3(r.x, r.y, r.z), q: r.q.clone(), start: performance.now() });
+          else this.layer.carried.delete(r.uid);
         }
         // Where each came to rest, flat on whatever it landed on, showing the face that came up.
         store.setDice(rest.filter((r) => store.dice.has(r.uid)).map((r) => {
           const skip = new Set([r.uid]);
-          const kind = store.dice.get(r.uid)!.kind;
-          return { ...store.dice.get(r.uid)!, x: r.x, y: r.y, z: this.surfaceAt(r.x, r.y, skip) + DIE_SIZE / 2, yaw: this.square(yawOf(r.q, kind)), value: valueUp(r.q, kind) };
+          const d = store.dice.get(r.uid)!;
+          return this.laid({ ...d, x: r.x, y: r.y, z: this.surfaceAt(r.x, r.y, skip) + dieSize(d.kind) / 2, yaw: yawOf(r.q, d.kind), value: valueUp(r.q, d.kind) });
         }));
       },
       toss,
@@ -270,7 +317,7 @@ export class Dice {
       this.busy.delete(d.uid);
       this.layer.carried.delete(d.uid);
     }
-    store.setDice(dice.map((d) => ({ ...d, value: 1 + Math.floor(Math.random() * maxValue(d.kind)), yaw: d.yaw + (Math.random() - 0.5) * 2 })));
+    store.setDice(dice.map((d) => this.laid({ ...d, value: 1 + Math.floor(Math.random() * maxValue(d.kind)), yaw: d.yaw + (Math.random() - 0.5) * 2 })));
   }
 
   /** The dice in a screen rectangle, for the marquee. */
@@ -303,13 +350,14 @@ export class Dice {
       h.die.side = side || undefined;
     }
     if (!alt && (held.length > 1 || aside.x || aside.y)) {
-      const spots = gatherOffsets(held.length);
+      const spots = gatherOffsets(held.length, this.biggest(held.map((h) => h.uid)));
       // Square to the die picked up, so the block is neat and no corners clash.
       const yaw = (held.find((h) => h.uid === lead) ?? held[0])?.die.yaw ?? 0;
       held.forEach((h, i) => {
         h.ox = spots[i].x + aside.x;
         h.oy = spots[i].y + aside.y;
-        h.die.yaw = yaw;
+        // A d20 keeps reading the right way up (decision 279).
+        if (h.die.kind !== 'd20') h.die.yaw = yaw;
       });
     }
     // Each swings round to its new turn rather than snapping (decision 275); half a turn goes clockwise, as R does.
@@ -431,7 +479,7 @@ export class Dice {
         this.layer.carried.delete(h.uid);
         if (!p) return h.die;
         const nx = p.x + h.ox, ny = p.y + h.oy;
-        return { ...h.die, x: nx, y: ny, z: this.surfaceAt(nx, ny, skip()) + DIE_SIZE / 2, yaw: this.square(h.die.yaw) };
+        return this.laid({ ...h.die, x: nx, y: ny, z: this.surfaceAt(nx, ny, skip()) + dieSize(h.die.kind) / 2 });
       });
       held = null;
       this.carrying = null;

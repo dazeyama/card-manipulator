@@ -6,7 +6,7 @@
 import type { App } from '../app';
 import type { Dice } from '../dice';
 import type { DiceLayer } from '../render/dice';
-import { DIE_SIZE } from '../state/dice';
+import { dieSize } from '../state/dice';
 
 /** Below this size on screen, px, every die shows its number: one wheel notch further out than 26 (decision 266). */
 const SMALL_PX = 22;
@@ -40,19 +40,20 @@ export class DiceNumbers {
       }
       // Where it is drawn now: mid-drag or mid-roll too.
       const at = this.layer.drawnAt(d.uid)?.position ?? d;
-      const top = at.z + DIE_SIZE * 0.75;
+      const size3d = dieSize(d.kind);
+      const top = at.z + size3d * 0.75;
       if (!rig.inFront(at.x, at.y, top)) {
         el.hidden = true;
         continue;
       }
       const p = rig.worldToScreen(at.x, at.y, top);
       // The die's size on screen.
-      const c = rig.worldToScreen(at.x, at.y, at.z), q = rig.worldToScreen(at.x + DIE_SIZE, at.y, at.z);
+      const c = rig.worldToScreen(at.x, at.y, at.z), q = rig.worldToScreen(at.x + size3d, at.y, at.z);
       const size = Math.hypot(q.x - c.x, q.y - c.y);
       const show = this.dice.hovered === d.uid || size < SMALL_PX;
       el.hidden = !show;
       if (!show) continue;
-      el.textContent = String(d.value);
+      el.textContent = d.value.toLocaleString();
       el.style.fontSize = `${Math.max(FONT_MIN, Math.min(FONT_MAX, size * 0.8)).toFixed(0)}px`;
       el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -100%)`;
     }

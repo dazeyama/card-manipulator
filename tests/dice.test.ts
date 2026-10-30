@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { D20_RADIUS, D20_VALUES, d20Geometry, DIE_SIZE, dieTurn, FACE_VALUES, gatherOffsets, isDark, maxValue, valueUp, yawOf } from '../src/state/dice';
+import { D20_RADIUS, D20_SIZE, D20_VALUES, d20Geometry, DIE_SIZE, dieTurn, faceOf, FACE_VALUES, gatherOffsets, isDark, maxValue, valueRange, valueUp, yawOf } from '../src/state/dice';
 
 describe('dice (decision 255)', () => {
   it('has opposite faces adding up to 7', () => {
@@ -57,7 +57,7 @@ describe('d20 (decision 278)', () => {
     }
   });
 
-  it('lies on a face as tall as a six-sided die', () => {
+  it('lies on a face D20_SIZE tall, bigger than a six-sided die (decision 279)', () => {
     const geo = d20Geometry();
     const pos = geo.getAttribute('position');
     const q = dieTurn(20, 0.4, 'd20');
@@ -66,8 +66,30 @@ describe('d20 (decision 278)', () => {
       const v = new THREE.Vector3().fromBufferAttribute(pos, i).applyQuaternion(q);
       low = Math.min(low, v.z);
     }
-    expect(low).toBeCloseTo(-DIE_SIZE / 2, 3);
-    expect(D20_RADIUS).toBeGreaterThan(DIE_SIZE / 2);
+    expect(low).toBeCloseTo(-D20_SIZE / 2, 3);
+    expect(D20_SIZE).toBeGreaterThanOrEqual(25);
+    expect(D20_RADIUS).toBeGreaterThan(D20_SIZE / 2);
+  });
+
+  it('reads the right way up at no turn, whatever the number (decision 279)', () => {
+    const pos = d20Geometry(1).getAttribute('position');
+    for (let v = 1; v <= 20; v++) {
+      const f = faceOf(v, 'd20');
+      const corner = new THREE.Vector3().fromBufferAttribute(pos, f * 3);
+      const mid = new THREE.Vector3();
+      for (let k = 0; k < 3; k++) mid.add(new THREE.Vector3().fromBufferAttribute(pos, f * 3 + k));
+      mid.divideScalar(3);
+      // The number's top, toward the face's first corner, points across the table (+y).
+      const up = corner.sub(mid).applyQuaternion(dieTurn(v, 0, 'd20'));
+      expect(Math.atan2(up.y, up.x)).toBeCloseTo(Math.PI / 2, 5);
+    }
+  });
+
+  it('takes any number from 0 to 999,999, shown on its nearest face (decision 279)', () => {
+    expect(valueRange('d20')).toEqual({ min: 0, max: 999_999 });
+    expect(valueRange()).toEqual({ min: 1, max: 6 });
+    expect(valueUp(dieTurn(4321, 0, 'd20'), 'd20')).toBe(20);
+    expect(valueUp(dieTurn(0, 0, 'd20'), 'd20')).toBe(1);
   });
 
   it('puts white numbers on dark dice and black on light ones', () => {

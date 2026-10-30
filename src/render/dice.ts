@@ -10,7 +10,7 @@ import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { ACCENT, type App } from '../app';
-import { D20_RADIUS, D20_VALUES, d20Geometry, DIE_SIZE, DIE_WHITE, dieTurn, FACE_VALUES, isDark, type Die } from '../state/dice';
+import { D20_RADIUS, D20_VALUES, d20Geometry, d20Yaw, DIE_SIZE, dieSize, DIE_WHITE, dieTurn, faceOf, FACE_VALUES, isDark, type Die } from '../state/dice';
 import { outlineMaterial } from './standMesh';
 
 /** Pip spots for each number, on a 3 x 3 grid from -1 to 1. */
@@ -99,12 +99,50 @@ function d20Body(): THREE.BufferGeometry {
   return geo;
 }
 
+/**
+ * A number no d20 face has (decision 279): drawn on a thin triangle laid over
+ * the face it rests on, in the die's colour, so the face shows that number.
+ */
+function numberTexture(value: number, color: string): THREE.CanvasTexture {
+  const n = 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = n;
+  const g = c.getContext('2d')!;
+  g.fillStyle = color;
+  g.fillRect(0, 0, n, n);
+  g.fillStyle = inkOn(color);
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  const text = value.toLocaleString();
+  // As big as fits across the triangle at its middle.
+  const px = Math.min(n * 0.42, (n * 0.55) / (text.length * 0.58));
+  g.font = `900 ${px}px "Arial Black", Arial, sans-serif`;
+  const mid = (D20_TRI[0][1] + D20_TRI[1][1] + D20_TRI[2][1]) / 3;
+  g.fillText(text, n / 2, (1 - mid) * n);
+  return canvasTexture(c);
+}
+
+/** The triangle over one of a d20's faces, a hair out from it, mapped onto a whole number texture. */
+function faceDecal(face: number): THREE.BufferGeometry {
+  const pos = d20Geometry().getAttribute('position');
+  const pts = [0, 1, 2].map((k) => new THREE.Vector3().fromBufferAttribute(pos, face * 3 + k));
+  const out = pts[0].clone().add(pts[1]).add(pts[2]).normalize().multiplyScalar(0.08);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts.flatMap((p) => [p.x + out.x, p.y + out.y, p.z + out.z]), 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(D20_TRI.flat(), 2));
+  geo.computeVertexNormals();
+  return geo;
+}
+
 interface Drawn {
   group: THREE.Group;
   body: THREE.Mesh;
   edges: LineSegments2;
   /** Its kind and colour as drawn, to notice a change. */
   look: string;
+  /** A d20's number that no face has, laid over the face it rests on, and what it shows (decision 279). */
+  decal?: THREE.Mesh;
+  decalKey?: string;
 }
 
 export class DiceLayer {
@@ -176,16 +214,36 @@ export class DiceLayer {
         d = { group, body, edges, look };
         this.drawn.set(die.uid, d);
       }
+      this.decorate(d, die);
       if (!this.carried.has(die.uid)) this.place(die.uid, die);
     }
   }
 
-  /** Draw a die lying as the store has it. */
+  /** A d20 set to a number no face has shows it over the face it rests on (decision 279). */
+  private decorate(d: Drawn, die: Die): void {
+    const custom = die.kind === 'd20' && (die.value < 1 || die.value > 20);
+    const key = custom ? `${die.value}:${die.color ?? DIE_WHITE}` : undefined;
+    if (key === d.decalKey) return;
+    if (d.decal) {
+      d.group.remove(d.decal);
+      d.decal.geometry.dispose();
+      (d.decal.material as THREE.MeshLambertMaterial).map?.dispose();
+      (d.decal.material as THREE.Material).dispose();
+      d.decal = undefined;
+    }
+    d.decalKey = key;
+    if (!custom) return;
+    d.decal = new THREE.Mesh(faceDecal(faceOf(die.value, 'd20')), new THREE.MeshLambertMaterial({ map: numberTexture(die.value, die.color ?? DIE_WHITE) }));
+    d.decal.receiveShadow = true;
+    d.group.add(d.decal);
+  }
+
+  /** Draw a die lying as the store has it: a d20 always the right way up (decision 279). */
   place(uid: string, die: Die): void {
     const d = this.drawn.get(uid);
     if (!d) return;
     d.group.position.set(die.x, die.y, die.z);
-    d.group.quaternion.copy(dieTurn(die.value, die.yaw, die.kind));
+    d.group.quaternion.copy(dieTurn(die.value, die.kind === 'd20' ? d20Yaw(die.side) : die.yaw, die.kind));
   }
 
   /** Draw a die at any pose (a drag or a roll in progress). */
@@ -216,8 +274,9 @@ export class DiceLayer {
     const local = new THREE.Ray();
     const inv = new THREE.Matrix4();
     const hit = new THREE.Vector3();
-    box.setFromCenterAndSize(new THREE.Vector3(), new THREE.Vector3(DIE_SIZE, DIE_SIZE, DIE_SIZE));
     for (const [uid, d] of this.drawn) {
+      const size = d.look.startsWith('d20') ? dieSize('d20') : DIE_SIZE;
+      box.setFromCenterAndSize(new THREE.Vector3(), new THREE.Vector3(size, size, size));
       d.group.updateMatrixWorld();
       inv.copy(d.group.matrixWorld).invert();
       local.copy(ray.ray).applyMatrix4(inv);

@@ -32,7 +32,7 @@ import { installStandSnap } from './standSnap';
 import { LifeCounters } from './ui/lifeCounter';
 import { TokenMenu } from './ui/tokenMenu';
 import { DiceColours } from './ui/diceColours';
-import { maxValue } from './state/dice';
+import { maxValue, valueRange } from './state/dice';
 import { Dice } from './dice';
 import { DiceLayer } from './render/dice';
 import { DiceNumbers } from './ui/diceNumbers';
@@ -542,14 +542,16 @@ const askCount = (faceDown: boolean) => {
     })
     .finally(() => (askingCount = false));
 };
-// 0 over a die, or with dice selected, asks for the number to show, as for drawing (decision 278).
+// 0 over a die, or with dice selected, asks for the number to show, as for drawing (decision 278);
+// a d20 takes any number from 0 to 999,999 (decision 279).
 keyboard.bind('0', () => {
   const set = dice.targets();
   if (!set.length) return askCount(zeroFaceDown);
   if (drag.dragging || askingCount) return;
-  const top = Math.max(...set.map((u) => maxValue(store.dice.get(u)?.kind)));
+  const ranges = set.map((u) => valueRange(store.dice.get(u)?.kind));
+  const min = Math.min(...ranges.map((r) => r.min)), max = Math.max(...ranges.map((r) => r.max));
   askingCount = true;
-  void numberDialog('Set the die to:', { min: 1, max: top, value: store.dice.get(set[0])?.value ?? 1, ok: 'Set' })
+  void numberDialog('Set the die to:', { min, max, value: store.dice.get(set[0])?.value ?? 1, ok: 'Set' })
     .then((r) => {
       if (r) dice.set(set, r.value);
     })
