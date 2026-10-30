@@ -1120,7 +1120,9 @@ export class DragController {
       return placeSequential(app, uids, held.map((c) => ({ x: this.cursor.x + c.ox, y: this.cursor.y + c.oy, yaw: c.base })), moving);
     }
     // A gathered group becomes a stack at the drop point (decision 5), loose unless Tidy mode is on (decisions 94, 98).
-    return pileAt(app, uids, { x: this.cursor.x, y: this.cursor.y, yaw: this.groupTurn }, moving);
+    // Upright for the side dropping it, or square to the stand it lands on (decision 269), plus any turn given in the hand.
+    const base = this.overStand ? this.overStand.yaw : app.facing;
+    return pileAt(app, uids, { x: this.cursor.x, y: this.cursor.y, yaw: base + this.groupTurn }, moving);
   }
 }
 
