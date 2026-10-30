@@ -6,6 +6,7 @@ import { nameFaces } from '../io/decklist';
 import { fold } from '../query/text';
 import type { CardRecord } from '../state/types';
 import { scryfall } from './client';
+import { findToken } from './tokens';
 import { getRecords, putRecords, trimCard, type ScryfallCard } from './cardData';
 import { DAY, kvGet, kvSet } from './db';
 import { nameIndex, type NameIndex } from './names';
@@ -23,6 +24,8 @@ export interface Resolution {
 }
 
 const BATCH = 75;
+/** At most this many unfound lines are tried as tokens, one search each (decision 263). */
+const TOKEN_TRIES = 30;
 /** Identifier to printing id, so a list resolved before spawns again without the network. */
 const MAP_KEY = 'resolve.ids.v1';
 const MAP_AGE = 7 * DAY;
@@ -91,6 +94,23 @@ export async function resolveEntries(entries: DeckEntry[], onProgress?: (done: n
       if (!taken[k]) unresolved.push(e);
     });
     onProgress?.(entries.length - todo.length + Math.min(todo.length, start + BATCH), entries.length);
+  }
+  // Lines no card answers may be tokens ("3 Treasure", "2 Goblin Token"), which the
+  // card lookup leaves out: ask for those by name, a few at most (decision 263).
+  if (unresolved.length) {
+    const left: DeckEntry[] = [];
+    for (const [k, e] of unresolved.entries()) {
+      const token = k < TOKEN_TRIES ? await findToken(e.name, e.set).catch(() => null) : null;
+      if (!token) {
+        left.push(e);
+        continue;
+      }
+      records.push(token);
+      resolved.push({ entry: e, record: token });
+      map[JSON.stringify(identifierFor(e, index)).toLowerCase()] = { id: token.id, at: now };
+    }
+    unresolved.length = 0;
+    unresolved.push(...left);
   }
   if (records.length) await kvSet(MAP_KEY, map);
   // Keep the list's own order.

@@ -6,6 +6,7 @@ import { isSetCode, loadSets, nameIndex } from '../scryfall/names';
 import { resolveEntries, type ResolvedEntry } from '../scryfall/resolve';
 import { spawnCards, type SpawnItem } from '../spawn';
 import { buildBasics } from './basicsUi';
+import { buildTokens } from './tokensUi';
 import type { Finish } from '../state/types';
 import { toast } from './toasts';
 import { h } from './dom';
@@ -277,6 +278,8 @@ export class SpawnPanel {
       h('p', { class: 'muted small' }, 'Leave set and number empty for the default printing. Set alone picks a printing from that set.'),
       // Basic lands, in the printings this table chose (decision 210).
       buildBasics(this.app, () => this.options()),
+      // Tokens from Scryfall, every printing (decision 263).
+      buildTokens(this.app, () => this.options()),
     );
   }
 }

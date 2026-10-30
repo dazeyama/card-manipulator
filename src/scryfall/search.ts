@@ -12,13 +12,18 @@ interface SearchPage {
   data: ScryfallCard[];
 }
 
-/** The query actually sent: the owner's query with extras excluded. */
+/** True if a query asks for tokens (t:token, type:token, is:token), which are then let in (decision 263). */
+export function wantsTokens(q: string): boolean {
+  return /(^|[\s(])(t|type|is):"?token/i.test(q);
+}
+
+/** The query actually sent: the owner's query with extras excluded, unless it asks for tokens. */
 export function withoutExtras(q: string): string {
-  return `(${q.trim()}) -is:extra`;
+  return wantsTokens(q) ? `(${q.trim()})` : `(${q.trim()}) -is:extra`;
 }
 
 function url(q: string): string {
-  return `/cards/search?q=${encodeURIComponent(withoutExtras(q))}&unique=cards&order=name`;
+  return `/cards/search?q=${encodeURIComponent(withoutExtras(q))}&unique=cards&order=name${wantsTokens(q) ? '&include_extras=true' : ''}`;
 }
 
 /** How many cards the query matches, or 0 for none. Throws on a query Scryfall can't read. */
