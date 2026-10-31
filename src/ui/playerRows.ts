@@ -117,7 +117,8 @@ export class PlayerRows {
     };
     const items: HTMLElement[] = [
       item('👑 Pass crown', async () => {
-        if (await confirmDialog(`Pass the crown to ${p.nickname}? You keep Cards.`, 'Pass crown')) session.send({ t: 'pass', player: p.id });
+        // What the old crown keeps is left unsaid for now (O112); was: `... You keep Cards.`
+        if (await confirmDialog(`Pass the crown to ${p.nickname}?`, 'Pass crown')) session.send({ t: 'pass', player: p.id });
       }),
       item('Kick', () => session.send({ t: 'kick', player: p.id }), true),
       item('Ban', async () => {
