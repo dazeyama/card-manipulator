@@ -149,7 +149,11 @@ describe('stands (6.3)', () => {
     expect(c.stand).toBeUndefined();
     expect(c.faceUp).toBe(false);
     const confirm = sent.find((m) => m.t === 'confirm') as Extract<ClientMsg, { t: 'confirm' }>;
-    expect(JSON.stringify(confirm.op)).not.toContain('"spill"');
+    // Laid out as [move, mat spill]: the move first, so the server still has the stand for its spill line (5.5).
+    expect(confirm.op.t).toBe('batch');
+    const parts = (confirm.op as Extract<Op, { t: 'batch' }>).ops;
+    expect(parts.map((o) => o.t)).toEqual(['move', 'mat']);
+    expect(parts[1]).toEqual({ t: 'mat', spill: ['st'] });
   });
 
   it('takes a spill laid out by the spiller: the stand removed and its cards moved off, in one batch', () => {

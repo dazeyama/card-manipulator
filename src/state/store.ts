@@ -620,6 +620,24 @@ export class Store {
     this.told({ t: 'mat', remove: [uid] }, { t: 'mat', set: [{ ...had }] });
   }
 
+  /**
+   * Spill a card stand (ONLINE.md 6.3, O31): it goes, and any card still on it
+   * lies on the table now (a spill lays its cards out first). A room hears
+   * `mat {spill}`, so the server writes "Ann spilled Bea's stand" (5.5).
+   */
+  spillMat(uid: string): void {
+    const had = this.mats.get(uid);
+    if (!had) return;
+    const off = [...this.cards.values()].filter((c) => c.stand === uid);
+    for (const c of off) c.stand = undefined;
+    this.mats.delete(uid);
+    if (off.length) this.events.emit('moved', off.map((c) => c.uid));
+    this.events.emit('mats', undefined);
+    const undo: Op[] = [{ t: 'mat', set: [{ ...had }] }];
+    if (off.length) undo.push({ t: 'move', moves: off.map((c) => ({ uid: c.uid, stand: uid })) });
+    this.told({ t: 'mat', spill: [uid] }, joined(undo));
+  }
+
   /** Remove every card, pile and selection. Card records stay cached. */
   clear(): void {
     const was = this.tracking ? this.table() : null;

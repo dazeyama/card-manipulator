@@ -52,12 +52,7 @@ export function applyToStore(store: Store, op: Op): void {
     case 'mat': {
       for (const m of op.set ?? []) store.addMat({ ...m });
       for (const uid of op.remove ?? []) store.removeMat(uid);
-      if (op.spill?.length) {
-        const spilled = new Set(op.spill);
-        const off = [...store.cards.values()].filter((c) => c.stand && spilled.has(c.stand)).map((c) => ({ uid: c.uid, stand: null }));
-        if (off.length) store.moveCards(off);
-        for (const uid of op.spill) store.removeMat(uid);
-      }
+      for (const uid of op.spill ?? []) store.spillMat(uid);
       return;
     }
     case 'dice':

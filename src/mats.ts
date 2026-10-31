@@ -12,10 +12,10 @@ import type { CustomGesture, Mods } from './input/mouse';
 import { ImageLoader } from './render/images';
 import { inSpace, land, placeSequential } from './commands';
 import { drawPlate, setOutlineResolution, standGroup } from './render/standMesh';
-import { fullStandsOf, inFrontOf, isFullStand, isSmallStand, isStand, LIP_H, onStand, SMALL_NAME_MAX, STAND_D, STAND_H, STAND_W, standHeightAt, standW } from './state/stand';
+import { fullStandsOf, isFullStand, isSmallStand, isStand, LIP_H, onStand, SMALL_NAME_MAX, STAND_D, STAND_H, STAND_W, standHeightAt, standW } from './state/stand';
 import { confirmDialog, textDialog } from './ui/confirm';
 import { allowedNow, mayTouchStand, roomToast, whyNot } from './online/guard';
-import { messyLayout } from './state/piles';
+import { spillStands } from './online/outbox';
 import { MAT_H, MAT_W, type Mat } from './state/types';
 import { newUid } from './state/store';
 
@@ -431,17 +431,9 @@ export class Mats {
     const room = app.online?.room;
     const whose = m.owner ? `${room?.nameOf(m.owner) ?? 'Someone'}’s stand` : 'this stand';
     if (ask && !(await confirmDialog(`Spill ${whose}? Its cards drop face down in front of it.`, 'Spill'))) return;
-    const members = this.cardsOn(uid).map((u) => store.cards.get(u)!).sort((a, b) => a.z - b.z);
-    store.removeMat(uid);
-    if (!members.length) return;
-    const uids = members.map((c) => c.uid);
-    const pile = inFrontOf(m, messyLayout(uids.length, { x: m.x, y: m.y, yaw: m.yaw }));
-    const landings = inSpace(null, () => placeSequential(app, uids, pile));
-    for (const l of landings) {
-      l.faceUp = false;
-      l.stand = null;
-    }
-    land(app, landings, { keepSide: true });
+    // Laid out face down in front, then the stand spilled (a `mat {spill}`, so the room's chat says who spilled whose, 5.5);
+    // from anyone but the crown, proposed and laid out by the crown (the Sync fork's spillStands).
+    spillStands(app, [uid]);
   }
 
   // ---- drawing ----

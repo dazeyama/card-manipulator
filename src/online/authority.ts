@@ -451,7 +451,8 @@ export function spillOps(store: RoomSync['app']['store'], uids: string[], app: R
       const landings = inSpace(null, () => placeSequential(app, cards, spots));
       ops.push({ t: 'move', moves: landings.map((l) => ({ uid: l.uid, x: l.x, y: l.y, z: l.z, yaw: l.yaw, faceUp: false, stand: null })) });
     }
-    ops.push({ t: 'mat', remove: [uid] });
+    // A spill, not a removal: the server writes the spill's chat line (5.5) with the stand still in its mirror.
+    ops.push({ t: 'mat', spill: [uid] });
   }
   return ops;
 }

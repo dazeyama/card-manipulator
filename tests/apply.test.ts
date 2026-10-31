@@ -100,6 +100,7 @@ describe('the store tells a room each local change and how to undo it', () => {
     ['setMatLocked', (s) => s.setMatLocked('m1', true)],
     ['setMatOwner', (s) => s.setMatOwner('st', null)],
     ['removeMat', (s) => s.removeMat('m1')],
+    ['spillMat', (s) => s.spillMat('st')],
     ['setDice', (s) => s.setDice([{ uid: 'd1', x: 0, y: 0, z: 10, yaw: 0, value: 6 }, { uid: 'd9', x: 1, y: 1, z: 10, yaw: 0, value: 2 }])],
     ['removeDice', (s) => s.removeDice(['d2'])],
     ['replaceDice', (s) => s.replaceDice([{ uid: 'd9', x: 1, y: 1, z: 10, yaw: 0, value: 2 }])],

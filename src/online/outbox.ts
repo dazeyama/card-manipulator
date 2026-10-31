@@ -196,7 +196,7 @@ export function spillStands(app: App, uids: string[]): void {
   }
   for (const op of spillOps(app.store, uids, app)) {
     if (op.t === 'move') land(app, op.moves as Landing[], { arc: 8, keepSide: true });
-    else if (op.t === 'mat') for (const u of op.remove ?? []) app.store.removeMat(u);
+    else if (op.t === 'mat') for (const u of op.spill ?? []) app.store.spillMat(u);
   }
 }
 
