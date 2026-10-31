@@ -331,13 +331,14 @@ export class Authority {
   private checkMat(op: Extract<Op, { t: 'mat' }>, from: string, may: (a: Action) => RefuseReason | null, ctx: JudgeCtx): RefuseReason | null {
     const store = this.sync.app.store;
     const now = (uid: string): Mat | undefined => (ctx.mats.has(uid) ? ctx.mats.get(uid) ?? undefined : store.mats.get(uid));
-    /** Full stands the sender owns, as this op has left them so far, apart from one. */
-    const fullMine = (except: string): number => {
+    /** Full stands a player owns, as this op has left them so far, apart from one. */
+    const fullOf = (player: string, except: string): number => {
       let n = 0;
-      for (const [uid, m] of ctx.mats) if (uid !== except && m && isFullStand(m) && m.owner === from) n++;
-      for (const m of store.mats.values()) if (m.uid !== except && !ctx.mats.has(m.uid) && isFullStand(m) && m.owner === from) n++;
+      for (const [uid, m] of ctx.mats) if (uid !== except && m && isFullStand(m) && m.owner === player) n++;
+      for (const m of store.mats.values()) if (m.uid !== except && !ctx.mats.has(m.uid) && isFullStand(m) && m.owner === player) n++;
       return n;
     };
+    const fullMine = (except: string): number => fullOf(from, except);
     const fullOfMine = (m: Mat | undefined) => !!m && isStand(m) && isFullStand(m) && m.owner === from;
     for (const m of op.set ?? []) {
       const was = now(m.uid);
@@ -358,14 +359,19 @@ export class Authority {
         const owner = was.owner ?? null;
         const next = m.owner ?? null;
         if (owner !== next) {
-          // Only Release your own, and Claim an unowned one for yourself (O65);
-          // Give to and taking another's are the crown's (review 8).
+          // Release your own, Claim an unowned one for yourself (O65), or, as a co-host,
+          // give an unowned one to a player in the room (O111); a stand someone owns is
+          // never taken or given away by anyone but the crown (review 8).
           if (owner === from && next === null) r = may('standOwn');
           else if (owner === null && next === from) {
             if (isFullStand(m) && fullMine(m.uid) > 0) {
               r = may('standClaim');
               regardless = true;
             } else r = may('standOwn');
+          } else if (owner === null && next !== null && this.sync.online.room.player(next)) {
+            r = may('standGive');
+            // One full stand each (O27), for the one given it too.
+            if (!r && isFullStand(m) && fullOf(next, m.uid) > 0) r = 'oneStand';
           } else r = 'stand';
         } else if (owner === from) r = may('standOwn');
         else r = owner === null ? may('standClaim') : 'stand';

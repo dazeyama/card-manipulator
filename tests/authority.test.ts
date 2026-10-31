@@ -226,6 +226,28 @@ describe('stands (6.3)', () => {
     expect(store.cards.get('onSam')!.stand).toBeUndefined();
   });
 
+  it('lets a co-host give an unowned stand to a player in the room, never one someone owns (O111)', () => {
+    const { propose, store } = room({ ev: 'everything', mo: 'move', pat: 'move' });
+    store.addMat(stand('free'));
+    store.addMat(stand('free2'));
+    // Move may not give; nor may anyone give to someone not in the room.
+    expect(propose('mo', { t: 'mat', set: [stand('free', 'pat')] })).toBe('rank');
+    expect(propose('ev', { t: 'mat', set: [stand('free', 'stranger')] })).toBe('stand');
+    expect(propose('ev', { t: 'mat', set: [stand('free', 'pat')] })).toBe('ok');
+    expect(store.mats.get('free')!.owner).toBe('pat');
+    // One full stand each, for the one given it too.
+    expect(propose('ev', { t: 'mat', set: [stand('free2', 'pat')] })).toBe('oneStand');
+    // A stand someone owns is not given again, nor taken (review 8).
+    expect(propose('ev', { t: 'mat', set: [stand('free', 'mo')] })).toBe('stand');
+    expect(propose('ev', { t: 'mat', set: [stand('st', 'pat')] })).toBe('stand');
+  });
+
+  it('lets a co-host go on playing while the table is locked (O111)', () => {
+    const { propose } = room({ ev: 'everything', mo: 'move' }, { locked: true });
+    expect(propose('ev', { t: 'move', moves: [{ uid: 'a', x: 7 }] })).toBe('ok');
+    expect(propose('mo', { t: 'move', moves: [{ uid: 'a', x: 8 }] })).toBe('locked');
+  });
+
   it('lets a player claim an unowned stand at Move when they own no full stand', () => {
     const { propose, store } = room({ pat: 'move' });
     store.addMat(stand('free'));
