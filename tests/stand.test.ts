@@ -4,7 +4,7 @@ import { POP_MIN, slopesOf } from '../src/state/rest';
 import { arcHand } from '../src/state/fan';
 import {
   alignTo, slopePopLift, fitOnStand, FRONT_GAP, fromSlope, inFrontOf, liftOntoSlope, underStand, LIP_H, onStand, profileHeight, raySlope, SLOPE, SLOPE_LEN, SLOPE_START, slopePose,
-  STAND_D, STAND_H, STAND_W, standHeightAt, standLocal, standTopUnder, unrollPoint, SMALL_STAND_W, standW, slopeArea,
+  STAND_D, STAND_H, STAND_W, standHeightAt, standLocal, standTopUnder, unrollPoint, SMALL_STAND_W, standW, slopeArea, isFullStand, ownerOf, isOwnedBy, fullStandsOf,
 } from '../src/state/stand';
 import { CARD_H, CARD_T, CARD_W, type Mat } from '../src/state/types';
 
@@ -154,5 +154,36 @@ describe('small stand (decisions 282, 283)', () => {
     for (const n of [1, 2, 3, 5]) expect(fitOnStand(s, fromSlope(s, arcHand(n, SMALL_STAND_W, { x: 0, y: SLOPE_LEN / 2 })))).not.toBeNull();
     // Off its end, a ray misses it.
     expect(raySlope(s, { x: SMALL_STAND_W / 2 + 10, y: SLOPE_START + 20, z: 500 }, { x: 0, y: 0, z: -1 })).toBeNull();
+  });
+});
+
+describe('stand ownership (ONLINE.md 6.3, O27, O32)', () => {
+  const full = (uid: string, owner?: string): Mat => ({ ...stand(), uid, ...(owner ? { owner } : {}) });
+  const small = (uid: string, owner?: string): Mat => ({ ...full(uid, owner), width: SMALL_STAND_W });
+  const mat: Mat = { uid: 'm', scryfallId: 'x', name: 'Mat', art: '', x: 0, y: 0, yaw: 0 };
+
+  it('tells a full stand from a small one and from a playmat', () => {
+    expect(isFullStand(full('a'))).toBe(true);
+    expect(isFullStand(small('b'))).toBe(false);
+    expect(isFullStand(mat)).toBe(false);
+  });
+
+  it('knows a stand’s owner, and that a playmat has none', () => {
+    expect(ownerOf(full('a', 'sam'))).toBe('sam');
+    expect(ownerOf(full('a'))).toBeNull();
+    expect(ownerOf({ ...mat, owner: 'sam' })).toBeNull();
+    expect(isOwnedBy(full('a', 'sam'), 'sam')).toBe(true);
+    expect(isOwnedBy(full('a', 'sam'), 'pat')).toBe(false);
+  });
+
+  it('counts the full stands a player owns, small ones unlimited', () => {
+    const mats = [full('a', 'sam'), small('b', 'sam'), small('c', 'sam'), full('d', 'pat'), full('e')];
+    expect(fullStandsOf(mats, 'sam').map((m) => m.uid)).toEqual(['a']);
+    expect(fullStandsOf(mats, 'pat').map((m) => m.uid)).toEqual(['d']);
+    expect(fullStandsOf(mats, 'nobody')).toEqual([]);
+  });
+
+  it('counts every full stand offline, where the table is one player (O32)', () => {
+    expect(fullStandsOf([full('a', 'sam'), full('e'), small('b')], null).map((m) => m.uid)).toEqual(['a', 'e']);
   });
 });

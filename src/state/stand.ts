@@ -53,6 +53,30 @@ export function isSmallStand(m: Mat): boolean {
   return standW(m) <= SMALL_STAND_W;
 }
 
+/** A full-size stand, a hand stand: each player may own one at a time (O27); small stands are unlimited. */
+export function isFullStand(m: Mat): boolean {
+  return isStand(m) && !isSmallStand(m);
+}
+
+/** The player who owns a stand in a room (ONLINE.md 6.3), or null for an unowned one. */
+export function ownerOf(m: Mat): string | null {
+  return isStand(m) && m.owner ? m.owner : null;
+}
+
+export function isOwnedBy(m: Mat, player: string): boolean {
+  return ownerOf(m) === player;
+}
+
+/**
+ * The full stands a player owns. Offline (`player` null) the whole table is
+ * one player (O32), so every full stand counts, owned or not.
+ */
+export function fullStandsOf(mats: Iterable<Mat>, player: string | null): Mat[] {
+  const out: Mat[] = [];
+  for (const m of mats) if (isFullStand(m) && (player === null || m.owner === player)) out.push(m);
+  return out;
+}
+
 /** A table point in a stand's own frame: across (a) and front to back (b, positive toward the back). */
 export function standLocal(m: Mat, x: number, y: number): { a: number; b: number } {
   const dx = x - m.x, dy = y - m.y;

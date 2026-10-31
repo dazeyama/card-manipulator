@@ -9,9 +9,9 @@ import type { App } from '../app';
 import { Online } from '../online';
 import { FakeSession, type Hello } from '../online/session';
 import { getIdentity, setColour, setNickname } from '../online/identity';
-import { checkServer, copyText, createRoom, parseHash, roomHash, roomInfo, roomLink, setHash, type RoomRoute, type ServerTrouble } from '../online/link';
-import { NICKNAME_MAX, PLAYER_COLOURS, ROOM_NAME_MAX, type ByeReason, type Player, type RoomInfo, type ServerMsg, type Tag } from '../../shared/protocol';
-import { RANK_LABEL } from '../../shared/permissions';
+import { checkServer, copyText, createRoom, inviteLink, parseHash, roomHash, roomInfo, roomLink, setHash, type RoomRoute, type ServerTrouble } from '../online/link';
+import { NICKNAME_MAX, PASSWORD_MAX, PLAYER_COLOURS, ROOM_NAME_MAX, type ByeReason, type Player, type RoomInfo, type RoomSettings, type ServerMsg, type Tag, type Visibility } from '../../shared/protocol';
+import { RANK_LABEL, RANKS, type Rank } from '../../shared/permissions';
 import { isStand } from '../state/stand';
 import type { TopBar } from './topBar';
 import { confirmDialog } from './confirm';
@@ -79,6 +79,9 @@ export class OnlineUi {
   server: 'checking' | 'ok' | ServerTrouble = 'checking';
   /** The page opened on a room link, so this browser's own table hasn't been loaded. */
   needOwnTable = false;
+  /** The room's password as the crown typed it this session (the server keeps only its hash), for Copy invite link. */
+  password: string | null = null;
+  private lastLocked = false;
   private role: Role | null = null;
   private route: RoomRoute | null = null;
   private welcomed = false;
@@ -283,6 +286,9 @@ export class OnlineUi {
         this.panel.refresh();
       }),
       ev.on('settings', () => {
+        // Everyone hears when the table is locked or unlocked (12.4).
+        if (this.welcomed && room.locked !== this.lastLocked) roomToast(room.locked ? 'The table is locked' : 'The table is unlocked', room.locked ? 'warn' : 'info');
+        this.lastLocked = room.locked;
         bar();
         this.panel.refresh();
       }),
@@ -305,6 +311,7 @@ export class OnlineUi {
       const room = this.online!.room;
       this.known = new Map(room.players.map((p) => [p.id, { ...p }]));
       this.lastCrown = room.crown;
+      this.lastLocked = room.locked;
       // Now I know who I am: my own stands' cards show (7.1).
       this.deps.hidden.attach(this.online);
       if (first && this.role === 'joiner') {
@@ -417,6 +424,7 @@ export class OnlineUi {
     this.deps.hidden.attach(null);
     this.role = null;
     this.route = null;
+    this.password = null;
     this.welcomed = false;
     this.joining = null;
     this.topBar.progress.hidden = true;
@@ -464,6 +472,19 @@ export class OnlineUi {
 
   saveCopy(): void {
     this.deps.saveCopy();
+  }
+
+  /** The password to put in an invite link: the crown's own, or the one I joined with. */
+  inviteKey(): string | null {
+    return this.password ?? this.route?.key ?? null;
+  }
+
+  async copyInvite(): Promise<void> {
+    const online = this.online;
+    const key = this.inviteKey();
+    if (!online || !key) return;
+    const ok = await copyText(inviteLink(online.room.code, key));
+    roomToast(ok ? 'Invite link copied: it opens straight in, password included' : 'Could not copy the invite link', ok ? 'ok' : 'warn');
   }
 
   // ---- pages (12.7) ----
@@ -537,12 +558,13 @@ export class OnlinePanel {
   readonly el: HTMLElement;
   private readonly body: HTMLElement;
   private readonly title: HTMLElement;
-  private readonly rows = new PlayerRows();
+  private readonly rows: PlayerRows;
   private readonly chat = new ChatStrip();
   private attachedTo: Online | null = null;
   private moved = false;
 
   constructor(private readonly ui: OnlineUi) {
+    this.rows = new PlayerRows(ui.app);
     const close = h('button', { class: 'icon-btn', title: 'Close (Esc)', 'aria-label': 'Close' }, '✕');
     close.addEventListener('click', () => this.close());
     this.title = h('span', { class: 'panel-title' }, 'Online');
@@ -647,6 +669,13 @@ export class OnlinePanel {
     const copy = h('button', { class: 'btn small', title: 'Copy the room link to send to friends' }, '🔗 Copy link');
     copy.addEventListener('click', () => void this.ui.copyLink());
     const buttons: HTMLElement[] = [copy];
+    // The invite link carries the password (O12): only with one set, and known here.
+    const key = this.ui.inviteKey();
+    if (room.settings.password && key) {
+      const invite = h('button', { class: 'btn small', title: 'Copy a link that carries the password: it opens straight in' }, '🔑 Copy invite link');
+      invite.addEventListener('click', () => void this.ui.copyInvite());
+      buttons.push(invite);
+    }
     if (room.isCrown || room.downloads) {
       const save = h('button', { class: 'btn small', title: 'Download this table as a file' }, '💾 Save a copy');
       save.addEventListener('click', () => this.ui.saveCopy());
@@ -669,10 +698,72 @@ export class OnlinePanel {
         h('div', { class: 'row wrap' }, ...buttons),
         h('p', { class: 'muted small' }, 'The room lives while someone is in it.'),
       ),
+      this.settingsSection(online),
       h('div', { class: 'online-section' }, h('div', { class: 'online-section-title' }, `Players (${room.players.filter((p) => p.connected).length} of 8)`), this.rows.el),
       h('div', { class: 'online-section grow-section' }, h('div', { class: 'online-section-title' }, 'Chat'), this.chat.el),
     );
     this.rows.render();
+  }
+
+  /** Settings (12.2, 4.3): the crown changes them (O23); everyone else sees them greyed. */
+  private settingsSection(online: Online): HTMLElement {
+    const room = online.room;
+    const s = room.settings;
+    const crown = room.isCrown;
+    const send = (set: Partial<RoomSettings>) => online.session.send({ t: 'settings', set });
+    const radios = <T extends string>(name: string, options: [T, string][], value: T, onPick: (v: T) => void) =>
+      h('div', { class: 'row tight wrap' }, ...options.map(([v, label]) => {
+        const input = h('input', { type: 'radio', name, value: v });
+        input.checked = v === value;
+        input.disabled = !crown;
+        input.addEventListener('change', () => input.checked && onPick(v));
+        return h('label', { class: 'inline' }, input, label);
+      }));
+    // The password: typed by the crown, sent with Public + password; the server keeps only its hash.
+    const pass = h('input', { class: 'grow', type: 'text', maxlength: String(PASSWORD_MAX), placeholder: 'A password, 1 to 32 characters', spellcheck: 'false', autocomplete: 'off', 'aria-label': 'Room password', value: this.ui.password ?? '' });
+    const passRow = h('div', { class: 'row tight' }, pass);
+    passRow.hidden = !crown || s.visibility !== 'password';
+    const sendPassword = () => {
+      const pw = pass.value.trim();
+      if (!pw) return;
+      this.ui.password = pw;
+      send({ visibility: 'password', password: pw });
+    };
+    pass.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') sendPassword();
+    });
+    pass.addEventListener('change', sendPassword);
+    const visibility = radios<Visibility>('room-visibility', [['unlisted', 'Unlisted'], ['public', 'Public'], ['password', 'Public + password']], s.visibility, (v) => {
+      passRow.hidden = v !== 'password';
+      if (v !== 'password') send({ visibility: v });
+      else if (pass.value.trim()) sendPassword();
+      else pass.focus();
+    });
+    const tag = radios<Tag>('room-tag-set', [['cube', 'Cube'], ['play', 'Play']], s.tag, (v) => send({ tag: v }));
+    const newcomers = h('select', { 'aria-label': 'Newcomers start as' });
+    for (const r of RANKS) {
+      const o = h('option', { value: r }, RANK_LABEL[r]);
+      o.selected = r === s.newcomers;
+      newcomers.append(o);
+    }
+    newcomers.disabled = !crown;
+    newcomers.addEventListener('change', () => send({ newcomers: newcomers.value as Rank }));
+    const toggle = (label: string, on: boolean, title: string, set: (v: boolean) => Partial<RoomSettings>) => {
+      const box = h('input', { type: 'checkbox', class: 'switch' });
+      box.checked = on;
+      box.disabled = !crown;
+      box.addEventListener('change', () => send(set(box.checked)));
+      return h('label', { class: 'setting-row', title }, h('span', {}, label), box);
+    };
+    return h('div', { class: 'online-section settings-section' + (crown ? '' : ' readonly') },
+      h('div', { class: 'online-section-title' }, crown ? 'Settings' : 'Settings (the crown’s)'),
+      h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Visibility'), visibility, passRow),
+      h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Tag'), tag),
+      h('label', { class: 'setting-row' }, h('span', {}, 'Newcomers start as'), newcomers),
+      toggle('🔒 Lock table', s.locked, 'Everyone but the crown can only look while it is locked; ranks come back on unlock', (v) => ({ locked: v })),
+      toggle('Downloads for everyone', s.downloads, 'Off hides Save a copy, Save as file and Export for everyone but the crown', (v) => ({ downloads: v })),
+    );
   }
 
   /** Drag the panel by its header; it stays inside the window. */
