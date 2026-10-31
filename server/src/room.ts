@@ -144,6 +144,8 @@ export class Room extends DurableObject<Env> {
     this.store.saveMeta(this.meta);
     // The alarm closes the room if the maker never connects, and heartbeats the Lobby while anyone is here.
     void this.ctx.storage.setAlarm(Date.now() + HEARTBEAT_MS);
+    // The admin list knows the room from the moment it exists.
+    this.heartbeat();
     return true;
   }
 
@@ -246,14 +248,19 @@ export class Room extends DurableObject<Env> {
     await this.left(ws);
   }
 
+  /**
+   * Every minute while the room is open (meta is loaded by the constructor,
+   * woken or not): close it if no socket is left, else heartbeat the Lobby.
+   * The next alarm is set first, so nothing after it can stop the heartbeats.
+   */
   async alarm(): Promise<void> {
     if (!this.meta) return;
     if (!this.sockets().length) return this.closeRoom('empty');
     const now = Date.now();
+    await this.ctx.storage.setAlarm(now + HEARTBEAT_MS);
     this.chatRate.prune(now);
     this.streamRate.prune(now);
     this.heartbeat();
-    await this.ctx.storage.setAlarm(now + HEARTBEAT_MS);
   }
 
   // ---- joining ----
