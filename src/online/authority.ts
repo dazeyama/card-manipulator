@@ -58,7 +58,10 @@ export class Authority {
     // Holds already confirmed before the crown came here are presence's; they carry on.
     for (const [uid, by] of this.sync.presence.holders) this.heldBy.set(uid, by);
     clearInterval(this.timer);
-    this.timer = setInterval(() => this.snapshot(), SNAPSHOT_EVERY_MS);
+    // Only when something changed since the last one: each snapshot counts against the free plan (15).
+    this.timer = setInterval(() => {
+      if (this.opsSince) this.snapshot();
+    }, SNAPSHOT_EVERY_MS);
     if (this.queue.length) void this.pump();
   }
 

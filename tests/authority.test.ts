@@ -171,6 +171,28 @@ describe('stands (6.3)', () => {
   });
 });
 
+describe('snapshots for the mirror (10.2)', () => {
+  it('sends one every 30 seconds only when something changed since the last', async () => {
+    const { vi } = await import('vitest');
+    vi.useFakeTimers();
+    try {
+      const { propose, sent, judge } = room({ mo: 'move' });
+      const parts = () => sent.filter((m) => m.t === 'snapshot').length;
+      vi.advanceTimersByTime(31_000);
+      expect(parts()).toBe(0);
+      expect(propose('mo', { t: 'move', moves: [{ uid: 'a', x: 1 }] })).toBe('ok');
+      vi.advanceTimersByTime(30_000);
+      expect(parts()).toBeGreaterThan(0);
+      const after = parts();
+      vi.advanceTimersByTime(30_000);
+      expect(parts()).toBe(after);
+      judge.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe('the cap, undo and shuffles', () => {
   it('refuses an add past 5,000 cards (O43)', () => {
     const { propose, store } = room({ cd: 'cards' });
