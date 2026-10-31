@@ -12,6 +12,30 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "preview", "--", "--port", "4173", "--strictPort"],
       "port": 4173
+    },
+    {
+      "name": "rooms-hub",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:hub"],
+      "port": 5177
+    },
+    {
+      "name": "rooms-server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:server-fork"],
+      "port": 5174
+    },
+    {
+      "name": "rooms-sync",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:sync-fork"],
+      "port": 5175
+    },
+    {
+      "name": "rooms-ui",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:ui-fork"],
+      "port": 5176
     }
   ]
 }

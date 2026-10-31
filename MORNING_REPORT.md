@@ -1,4 +1,65 @@
-# Morning report: overnight build
+# Morning report
+
+## Rooms run (2026-10-30)
+
+The unattended build of `ONLINE.md` (decision 288): one hub session and three area forks (Server, Sync, Rules & UI) sharing this folder on `main`, as `ONLINE_PROMPT.md` sets out. Nothing is pushed; the Worker is deployed after each gate (O80).
+
+### Summary
+
+| | |
+|---|---|
+| **Phases gated** | none yet (seed committed) |
+| **BROKEN items** | none yet |
+| **Tests** | 239 passing at the seed |
+| **Run it** | `npm run dev` (vite 5173 + a local room server on 8787), or `start.bat`. Tab A: Go online. Tab B: the room link with `?player=B` before the `#` (dev only, O90), so one browser is two players. |
+| **Room server** | not deployed yet; `npx wrangler whoami` was signed in at the seed |
+| **For you to do** | before your first push with server code: the GitHub secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (ONLINE.md 3.5); edit the word list in `shared/words.ts` (O79) |
+| **Ports in the run** | hub 5177 + 8787 (O95: your own `start.bat` server holds 5173), Server 5174 + 8788, Sync 5175 + 8789, Rules & UI 5176 + 8790 |
+
+### Seed (hub)
+
+- `wrangler`, `concurrently`, `@cloudflare/workers-types` (O71, O94); scripts `dev`, `dev:web`, `dev:server`, one pair per session (O91, O95); `typecheck` runs the server's tsconfig too; `.env.*` per mode; `.claude/launch.json` entries `rooms-hub`, `rooms-server`, `rooms-sync`, `rooms-ui`.
+- `server/`: `wrangler.toml` (10.6), `tsconfig.json`, `src/worker.ts` answering `GET /api/version` with CORS, empty `Room` and `Lobby` objects, `.dev.vars` with a dev admin key.
+- Contracts: `shared/table.ts` (`TableState`, `HIDDEN`), `shared/ops.ts` (`Op` with `batch`, `cardsTouched`), `shared/protocol.ts` (every message, limits, colours, snapshot parts, `playerIdOf`), `shared/permissions.ts` (ranks, `needs`, `allowed`); `src/online/room.ts` (`RoomState`), `session.ts` (`Session`, `FakeSession`), `identity.ts` (with `?player=`), `index.ts` (`Online`, `app.online`). `CardMove` carries the links a landing sets; `Mat.owner`. Decisions O93 to O95.
+- `tests/protocol.test.ts` (9 tests).
+
+### Phase O1: rooms by link
+
+(written at the gate)
+
+### Phase O2: permissions and hidden information
+
+(written at the gate)
+
+### Phase O3: the public browser
+
+(written at the gate)
+
+### Phase O4: polish
+
+(written at the gate)
+
+### Done entries by area
+
+Each fork writes its own here, newest first: "- <Fork>, <date>: **<piece>**: what; where to look (tab A does X, tab B sees Y); untested; decisions O<n>; BROKEN: ...".
+
+#### Server
+
+#### Sync
+
+#### Rules & UI
+
+### Your QA checklist
+
+(built from ONLINE.md Section 16 at each gate)
+
+### Performance
+
+(the `__bots(7)` pass against spec Section 17, Phase O4)
+
+---
+
+# Overnight build (2026-10-27)
 
 ## Summary
 

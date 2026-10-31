@@ -15,5 +15,5 @@
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true
   },
-  "include": ["src", "tests", "vite.config.ts", "devtools"]
+  "include": ["src", "tests", "shared", "vite.config.ts", "devtools"]
 }

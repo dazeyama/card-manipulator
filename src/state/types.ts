@@ -173,6 +173,8 @@ export interface Mat {
   life?: number;
   /** Its life total hidden by the ❤️ button (decision 241). */
   lifeHidden?: boolean;
+  /** A card stand's owner in a room, a player id (ONLINE.md 6.3); unset, unowned. Ignored offline (O32). */
+  owner?: string;
 }
 
 export const MAT_W = 610;
@@ -201,6 +203,8 @@ export interface TableDoc {
     stand?: string;
     /** The side that last moved it (decision 267). */
     side?: 0 | 1;
+    /** Saved from a room by someone who could not see it (ONLINE.md 7.5, O75): scryfallId is 'hidden'. */
+    hidden?: true;
   }[];
   /** Open spreads (agent decision 61); older files have none. */
   spreads?: { id: string; anchor: { x: number; y: number }; yaw: number; uids: string[]; pileId: string | null }[];

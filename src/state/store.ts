@@ -79,6 +79,10 @@ export function newUid(prefix = 'c'): string {
   return `${prefix}${Date.now().toString(36)}${uidCounter.toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
 }
 
+/**
+ * A change to one card: any of its pose and face fields, and (rooms, ONLINE.md
+ * 8.2) the links a landing sets. Unset leaves a field as it is; null clears it.
+ */
 export interface CardMove {
   uid: string;
   x?: number;
@@ -86,6 +90,16 @@ export interface CardMove {
   z?: number;
   yaw?: number;
   faceUp?: boolean;
+  /** The card stand it lies on (decision 221); null, the table. */
+  stand?: string | null;
+  /** The side that last moved it (decision 267); null, the near side. */
+  side?: 0 | 1 | null;
+  /** The named pile it belongs to (spec 11.3); null, none. */
+  pileId?: string | null;
+  /** The spread it is part of (spec 10.6); null, none. */
+  spreadOf?: string | null;
+  /** Where an X spread laid it (decision 160); null, not laid. */
+  laidAt?: { x: number; y: number } | null;
 }
 
 export class Store {
@@ -135,6 +149,11 @@ export class Store {
       if (m.z !== undefined) c.z = m.z;
       if (m.yaw !== undefined) c.yaw = m.yaw;
       if (m.faceUp !== undefined) c.faceUp = m.faceUp;
+      if (m.stand !== undefined) c.stand = m.stand ?? undefined;
+      if (m.side !== undefined) c.side = m.side || undefined;
+      if (m.pileId !== undefined) c.pileId = m.pileId;
+      if (m.spreadOf !== undefined) c.spreadOf = m.spreadOf;
+      if (m.laidAt !== undefined) c.laidAt = m.laidAt ? { ...m.laidAt } : undefined;
       changed.push(m.uid);
     }
     if (changed.length) this.events.emit('moved', changed);
