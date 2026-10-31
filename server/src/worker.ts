@@ -6,10 +6,13 @@
 // a new room); GET /api/rooms/:code; GET /api/rooms/:code/ws (the socket);
 // POST /api/rooms/:code/report; and, with the x-admin-key header,
 // GET /api/admin/rooms and POST /api/admin/rooms/:code/delist, /relist, /close.
+// When the free plan's daily limit is spent, every route answers 429
+// { error: 'quota' } and a socket gets `bye quota` (15).
 
-import { PROTOCOL, playerIdOf, type CreateRoomBody, type CreateRoomReply, type VersionReply } from '../../shared/protocol';
+import { PROTOCOL, playerIdOf, type ByeReason, type CreateRoomBody, type CreateRoomReply, type VersionReply } from '../../shared/protocol';
 import { isCode, newCode } from '../../shared/roomCode';
 import type { Lobby } from './lobby';
+import { isQuotaError } from './quota';
 import type { Room } from './room';
 
 export { Room } from './room';
@@ -129,37 +132,66 @@ async function createRoom(req: Request, env: Env): Promise<Response> {
   return json({ error: 'no free code' }, 503);
 }
 
+/**
+ * A socket that only says goodbye (12.7): for an upgrade the room cannot
+ * take, such as when the free plan's daily limit is spent.
+ */
+function byeSocket(reason: ByeReason): Response {
+  const pair = new WebSocketPair();
+  const [client, server] = Object.values(pair);
+  server.accept();
+  server.send(JSON.stringify({ t: 'bye', reason }));
+  server.close(4000, reason);
+  return new Response(null, { status: 101, webSocket: client });
+}
+
+function isUpgrade(req: Request): boolean {
+  return req.headers.get('Upgrade')?.toLowerCase() === 'websocket';
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
-    const url = new URL(req.url);
-    const path = url.pathname.replace(/\/+$/, '');
-    if (req.method === 'OPTIONS') return withCors(new Response(null, { status: 204 }), req, env);
-
-    if (req.method === 'GET' && path === '/api/version') {
-      const body: VersionReply = { protocol: PROTOCOL };
-      return withCors(json(body), req, env);
+    try {
+      return await route(req, env);
+    } catch (err) {
+      // The free plan's daily limits (15): Rooms are back after midnight UTC.
+      if (isQuotaError(err)) return isUpgrade(req) ? byeSocket('quota') : withCors(json({ error: 'quota' }, 429), req, env);
+      console.error('room server error', err);
+      return isUpgrade(req) ? new Response(null, { status: 503 }) : withCors(json({ error: 'unavailable' }, 503), req, env);
     }
-    if (req.method === 'POST' && path === '/api/rooms') return withCors(await createRoom(req, env), req, env);
-    if (req.method === 'GET' && path === '/api/rooms') return withCors(json({ rooms: await lobby(env).publicList() }), req, env);
-    if (path.startsWith('/api/admin/')) return withCors(await admin(req, env, path), req, env);
-
-    const reported = /^\/api\/rooms\/([^/]+)\/report$/.exec(path);
-    if (reported && req.method === 'POST') {
-      if (!isCode(reported[1])) return withCors(json({ error: 'not a room code' }, 404), req, env);
-      return withCors(await report(req, env, reported[1]), req, env);
-    }
-
-    const room = /^\/api\/rooms\/([^/]+)(\/ws)?$/.exec(path);
-    if (room && req.method === 'GET') {
-      const code = room[1];
-      if (!isCode(code)) return withCors(json({ error: 'not a room code' }, 404), req, env);
-      const stub = env.ROOM.getByName(code);
-      if (room[2]) {
-        if (req.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return withCors(json({ error: 'expected a WebSocket' }, 426), req, env);
-        return stub.fetch(req);
-      }
-      return withCors(json(await stub.info()), req, env);
-    }
-    return withCors(json({ error: 'not found' }, 404), req, env);
   },
 } satisfies ExportedHandler<Env>;
+
+/** The routes of 9.3. */
+async function route(req: Request, env: Env): Promise<Response> {
+  const url = new URL(req.url);
+  const path = url.pathname.replace(/\/+$/, '');
+  if (req.method === 'OPTIONS') return withCors(new Response(null, { status: 204 }), req, env);
+
+  if (req.method === 'GET' && path === '/api/version') {
+    const body: VersionReply = { protocol: PROTOCOL };
+    return withCors(json(body), req, env);
+  }
+  if (req.method === 'POST' && path === '/api/rooms') return withCors(await createRoom(req, env), req, env);
+  if (req.method === 'GET' && path === '/api/rooms') return withCors(json({ rooms: await lobby(env).publicList() }), req, env);
+  if (path.startsWith('/api/admin/')) return withCors(await admin(req, env, path), req, env);
+
+  const reported = /^\/api\/rooms\/([^/]+)\/report$/.exec(path);
+  if (reported && req.method === 'POST') {
+    if (!isCode(reported[1])) return withCors(json({ error: 'not a room code' }, 404), req, env);
+    return withCors(await report(req, env, reported[1]), req, env);
+  }
+
+  const room = /^\/api\/rooms\/([^/]+)(\/ws)?$/.exec(path);
+  if (room && req.method === 'GET') {
+    const code = room[1];
+    if (!isCode(code)) return withCors(json({ error: 'not a room code' }, 404), req, env);
+    const stub = env.ROOM.getByName(code);
+    if (room[2]) {
+      if (!isUpgrade(req)) return withCors(json({ error: 'expected a WebSocket' }, 426), req, env);
+      return stub.fetch(req);
+    }
+    return withCors(json(await stub.info()), req, env);
+  }
+  return withCors(json({ error: 'not found' }, 404), req, env);
+}

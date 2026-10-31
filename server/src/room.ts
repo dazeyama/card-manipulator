@@ -25,7 +25,7 @@ import {
 } from './limits';
 import type { LobbyBeat } from './lobby';
 import {
-  addChat, applySettings, cleanNickname, cleanRoomName, colourFree, electCrown, isRank, newMeta, passwordHash, pickColour, playersOf,
+  addBan, addChat, applySettings, cleanNickname, cleanRoomName, colourFree, electCrown, isRank, makeRoomForSeat, newMeta, passwordHash, pickColour, playersOf,
   publicSettings, roomInfo, say, seatOf, type Meta, type Seat,
 } from './meta';
 import { RoomStorage } from './storage';
@@ -128,7 +128,7 @@ export class Room extends DurableObject<Env> {
         this.mirror = m.table;
         this.seq = m.seq;
       }
-      this.wake();
+      this.wake(m?.replayed ?? 0);
     }
   }
 
@@ -287,6 +287,8 @@ export class Room extends DurableObject<Env> {
     this.reconcile(ws);
     const others = meta.seats.filter((s) => s.connected && s.id !== id).length;
     if (others >= MAX_PLAYERS) return this.bye(ws, 'full');
+    // A new seat in a room that has had many players: the longest-away seat with no stand makes way (O101).
+    if (!existing && !makeRoomForSeat(meta, new Set((this.mirror?.mats ?? []).map((m) => m.owner ?? '')))) return this.bye(ws, 'full');
 
     // The same identity on a newer socket replaces the older one (O97).
     const old = this.socketOf(id, ws);
@@ -352,11 +354,18 @@ export class Room extends DurableObject<Env> {
     if (meta.crown && !live.has(meta.crown)) meta.crown = null;
   }
 
-  /** Woken from hibernation with players still connected: check the seats, and ask the crown for a fresh table (10.2). */
-  private wake(): void {
+  /**
+   * Woken from hibernation with players still connected (10.2): check the seats
+   * against the sockets, and ask the crown for a fresh table when the mirror
+   * leaned on the op log (`replayed` ops past the last snapshot), so it is
+   * compacted again. A mirror that is a snapshot alone is already the crown's
+   * table: idle rooms woken by their alarm then cost the crown nothing (O101).
+   */
+  private wake(replayed: number): void {
     const meta = this.meta!;
     const live = this.sockets();
     if (!live.length) return;
+    console.log(`room ${meta.code} woke with ${live.length} socket(s), seq ${this.seq}, ${replayed} op(s) replayed`);
     const ids = new Set(live.map((s) => s.id));
     for (const s of meta.seats) s.connected = ids.has(s.id);
     if (meta.crown && !ids.has(meta.crown)) {
@@ -366,7 +375,7 @@ export class Room extends DurableObject<Env> {
       return;
     }
     const crown = meta.crown ? this.socketOf(meta.crown) : undefined;
-    if (crown) this.send(crown, { t: 'needSnapshot' });
+    if (crown && replayed > 0) this.send(crown, { t: 'needSnapshot' });
   }
 
   /**
@@ -739,7 +748,7 @@ export class Room extends DurableObject<Env> {
     if (typeof player !== 'string' || player === by.id || player === meta.crown) return;
     const seat = seatOf(meta, player);
     if (!seat) return;
-    if (ban && !meta.bans.includes(player)) meta.bans.push(player);
+    if (ban && !meta.bans.includes(player)) addBan(meta, player);
     else if (!seat.connected) return;
     const ws = this.socketOf(player);
     seat.connected = false;

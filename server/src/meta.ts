@@ -172,6 +172,31 @@ export function applySettings(meta: Meta, set: Partial<RoomSettings>): string[] 
   return changed;
 }
 
+/** Seats kept at most (8 connected, the rest away): the meta stays far under its 128 KB (10.2, O100). */
+export const MAX_SEATS = 32;
+/** Bans kept at most; the oldest go first. */
+export const MAX_BANS = 200;
+
+/**
+ * Make room for a new seat when the room has MAX_SEATS: the longest-away seat
+ * goes, unless it is the maker's, the crown's or owns a stand (`owners`), which
+ * wait for their browser (O19). False when no seat can go.
+ */
+export function makeRoomForSeat(meta: Meta, owners: Set<string>): boolean {
+  if (meta.seats.length < MAX_SEATS) return true;
+  const i = meta.seats.findIndex((s) => !s.connected && s.id !== meta.maker && s.id !== meta.crown && !owners.has(s.id));
+  if (i < 0) return false;
+  meta.seats.splice(i, 1);
+  return true;
+}
+
+/** Ban an identity, keeping the last MAX_BANS. */
+export function addBan(meta: Meta, id: string): void {
+  if (meta.bans.includes(id)) return;
+  meta.bans.push(id);
+  if (meta.bans.length > MAX_BANS) meta.bans.splice(0, meta.bans.length - MAX_BANS);
+}
+
 /** Add a chat line, keeping the last CHAT_LINES. */
 export function addChat(meta: Meta, line: ChatLine): void {
   meta.chat.push(line);
