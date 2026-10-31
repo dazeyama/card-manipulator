@@ -192,10 +192,11 @@ describe('stands (6.3)', () => {
     expect(propose('sam', { t: 'mat', set: [stand('sm2', 'sam', 112.5)] })).toBe('ok');
   });
 
-  it('needs Everything to spawn or remove a playmat, or to spill another\'s stand', () => {
-    const { propose } = room({ mo: 'move', ev: 'everything' });
-    expect(propose('mo', { t: 'mat', set: [{ uid: 'm2', scryfallId: 'x', name: 'M', art: '', x: 0, y: 0, yaw: 0 }] })).toBe('rank');
-    expect(propose('mo', { t: 'mat', remove: ['mat'] })).toBe('rank');
+  it('lets Move spawn and remove a playmat (O110), and needs Everything to spill another\'s stand', () => {
+    const { propose } = room({ vw: 'view', mo: 'move', ev: 'everything' });
+    expect(propose('vw', { t: 'mat', set: [{ uid: 'm3', scryfallId: 'x', name: 'M', art: '', x: 0, y: 0, yaw: 0 }] })).toBe('rank');
+    expect(propose('mo', { t: 'mat', set: [{ uid: 'm2', scryfallId: 'x', name: 'M', art: '', x: 0, y: 0, yaw: 0 }] })).toBe('ok');
+    expect(propose('mo', { t: 'mat', remove: ['m2'] })).toBe('ok');
     expect(propose('mo', { t: 'mat', set: [{ uid: 'mat', scryfallId: 'm', name: 'Mat', art: '', x: 50, y: 0, yaw: 0, life: 12 }] })).toBe('ok');
     expect(propose('mo', { t: 'mat', spill: ['st'] })).toBe('rank');
     expect(propose('ev', { t: 'mat', spill: ['st'] })).toBe('ok');

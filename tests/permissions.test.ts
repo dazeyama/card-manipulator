@@ -18,7 +18,7 @@ const TABLE: [Action, Need][] = [
   ['removeTokens', 'tokens'],
   ['addCards', 'cards'],
   ['removeCards', 'cards'],
-  ['matAdd', 'everything'], ['matRemove', 'everything'],
+  ['matAdd', 'move'], ['matRemove', 'move'],
   ['standClaim', 'everything'], ['standSpill', 'everything'],
   ['basics', 'everything'],
   ['table', 'crown'], ['replace', 'crown'], ['reuid', 'crown'],
@@ -86,7 +86,8 @@ describe('permissions', () => {
     expect(refusal('view', 'move')).toBe('Move or higher needed');
     expect(refusal('move', 'addCards')).toBe('Cards or higher needed');
     expect(refusal('move', 'diceAdd')).toBe('Tokens or higher needed');
-    expect(refusal('cards', 'matAdd')).toBe('Everything or higher needed');
+    expect(refusal('cards', 'standSpill')).toBe('Everything or higher needed');
+    expect(refusal('view', 'matAdd')).toBe('Move or higher needed');
     expect(refusal('move', 'move')).toBeNull();
   });
 
@@ -121,8 +122,8 @@ describe('permissions', () => {
   });
 
   it('lets a Move player do the whole of a game at a real table (O26, O52, O59)', () => {
-    const play: Action[] = ['move', 'grab', 'named', 'spread', 'dice', 'mat', 'standOwn', 'standRemoveOwn', 'standCards'];
+    const play: Action[] = ['move', 'grab', 'named', 'spread', 'dice', 'mat', 'matAdd', 'matRemove', 'standOwn', 'standRemoveOwn', 'standCards'];
     for (const a of play) expect(allowed('move' as Rank, a), a).toBe(true);
-    for (const a of ['matAdd', 'matRemove', 'standClaim', 'standSpill', 'basics'] as Action[]) expect(allowed('move', a), a).toBe(false);
+    for (const a of ['standClaim', 'standSpill', 'basics'] as Action[]) expect(allowed('move', a), a).toBe(false);
   });
 });

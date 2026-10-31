@@ -63,9 +63,9 @@ export type Action =
   | 'addCards'
   /** `remove` of any card (O25). */
   | 'removeCards'
-  /** `mat` set that adds a playmat. */
+  /** `mat` set that adds a playmat: Move, like your stand, since every player has one (O110). */
   | 'matAdd'
-  /** `mat` remove of a playmat. */
+  /** `mat` remove of a playmat: Move; playmats are no one's (O52, O110). */
   | 'matRemove'
   /** `mat` set of `owner` on a stand that is not yours: Claim regardless, Give to (O24, O65). */
   | 'standClaim'
@@ -109,8 +109,8 @@ const NEEDS: Record<Action, Need> = {
   removeTokens: 'tokens',
   addCards: 'cards',
   removeCards: 'cards',
-  matAdd: 'everything',
-  matRemove: 'everything',
+  matAdd: 'move',
+  matRemove: 'move',
   standClaim: 'everything',
   standSpill: 'everything',
   basics: 'everything',
