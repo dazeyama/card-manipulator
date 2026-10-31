@@ -691,6 +691,12 @@ export class OnlinePanel {
       this.chat.attach(online?.room ?? null, online?.session ?? null);
     }
     if (this.el.hidden) return;
+    // Not while you are typing in it: the rows and the chat update themselves.
+    const focus = document.activeElement;
+    if (focus && this.body.contains(focus) && /^(INPUT|SELECT|TEXTAREA)$/.test(focus.tagName)) {
+      focus.addEventListener('blur', () => setTimeout(() => this.refresh(), 0), { once: true });
+      return;
+    }
     if (online) this.showRoom(online);
     else this.showForm();
   }
