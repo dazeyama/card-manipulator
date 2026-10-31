@@ -10,7 +10,7 @@ This document is self-contained: a builder with `design_spec.md` and this file c
 
 - **`design_spec.md` still wins** for everything that is not about rooms. This document changes nothing about how cards move, stack, flip or look. Where it adds to a spec section, it says which one.
 - **Decisions.** Rooms decisions are numbered **O1, O2, ...** in Appendix A of this file. `design_spec.md` Appendix A has one pointer row, decision 288. New rooms decisions during the build get the next O number, dated, and are marked **(agent)** when made without the owner.
-- **Build mode.** The four phases (Section 16) are built in autonomous overnight mode under spec Section 0.1, with these changes: the room server may be run locally (`wrangler dev`) and talked to from the browser; the phase gate's browser check uses **two tabs** in the built-in browser, one hosting and one joining; nothing is pushed or deployed (decision 203 still applies: the owner pushes).
+- **Build mode.** The four phases (Section 16) are built in autonomous overnight mode under spec Section 0.1, with these changes: the room server may be run locally (`wrangler dev`) and talked to from the browser; the phase gate's browser check uses **two tabs** in the built-in browser, one hosting and one joining; the run deploys the Worker after each gate with the owner's `wrangler login` (O80) but never pushes (decision 203: the owner pushes). The run is one hub session and three area forks sharing this folder: **`ONLINE_PROMPT.md`** (decisions O82 to O92).
 - **Rules that carry over.** Scryfall only through the queue in `src/scryfall/client.ts` (every browser resolves its own cards, O42). Keep TypeScript simple. Pure logic gets vitest tests. Commits use the owner's email. Chrome and Edge, desktop, only (O53).
 - **Vocabulary.** "The crown" is the room's owner (a player). "The server" is the Cloudflare Worker and its Durable Objects. "A browser" is one connected player's page. "The table" is the shared state: cards, piles, spreads, mats, stands, dice, basics, name.
 
@@ -185,11 +185,11 @@ card-manipulator/
 ### 3.5 Deployment
 
 - **Static site:** unchanged, GitHub Pages on every push to `main` (decision 203).
-- **Server:** the same workflow gains a `worker` job: `npm ci`, `npm run typecheck`, `npm test`, `npx wrangler deploy --config server/wrangler.toml`, using repository secrets `CLOUDFLARE_API_TOKEN` (an "Edit Cloudflare Workers" token) and `CLOUDFLARE_ACCOUNT_ID`. The Pages `deploy` job `needs: [build, worker]`, so the new server is live before the new site is.
+- **Server:** its own workflow, `.github/workflows/worker.yml`, on every push to `main` that touches `server/**` or `shared/**`: `npm ci`, `npm run typecheck`, `npm test`, `npx wrangler deploy --config server/wrangler.toml`, using repository secrets `CLOUDFLARE_API_TOKEN` (an "Edit Cloudflare Workers" token) and `CLOUDFLARE_ACCOUNT_ID`. **(agent, O92)** A separate workflow, not a job Pages waits on: a missing secret or a failed deploy never blocks the site, and the protocol version check (O48) covers the minutes the two may differ. The run itself deploys the Worker after each phase gate with the owner's `wrangler login` (O80), so the live server is usually ahead of the site.
 - **Server URL:** `.env.production` (committed, not secret) holds `VITE_ROOM_SERVER=https://card-manipulator-rooms.<account>.workers.dev`; `.env.development` holds `http://localhost:8787`. The client turns `https` into `wss` for the socket.
 - **Secrets on the Worker:** `ADMIN_KEY` (O15), set once with `wrangler secret put ADMIN_KEY`. Nothing else.
-- **One-time owner setup (five minutes):** make a free Cloudflare account; create the API token; add the two repository secrets; run `npx wrangler deploy --config server/wrangler.toml` once locally (or push) and copy the `workers.dev` URL into `.env.production`; set `ADMIN_KEY`. The morning report of phase O1 lists these as the owner's checklist with the exact dashboard paths.
-- **Protocol version** (O48): `PROTOCOL` in `shared/protocol.ts` is bumped whenever a message changes shape. The server accepts only its own version; a stale tab is told `bye {reason: 'version'}` and shows **Reload to update** (Section 12.7). Because site and server deploy together, a mismatch only happens to tabs left open across a deploy.
+- **One-time owner setup:** make a free Cloudflare account, choose the `workers.dev` subdomain, `npx wrangler@latest login` on this machine (before the run, O77), create the API token and add the two repository secrets before the first push with server code. The run writes `.env.production` from `wrangler deploy`'s printed URL and sets `ADMIN_KEY` itself, saving the key to the git-ignored `server/.admin-key`; `ONLINE_PROMPT.md` has the steps.
+- **Protocol version** (O48): `PROTOCOL` in `shared/protocol.ts` is bumped whenever a message changes shape. The server accepts only its own version; a stale tab is told `bye {reason: 'version'}` and shows **Reload to update** (Section 12.7). A mismatch happens only to tabs left open across a deploy, or in the minutes between the Worker's workflow and the site's.
 
 ### 3.6 Local development (O47)
 
@@ -202,7 +202,7 @@ npm test           # vitest: shared/, src pure modules, server pure modules
 npm run build      # vite build (the server is not part of dist)
 ```
 
-`wrangler dev` runs the Durable Objects locally with persistent state under `.wrangler/` (git-ignored). Two tabs on `localhost:5173` can host and join; the built-in browser does this in the phase gate. `start.bat` keeps starting `npm run dev`.
+`wrangler dev` runs the Durable Objects locally with persistent state under `.wrangler/` (git-ignored). Two tabs on `localhost:5173` can host and join (the second with `?player=B`, O90); the built-in browser does this in the phase gate. `start.bat` keeps starting `npm run dev`. During the rooms run each session has its own vite and wrangler ports (`dev:hub`, `dev:server-fork`, `dev:sync-fork`, `dev:ui-fork`; O91, `ONLINE_PROMPT.md` Section 2).
 
 ---
 
@@ -285,6 +285,8 @@ Changing the name (the table name in the top bar), visibility, password, tag or 
 ### 5.1 Identity (O17)
 
 `localStorage['online.identity.v1'] = { token, nickname, colour }`. The token is 16 random bytes as base64url, made on first use. The player id is `base64url(sha256(token)).slice(0, 16)`; the client sends the token only in `hello`, over TLS, and the server stores the id, never the token. Clearing site data makes a new person; the owner accepted this (no accounts).
+
+**Two tabs in one browser (agent, O90):** every tab of an origin shares `localStorage`, so two tabs would be one player. A dev-only query `?player=<name>` namespaces the key (`online.identity.v1:<name>`); `__room()` and the phase gate's second tab use it. The production UI never adds it.
 
 ### 5.2 Colours (O18)
 
@@ -430,7 +432,7 @@ The client has one gate, `app.online.canSee(card)`: true offline and for the cro
 | `ui/cubeTab.ts` | hidden cards are not matched to the cube |
 | `commands.ts` layouts that sort by identity (curve C, colour, E ranks) | hidden cards go to the end in a face-down row, unsorted |
 | `state/piles.ts` detection | unaffected, positions only |
-| the Cast window (📺) | hidden online (O39); offline unchanged |
+| the Cast window (📺) | draws backs for hidden cards, like the main view (O39); otherwise unchanged online and offline |
 
 On the crown's browser the gate is `canSee(card, mats, me)` from `shared/redact.ts`; on others it is the sentinel. The same gate decides the glow and hover: a hidden card still hovers (it is a physical object) but shows no preview.
 
@@ -733,7 +735,7 @@ Spec 4.2 says everything that changes the table goes through `Store`. Online rel
 | `state/history.ts` | `CardSnap` is reused by `shared/`; `TableSnap` gains `mats`, `dice`, `basics`, `name` so it is a `TableState` |
 | `state/stand.ts` | `ownerOf(m)`, `isOwnedBy(m, player)`, `fullStandsOf(store, player)` |
 | `app.ts` | `online: Online | null` (the room layer), `slotsFor` draws backs for `HIDDEN` |
-| `main.ts` | boot: parse `#/room/...` before restoring autosave; the Online button; key map wrapped by `guard`; `M` sends `side` in the next stream; the stand button's one-stand rule; `Cast` hidden online |
+| `main.ts` | boot: parse `#/room/...` before restoring autosave; the Online button; key map wrapped by `guard`; `M` sends `side` in the next stream; the stand button's one-stand rule; the Cast window renders through the hidden gate |
 | `physics/feel.ts` | `begin()` asks `authority`/`outbox` for a `grab` first (optimistic); streams held poses through `streams.ts`; `land()` unchanged (store.moveCards makes the op); refuses to begin on remote-held uids |
 | `dice.ts` | the same for dice: `grab`, held streams, roll results in `dice set` |
 | `physics/world.ts` | marks bodies launched locally; `Physics.step` feeds `fly` poses to the batcher; remote flights do not get bodies |
@@ -863,6 +865,8 @@ When Cloudflare refuses for the day (HTTP 429 or a 1027 error page), the client 
 
 ## 16. Build phases (O54, O57)
 
+**How the run is organised** (one hub, three area forks sharing this folder, freezes at the gates, ports, git rules, the fork briefs): `ONLINE_PROMPT.md`, decisions O82 to O92.
+
 Each phase ends with the phase gate of spec Section 0.1 (typecheck, tests, build, a two-tab browser check with screenshots under `reports/screenshots/online-N/`, a local commit) and a morning report section: what was built, gate results, screenshots, commit, agent decisions (O-numbered), BROKEN items, and the owner's **Where to look** list. The built-in browser cannot hold modifier keys during drags (CLAUDE.md gotcha); where a check needs them, the report says the check was done with synthetic events.
 
 ### Phase O1: rooms by link
@@ -972,7 +976,7 @@ Owner answers of 2026-10-30 are recorded as such; **(agent)** marks a choice mad
 | O36 | Owner: **two sides**; everyone starts on the near side and **presses M to cross**, like walking round a real table; players move between sides freely (no per-side cap). |
 | O37 | Owner: a joiner's camera starts at **the default offline view**. |
 | O38 | Owner: **no automatic playmat or stand** on join; players spawn their own, like IRL. |
-| O39 | Owner: the **Cast window (📺) stays as it is, offline only**; rooms replace it online, so the button is hidden while in a room. |
+| O39 | Owner: the **Cast window (📺) keeps working online, hiding what the viewer may not see**: it draws backs for hidden cards like the main view. (The first answer, "offline only", was to a mis-described question and was reversed the same day.) |
 | O40 | Owner: **first grab holds**; nobody else can take a card or die until it lands. |
 | O41 | Owner: Ctrl + Z online **undoes your own last action, refused if anyone has touched those things since**. |
 | O42 | Owner: **each browser fetches its own card data from Scryfall** through its queue; rooms carry only Scryfall ids. |
@@ -1009,11 +1013,26 @@ Owner answers of 2026-10-30 are recorded as such; **(agent)** marks a choice mad
 | O73 | **(agent)** The **default Tag** when going online is Play if the table has a playmat or stand, else Cube; the crown can change it. Reason: one less thing to set for the common case, and it is only a label. |
 | O74 | **(agent)** A **departed holder's cards drop three seconds after their socket closes**, by a `move` the crown issues to the last streamed poses. Reason: cards must never hang in the air; three seconds survives a blip. |
 | O75 | **(agent)** **Hidden cards in a saved copy** are written as `scryfallId: 'hidden'` with `hidden: true` in table format version 1 (optional field, as earlier additions), drawn as backs forever. Reason: no new format version for a field every old file simply lacks. |
-| O76 | **(agent)** The **colour set** of Section 5.2 (red, orange, yellow, teal, blue, violet, pink, white). Reason: far apart on green felt and in small tags; the accent blue stays the local selection's. |
+| O76 | **(agent)** The **colour set** of Section 5.2 (red, orange, yellow, teal, blue, violet, pink, white). Reason: far apart on green felt and in small tags; the accent blue stays the local selection's. Kept by the owner on review (2026-10-30). |
+| O77 | Owner (2026-10-30, preparing the run): the **Cloudflare account is made before the run**, walked through step by step; the run learns the `workers.dev` URL from `wrangler deploy`'s output and writes `.env.production` itself. |
+| O78 | Owner: **removing dice is Tokens**, as written (not Move). |
+| O79 | Owner: the **word filter list is the agent's short standard list** (about 40 entries) in `shared/words.ts`, the owner's to edit later. |
+| O80 | Owner: **the run may deploy the Worker** after each phase gate, using `npx wrangler@latest login` done by the owner beforehand; never a token in chat. The site is still pushed only by the owner. |
+| O81 | Owner: the **phase gate's two-tab browser check runs at every gate**, screenshots and clean consoles included. |
+| O82 | Owner: **Opus 5.5** runs the hub and the forks. |
+| O83 | Owner: **three forks plus the hub**, split by layer: Server / Sync / Rules & UI (`ONLINE_PROMPT.md` Section 3), the hub seeding the contracts first. |
+| O84 | Owner: the forks **share this folder on `main`** under the PUG Pricing Tool's rules (stage by path, never `-A`, stash, reset or amend; numbers from disk; small Edits to shared docs; `git status` before another area's file). |
+| O85 | Owner: **fully unattended**: the hub decides every question as an (agent) decision; nothing waits for the owner. |
+| O86 | Owner: **one review pass at the end** of the run, by a reviewer subagent over the whole diff, not at every gate. |
+| O87 | Owner: during a gate the forks **freeze** (commit a type-clean state, pause edits until the hub says go); the hub gates the shared folder, never a second checkout. |
+| O88 | Owner: the run goes **to completion**: it stops when the O4 gate passes or a phase has only BROKEN items left. |
+| O89 | Owner: `ONLINE.md` **stands as the brief**, with the day's three changes (O39 revised, O79, O80). |
+| O90 | **(agent)** A dev-only **`?player=<name>` query namespaces the identity key**, so two tabs of one browser are two players in the gate and in `__room()`. Reason: `localStorage` is per origin, not per tab; without it a one-machine test is one player. |
+| O91 | **(agent)** **One vite and wrangler port pair per session** (hub 5173/8787, Server 5174/8788, Sync 5175/8789, Rules & UI 5176/8790), each wrangler with its own inspector port and `--persist-to` state folder, and a `.env.<mode>` per pair. Reason: four dev servers in one folder must not share ports or local Durable Object state. |
+| O92 | **(agent)** The Worker deploys from **its own GitHub workflow** (`worker.yml`, on pushes touching `server/**` or `shared/**`), not a job the Pages deploy waits on. Reason: a missing Cloudflare secret or a failed deploy must never take the site down with it; the protocol version check covers a short mismatch. Replaces Section 3.5's first draft. |
 
 ## Appendix B: Open items
 
 - A short grace period for an empty room (reload-proof links); see O61 and Section 17.
-- Whether a Tokens player should also be able to remove token cards is decided (O67); whether Move should remove *dice* it rolled is not: today dice removal is Tokens.
 - Server tests beyond the gate (`@cloudflare/vitest-pool-workers`).
-- The exact wording of the word list in `shared/words.ts` is the owner's to write before Phase O3 goes public.
+- The word list in `shared/words.ts` is the agent's short standard list (O79); the owner edits it before or after Phase O3 goes public.

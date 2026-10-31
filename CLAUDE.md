@@ -7,7 +7,7 @@ A browser scratchpad for moving hundreds to thousands of Magic cards around a 3D
 1. Read **design_spec.md** whole before changing anything. It is the single source of truth. Sections 1–17 describe the product, Section 18 the build phases, Appendix A every decision.
 2. If **MORNING_REPORT.md** exists, read its summary to see which phases are done and what is marked BROKEN.
 3. Check `git log --oneline` to see the last finished phase.
-4. For anything about rooms (online play, `src/online/`, `shared/`, `server/`), read **ONLINE.md**: the self-contained design with its own decision log (O1 onward, decision 288).
+4. For anything about rooms (online play, `src/online/`, `shared/`, `server/`), read **ONLINE.md**: the self-contained design with its own decision log (O1 onward, decision 288). During the rooms run, every session in this folder also follows **ONLINE_PROMPT.md** Sections 4 and 5 (the hub and its forks sharing this folder).
 
 ## Running it
 
