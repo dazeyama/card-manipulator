@@ -29,9 +29,11 @@ export function buildStandSection(app: App, mats: Mats): HTMLElement {
     if (e.key === 'Enter' && !go.disabled) spawn();
   });
   // Kept in step with the table and the room: the one-stand rule and the rank (Move) say no with a title.
+  // On every change of the mats (spawn, removal, owner), and every second for the room's rank, lock and
+  // connection: not from the frame loop, which the browser pauses in a hidden or background tab.
   const draft = { uid: '', kind: 'stand' as const, scryfallId: '', name: '', art: '', x: 0, y: 0, yaw: 0 };
   let shown = '';
-  app.onFrame(() => {
+  const sync = () => {
     const full = mats.standSpawnBlock({ ...draft, width: STAND_W });
     const small = app.online ? mats.standSpawnBlock({ ...draft, width: SMALL_STAND_W }) : null;
     const nick = app.online ? getIdentity().nickname : '';
@@ -43,7 +45,11 @@ export function buildStandSection(app: App, mats: Mats): HTMLElement {
     half.disabled = !!small;
     half.title = small ?? halfTitle;
     name.placeholder = nick ? `Name on the plate (${nick})` : 'Name on the plate';
-  });
+  };
+  app.store.events.on('mats', sync);
+  app.store.events.on('reset', sync);
+  window.setInterval(sync, 1000);
+  sync();
   return h('div', { class: 'panel-section' },
     h('div', { class: 'panel-section-title' }, 'Card stand'),
     h('div', { class: 'row' }, name),
