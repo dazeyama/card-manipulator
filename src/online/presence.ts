@@ -19,8 +19,6 @@ import type { RoomSync } from './connect';
 const BUFFER_MS = 100;
 /** A flight with no news for this long has ended (its landing op went astray). */
 const FLY_STALE_MS = 1500;
-/** A cursor with no news for this long is hidden. */
-const CURSOR_STALE_MS = 4000;
 
 type StreamMsg = Extract<ServerMsg, { t: 'stream' }>;
 
@@ -289,7 +287,7 @@ export class Presence implements PresenceView {
       if (c) app.motion.animate(uid, { x: c.x, y: c.y, z: c.z, yaw: c.yaw, roll: c.faceUp ? 0 : Math.PI, tiltX: 0, tiltY: 0 }, { duration: 190 });
       this.retint();
     }
-    this.drawCursors(now);
+    this.drawCursors();
   }
 
   // ---- cursors (5.4: always shown, never hideable, O18) ----
@@ -343,12 +341,14 @@ export class Presence implements PresenceView {
   }
 
   /** Each cursor sits on the felt where its player points, through your camera; off screen, clamped to the edge. */
-  private drawCursors(now: number): void {
+  private drawCursors(): void {
     if (!this.cursors.size) return;
     const { rig } = this.sync.app;
     const { width, height } = rig.viewport;
     for (const c of this.cursors.values()) {
-      const visible = c.shown && now - c.seen < CURSOR_STALE_MS;
+      // No timeout: a resting mouse streams nothing new, and its cursor stays (O18). It goes
+      // when its player's pointer leaves the table (a stream without `cur`) or the player does.
+      const visible = c.shown;
       c.el.style.display = visible ? '' : 'none';
       if (!visible) continue;
       const s = rig.worldToScreen(c.x, c.y, 0);
