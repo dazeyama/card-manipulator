@@ -88,6 +88,8 @@ function allowedOrigin(origin: string | null, env: Env): string | null {
   if (!origin) return null;
   if (origin === env.SITE_ORIGIN) return origin;
   if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return origin;
+  // LAN mode (npm run dev:lan): the dev page served to other machines on a private network.
+  if (/^http:\/\/(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(origin)) return origin;
   return null;
 }
 

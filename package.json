@@ -7,6 +7,7 @@
     "dev": "concurrently -k -n web,server \"npm:dev:web\" \"npm:dev:server\"",
     "dev:web": "vite",
     "dev:server": "wrangler dev --config server/wrangler.toml --port 8787 --inspector-port 9229 --persist-to .wrangler/state-8787 --show-interactive-dev-session=false",
+    "dev:lan": "concurrently -k -n web,server \"vite --host\" \"wrangler dev --config server/wrangler.toml --ip 0.0.0.0 --port 8787 --inspector-port 9229 --persist-to .wrangler/state-8787 --show-interactive-dev-session=false\"",
     "dev:hub": "concurrently -k -n web,server \"vite --port 5177 --strictPort --mode hub\" \"wrangler dev --config server/wrangler.toml --port 8787 --inspector-port 9229 --persist-to .wrangler/state-8787 --show-interactive-dev-session=false\"",
     "dev:server-fork": "concurrently -k -n web,server \"vite --port 5174 --strictPort --mode server-fork\" \"wrangler dev --config server/wrangler.toml --port 8788 --inspector-port 9230 --persist-to .wrangler/state-8788 --show-interactive-dev-session=false\"",
     "dev:sync-fork": "concurrently -k -n web,server \"vite --port 5175 --strictPort --mode sync-fork\" \"wrangler dev --config server/wrangler.toml --port 8789 --inspector-port 9231 --persist-to .wrangler/state-8789 --show-interactive-dev-session=false\"",

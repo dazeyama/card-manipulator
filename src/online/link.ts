@@ -80,7 +80,30 @@ export function setHash(hash: string): void {
 /** The room server's base URL, from VITE_ROOM_SERVER, or null when there is none. */
 export function roomServer(): string | null {
   const raw = (import.meta.env.VITE_ROOM_SERVER as string | undefined)?.trim();
-  return raw ? raw.replace(/\/+$/, '') : null;
+  if (!raw) return null;
+  const server = raw.replace(/\/+$/, '');
+  // LAN mode (npm run dev:lan): a page opened from another machine finds the local room server on this one.
+  return import.meta.env.DEV ? followPageHost(server, location.hostname) : server;
+}
+
+const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+
+/**
+ * A room server on this machine's loopback, seen from a page served to another
+ * machine on the LAN: the same server at the page's own host. Anything else
+ * (a remote server, a page on localhost) is left as it is. Dev only.
+ */
+export function followPageHost(server: string, pageHost: string): string {
+  if (!pageHost || LOOPBACK.has(pageHost)) return server;
+  let url: URL;
+  try {
+    url = new URL(server);
+  } catch {
+    return server;
+  }
+  if (!LOOPBACK.has(url.hostname)) return server;
+  url.hostname = pageHost;
+  return url.toString().replace(/\/+$/, '');
 }
 
 /** The WebSocket URL of a room: http becomes ws, https wss. */

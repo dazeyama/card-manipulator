@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { codeFromText, inviteLink, isRoomCode, pageBase, parseHash, roomHash, roomLink, socketUrl } from '../src/online/link';
+import { codeFromText, followPageHost, inviteLink, isRoomCode, pageBase, parseHash, roomHash, roomLink, socketUrl } from '../src/online/link';
 
 const BASE = 'https://dazeyama.github.io/card-manipulator/';
 
@@ -52,5 +52,19 @@ describe('room links', () => {
     expect(socketUrl('7KQ2MX', 'http://localhost:8787')).toBe('ws://localhost:8787/api/rooms/7KQ2MX/ws');
     expect(socketUrl('7KQ2MX', 'https://card-manipulator-rooms.example.workers.dev')).toBe('wss://card-manipulator-rooms.example.workers.dev/api/rooms/7KQ2MX/ws');
     expect(socketUrl('7KQ2MX', null)).toBeNull();
+  });
+});
+
+describe('LAN mode', () => {
+  it('finds a room server on this machine at the host the page came from', () => {
+    expect(followPageHost('http://localhost:8787', '192.168.8.190')).toBe('http://192.168.8.190:8787');
+    expect(followPageHost('http://127.0.0.1:8787', 'mypc.local')).toBe('http://mypc.local:8787');
+  });
+
+  it('leaves a page on this machine, and a remote server, as they are', () => {
+    expect(followPageHost('http://localhost:8787', 'localhost')).toBe('http://localhost:8787');
+    expect(followPageHost('http://localhost:8787', '127.0.0.1')).toBe('http://localhost:8787');
+    expect(followPageHost('https://card-manipulator-rooms.example.workers.dev', '192.168.8.190')).toBe('https://card-manipulator-rooms.example.workers.dev');
+    expect(followPageHost('not a url', '192.168.8.190')).toBe('not a url');
   });
 });

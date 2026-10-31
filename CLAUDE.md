@@ -14,12 +14,13 @@ A browser scratchpad for moving hundreds to thousands of Magic cards around a 3D
 ```
 npm install
 npm run dev        # http://localhost:5173, with a local room server on 8787 (npm run dev:web for vite alone)
+npm run dev:lan    # the same for every machine on your network: others open http://<this PC's address>:5173 (O109)
 npm run typecheck
 npm test
 npm run build
 ```
 
-`start.bat` runs the dev server and opens the browser. The built-in browser can start it by name: `card-manipulator` in `.claude/launch.json`; `card-manipulator-preview` serves the production build on port 4173 (run `npm run build` first).
+`start.bat` runs the dev server and opens the browser; `start-lan.bat` does the same in LAN mode and prints the address to give others. The built-in browser can start it by name: `card-manipulator` in `.claude/launch.json`; `card-manipulator-preview` serves the production build on port 4173 (run `npm run build` first).
 
 Regenerate the test lists (Scryfall, through the app's own client): `node --experimental-transform-types scripts/make-test-data.ts [deck|dfc|bad|stress]`. Refresh the welcome table's embedded card data the same way: `node --experimental-transform-types scripts/refresh-welcome.ts`.
 
