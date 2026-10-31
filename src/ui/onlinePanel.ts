@@ -83,6 +83,8 @@ export class OnlineUi {
   password: string | null = null;
   private lastLocked = false;
   private role: Role | null = null;
+  /** The room layer in use: the real one, or the FakeSession stand-in with ?fakeroom. */
+  private control: RoomControl | null = null;
   private route: RoomRoute | null = null;
   private welcomed = false;
   private stops: (() => void)[] = [];
@@ -254,7 +256,8 @@ export class OnlineUi {
   // ---- in the room ----
 
   private enter(code: string, hello: Hello, role: Role): void {
-    const online = this.deps.control.connect(code, hello, role);
+    this.control = fakeRooms() ? standInControl(this.app) : this.deps.control;
+    const online = this.control.connect(code, hello, role);
     // From here, leaving brings this browser's own table back (RoomControl.disconnect).
     this.needOwnTable = false;
     this.deps.hidden.attach(online);
@@ -438,7 +441,8 @@ export class OnlineUi {
   /** Leave the room layer and go back to this browser's table. */
   private exit(how: 'leave' | 'offline', clearState = true): void {
     this.unwatch();
-    if (this.online) this.deps.control.disconnect(how);
+    if (this.online) (this.control ?? this.deps.control).disconnect(how);
+    this.control = null;
     this.deps.hidden.attach(null);
     this.role = null;
     this.route = null;
