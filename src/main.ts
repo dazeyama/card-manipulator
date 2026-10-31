@@ -224,7 +224,7 @@ mouse.hooks.cardDrag = (uid, x, y, mods) => {
 };
 // Double-click taps, a quarter turn each, and untaps back to 0 degrees the next time (decisions
 // 245, 246, 248): the selection if the card was in it, else the card's stack, else the card.
-// Dealing onto a stand's slope makes everything there one hand (decision 249).
+// 245, 246, 248, 292): the selection if the card was in it, else just the card. A face-down card selects its stack (decision 291).
 drag.onDealt = (m, uids) => commands.joinSlopeHand(m, uids);
 mouse.hooks.doubleClickCard = (uid, before) => {
   if (!store.cards.has(uid)) return;
@@ -237,7 +237,8 @@ mouse.hooks.doubleClickCard = (uid, before) => {
   if (before.length > 1 && before.includes(uid)) {
     targets = before.filter((u) => store.cards.has(u));
     store.setSelection(targets);
-  } else targets = store.pileOf(uid)?.cardUids.slice() ?? [uid];
+    // Otherwise just the card, never the rest of its stack (decision 292).
+  } else targets = [uid];
   // All upright: tap them; any turned: untap them all.
   const upright = targets.every((u) => {
     const c = store.cards.get(u)!;
