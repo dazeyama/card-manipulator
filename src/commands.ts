@@ -97,6 +97,41 @@ export function land(app: App, landings: Landing[], opts: { stagger?: number; du
   app.store.events.emit('settled', landings.map((l) => l.uid));
 }
 
+/**
+ * The flip (spec 10.5): each card rises in an arc and turns over to the face
+ * its model now has, in a quick cascade top card first. Used for your own
+ * flips and, in a room, for others' (decision 294), so a card turning over
+ * never cuts through its neighbours. `cards` are already turned in the model.
+ */
+export function animateFlips(app: App, cards: Card[], shortest = false): void {
+  const sorted = [...cards].sort((a, b) => b.z - a.z);
+  const step = Math.min(10, 600 / Math.max(1, sorted.length));
+  sorted.forEach((c, i) => {
+    const pose = app.layer.pose(c.uid);
+    if (!pose) return;
+    // Turn to the new side: always the same way round, or the short way when
+    // facing cards up mid-turn (decision 105). The roll is tidied to 0 or PI afterwards.
+    const side = c.faceUp ? 0 : Math.PI;
+    const turns = (pose.roll - side) / (2 * Math.PI);
+    const target = side + 2 * Math.PI * (shortest ? Math.round(turns) : Math.ceil(turns + 1e-4));
+    const m = c.stand ? app.store.mats.get(c.stand) : undefined;
+    const to = m ? slopePose(m, c) : { x: c.x, y: c.y, z: c.z, yaw: c.yaw };
+    app.motion.animate(c.uid, { ...to, roll: target }, {
+      duration: 350,
+      delay: i * step,
+      arc: 24,
+      ease: (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2),
+      done: () => {
+        const p = app.layer.pose(c.uid);
+        if (p && !app.motion.isAnimating(c.uid)) {
+          p.roll = c.faceUp ? 0 : Math.PI;
+          app.layer.touch(c.uid);
+        }
+      },
+    });
+  });
+}
+
 /** Cards on the table near a region, minus some, for surface-height checks. */
 function nearby(app: App, exclude: Set<string>, around: Footprint[]): Card[] {
   if (!around.length) return [];
@@ -673,30 +708,8 @@ export class Commands {
     const store = this.app.store;
     const cards = uids.map((u) => store.cards.get(u)!).filter(Boolean).sort((a, b) => b.z - a.z);
     if (!cards.length) return;
-    const step = Math.min(10, 600 / cards.length);
     store.moveCards(cards.map((c) => ({ uid: c.uid, faceUp: !c.faceUp })));
-    cards.forEach((c, i) => {
-      const pose = this.app.layer.pose(c.uid);
-      if (!pose) return;
-      // Turn to the new side: always the same way round, or the short way when
-      // facing cards up mid-turn (decision 105). The roll is tidied to 0 or PI afterwards.
-      const side = c.faceUp ? 0 : Math.PI;
-      const turns = (pose.roll - side) / (2 * Math.PI);
-      const target = side + 2 * Math.PI * (shortest ? Math.round(turns) : Math.ceil(turns + 1e-4));
-      this.app.motion.animate(c.uid, { x: c.x, y: c.y, z: c.z, yaw: c.yaw, roll: target }, {
-        duration: 350,
-        delay: i * step,
-        arc: 24,
-        ease: (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2),
-        done: () => {
-          const p = this.app.layer.pose(c.uid);
-          if (p && !this.app.motion.isAnimating(c.uid)) {
-            p.roll = c.faceUp ? 0 : Math.PI;
-            this.app.layer.touch(c.uid);
-          }
-        },
-      });
-    });
+    animateFlips(this.app, cards, shortest);
     store.events.emit('settled', cards.map((c) => c.uid));
   }
 

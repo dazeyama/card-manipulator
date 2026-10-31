@@ -8,6 +8,7 @@ import { cardsTouched, diceTouched, type Op } from '../../shared/ops';
 import { joinSnapshot, type ServerMsg, type SnapshotPart } from '../../shared/protocol';
 import type { Card, Finish } from '../state/types';
 import { isStand, slopePose } from '../state/stand';
+import { animateFlips } from '../commands';
 import { HIDDEN, type CardSnap } from '../../shared/table';
 import { getRecords } from '../scryfall/cardData';
 import { fetchByIds } from '../scryfall/resolve';
@@ -263,12 +264,22 @@ export class Inbox {
     const live = uids.filter((u) => store.cards.has(u) && !app.motion.held.has(u));
     if (!live.length) return;
     app.physics?.release(live);
+    const flips: Card[] = [];
     for (const uid of live) {
       const card = store.cards.get(uid)!;
       const m = card.stand ? store.mats.get(card.stand) : undefined;
       const to = m && isStand(m) ? slopePose(m, card) : { x: card.x, y: card.y, z: card.z, yaw: card.yaw };
-      app.motion.animate(uid, { ...to, roll: card.faceUp ? 0 : Math.PI }, { duration: eased.has(uid) ? LANDING_EASE_MS : SETTLE_MS });
+      // Turned over here (decision 294): the same flip as your own, rising in an arc, so it never
+      // cuts through the cards round it. Turned over and moved: the landing, lifted on that arc.
+      const drawn = app.layer.pose(uid);
+      const turned = !!drawn && Math.cos(drawn.roll) > 0 !== card.faceUp;
+      if (turned && Math.hypot(drawn.x - to.x, drawn.y - to.y) < 5) {
+        flips.push(card);
+        continue;
+      }
+      app.motion.animate(uid, { ...to, roll: card.faceUp ? 0 : Math.PI }, { duration: eased.has(uid) ? LANDING_EASE_MS : SETTLE_MS, arc: turned ? 24 : 0 });
     }
+    if (flips.length) animateFlips(app, flips);
     store.events.emit('settled', live);
   }
 }
