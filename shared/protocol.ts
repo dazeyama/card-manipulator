@@ -23,6 +23,8 @@ export const MAX_CARDS = 5000;
 export const MAX_MESSAGE_BYTES = 64 * 1024;
 /** One snapshot part, in bytes of UTF-8. */
 export const MAX_SNAPSHOT_PART_BYTES = 256 * 1024;
+/** A crown's `confirm` of a `replace` op (New table, Load file): the whole table in one message. */
+export const MAX_REPLACE_BYTES = 1024 * 1024;
 /** Cards per snapshot part (8.7). */
 export const SNAPSHOT_PART_CARDS = 1000;
 export const NICKNAME_MAX = 20;
@@ -126,6 +128,8 @@ export interface SnapshotPart {
   dice?: Die[];
   count?: number;
   cards?: CardSnap[];
+  /** On part 0 of a snapshot the server sends: the seq it is current to. The crown never sends it. */
+  seq?: number;
 }
 
 /** A table in snapshot parts. */
