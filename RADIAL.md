@@ -1,8 +1,8 @@
-# Radial menu (open item, planned 2026-10-31)
+# Radial menu (planned 2026-10-31, built as decision 298)
 
-A ring of the main card actions that opens on **Space** (Space was unbound for it, decision 296). Agreed with the owner in an interactive Q&A; not built yet. Mockup: `reports/mockups/radial-menu.png` (source `radial-menu.svg`).
+**Built.** `src/input/radial.ts` (tested in `tests/radial.test.ts`) and `src/ui/radialMenu.ts`; decision 298 lists where the build departs from the notes below.
 
-When you build it, log it as the next decision in design_spec.md Appendix A, add it to spec Section 16, clear its line in Appendix B, and delete or fold in this file.
+A ring of the main card actions that opens on **Space** (Space was unbound for it, decision 296). Agreed with the owner in an interactive Q&A. Mockup: `reports/mockups/radial-menu.png` (source `radial-menu.svg`).
 
 ## How it works
 

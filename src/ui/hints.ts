@@ -40,6 +40,7 @@ const HINTS: Record<string, Hint[]> = {
     ['🏆', 'E: EDHREC'],
     ['🎴', 'H: fan'],
     ['🖐️', '1–9: draw'],
+    ['⭕', 'Space: menu'],
   ],
   table: [
     ['⬚', 'Drag: select'],

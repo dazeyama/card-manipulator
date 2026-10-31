@@ -29,6 +29,8 @@ export class KeyboardInput {
   beforeKey: (e: KeyboardEvent) => void = () => {};
   /** In a room, may this key's command run (ONLINE.md 6.4)? The guard says why not itself. */
   guard: (name: string) => boolean = () => true;
+  /** The same question without the toast, for greying out the radial menu's wedges. */
+  allowed: (name: string) => boolean = () => true;
   /** Keys whose press ran a hotkey and are still down, with when it last ran. */
   private readonly down = new Map<string, number>();
 
@@ -64,6 +66,20 @@ export class KeyboardInput {
   bind(key: string, action: KeyAction, opts: { repeatMs?: number } = {}): void {
     this.bindings.set(key, action);
     if (opts.repeatMs !== undefined) this.repeats.set(key, opts.repeatMs);
+  }
+
+  /**
+   * Run a key's command as if it were pressed (the radial menu, decision 298):
+   * the room's guard and undo see it as that key, and two presses in a row are
+   * the key's double tap (S S shuffles).
+   */
+  press(name: string): void {
+    const action = this.bindings.get(name);
+    if (!action || !this.guard(name)) return;
+    const key = name.slice(name.lastIndexOf('+') + 1);
+    const e = new KeyboardEvent('keydown', { key, ctrlKey: name.startsWith('ctrl+'), shiftKey: name.includes('shift+') });
+    this.beforeKey(e);
+    action(e);
   }
 
   private nameOf(e: KeyboardEvent): string {

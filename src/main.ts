@@ -43,6 +43,7 @@ import type { Mat } from './state/types';
 import { buildPlaymatTab } from './ui/playmatTab';
 import { ContextHints } from './ui/hints';
 import { HelpPanel } from './ui/helpPanel';
+import { RadialMenu } from './ui/radialMenu';
 import { buildQueryTab } from './ui/queryTab';
 import { HiRes } from './render/hires';
 import { installFit } from './ui/fit';
@@ -1048,7 +1049,29 @@ const hiddenGate = new HiddenGate(app);
 // what this player may not do. Offline everything is allowed.
 const guard = new Guard(app);
 keyboard.guard = guard.key;
+keyboard.allowed = guard.keyQuiet;
 guard.wrapMouse(mouse);
+// The radial menu on Space (decision 298, RADIAL.md): each action is its key, pressed where
+// the menu opened, over the card that was under the cursor then.
+new RadialMenu(app, {
+  canOpen: () => !drag.dragging && !mats.dragging,
+  hovered: () => mouse.hovered,
+  hasCards: () => store.selection.size > 0 || !!mouse.hovered,
+  allowed: (press) => keyboard.allowed(press),
+  run: (item, at, hovered) => {
+    const was = { hovered: mouse.hovered, x: app.pointer.x, y: app.pointer.y };
+    mouse.hovered = hovered;
+    app.pointer.x = at.x;
+    app.pointer.y = at.y;
+    try {
+      for (const press of item.presses) keyboard.press(press);
+    } finally {
+      mouse.hovered = was.hovered;
+      app.pointer.x = was.x;
+      app.pointer.y = was.y;
+    }
+  },
+});
 // Naming a pile and its filter need Move (6.2).
 const openPileEditor = pileEditor.open.bind(pileEditor);
 pileEditor.open = (...args: Parameters<typeof openPileEditor>) => {

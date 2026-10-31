@@ -244,6 +244,23 @@ label.inline { display: inline-flex; flex-direction: row; align-items: center; g
 .modal { background: var(--panel); border-radius: var(--radius); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25); padding: 16px 18px; width: 380px; }
 .modal p { margin: 0 0 8px; }
 .context-hints[hidden] { display: none; }
+/* The radial menu on Space (decision 298) */
+.radial { position: absolute; overflow: visible; pointer-events: none; z-index: 6; font-family: var(--font); user-select: none; }
+.radial-ring { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.14)); }
+.radial text { text-anchor: middle; dominant-baseline: central; }
+.radial-wedge path, .radial-item path { fill: rgba(255, 255, 255, 0.96); stroke: var(--line); stroke-width: 1; }
+.radial-wedge.on path { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+.radial-item.on path { fill: var(--accent); stroke: var(--accent); }
+.radial-label { fill: var(--text); font-weight: 600; }
+.radial-key { fill: var(--text-2); font-family: var(--mono); }
+.radial-wedge.on .radial-label { fill: var(--accent); }
+.radial-item.on text { fill: #fff; }
+.radial-dot { fill: #b9b6b0; }
+.radial-wedge.on .radial-dot { fill: var(--accent); }
+.radial .off path { fill: rgba(246, 245, 243, 0.96); }
+.radial .off text, .radial .off circle { opacity: 0.35; }
+.radial-hole { fill: var(--panel-2); stroke: var(--line); stroke-dasharray: 4 3; }
+.radial-hint { fill: var(--text-2); }
 /* ---- life counters on playmats (decision 239) ---- */
 .life-badge { position: absolute; left: 0; top: 0; z-index: 3; pointer-events: auto; box-sizing: border-box; border-radius: 50%; background: #fff; border: 0.09em solid #111; box-shadow: 0 0.07em 0 #111, 0 0.14em 0.3em rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; align-items: center; justify-content: center; color: #111; font: 900 1em/1 system-ui, -apple-system, "Segoe UI", sans-serif; user-select: none; cursor: var(--cursor-point, pointer); }
 .life-badge[hidden] { display: none; }

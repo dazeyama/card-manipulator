@@ -169,6 +169,13 @@ export class Guard {
     return !action || allowedNow(action);
   };
 
+  /** The same, without the toast (KeyboardInput.allowed): greys the radial menu's wedges. */
+  keyQuiet = (name: string): boolean => {
+    if (!this.owner.online) return true;
+    const action = keyAction(name);
+    return !action || allowedNow(action, true);
+  };
+
   /** Delete removes the selected dice, else the selected cards, else the playmat under the cursor (main.ts removeSelection). */
   private mayDelete(): boolean {
     const a = this.owner;

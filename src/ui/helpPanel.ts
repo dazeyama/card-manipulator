@@ -51,6 +51,7 @@ const GROUPS: [string, Line[]][] = [
     ['↩️', 'Ctrl + Z', 'undo the last move or action · again to redo it (one step)'],
     ['📋', 'Ctrl + C', 'copy the selection · Ctrl + V pastes it at the cursor, as a messy pile (any decklist pastes too)'],
     ['💾', 'Ctrl + S', 'save · Ctrl + E exports · Ctrl + A selects all'],
+    ['⭕', 'Space', 'hold: the radial menu around the cursor; move toward an action and let go, further out for its variants. It acts where it opened, as the key would · a quick tap leaves it open to click · Esc closes'],
     ['❓', '?', 'this list'],
   ]],
   // Rooms (ONLINE.md 13): no new keys; how sharing a table works.
