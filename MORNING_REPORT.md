@@ -8,7 +8,7 @@ The unattended build of `ONLINE.md` (decision 288): one hub session and three ar
 
 | | |
 |---|---|
-| **Phases gated** | O1 (tag `online-1`) |
+| **Phases gated** | O1 (tag `online-1`), O2 (tag `online-2`) |
 | **BROKEN items** | none |
 | **Tests** | 409 passing in 45 files at gate O1 (239 at the seed) |
 | **Run it** | `npm run dev` (vite 5173 + a local room server on 8787), or `start.bat`. Tab A: Go online. Tab B: the room link with `?player=B` before the `#` (dev only, O90), so one browser is two players. |
@@ -38,9 +38,19 @@ The unattended build of `ONLINE.md` (decision 288): one hub session and three ar
 - **Agent decisions in O1:** O93 to O97, O100.
 - **BROKEN:** none. **Small things noticed:** the maker's own chat line reads "Ann joined as Move" although Ann is the crown (passed to Server); the "You are the crown now" toast had faded before it could be read (the chat line was there); the dev `__shot` helper stalls while the browser pane is hidden (dev only).
 
-### Phase O2: permissions and hidden information
+### Phase O2: permissions and hidden information ✅
 
-(written at the gate)
+**Built.** *Server:* `shared/redact.ts` (each player is sent only the identities they may know, with `reveal` and `forget` as cards turn up or go hidden), crown-only settings, rank, kick, ban and pass, the password hash on hello, the grey lines. *Sync:* the crown's judge by rank, Lock table, stand ownership, one full stand, Tokens-removes-tokens, the cap and holds; reveal and forget into the store; shuffles of hidden cards re-keyed (as a remove and an add, O103); undo with its precondition; spill. *Rules & UI:* permissions tested row by row, the guard on keys, buttons and drag starts with the 12.4 toasts, rank pickers and the crown's ⋯ menu, the Settings section, stand ownership on the plate (Claim, Release, Give to…, Spill), the hidden gate in every module of 7.3, hidden cards in Save a copy and exports.
+
+**Gate results** (2026-10-30, forks still frozen; same code as gate O1, so typecheck, **409 tests** and the build stand as there):
+- **Two-tab check** (A crown, B joining as Move, then a third player C for undo), every item of ONLINE.md 16's O2 list: B's spawn buttons greyed with "Cards or higher needed" (a click toasts "Tokens or higher needed" on basics); A set B to Cards in B's row and B's decklist of 3 arrived in A with names; B's stand read "Bea" and was B's; B's five cards on it were backs in A on both faces, Inspect "Hidden card", and A's press on one was refused "Only Bea can touch that stand"; B moved two to the table face down and **B's own browser forgot them too** (O30); B's S S over that pile gave the two hidden cards fresh uids in both tabs (old uids gone, the 15 face-up cards kept theirs); B turned one face up and got its identity in a `reveal` (Torch Fiend), A saw the face; Lock table: 🔒 in B's bar and B's drag "The table is locked", unlocked: B's rank back; B left with cards on the stand ("Leave the room? Your stand waits for you until the room closes.") and A saw it wait, its cards hidden; A's Spill ("Spill Bea's stand? Its cards drop face down in front of it.") dropped them face down in front and removed the stand; B's Save a copy wrote A's stand cards as `scryfallId: 'hidden'`, `hidden: true`, with nothing in `cardData` (9 hidden cards, a valid file); Downloads off: B's Save, Export, HUD Export and Save a copy went and Ctrl + E said "Downloads are off in this room", the crown kept them; Kick: "You were kicked from the room", B rejoined with its seat and Cards rank; Ban (confirmed): "You were banned from this room." and B's Join after a reload was refused; C's own Ctrl + Z undid C's turn for everyone; C's undo after A had turned the same card was refused.
+- Consoles clean in all tabs.
+- **How it was driven:** partly through the real mouse path (synthetic pointer events for drags and presses), partly by calling the same functions the buttons call (rank picker, Leave, Lock, Downloads, Kick, Ban, spawn stand, deal, flip, shuffle, Spill through `mats.spill`, Save a copy through `toDoc`; no file was downloaded). Midway the browser pane went hidden and Chromium stopped animation frames in every tab, so a test-only frame pump (timers standing in for `requestAnimationFrame`) kept the pages drawing; with frames stopped, pile detection waits, which is why a joiner briefly had no piles. In a real visible tab this does not arise.
+- **Not opened in the browser:** a hidden copy loaded offline (the loader skips `hidden` ids and the atlas draws backs; `tests/hidden.test.ts` round-trips one), and the Cast window online (a popup).
+- **Screenshots:** `reports/screenshots/online-2/` (3: A's view of B's stand as backs, B's own view, the kicked page).
+- **Commit and tag:** `ba26b7d` "Phase O2 gate", tag `online-2`. No server change since the O1 deploy, so no redeploy.
+- **Agent decisions in O2:** O98, O102, O103.
+- **BROKEN:** none. **Found, sent back after the gate:** (1) the Card stand button is not shown disabled while you own a full stand (its click is refused correctly); (2) a spill writes no "Ann spilled Bea's stand" grey line (the UI sends a plain mat remove, not `mat {spill}`); (3) an undo refused because someone else moved those cards says "Nothing to undo" instead of "Someone else has moved those since" (12.4).
 
 ### Phase O3: the public browser
 
@@ -88,6 +98,18 @@ Run `npm run dev` (or `start.bat`). Tab A at `http://localhost:5173/`; tab B at 
 - [ ] Press **Go offline** in A: B sees the Room closed screen with Save a copy; A's table is unchanged offline.
 - [ ] Close every tab: the link now shows "This room has closed".
 - [ ] **Only you can judge:** how live drags and tosses *feel* from the other side (the 100 ms buffer, the 120 ms landing ease), real latency between two machines, and the cursor and glow colours on the felt.
+
+**Phase O2, permissions and hidden information**
+- [ ] A is crown, B joins as Move (the default): B can drag cards but the Spawn panel's buttons are greyed with "Cards or higher needed"; A sets B to Cards in the row: B spawns a decklist and A sees it arrive.
+- [ ] B spawns a stand: the plate reads B's nickname; B deals five cards onto it: A sees five backs on B's stand from any camera angle (try M), with the count badge; A's hover shows nothing on them; A cannot pick them off ("Only … can touch that stand"). B's second Card stand is refused ("You already have a hand stand").
+- [ ] B flips one of those cards face down on the table: everyone sees a back, B included; B shuffles the face-down pile (S S): nobody can tell which is which afterwards.
+- [ ] B puts a card face up on the table: A sees the face at once.
+- [ ] Lock table in A: B's drag gets "The table is locked"; unlock: B's rank is back.
+- [ ] B leaves with cards on the stand: A sees the stand wait, backs showing; the 👤 on its lip has **Spill**: the cards drop face down in front and the stand goes.
+- [ ] Save a copy from B (Downloads on): the file lists A's stand cards as `hidden`; open it offline: backs that never resolve.
+- [ ] Downloads off in A: B's Save a copy and Export panel vanish.
+- [ ] Kick B: B sees the kicked screen and can rejoin; Ban B: B cannot.
+- [ ] The 📺 Cast window in a room draws backs for what that browser may not see (not opened in the gate: it is a popup).
 
 ### Performance
 
