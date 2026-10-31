@@ -11,7 +11,7 @@ import { FakeSession, type Hello } from '../online/session';
 import { getIdentity, setColour, setNickname } from '../online/identity';
 import { checkServer, copyText, createRoom, inviteLink, parseHash, roomHash, roomInfo, roomLink, setHash, type RoomRoute, type ServerTrouble } from '../online/link';
 import { NICKNAME_MAX, PASSWORD_MAX, PLAYER_COLOURS, ROOM_NAME_MAX, type ByeReason, type Player, type RoomInfo, type RoomSettings, type ServerMsg, type Tag, type Visibility } from '../../shared/protocol';
-import { PICKABLE_RANKS, RANK_LABEL, type Rank } from '../../shared/permissions';
+import { RANK_LABEL, RANKS, type Rank } from '../../shared/permissions';
 import { isFullStand, isSmallStand, isStand } from '../state/stand';
 import type { TopBar } from './topBar';
 import { confirmDialog } from './confirm';
@@ -872,8 +872,7 @@ export class OnlinePanel {
     });
     const tag = radios<Tag>('room-tag-set', [['cube', 'Cube'], ['play', 'Play']], s.tag, (v) => send({ tag: v }));
     const newcomers = h('select', { 'aria-label': 'Newcomers start as' });
-    // Everything is hidden from the pickers (O111), unless it is already the setting.
-    for (const r of s.newcomers === 'everything' ? [...PICKABLE_RANKS, s.newcomers] : PICKABLE_RANKS) {
+    for (const r of RANKS) {
       const o = h('option', { value: r }, RANK_LABEL[r]);
       o.selected = r === s.newcomers;
       newcomers.append(o);

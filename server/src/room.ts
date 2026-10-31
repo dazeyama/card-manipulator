@@ -825,14 +825,14 @@ export class Room extends DurableObject<Env> {
     this.queueHeartbeat();
   }
 
-  /** Pass the crown by hand (O20): the old crown keeps Cards, the highest rank the pickers offer (O111), and gets the table as any player sees it. */
+  /** Pass the crown by hand (O20): the old crown keeps Everything, and gets the table as any player sees it. */
   private pass(from: Seat, player: unknown): void {
     const meta = this.meta!;
     if (typeof player !== 'string' || player === from.id) return;
     const to = seatOf(meta, player);
     const ws = to?.connected ? this.socketOf(player) : undefined;
     if (!to || !ws) return;
-    from.rank = 'cards';
+    from.rank = 'everything';
     meta.crown = player;
     this.markDirty();
     this.broadcast({ t: 'crown', player });

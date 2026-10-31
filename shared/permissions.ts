@@ -12,13 +12,6 @@ export type Rank = 'view' | 'move' | 'tokens' | 'cards' | 'everything';
 /** Lowest first. */
 export const RANKS: Rank[] = ['view', 'move', 'tokens', 'cards', 'everything'];
 
-/**
- * The ranks the crown can give (O111): Everything is hidden from the pickers,
- * its extras (spilling others' stands, claiming regardless, the basics setting)
- * not mattering in play; it stays in the ladder in case it is reworked.
- */
-export const PICKABLE_RANKS: Rank[] = ['view', 'move', 'tokens', 'cards'];
-
 export const RANK_LABEL: Record<Rank, string> = {
   view: 'View',
   move: 'Move',
