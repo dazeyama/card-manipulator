@@ -114,6 +114,12 @@ export class RoomSync {
       case 'needSnapshot':
         this.authority.snapshot();
         break;
+      case 'reveal':
+        this.inbox.reveal(msg.cards);
+        break;
+      case 'forget':
+        this.inbox.forget(msg.uids);
+        break;
       default:
         break;
     }

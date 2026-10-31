@@ -12,6 +12,7 @@ import type { App } from './app';
 import { land } from './commands';
 import type { DragController } from './physics/feel';
 import type { CardMove } from './state/store';
+import { outboxOf } from './online/outbox';
 import { diffCards, sameTable, snapshot, type TableSnap } from './state/history';
 import type { RemovedTray } from './ui/tray';
 
@@ -83,16 +84,38 @@ export class Undo {
     const now = snapshot(this.app.store);
     const then = this.saved;
     if (sameTable(now, then)) return null;
+    // In a room (8.6, O41): the swap goes out with what this browser last saw of
+    // everything it touches; the crown refuses it if anyone has touched them since.
+    const box = outboxOf(this.app);
+    const touched = this.app.online && box ? this.touched(now, then) : null;
+    if (box && touched) {
+      box.flush();
+      box.pre = touched;
+    }
     this.restoring = true;
     try {
       this.restore(now, then);
     } finally {
       this.restoring = false;
     }
+    box?.flush();
     this.saved = now;
     this.pending = null;
     this.undone = !this.undone;
     return this.undone ? 'undo' : 'redo';
+  }
+
+  /** For every card and die the swap changes, the seq of the last confirmed op that touched it here (8.6). */
+  private touched(now: TableSnap, then: TableSnap): Record<string, number> {
+    const d = diffCards(now, then);
+    const uids = new Set([...d.add.map((c) => c.uid), ...d.remove, ...d.move.map((c) => c.uid)]);
+    const dice = new Map(now.dice.map((x) => [x.uid, JSON.stringify(x)]));
+    for (const x of then.dice) if (dice.get(x.uid) !== JSON.stringify(x)) uids.add(x.uid);
+    for (const x of now.dice) if (!then.dice.some((y) => y.uid === x.uid)) uids.add(x.uid);
+    const box = outboxOf(this.app);
+    const out: Record<string, number> = {};
+    for (const u of uids) out[u] = box?.seenSeq(u) ?? 0;
+    return out;
   }
 
   private restore(now: TableSnap, then: TableSnap): void {

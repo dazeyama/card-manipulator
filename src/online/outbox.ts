@@ -7,7 +7,9 @@
 // newer state). The crown's own ops are confirmed on the spot, never pending.
 
 import type { App } from '../app';
+import { land, type Landing } from '../commands';
 import { newUid } from '../state/store';
+import { spillOps } from './authority';
 import type { Op } from '../../shared/ops';
 import { cardsTouched, diceTouched } from '../../shared/ops';
 import type { RefuseReason } from '../../shared/protocol';
@@ -113,8 +115,30 @@ export class Outbox {
     const p = this.pending.get(id);
     if (!p) return false;
     this.pending.delete(id);
-    if (p.others.size) this.sync.inbox.applyRemote(op, by);
+    // Applied again if someone else's op came first, or if the crown confirmed it differently (a spill it laid out).
+    if (p.others.size || JSON.stringify(op) !== JSON.stringify(p.op)) this.sync.inbox.applyRemote(op, by);
     return true;
+  }
+
+  /**
+   * Spill stands (6.3): proposed to the crown, which lays the cards out (it
+   * knows them all); meanwhile they are laid out here the same way, face down
+   * in front of each stand, and the crown's layout replaces it when confirmed.
+   */
+  spill(uids: string[]): void {
+    this.flush();
+    const { app, online, inbox } = this.sync;
+    const store = app.store;
+    const stands = uids.map((u) => store.mats.get(u)).filter((m) => !!m);
+    if (!stands.length) return;
+    const on = new Set(stands.map((m) => m!.uid));
+    const cards = [...store.cards.values()].filter((c) => c.stand && on.has(c.stand));
+    const inverse: Op = { t: 'batch', ops: [
+      { t: 'mat', set: stands.map((m) => ({ ...m! })) },
+      { t: 'move', moves: cards.map((c) => ({ uid: c.uid, x: c.x, y: c.y, z: c.z, yaw: c.yaw, faceUp: c.faceUp, stand: c.stand ?? null })) },
+    ] };
+    inbox.applyRemote({ t: 'batch', ops: spillOps(store, [...on], app) }, online.room.me);
+    this.send({ t: 'mat', spill: [...on] }, inverse);
   }
 
   /** Someone else's confirmed op: note what it touched in every op of mine still waiting. */
@@ -147,9 +171,32 @@ export class Outbox {
     this.pending.clear();
   }
 
+  /** The seq of the last confirmed op that touched a card or die, as this browser saw it (8.6), 0 for none. */
+  seenSeq(uid: string): number {
+    return this.sync.inbox.touched.get(uid) ?? 0;
+  }
+
   /** Ops of mine not yet confirmed (for tests and the dev tools). */
   get waiting(): number {
     return this.pending.size;
+  }
+}
+
+/**
+ * Spill stands (6.3, O31): their cards face down in a messy pile in front of
+ * each, the stands gone. In a room, anyone but the crown proposes it and the
+ * crown lays it out; offline, and for the crown, it is laid out here through
+ * the store like any change (undo covers it offline).
+ */
+export function spillStands(app: App, uids: string[]): void {
+  const box = outboxOf(app);
+  if (box && app.online && !app.online.room.isCrown) {
+    box.spill(uids);
+    return;
+  }
+  for (const op of spillOps(app.store, uids, app)) {
+    if (op.t === 'move') land(app, op.moves as Landing[], { arc: 8, keepSide: true });
+    else if (op.t === 'mat') for (const u of op.remove ?? []) app.store.removeMat(u);
   }
 }
 

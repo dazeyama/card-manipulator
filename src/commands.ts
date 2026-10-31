@@ -523,6 +523,8 @@ export class Commands {
     leaveSpreads(this.app, uids);
     const c = centroid(this.app, uids);
     const m = standOf(this.app, uids);
+    // In a room the crown then re-keys any hidden cards among them (ONLINE.md 7.2).
+    this.app.store.markShuffle();
     land(this.app, inSpace(m?.uid ?? null, () => pileAt(this.app, uids, { x: c.x, y: c.y, yaw: m?.yaw ?? this.app.facing })), { stagger: Math.min(3, 300 / uids.length), arc: 8 });
   }
 

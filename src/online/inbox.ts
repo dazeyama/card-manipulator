@@ -6,8 +6,11 @@
 import type { Store } from '../state/store';
 import { cardsTouched, diceTouched, type Op } from '../../shared/ops';
 import { joinSnapshot, type ServerMsg, type SnapshotPart } from '../../shared/protocol';
-import type { Card } from '../state/types';
+import type { Card, Finish } from '../state/types';
 import { isStand, slopePose } from '../state/stand';
+import { HIDDEN, type CardSnap } from '../../shared/table';
+import { getRecords } from '../scryfall/cardData';
+import { fetchByIds } from '../scryfall/resolve';
 import type { RoomSync } from './connect';
 
 /** A confirmed op as the server sends it. */
@@ -86,6 +89,9 @@ export class Inbox {
   /** For every card and die, the seq of the last confirmed op that touched it, as this browser saw it. */
   readonly touched = new Map<string, number>();
   private parts: SnapshotPart[] = [];
+  /** Printings to fetch card data for: every browser resolves its own cards (O42). */
+  private readonly wanted = new Set<string>();
+  private fetchTimer = 0;
   /** Waiting for snapshot parts: a joiner after welcome, anyone after a gap. */
   private waitingForTable = false;
   /** Ops that came in while the welcome's snapshot was arriving. */
@@ -161,6 +167,7 @@ export class Inbox {
       this.settleDrawn(table.cards.map((c) => c.uid), new Set());
     });
     this.touched.clear();
+    this.need(table.cards.map((c) => c.scryfallId));
     if (seq !== undefined) this.seq = seq;
     this.waitingForTable = false;
     const waiting = this.waiting;
@@ -205,6 +212,44 @@ export class Inbox {
       if (op.t !== 'replace') this.settleDrawn(cardsTouched(op), eased);
       else this.settleDrawn(op.table.cards.map((c) => c.uid), eased);
     });
+    this.need(addedCards(op).map((c) => c.scryfallId));
+  }
+
+  /** Cards I may now know (7.2): their printing and finish, and their card data when it comes. */
+  reveal(cards: { uid: string; scryfallId: string; finish: Finish }[]): void {
+    this.sync.app.store.setIdentities(cards);
+    this.need(cards.map((c) => c.scryfallId));
+  }
+
+  /** Cards I may no longer know (7.2): an honest browser forgets them; they draw as backs. The crown never forgets. */
+  forget(uids: string[]): void {
+    if (this.sync.online.room.isCrown) return;
+    this.sync.app.store.setIdentities(uids.map((uid) => ({ uid, scryfallId: HIDDEN, finish: 'nonfoil' })));
+  }
+
+  /** Fetch card data for printings this browser lacks: from its own cache, then Scryfall through the queue (O42). */
+  private need(ids: Iterable<string>): void {
+    const store = this.sync.app.store;
+    for (const id of ids) if (id && id !== HIDDEN && !store.records.has(id)) this.wanted.add(id);
+    if (!this.wanted.size || this.fetchTimer) return;
+    this.fetchTimer = window.setTimeout(() => void this.fetchRecords(), 50);
+  }
+
+  private async fetchRecords(): Promise<void> {
+    this.fetchTimer = 0;
+    const store = this.sync.app.store;
+    const ids = [...this.wanted].filter((id) => !store.records.has(id));
+    this.wanted.clear();
+    if (!ids.length) return;
+    const cached = await getRecords(ids);
+    store.addRecords([...cached.values()].filter((r) => !store.records.has(r.id)));
+    const missing = ids.filter((id) => !store.records.has(id));
+    if (!missing.length) return;
+    try {
+      store.addRecords(await fetchByIds(missing));
+    } catch (err) {
+      console.warn('Could not fetch card data for the room’s cards', err);
+    }
   }
 
   /** Animate cards to where the store has them now and tell piles and resting (inside store.remote). */
@@ -221,5 +266,19 @@ export class Inbox {
       app.motion.animate(uid, { ...to, roll: card.faceUp ? 0 : Math.PI }, { duration: eased.has(uid) ? LANDING_EASE_MS : SETTLE_MS });
     }
     store.events.emit('settled', live);
+  }
+}
+
+/** The cards an op brings onto the table, with their printings. */
+function addedCards(op: Op): CardSnap[] {
+  switch (op.t) {
+    case 'add':
+      return op.cards;
+    case 'replace':
+      return op.table.cards;
+    case 'batch':
+      return op.ops.flatMap(addedCards);
+    default:
+      return [];
   }
 }

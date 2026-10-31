@@ -183,6 +183,8 @@ export class DragController {
   private groupTurn = 0;
   /** An Alt pick-up (formation) doesn't turn cards to face you, so where they land they stay the other side's (decision 275). */
   private keepSide = false;
+  /** S S in the hand: the landing is a shuffle's (a room's crown re-keys hidden cards, ONLINE.md 7.2). */
+  private shuffledHand = false;
   /** Cursor on the table last frame and its smoothed velocity, mm/s. */
   private lastCursor = { x: 0, y: 0 };
   private cursorVel = { x: 0, y: 0 };
@@ -305,6 +307,7 @@ export class DragController {
     // What rested on the lifted cards falls now (decision 100).
     this.app.rest?.lifted(this.held.map((h) => h.uid));
     this.active = true;
+    this.shuffledHand = false;
     // In a room, a hold from the crown (8.4): in the hand at once; if someone else was first, back they go.
     this.askHold(this.held.map((h) => h.uid));
     this.flicked = false;
@@ -684,6 +687,7 @@ export class DragController {
   shuffleHeld(): void {
     if (!this.active || this.held.length < 2) return;
     this.held = shuffled(this.held);
+    this.shuffledHand = true;
     this.stackHeld();
   }
 
@@ -934,6 +938,8 @@ export class DragController {
   private release(sx: number, sy: number): void {
     let held = this.held;
     const mode = this.mode;
+    // A shuffled hand that lands by layout is a shuffle's landing (a toss through physics is not re-keyed).
+    const shuffle = this.shuffledHand;
     this.finish();
     // Let go mid-motion: the cards drop where they are drawn, strung out along
     // the drag, instead of finishing the planned landing (decision 95). A quick
@@ -948,6 +954,7 @@ export class DragController {
         .map((c) => ({ c, pose: this.app.layer.pose(c.uid) }))
         .filter((e) => e.pose);
       const spots = stopWhereTheyAre(ordered.map(({ c, pose }) => ({ x: pose!.x, y: pose!.y, yaw: pose!.yaw, vx: c.vx, vy: c.vy })));
+      if (shuffle) this.app.store.markShuffle();
       land(this.app, placeSequential(this.app, ordered.map((e) => e.c.uid), spots), { duration: 150, stagger: 0, keepSide: this.keepSide });
       return;
     }
@@ -966,7 +973,9 @@ export class DragController {
       }
     }
     if (this.dropLoose(held, mode, sx, sy)) return;
-    land(this.app, this.landings(held, mode, sx, sy), { keepSide: this.keepSide });
+    const landings = this.landings(held, mode, sx, sy);
+    if (shuffle) this.app.store.markShuffle();
+    land(this.app, landings, { keepSide: this.keepSide });
   }
 
   /**

@@ -172,6 +172,14 @@ export class Store {
   /** Told of every local change to the table: the op, and the op that undoes it. Set by the room's outbox. */
   onLocalChange: ((op: Op, inverse: Op) => void) | null = null;
 
+  /** The next moveCards is a shuffle (S S, ONLINE.md 7.2): its op says so, for the crown to re-key hidden cards. */
+  private shuffleNext = false;
+
+  /** Mark the next moveCards as a shuffle's landing. */
+  markShuffle(): void {
+    this.shuffleNext = true;
+  }
+
   /** A local change is being made and someone listens: work out its op. */
   private get tracking(): boolean {
     return this.origin === 'local' && !!this.onLocalChange;
@@ -233,6 +241,8 @@ export class Store {
 
   moveCards(moves: CardMove[]): void {
     const tracking = this.tracking;
+    const shuffle = this.shuffleNext;
+    this.shuffleNext = false;
     const done: CardMove[] = [];
     const undo: CardMove[] = [];
     const changed: string[] = [];
@@ -256,7 +266,7 @@ export class Store {
       changed.push(m.uid);
     }
     if (changed.length) this.events.emit('moved', changed);
-    if (done.length) this.told({ t: 'move', moves: done.map(clean) }, { t: 'move', moves: undo });
+    if (done.length) this.told({ t: 'move', moves: done.map(clean), ...(shuffle ? { shuffle: true } : {}) }, { t: 'move', moves: undo });
   }
 
   /**
@@ -281,6 +291,24 @@ export class Store {
     this.events.emit('renamed', done);
     if (selectionChanged) this.events.emit('selection', undefined);
     this.told({ t: 'reuid', pairs: done }, { t: 'reuid', pairs: done.map(([a, b]) => [b, a]) });
+  }
+
+  /**
+   * What this browser may know of some cards changed (a room's `reveal` and
+   * `forget`, ONLINE.md 7.2): their printing and finish, or HIDDEN. Not a change
+   * to the table, so nothing goes to the room; listeners hear it as new card
+   * data for those printings, as the hidden gate does.
+   */
+  setIdentities(list: { uid: string; scryfallId: string; finish: Card['finish'] }[]): void {
+    const ids = new Set<string>();
+    for (const { uid, scryfallId, finish } of list) {
+      const c = this.cards.get(uid);
+      if (!c || (c.scryfallId === scryfallId && c.finish === finish)) continue;
+      c.scryfallId = scryfallId;
+      c.finish = finish;
+      ids.add(scryfallId);
+    }
+    if (ids.size) this.events.emit('records', [...ids]);
   }
 
   // ---- card data ----
