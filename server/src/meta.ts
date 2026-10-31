@@ -206,6 +206,10 @@ export function addChat(meta: Meta, line: ChatLine): void {
 /** The grey system lines of 5.5. */
 export const say = {
   joined: (s: Seat) => `${s.nickname} joined as ${RANK_LABEL[s.rank]}`,
+  /** The maker's first hello: they are the crown, not a rank. */
+  opened: (s: Seat) => `${s.nickname} opened the room`,
+  /** A newcomer who walks into a room with no crown (after a restart) is the crown at once. */
+  joinedCrown: (s: Seat) => `${s.nickname} joined and is the crown now`,
   back: (s: Seat) => `${s.nickname} is back`,
   left: (s: Seat) => `${s.nickname} left`,
   crown: (s: Seat) => `${s.nickname} is the crown now`,

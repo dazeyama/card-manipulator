@@ -340,7 +340,7 @@ export class Room extends DurableObject<Env> {
       if (was) this.sendTable(was, reclaimedFrom.id);
     }
     this.broadcastPlayers();
-    if (!existing) this.say(say.joined(seat));
+    if (!existing) this.say(!isCrown ? say.joined(seat) : id === meta.maker ? say.opened(seat) : say.joinedCrown(seat));
     else if (!wasHere) this.say(say.back(seat));
     if (reclaimedFrom) this.say(say.reclaimed(seat));
     this.queueHeartbeat();

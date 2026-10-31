@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applySettings, cleanNickname, cleanRoomName, colourFree, electCrown, newMeta, passwordHash, pickColour, playersOf, roomInfo, type Seat } from '../server/src/meta';
+import { applySettings, cleanNickname, cleanRoomName, colourFree, electCrown, newMeta, passwordHash, pickColour, playersOf, roomInfo, say, type Seat } from '../server/src/meta';
 import { PLAYER_COLOURS } from '../shared/protocol';
 
 function seat(id: string, rank: Seat['rank'], joinedAt: number, connected = true, colour = ''): Seat {
@@ -89,6 +89,14 @@ describe('room meta', () => {
     expect(a).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(await passwordHash('7KQ2MX', 'swordfish')).toBe(a);
     expect(await passwordHash('8KQ2MX', 'swordfish')).not.toBe(a);
+  });
+
+  it('says who joined: a rank for players, the room opened for the maker', () => {
+    const s = seat('ann', 'move', 1);
+    s.nickname = 'Ann';
+    expect(say.joined(s)).toBe('Ann joined as Move');
+    expect(say.opened(s)).toBe('Ann opened the room');
+    expect(say.joinedCrown(s)).toBe('Ann joined and is the crown now');
   });
 
   it('cleans names', () => {
