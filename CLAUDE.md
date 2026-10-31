@@ -13,7 +13,7 @@ A browser scratchpad for moving hundreds to thousands of Magic cards around a 3D
 
 ```
 npm install
-npm run dev        # http://localhost:5173
+npm run dev        # http://localhost:5173, with a local room server on 8787 (npm run dev:web for vite alone)
 npm run typecheck
 npm test
 npm run build
@@ -28,7 +28,7 @@ Regenerate the test lists (Scryfall, through the app's own client): `node --expe
 - **The spec wins.** If the owner says something that conflicts with it, the owner wins, and the spec is updated in the same change so the conflict doesn't return.
 - **Decisions are logged.** Every new decision gets the next number in Appendix A with its date. Decisions made without the owner are marked **(agent)** with the reasoning.
 - **The owner is QA.** Hand off with a short "Where to look" checklist. During the autonomous overnight build only, also verify in the built-in browser (spec Section 0.1).
-- **Git and deploy** (decision 203). The repo is public on GitHub as `origin`. Commit locally as usual; push to `main` only when the owner asks, since every push to `main` deploys the site to GitHub Pages through `.github/workflows/pages.yml` (it runs typecheck, tests and build first). Commits use the owner's own email for now (their choice, 2026-10-29); it is public in the history.
+- **Git and deploy** (decision 203). The repo is public on GitHub as `origin`. Commit locally as usual; push to `main` only when the owner asks, since every push to `main` deploys the site to GitHub Pages through `.github/workflows/pages.yml` (it runs typecheck, tests and build first). Commits use the owner's own email for now (their choice, 2026-10-29); it is public in the history. The room server deploys separately: `.github/workflows/worker.yml` on pushes touching `server/**` or `shared/**`, with the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (O92), or by hand with `npx wrangler deploy --config server/wrangler.toml`; its admin key is a Worker secret, kept locally in the git-ignored `server/.admin-key`.
 - **Scryfall courtesy.** Every request goes through the one serialized queue in `src/scryfall/client.ts`: 100 ms between general calls, 550 ms between searches. Reuse the caches.
 - **Reference projects are read-only.** `C:\ClaudeProjects\pug-pricing-tool` is reference material for the Scryfall client and conventions. Never edit it.
 - **Chrome and Edge only.** Performance target is the owner's RTX 4070 Ti at 1080p.
@@ -50,7 +50,9 @@ Regenerate the test lists (Scryfall, through the app's own client): `node --expe
 - `src/io/` decklist parsing, export (decklist, CSV), save files, autosave.
 - `src/dev/` dev-only tooling, never in the production build: `__shot(name)` saves a screenshot to `reports/screenshots/` (through `devtools/shotPlugin.ts`), `__spawnFile('cube.txt', opts)`, `await __regression()` runs every phase's checklist, `__errors` lists page errors since load.
 - `test-data/` lists for manual and automated testing; `cube.txt` is the owner's.
-- `shared/`, `server/` and `src/online/` (not yet built) are rooms: see ONLINE.md Section 3.4.
+- Rooms (ONLINE.md 3.4): `shared/` the protocol, ops, `applyOp`, redaction, permissions, room codes, the name filter, rate limits (pure, imported by both sides; only *types* from `src/`); `server/` the Cloudflare Worker with its `Room` and `Lobby` Durable Objects (`wrangler.toml`, `src/worker.ts`, `room.ts`, `lobby.ts`).
+- `src/online/` the client's room layer (ONLINE.md 11.2): `link.ts` the `#/room/CODE` and `#/admin` routes, room links and the room server's HTTP calls; `guard.ts` rank gating of keys, buttons and drag starts; `hidden.ts` the hidden gate; `session.ts`, `connect.ts` (the RoomLayer), `outbox.ts`, `inbox.ts`, `authority.ts`, `streams.ts`, `presence.ts` the sync.
+- `src/ui/onlinePanel.ts` the Online button, avatars, panel and room flows; `joinPrompt.ts`, `chatStrip.ts`, `playerRows.ts`, `roomStates.ts` (whole-page states), `desktopOnly.ts`, `tableBrowser.ts`, `adminPage.ts`.
 
 ## Gotchas
 
@@ -58,3 +60,7 @@ Regenerate the test lists (Scryfall, through the app's own client): `node --expe
 - If the dev page fails with "does not provide an export named …", Vite served a half-written module: `touch` the file and reload.
 - The built-in browser's drag action cannot hold Shift, Ctrl or Alt; test modifier drags with synthetic pointer events that carry the flags, and say so in reports.
 - `window.app` is the `#app` element when `main.ts` failed to load; check `__errors` or the console first.
+- Every read of a card's identity goes through `store.recordOf(card)` or `store.canSee(card)`: in a room some cards are hidden. The crown's judge reads `store.records` itself.
+- UI that must stay current in a background tab follows store or room events, not `app.onFrame`: the browser pauses frames there (and in every tab while the built-in browser's pane is hidden; a gate then pumps frames with timers in the page).
+- Dev only: `?player=B` before the `#` is a second player in the same browser (O90); `?fakeroom` goes online on a FakeSession with no server.
+- While several sessions share the folder, every file one of them saves makes vite reload all dev pages, and a room of one closes on that reload (O61).
