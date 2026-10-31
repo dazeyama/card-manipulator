@@ -93,12 +93,18 @@ export function socketUrl(code: string, server = roomServer()): string | null {
 export type ServerTrouble = 'offline' | 'quota' | 'rate' | 'version' | 'error';
 
 /**
- * A refusal: the room server's own rate limits answer 429 with JSON; Cloudflare's
- * free-plan daily limit answers 429 with its 1027 error page, not JSON (Section 15).
+ * A refusal: the room server answers 429 with `{ error: 'rate' }` for its own
+ * limits and `{ error: 'quota' }` when the free plan's day is spent (O101);
+ * Cloudflare's own 1027 page for the spent day is not JSON at all (Section 15).
  */
-function troubleOf(res: Response): ServerTrouble {
-  if (res.status === 429) return res.headers.get('content-type')?.includes('json') ? 'rate' : 'quota';
-  return 'error';
+async function troubleOf(res: Response): Promise<ServerTrouble> {
+  if (res.status !== 429) return 'error';
+  try {
+    const body = (await res.json()) as { error?: string };
+    return body.error === 'rate' ? 'rate' : 'quota';
+  } catch {
+    return 'quota';
+  }
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T | ServerTrouble> {
@@ -110,7 +116,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T | ServerTrou
   } catch {
     return 'offline';
   }
-  if (!res.ok) return troubleOf(res);
+  if (!res.ok) return await troubleOf(res);
   try {
     return (await res.json()) as T;
   } catch {
@@ -141,7 +147,7 @@ export async function roomInfo(code: string): Promise<RoomInfo | null | ServerTr
     return 'offline';
   }
   if (res.status === 404) return null;
-  if (!res.ok) return troubleOf(res);
+  if (!res.ok) return await troubleOf(res);
   try {
     const info = (await res.json()) as RoomInfo;
     return info.open === false ? null : info;
