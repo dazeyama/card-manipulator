@@ -5,14 +5,23 @@
 // it changes anyone's table. Moving it to WebRTC later changes this file only.
 
 import * as THREE from 'three';
-import { STREAM_HZ, type Pose6, type StreamOut } from '../../shared/protocol';
+import { byteLength, STREAM_HZ, type Pose6, type StreamOut } from '../../shared/protocol';
 import type { Pose } from '../render/cards';
 import type { RoomSync } from './connect';
 
 /** The selection goes out at most this often, ms. */
 const SELECTION_EVERY_MS = 500;
-/** At most this many uids of a selection go out (a 5,000-card Ctrl + A would not fit a message). */
-const SELECTION_MAX = 1500;
+/**
+ * What one stream may carry, so it stays well under the server's 64 KB for a
+ * message (O104): at most this many uids of a selection (a 5,000-card Ctrl + A
+ * would not fit), and at most this many poses of held and flying cards and
+ * dice. Past the cap, held cards are not streamed: others see them lift (the
+ * grab marks them held) and land, not travel.
+ */
+export const SELECTION_MAX = 1000;
+export const POSES_MAX = 400;
+/** A last guard: a stream bigger than this drops its selection, then its poses. */
+const STREAM_BYTES_MAX = 56 * 1024;
 
 const r1 = (v: number) => Math.round(v * 10) / 10;
 const r2 = (v: number) => Math.round(v * 100) / 100;
@@ -28,6 +37,33 @@ const euler = new THREE.Euler(0, 0, 0, 'ZXY');
 export function diePose6(at: THREE.Vector3, q: THREE.Quaternion): Pose6 {
   euler.setFromQuaternion(q, 'ZXY');
   return [r1(at.x), r1(at.y), r1(at.z), r2(euler.z), r2(euler.y), r2(euler.x)];
+}
+
+/**
+ * One stream as it goes out (8.3): the flights first (only the thrower's
+ * physics knows them), then the top of the hand (the end of `hold`, bottom to
+ * top), within POSES_MAX; the selection within SELECTION_MAX.
+ */
+export function composeStream(side: 0 | 1, cur: [number, number] | undefined, hold: [string, Pose6][], fly: [string, Pose6][], sel?: string[]): StreamOut {
+  const out: StreamOut = { side };
+  if (cur) out.cur = cur;
+  const flying = fly.slice(0, POSES_MAX);
+  const room = POSES_MAX - flying.length;
+  const holding = room > 0 ? hold.slice(Math.max(0, hold.length - room)) : [];
+  if (holding.length) out.hold = Object.fromEntries(holding);
+  if (flying.length) out.fly = Object.fromEntries(flying);
+  if (sel) out.sel = sel.slice(0, SELECTION_MAX);
+  return out;
+}
+
+/** The stream within STREAM_BYTES_MAX: without its selection, then without its poses, if it must. */
+export function fitStream(out: StreamOut): StreamOut {
+  const size = (s: StreamOut) => byteLength(JSON.stringify({ t: 'stream', ...s }));
+  if (size(out) <= STREAM_BYTES_MAX) return out;
+  const { sel: _sel, ...rest } = out;
+  if (size(rest) <= STREAM_BYTES_MAX) return rest;
+  const { hold: _hold, fly: _fly, ...bare } = rest;
+  return bare;
 }
 
 export class Streams {
@@ -48,42 +84,45 @@ export class Streams {
   private tick(): void {
     const { app, online, deps } = this.sync;
     if (!online.room.connected || !online.room.me) return;
-    const out: StreamOut = { side: app.side };
-    if (app.pointer.inside) out.cur = [r1(app.lastTablePoint.x), r1(app.lastTablePoint.y)];
-    const hold: Record<string, Pose6> = {};
-    const fly: Record<string, Pose6> = {};
+    const cur: [number, number] | undefined = app.pointer.inside ? [r1(app.lastTablePoint.x), r1(app.lastTablePoint.y)] : undefined;
+    // The cards bottom to top, then the dice (few), so the cap keeps the top of the hand and the dice.
+    const hold: [string, Pose6][] = [];
     if (deps.drag.dragging) {
-      for (const uid of deps.drag.heldUids) {
+      const uids = deps.drag.heldUids;
+      // Only what the cap can carry is worked out.
+      for (const uid of uids.slice(Math.max(0, uids.length - POSES_MAX))) {
         const p = app.layer.pose(uid);
-        if (p) hold[uid] = cardPose6(p);
+        if (p) hold.push([uid, cardPose6(p)]);
       }
     }
     for (const uid of deps.dice.heldUids) {
       const d = deps.diceLayer.drawnAt(uid);
-      if (d) hold[uid] = diePose6(d.position, d.quaternion);
+      if (d) hold.push([uid, diePose6(d.position, d.quaternion)]);
     }
+    const fly: [string, Pose6][] = [];
     const flying = app.physics?.flying();
-    for (const uid of flying?.cards ?? []) {
-      const p = app.layer.pose(uid);
-      if (p) fly[uid] = cardPose6(p);
-    }
     for (const uid of flying?.dice ?? []) {
       const d = deps.diceLayer.drawnAt(uid);
-      if (d) fly[uid] = diePose6(d.position, d.quaternion);
+      if (d) fly.push([uid, diePose6(d.position, d.quaternion)]);
     }
-    if (Object.keys(hold).length) out.hold = hold;
-    if (Object.keys(fly).length) out.fly = fly;
-    const key = JSON.stringify(out);
+    for (const uid of flying?.cards ?? []) {
+      const p = app.layer.pose(uid);
+      if (p) fly.push([uid, cardPose6(p)]);
+    }
     // The selection, cards and dice, when it changed, at most twice a second.
     const now = performance.now();
-    const sel = [...app.store.selection, ...deps.dice.selected];
-    const selKey = sel.join(',');
+    const all = [...app.store.selection, ...deps.dice.selected];
+    const selKey = all.join(',');
+    let sel: string[] | undefined;
     if (selKey !== this.lastSel && now - this.selAt >= SELECTION_EVERY_MS) {
       this.lastSel = selKey;
       this.selAt = now;
-      out.sel = sel.slice(0, SELECTION_MAX);
+      sel = all;
     }
-    if (key === this.last && !out.sel) return;
+    const out = fitStream(composeStream(app.side, cur, hold, fly, sel));
+    const { sel: sent, ...moving } = out;
+    const key = JSON.stringify(moving);
+    if (key === this.last && !sent) return;
     this.last = key;
     this.sync.session.send({ t: 'stream', ...out });
   }
