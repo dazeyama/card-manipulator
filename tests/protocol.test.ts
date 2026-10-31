@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  PROTOCOL, MAX_MESSAGE_BYTES, MAX_SNAPSHOT_PART_BYTES, byteLength, isClientMsg, isServerMsg, joinSnapshot, maxBytes, playerIdOf, splitSnapshot,
+  PROTOCOL, MAX_MESSAGE_BYTES, MAX_OP_BYTES, MAX_SNAPSHOT_PART_BYTES, byteLength, isClientMsg, isServerMsg, joinSnapshot, maxBytes, playerIdOf, splitSnapshot,
 } from '../shared/protocol';
 import { emptyTable, type TableState } from '../shared/table';
 import { cardsTouched, diceTouched } from '../shared/ops';
@@ -47,6 +47,10 @@ describe('protocol', () => {
     expect(byteLength(JSON.stringify(parts[1]))).toBeLessThan(MAX_SNAPSHOT_PART_BYTES);
     expect(maxBytes('snapshot')).toBe(MAX_SNAPSHOT_PART_BYTES);
     expect(maxBytes('chat')).toBe(MAX_MESSAGE_BYTES);
+    // A whole cube in one spawn (O104): ops and confirms get Cloudflare's 1 MiB.
+    expect(maxBytes('op')).toBe(MAX_OP_BYTES);
+    expect(maxBytes('confirm')).toBe(MAX_OP_BYTES);
+    expect(maxBytes('stream')).toBe(MAX_MESSAGE_BYTES);
   });
 
   it('counts bytes as UTF-8', () => {

@@ -23,8 +23,16 @@ export const MAX_CARDS = 5000;
 export const MAX_MESSAGE_BYTES = 64 * 1024;
 /** One snapshot part, in bytes of UTF-8. */
 export const MAX_SNAPSHOT_PART_BYTES = 256 * 1024;
-/** A crown's `confirm` of a `replace` op (New table, Load file): the whole table in one message. */
-export const MAX_REPLACE_BYTES = 1024 * 1024;
+/**
+ * **(agent, O104)** An `op` or `confirm` message: a spawn of a whole cube, a
+ * layout of every card, a `replace` (New table, Load file) carries thousands
+ * of cards in one op. 1 MiB is Cloudflare's own ceiling for a WebSocket
+ * message; a 5,000-card add is about 900 KB, and the outbox splits big ops so
+ * none comes near it.
+ */
+export const MAX_OP_BYTES = 1024 * 1024;
+/** A crown's `confirm` of a `replace` op: the same ceiling as any op (O104). */
+export const MAX_REPLACE_BYTES = MAX_OP_BYTES;
 /** Cards per snapshot part (8.7). */
 export const SNAPSHOT_PART_CARDS = 1000;
 export const NICKNAME_MAX = 20;
@@ -247,7 +255,9 @@ export function byteLength(text: string): number {
 
 /** The size limit for a message of this type. */
 export function maxBytes(t: string): number {
-  return t === 'snapshot' ? MAX_SNAPSHOT_PART_BYTES : MAX_MESSAGE_BYTES;
+  if (t === 'snapshot') return MAX_SNAPSHOT_PART_BYTES;
+  if (t === 'op' || t === 'confirm') return MAX_OP_BYTES;
+  return MAX_MESSAGE_BYTES;
 }
 
 // ---- HTTP (9.3) ----
