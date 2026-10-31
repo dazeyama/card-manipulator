@@ -12,70 +12,65 @@ type Key = 'shift' | 'ctrl' | 'alt';
 /** One hint: its icon, its words, and the key that lights it up while held. */
 type Hint = [string, string, Key?];
 
+// Short on purpose (decision 297): "Key: what it does", no status lines, as the cursor shows those.
 const HINTS: Record<string, Hint[]> = {
   holding: [
-    ['✋', 'Release to drop'],
-    ['🧲', 'Shift sweeps cards in', 'shift'],
-    ['📐', 'Ctrl lands tidy', 'ctrl'],
-    ['🔃', 'R turns'],
-    ['🃏', 'F or middle-click flips'],
-    ['👇', 'Right-click deals one, hold to keep dealing'],
-    ['🪟', 'X spreads'],
-    ['⎋', 'Esc puts back'],
+    ['✋', 'Release: drop'],
+    ['🧲', 'Shift: sweep', 'shift'],
+    ['📐', 'Ctrl: tidy', 'ctrl'],
+    ['🔃', 'R: turn'],
+    ['🃏', 'F: flip'],
+    ['👇', 'Right-click: deal'],
+    ['🪟', 'X: spread'],
+    ['⎋', 'Esc: put back'],
   ],
   formation: [
-    ['✋', 'Release to drop each where it is'],
-    ['🔗', 'Moving in formation'],
-    ['🧲', 'Shift sweeps cards in', 'shift'],
-    ['⎋', 'Esc puts back'],
+    ['✋', 'Release: drop in place'],
+    ['🧲', 'Shift: sweep', 'shift'],
+    ['⎋', 'Esc: put back'],
   ],
   card: [
-    ['🖐️', 'Drag to pick up'],
-    ['🧲', 'Shift sweeps', 'shift'],
-    ['📐', 'Ctrl: drag lands tidy · click checks cards in and out', 'ctrl'],
-    ['🔗', 'Alt keeps formation', 'alt'],
-    ['🃏', 'Middle-click flips'],
-    ['🔄', 'Double-click taps; on face down, selects the stack'],
-    ['📊', 'C curves, C C by color'],
-    ['🏆', 'E ranks by EDHREC, E E by Elo'],
-    ['🎴', 'H fans'],
-    ['🖐️', '1–9 draws a hand, 0 asks how many'],
+    ['🖐️', 'Drag: pick up'],
+    ['🧲', 'Shift: sweep', 'shift'],
+    ['📐', 'Ctrl: tidy · toggle', 'ctrl'],
+    ['🔗', 'Alt: formation', 'alt'],
+    ['🃏', 'Middle-click: flip'],
+    ['🔄', 'Double-click: tap'],
+    ['📊', 'C: curve'],
+    ['🏆', 'E: EDHREC'],
+    ['🎴', 'H: fan'],
+    ['🖐️', '1–9: draw'],
   ],
   table: [
-    ['⬚', 'Drag to select'],
-    ['➕', 'Ctrl adds', 'ctrl'],
-    ['➖', 'Shift takes away', 'shift'],
-    ['🔢', 'Alt shows counts', 'alt'],
-    ['↔️', 'Right-drag pans'],
-    ['🔄', 'Middle-drag orbits'],
-    ['🎥', 'V camera angle'],
+    ['⬚', 'Drag: select'],
+    ['➕', 'Ctrl: add', 'ctrl'],
+    ['➖', 'Shift: remove', 'shift'],
+    ['🔢', 'Alt: counts', 'alt'],
+    ['↔️', 'Right-drag: pan'],
+    ['🔄', 'Middle-drag: orbit'],
+    ['🎥', 'V: camera'],
   ],
   marquee: [
-    ['⬚', 'Release to select'],
-    ['➕', 'Ctrl adds', 'ctrl'],
-    ['➖', 'Shift takes away', 'shift'],
-    ['⎋', 'Esc cancels'],
+    ['⬚', 'Release: select'],
+    ['➕', 'Ctrl: add', 'ctrl'],
+    ['➖', 'Shift: remove', 'shift'],
+    ['⎋', 'Esc: cancel'],
   ],
   mat: [
-    ['🖐️', 'Drag to move the playmat'],
-    ['🔗', 'Alt + drag carries its cards', 'alt'],
-    ['📺', 'Top-right button mirrors it'],
-    ['🔓', 'The lock beside it keeps it in place'],
-    ['🔃', 'R turns it'],
-    ['🗑️', 'Delete removes it'],
+    ['🖐️', 'Drag: move'],
+    ['🔗', 'Alt + drag: carry cards', 'alt'],
+    ['🔃', 'R: turn'],
+    ['🗑️', 'Delete: remove'],
   ],
   matDrag: [
-    ['✋', 'Release to place the playmat'],
-    ['🔗', 'Hold Alt as you start to carry its cards'],
-    ['⎋', 'Esc puts it back'],
+    ['✋', 'Release: place'],
+    ['⎋', 'Esc: put back'],
   ],
   pan: [
-    ['↔️', 'Panning'],
-    ['🖱️', 'Double right-click straightens the view'],
+    ['🖱️', 'Double right-click: straighten'],
   ],
   orbit: [
-    ['🔄', 'Orbiting'],
-    ['🎥', 'V cycles camera angles'],
+    ['🎥', 'V: camera'],
   ],
 };
 
@@ -152,16 +147,16 @@ export class ContextHints {
     const placeCount = this.app.placing?.source.length ?? 0;
     const hints: Hint[] = context === 'draw'
       ? this.app.drawing?.faceDown
-        ? [['👆', `Click the table to deal ${n} face down`], ['📦', 'In messy piles of up to 15, close together'], ['⎋', 'Esc cancels']]
-        : [['👆', `Click the table to lay out a hand of ${n}`], ['🃏', 'They land face up'], ['⎋', 'Esc cancels']]
+        ? [['👆', `Click: deal ${n} face down`], ['⎋', 'Esc: cancel']]
+        : [['👆', `Click: hand of ${n}`], ['⎋', 'Esc: cancel']]
       : context === 'place' && this.app.placing?.faceDown
-        ? [['📦', `Click the table to put ${placeCount} card${placeCount === 1 ? '' : 's'} there face down, as a pack`], ['👆', 'P switches back to as they are'], ['⎋', 'Esc cancels']]
+        ? [['📦', `Click: pack of ${placeCount}`], ['👆', 'P: face up'], ['⎋', 'Esc: cancel']]
       : context === 'place'
-        ? [['👆', `Click the table to move ${placeCount} card${placeCount === 1 ? '' : 's'} there as a stack`], ['📦', 'P switches to face down, like a pack'], ['⎋', 'Esc cancels']]
+        ? [['👆', `Click: stack of ${placeCount}`], ['📦', 'P: face down'], ['⎋', 'Esc: cancel']]
       : context === 'spread' && this.app.spreading?.reverse
-        ? [['👉', `Click to reverse-spread ${spreadCount} card${spreadCount === 1 ? '' : 's'} there, mana costs showing`], ['🔲', 'Drag a box to fit them inside it'], ['🪟', 'X switches back to the plain spread'], ['⎋', 'Esc cancels']]
+        ? [['👉', `Click: reverse spread ${spreadCount}`], ['🔲', 'Drag: fit to box'], ['🪟', 'X: plain'], ['⎋', 'Esc: cancel']]
       : context === 'spread'
-        ? [['👆', `Click to spread ${spreadCount} card${spreadCount === 1 ? '' : 's'} there`], ['🔲', 'Drag a box to fit them inside it'], ['🪟', 'X switches to the reverse spread, mana costs showing'], ['⎋', 'Esc cancels']]
+        ? [['👆', `Click: spread ${spreadCount}`], ['🔲', 'Drag: fit to box'], ['🪟', 'X: reverse'], ['⎋', 'Esc: cancel']]
         : HINTS[context];
     const signature = context + (this.app.drawing?.faceDown ? 'f' : '') + (this.app.spreading?.reverse ? 'r' : '') + (this.app.placing?.faceDown ? 'd' : '') + n + spreadCount + placeCount + hints.map((hint) => (lit(hint[2]) ? '1' : '0')).join('');
     if (signature === this.shown) return;
