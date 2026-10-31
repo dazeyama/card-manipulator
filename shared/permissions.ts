@@ -77,10 +77,15 @@ export type Action =
   /** New table, Load file. */
   | 'replace'
   | 'reuid'
-  // The room (O23): the crown's alone.
+  /** Give an unowned stand to a player (O111): the crown and Everything. */
+  | 'standGive'
+  // The room. Everything is a co-host (O111): kick, ban, ranks and Lock table, over players below it (mayManage);
+  // the rest is the crown's alone (O23).
   | 'rank'
   | 'kick'
   | 'ban'
+  /** Lock table and unlock it (O51, O111). */
+  | 'lock'
   | 'pass'
   | 'settings'
   | 'close';
@@ -117,9 +122,11 @@ const NEEDS: Record<Action, Need> = {
   table: 'crown',
   replace: 'crown',
   reuid: 'crown',
-  rank: 'crown',
-  kick: 'crown',
-  ban: 'crown',
+  standGive: 'everything',
+  rank: 'everything',
+  kick: 'everything',
+  ban: 'everything',
+  lock: 'everything',
   pass: 'crown',
   settings: 'crown',
   close: 'crown',
@@ -127,6 +134,21 @@ const NEEDS: Record<Action, Need> = {
 
 /** Actions that only look: unaffected by Lock table (O51). */
 const LOOKING = new Set<Action>(['camera', 'hover', 'inspect', 'search', 'refine', 'select', 'chat', 'download']);
+
+/**
+ * May `who` kick, ban or set the rank of a player of rank `target` (O111)? The
+ * crown may act on anyone; Everything only on players below Everything.
+ */
+export function mayManage(who: Rank | 'crown', target: Rank): boolean {
+  if (who === 'crown') return true;
+  return who === 'everything' && target !== 'everything';
+}
+
+/** The ranks `who` may give another player (O111): the crown any; Everything up to Cards; nobody else any. */
+export function grantableRanks(who: Rank | 'crown'): Rank[] {
+  if (who === 'crown') return [...RANKS];
+  return who === 'everything' ? RANKS.filter((r) => r !== 'everything') : [];
+}
 
 /** What the action needs, as the table of 6.2 says. */
 export function needs(action: Action): Need {
@@ -140,7 +162,7 @@ export function rankAtLeast(rank: Rank, need: Rank): boolean {
 
 /** The room switches that change what a rank may do. */
 export interface RoomRules {
-  /** Lock table (O51): every player below the crown is View for table actions. */
+  /** Lock table (O51): every player below Everything is View for table actions (O111: the co-host who locks it is not locked out). */
   locked?: boolean;
   /** Downloads (O50): off, only the crown may save or export. Defaults to on. */
   downloads?: boolean;
@@ -164,7 +186,7 @@ export function refusal(who: Rank | 'crown', action: Action, rules: RoomRules = 
   const need = needs(action);
   if (need === 'crown') return 'Only the crown can do that';
   if (action === 'download' && rules.downloads === false) return 'Downloads are off in this room';
-  if (rules.locked && !LOOKING.has(action) && need !== 'view') return 'The table is locked';
+  if (rules.locked && who !== 'everything' && !LOOKING.has(action) && need !== 'view') return 'The table is locked';
   return rankAtLeast(who, need) ? null : `${RANK_LABEL[need]} or higher needed`;
 }
 

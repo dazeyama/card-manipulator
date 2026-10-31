@@ -77,9 +77,10 @@ describe('the crown judges by rank (ONLINE.md 6.2)', () => {
     expect(propose('ev', { t: 'replace', table: { name: 'x', cards: [], named: [], spreads: [], mats: [], dice: [], basics: new Store().basics } })).toBe('crownOnly');
   });
 
-  it('refuses every table op below the crown while the table is locked (O51)', () => {
-    const { propose } = room({ ev: 'everything' }, { locked: true });
-    expect(propose('ev', { t: 'move', moves: [{ uid: 'a', x: 1 }] })).toBe('locked');
+  it('refuses every table op below Everything while the table is locked (O51, O111)', () => {
+    const { propose } = room({ ev: 'everything', cd: 'cards' }, { locked: true });
+    expect(propose('cd', { t: 'move', moves: [{ uid: 'a', x: 1 }] })).toBe('locked');
+    expect(propose('ev', { t: 'move', moves: [{ uid: 'a', x: 1 }] })).toBe('ok');
   });
 
   it('needs Tokens to add or remove dice, Move to roll them', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addAction, allowed, isGamePiece, isTokenLayout, needs, rankAtLeast, refusal, removeAction, RANKS, type Action, type Need, type Rank } from '../shared/permissions';
+import { addAction, allowed, isGamePiece, isTokenLayout, needs, rankAtLeast, refusal, removeAction, RANKS, type Action, type Need, type Rank, mayManage, grantableRanks } from '../shared/permissions';
 
 // Every row of ONLINE.md 6.2, as the table says it.
 const TABLE: [Action, Need][] = [
@@ -22,7 +22,7 @@ const TABLE: [Action, Need][] = [
   ['standClaim', 'everything'], ['standSpill', 'everything'],
   ['basics', 'everything'],
   ['table', 'crown'], ['replace', 'crown'], ['reuid', 'crown'],
-  ['rank', 'crown'], ['kick', 'crown'], ['ban', 'crown'], ['pass', 'crown'], ['settings', 'crown'], ['close', 'crown'],
+  ['standGive', 'everything'], ['rank', 'everything'], ['kick', 'everything'], ['ban', 'everything'], ['lock', 'everything'], ['pass', 'crown'], ['settings', 'crown'], ['close', 'crown'],
 ];
 
 describe('permissions', () => {
@@ -53,17 +53,29 @@ describe('permissions', () => {
     }
   });
 
-  it('keeps room actions the crown’s even for Everything (O24)', () => {
-    for (const a of ['rank', 'kick', 'ban', 'pass', 'settings', 'close', 'table', 'replace', 'reuid'] as Action[]) {
+  it('keeps the rest of the room the crown’s even for Everything (O23, O111)', () => {
+    for (const a of ['pass', 'settings', 'close', 'table', 'replace', 'reuid'] as Action[]) {
       expect(allowed('everything', a)).toBe(false);
       expect(refusal('everything', a)).toBe('Only the crown can do that');
     }
   });
 
-  it('puts everyone below the crown at View for table actions while the table is locked (O51)', () => {
+  it('makes Everything a co-host over the ranks below it (O111)', () => {
+    expect(mayManage('everything', 'cards')).toBe(true);
+    expect(mayManage('everything', 'view')).toBe(true);
+    expect(mayManage('everything', 'everything')).toBe(false);
+    expect(mayManage('cards', 'view')).toBe(false);
+    expect(mayManage('crown', 'everything')).toBe(true);
+    expect(grantableRanks('everything')).toEqual(['view', 'move', 'tokens', 'cards']);
+    expect(grantableRanks('crown')).toEqual(['view', 'move', 'tokens', 'cards', 'everything']);
+    expect(grantableRanks('cards')).toEqual([]);
+  });
+
+  it('puts everyone below Everything at View for table actions while the table is locked (O51, O111)', () => {
     const locked = { locked: true };
-    expect(allowed('everything', 'move', locked)).toBe(false);
-    expect(allowed('everything', 'addCards', locked)).toBe(false);
+    expect(allowed('everything', 'move', locked)).toBe(true);
+    expect(allowed('everything', 'addCards', locked)).toBe(true);
+    expect(allowed('cards', 'addCards', locked)).toBe(false);
     expect(allowed('move', 'dice', locked)).toBe(false);
     expect(refusal('cards', 'move', locked)).toBe('The table is locked');
     // Looking, chat and exports are unaffected.
