@@ -1096,6 +1096,8 @@ if (route?.kind === 'room') {
   void autosave.restore().then((had) => {
     if (!had) void loadWelcome();
   });
+  // Rooms: the owner's admin page over the table (ONLINE.md 12.8).
+  if (route?.kind === 'admin') void onlineUi.admin.open();
 }
 
 /** A first visit, with no table saved in this browser, opens a table with cards on it to play with (decision 153). */

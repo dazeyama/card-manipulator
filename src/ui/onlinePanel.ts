@@ -19,10 +19,12 @@ import { h } from './dom';
 import { roomToast, type Guard } from '../online/guard';
 import { ChatStrip } from './chatStrip';
 import { PlayerRows } from './playerRows';
-import { ColourPicker, joinByCodeDialog, joinPrompt } from './joinPrompt';
+import { ColourPicker, joinPrompt } from './joinPrompt';
 import { hideRoomState, roomNameLine, showRoomState } from './roomStates';
 import { isPhoneOrTablet, showDesktopOnly } from './desktopOnly';
 import type { HiddenGate } from '../online/hidden';
+import { TableBrowser } from './tableBrowser';
+import { AdminPage } from './adminPage';
 
 /** How this browser came into the room: it made it (Go online), or joined by a link. */
 export type Role = 'maker' | 'joiner';
@@ -75,6 +77,10 @@ const FAKE_INFO: RoomInfo = { name: 'Fake room', players: 1, max: 8, password: f
 
 export class OnlineUi {
   readonly panel: OnlinePanel;
+  /** The public table browser (12.5). */
+  readonly browser: TableBrowser;
+  /** The owner's admin page, #/admin (12.8). */
+  readonly admin = new AdminPage();
   /** Whether the room server answers, and speaks our protocol. */
   server: 'checking' | 'ok' | ServerTrouble = 'checking';
   /** The page opened on a room link, so this browser's own table hasn't been loaded. */
@@ -102,6 +108,7 @@ export class OnlineUi {
     this.status = h('span', { class: 'room-status' });
     topBar.roomSlot.append(this.button, this.avatars, this.status);
     this.panel = new OnlinePanel(this);
+    this.browser = new TableBrowser((r) => void this.join(r));
     void this.check();
     // While offline and without a server, look again now and then.
     window.setInterval(() => {
@@ -111,6 +118,7 @@ export class OnlineUi {
     window.addEventListener('hashchange', () => {
       const r = parseHash(location.hash);
       if (r?.kind === 'room') void this.join(r);
+      else if (r?.kind === 'admin' && !this.admin.isOpen) void this.admin.open();
     });
     // The crown renames the table: the room's name follows (4.1).
     app.store.events.on('name', () => {
@@ -247,10 +255,14 @@ export class OnlineUi {
     this.enter(route.code, { token: id.token, nickname: answer.nickname, colour: answer.colour, side: 0, ...(key ? { key } : {}) }, 'joiner');
   }
 
-  /** Join a table from the welcome note: a link or code for now; the public browser from Phase O3. */
-  async joinFromWelcome(): Promise<void> {
-    const r = await joinByCodeDialog();
-    if (r) void this.join(r);
+  /** Join a table from the welcome note: the public browser, which also takes a link or code (12.6). */
+  joinFromWelcome(): void {
+    this.browser.open();
+  }
+
+  /** Tables (12.2): the public browser. */
+  openTables(): void {
+    this.browser.open();
   }
 
   // ---- in the room ----
@@ -652,6 +664,9 @@ export class OnlinePanel {
     (play ? tagPlay : tagCube).checked = true;
     const error = h('div', { class: 'join-error' });
     const go = h('button', { class: 'btn primary' }, '🌐 Go online');
+    // Or join someone else's: the public tables (12.5).
+    const tables = h('button', { class: 'btn small', title: 'Join a public table, or one by its link or code' }, '🗂 Tables');
+    tables.addEventListener('click', () => this.ui.openTables());
     const server = this.ui.server;
     const ok = server === 'ok';
     go.disabled = !ok;
@@ -679,7 +694,7 @@ export class OnlinePanel {
       h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Tag'),
         h('div', { class: 'row tight' }, h('label', { class: 'inline' }, tagCube, 'Cube'), h('label', { class: 'inline' }, tagPlay, 'Play'))),
       error,
-      h('div', { class: 'row end' }, go),
+      h('div', { class: 'row end' }, tables, h('span', { class: 'grow' }), go),
       ...(note ? [note] : []),
     );
   }
@@ -698,6 +713,9 @@ export class OnlinePanel {
       invite.addEventListener('click', () => void this.ui.copyInvite());
       buttons.push(invite);
     }
+    const tables = h('button', { class: 'btn small', title: 'The public tables' }, '🗂 Tables');
+    tables.addEventListener('click', () => this.ui.openTables());
+    buttons.push(tables);
     if (room.isCrown || room.downloads) {
       const save = h('button', { class: 'btn small', title: 'Download this table as a file' }, '💾 Save a copy');
       save.addEventListener('click', () => this.ui.saveCopy());

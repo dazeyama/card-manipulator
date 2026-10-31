@@ -4,7 +4,7 @@
 // `#/admin` is the owner's admin page (12.8). The parsing and link building
 // are pure and tested; the fetches talk to VITE_ROOM_SERVER.
 
-import { PROTOCOL, type CreateRoomBody, type CreateRoomReply, type RoomInfo, type VersionReply } from '../../shared/protocol';
+import { PROTOCOL, type AdminRow, type CreateRoomBody, type CreateRoomReply, type LobbyRow, type RoomInfo, type VersionReply } from '../../shared/protocol';
 
 /** The alphabet of room codes (4.2, O11): no 0, O, 1, I or L. */
 const CODE = /^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/;
@@ -154,6 +154,59 @@ export async function roomInfo(code: string): Promise<RoomInfo | null | ServerTr
   } catch {
     return 'error';
   }
+}
+
+/** The public list (GET /api/rooms, 12.5). */
+export async function publicRooms(): Promise<LobbyRow[] | ServerTrouble> {
+  const r = await call<{ rooms: LobbyRow[] }>('/api/rooms');
+  return typeof r === 'string' ? r : r.rooms ?? [];
+}
+
+/** Report a room (POST /api/rooms/:code/report): three different reporters delist it until the owner looks (O15). */
+export async function reportRoom(code: string, token: string): Promise<'ok' | 'closed' | ServerTrouble> {
+  const server = roomServer();
+  if (!server) return 'offline';
+  let res: Response;
+  try {
+    res = await fetch(`${server}/api/rooms/${code}/report`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
+  } catch {
+    return 'offline';
+  }
+  if (res.status === 404) return 'closed';
+  return res.ok ? 'ok' : await troubleOf(res);
+}
+
+/** The admin page's list (12.8), with the owner's key; 'key' when the key is wrong. */
+export async function adminRooms(key: string): Promise<AdminRow[] | 'key' | ServerTrouble> {
+  const server = roomServer();
+  if (!server) return 'offline';
+  let res: Response;
+  try {
+    res = await fetch(`${server}/api/admin/rooms`, { headers: { 'x-admin-key': key } });
+  } catch {
+    return 'offline';
+  }
+  if (res.status === 401) return 'key';
+  if (!res.ok) return await troubleOf(res);
+  try {
+    return ((await res.json()) as { rooms: AdminRow[] }).rooms ?? [];
+  } catch {
+    return 'error';
+  }
+}
+
+/** Delist, relist or close a room from the admin page. */
+export async function adminAction(key: string, code: string, action: 'delist' | 'relist' | 'close'): Promise<'ok' | 'key' | ServerTrouble> {
+  const server = roomServer();
+  if (!server) return 'offline';
+  let res: Response;
+  try {
+    res = await fetch(`${server}/api/admin/rooms/${code}/${action}`, { method: 'POST', headers: { 'x-admin-key': key } });
+  } catch {
+    return 'offline';
+  }
+  if (res.status === 401) return 'key';
+  return res.ok ? 'ok' : await troubleOf(res);
 }
 
 // ---- the clipboard ----
