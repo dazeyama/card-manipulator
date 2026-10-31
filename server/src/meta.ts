@@ -5,7 +5,7 @@
 
 import { RANK_LABEL, RANKS, type Rank } from '../../shared/permissions';
 import {
-  CHAT_LINES, MAX_PLAYERS, NICKNAME_MAX, PLAYER_COLOURS, ROOM_NAME_MAX, defaultRoomSettings,
+  CHAT_LINES, MAX_PLAYERS, NICKNAME_MAX, PLAYER_COLOURS, ROOM_NAME_MAX, base64url, defaultRoomSettings,
   type ChatLine, type Player, type PublicSettings, type RoomInfo, type RoomSettings, type Tag,
 } from '../../shared/protocol';
 
@@ -131,6 +131,46 @@ export function isRank(x: unknown): x is Rank {
   return typeof x === 'string' && (RANKS as string[]).includes(x);
 }
 
+/** The room's door code as stored (3.2): sha256(code + ':' + password), base64url. */
+export async function passwordHash(code: string, password: string): Promise<string> {
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${code}:${password}`));
+  return base64url(new Uint8Array(hash));
+}
+
+/**
+ * The crown's change to the settings (4.3), each field checked; the password
+ * is hashed by the caller. Returns the names of the fields that changed.
+ */
+export function applySettings(meta: Meta, set: Partial<RoomSettings>): string[] {
+  const s = meta.settings;
+  const changed: string[] = [];
+  if (typeof set.name === 'string' && cleanRoomName(set.name, meta.code) !== s.name) {
+    s.name = cleanRoomName(set.name, meta.code);
+    changed.push('name');
+  }
+  if ((set.visibility === 'unlisted' || set.visibility === 'public' || set.visibility === 'password') && set.visibility !== s.visibility) {
+    s.visibility = set.visibility;
+    changed.push('visibility');
+  }
+  if ((set.tag === 'cube' || set.tag === 'play') && set.tag !== s.tag) {
+    s.tag = set.tag;
+    changed.push('tag');
+  }
+  if (isRank(set.newcomers) && set.newcomers !== s.newcomers) {
+    s.newcomers = set.newcomers;
+    changed.push('newcomers');
+  }
+  if (typeof set.locked === 'boolean' && set.locked !== s.locked) {
+    s.locked = set.locked;
+    changed.push('locked');
+  }
+  if (typeof set.downloads === 'boolean' && set.downloads !== s.downloads) {
+    s.downloads = set.downloads;
+    changed.push('downloads');
+  }
+  return changed;
+}
+
 /** Add a chat line, keeping the last CHAT_LINES. */
 export function addChat(meta: Meta, line: ChatLine): void {
   meta.chat.push(line);
@@ -145,4 +185,9 @@ export const say = {
   crown: (s: Seat) => `${s.nickname} is the crown now`,
   reclaimed: (s: Seat) => `${s.nickname} took the crown back`,
   passed: (from: Seat, to: Seat) => `${from.nickname} passed the crown to ${to.nickname}`,
+  kicked: (s: Seat) => `${s.nickname} was kicked`,
+  banned: (s: Seat) => `${s.nickname} was banned`,
+  locked: 'The table is locked',
+  unlocked: 'The table is unlocked',
+  settings: 'Room settings changed',
 };

@@ -14,18 +14,19 @@ import { applyOp } from '../../shared/apply';
 import type { ConfirmedOp, Op } from '../../shared/ops';
 import {
   PROTOCOL, byteLength, isClientMsg, joinSnapshot, maxBytes, playerIdOf, splitSnapshot,
-  type ByeReason, type ClientMsg, type RoomInfo, type ServerMsg, type SnapshotPart, type Tag,
+  type ByeReason, type ClientMsg, type RoomInfo, type RoomSettings, type ServerMsg, type SnapshotPart, type Tag,
 } from '../../shared/protocol';
 import { SlidingWindow } from '../../shared/rateLimit';
+import { affectedCards, carriesIdentities, redactOp, redactTable, viewOf, visibilityDiff, type TableView } from '../../shared/redact';
 import type { TableState } from '../../shared/table';
 import {
   CHAT_RATE, CHAT_TEXT_MAX, CLOSE_BYE, CLOSE_REPLACED, HEARTBEAT_MS, MAX_CARDS, MAX_PLAYERS, MAX_REPLACE_BYTES,
-  NO_CROWN_WAIT_MS, OPLOG_FLUSH_MS, SNAPSHOT_EVERY_OPS, STREAMS_PER_SECOND,
+  NO_CROWN_WAIT_MS, OPLOG_FLUSH_MS, PASSWORD_MAX, PASSWORD_RATE, SNAPSHOT_EVERY_OPS, STREAMS_PER_SECOND, WRONG_PASSWORD_DELAY_MS,
 } from './limits';
 import type { LobbyBeat } from './lobby';
 import {
-  addChat, cleanNickname, cleanRoomName, colourFree, electCrown, newMeta, pickColour, playersOf, publicSettings, roomInfo, say, seatOf,
-  type Meta, type Seat,
+  addChat, applySettings, cleanNickname, cleanRoomName, colourFree, electCrown, isRank, newMeta, passwordHash, pickColour, playersOf,
+  publicSettings, roomInfo, say, seatOf, type Meta, type Seat,
 } from './meta';
 import { RoomStorage } from './storage';
 import type { Env } from './worker';
@@ -72,6 +73,21 @@ function cardsAdded(table: TableState, op: Op): number {
   return op.cards.filter((c) => !have.has(c.uid)).length;
 }
 
+/** True if the op can change who may see a card (a move, a mat change), anywhere in a batch. */
+function changesVisibility(op: Op): boolean {
+  if (op.t === 'move' || op.t === 'mat') return true;
+  return op.t === 'batch' && op.ops.some(changesVisibility);
+}
+
+/** The stands an op spills, anywhere in a batch. */
+function spills(op: Op): string[] {
+  if (op.t === 'mat') return op.spill ?? [];
+  return op.t === 'batch' ? op.ops.flatMap(spills) : [];
+}
+
+/** An empty view, for redacting before the crown's first table has arrived. */
+const NO_TABLE: TableView = { cards: new Map(), mats: new Map() };
+
 /** Most proposals kept waiting at once; beyond it the oldest are dropped. */
 const MAX_PENDING = 2000;
 /** Confirmed ops kept in memory to replay over a crown snapshot they crossed. */
@@ -95,6 +111,8 @@ export class Room extends DurableObject<Env> {
   private readonly awaiting = new Set<string>();
   private readonly chatRate = new SlidingWindow(CHAT_RATE.limit, CHAT_RATE.windowMs);
   private readonly streamRate = new SlidingWindow(STREAMS_PER_SECOND, 1000);
+  /** Wrong passwords per ip (10.4); over the limit, `bye rate` until the window empties. */
+  private readonly passwordRate = new SlidingWindow(PASSWORD_RATE.limit, PASSWORD_RATE.windowMs);
   private saveQueued = false;
   private beatQueued = false;
 
@@ -191,9 +209,20 @@ export class Room extends DurableObject<Env> {
         return;
       case 'ping':
         return this.send(ws, { t: 'pong' });
-      default:
-        // settings, rank, kick, ban, pass: Phase O2.
-        return;
+    }
+    // The room's own controls are the crown's alone (O23, 6.4).
+    if (!isCrown) return;
+    switch (msg.t) {
+      case 'settings':
+        return this.settings(msg.set);
+      case 'rank':
+        return this.rank(msg.player, msg.rank);
+      case 'kick':
+        return this.kick(seat, msg.player, false);
+      case 'ban':
+        return this.kick(seat, msg.player, true);
+      case 'pass':
+        return this.pass(seat, msg.player);
     }
   }
 
@@ -233,8 +262,19 @@ export class Room extends DurableObject<Env> {
     const meta = this.meta;
     if (!meta) return this.bye(ws, 'closed');
     if (meta.bans.includes(id)) return this.bye(ws, 'banned');
-    this.reconcile(ws);
     const existing = seatOf(meta, id);
+    // The door code (3.2): asked of newcomers; a seat already admitted keeps its place (O98).
+    if (meta.passwordHash && !existing) {
+      if (!this.passwordRate.allows(ip, Date.now())) return this.bye(ws, 'rate');
+      const given = typeof h.key === 'string' && h.key ? await passwordHash(meta.code, h.key) : '';
+      if (given !== meta.passwordHash) {
+        this.passwordRate.hit(ip, Date.now());
+        await new Promise((r) => setTimeout(r, WRONG_PASSWORD_DELAY_MS));
+        return this.bye(ws, 'password');
+      }
+      if (!this.meta) return this.bye(ws, 'closed');
+    }
+    this.reconcile(ws);
     const others = meta.seats.filter((s) => s.connected && s.id !== id).length;
     if (others >= MAX_PLAYERS) return this.bye(ws, 'full');
 
@@ -360,11 +400,11 @@ export class Room extends DurableObject<Env> {
   }
 
   /**
-   * The mirror in snapshot parts for one player (null: the crown, unredacted).
-   * Part 0 says the seq it is current to. Phase O1 sends every identity; O2 redacts.
+   * The mirror in snapshot parts for one player, redacted for them (7.2), or
+   * for the crown (null) whole. Part 0 says the seq it is current to.
    */
-  private partsFor(_player: string | null): SnapshotPart[] {
-    const parts = splitSnapshot(this.mirror!);
+  private partsFor(player: string | null): SnapshotPart[] {
+    const parts = splitSnapshot(player === null ? this.mirror! : redactTable(this.mirror!, player));
     parts[0] = { ...parts[0], seq: this.seq };
     return parts;
   }
@@ -461,9 +501,10 @@ export class Room extends DurableObject<Env> {
     }
     this.seq++;
     const c: ConfirmedOp = { seq: this.seq, by: msg.by, ...(id ? { id } : {}), op };
-    if (this.mirror) {
+    const before = this.mirror;
+    if (before) {
       try {
-        this.mirror = applyOp(this.mirror, op);
+        this.mirror = applyOp(before, op);
       } catch (err) {
         console.warn('mirror: op did not apply, asking the crown for its table', err);
         const crown = this.meta?.crown ? this.socketOf(this.meta.crown) : undefined;
@@ -475,7 +516,47 @@ export class Room extends DurableObject<Env> {
     if (op.t === 'table') this.rename(op.name);
     else if (op.t === 'replace') this.rename(op.table.name);
     this.record(c);
-    this.broadcast({ t: 'op', ...c });
+    this.relay(c, before, this.mirror);
+    this.saySpills(c, before);
+  }
+
+  /**
+   * Send a confirmed op to everyone (7.2): the crown whole; every other player
+   * with the identities they may not know taken out, then `reveal` for the
+   * cards that became visible to them and `forget` for those that became hidden.
+   */
+  private relay(c: ConfirmedOp, before: TableState | null, after: TableState | null): void {
+    const crown = this.meta?.crown;
+    const whole = JSON.stringify({ t: 'op', ...c });
+    const redacts = carriesIdentities(c.op);
+    const diffs = !!before && !!after && before !== after && changesVisibility(c.op);
+    const bv = before && (redacts || diffs) ? viewOf(before) : NO_TABLE;
+    const av = after && (redacts || diffs) ? viewOf(after) : NO_TABLE;
+    const touched = diffs ? affectedCards(c.op, bv, av) : [];
+    for (const s of this.sockets()) {
+      if (s.id === crown) {
+        this.sendText(s.ws, whole);
+        continue;
+      }
+      this.sendText(s.ws, redacts ? JSON.stringify({ t: 'op', ...c, op: redactOp(c.op, av, s.id) }) : whole);
+      if (!touched.length) continue;
+      const d = visibilityDiff(bv, av, touched, s.id);
+      if (d.reveal.length) this.send(s.ws, { t: 'reveal', cards: d.reveal });
+      if (d.forget.length) this.send(s.ws, { t: 'forget', uids: d.forget });
+    }
+  }
+
+  /** "Ann spilled Bea's stand" (5.5), for each stand an op spills. */
+  private saySpills(c: ConfirmedOp, before: TableState | null): void {
+    const meta = this.meta;
+    const spilled = spills(c.op);
+    if (!meta || !spilled.length) return;
+    const by = seatOf(meta, c.by)?.nickname ?? 'Someone';
+    for (const uid of spilled) {
+      const owner = before?.mats.find((m) => m.uid === uid)?.owner;
+      const whose = !owner ? 'an unowned stand' : owner === c.by ? 'their own stand' : `${seatOf(meta, owner)?.nickname ?? 'someone'}'s stand`;
+      this.say(`${by} spilled ${whose}`);
+    }
   }
 
   private refuse(msg: Extract<ClientMsg, { t: 'refuse' }>): void {
@@ -603,6 +684,82 @@ export class Room extends DurableObject<Env> {
     this.broadcastPlayers();
   }
 
+  // ---- the crown's controls (O23) ----
+
+  /** Visibility, password, tag, newcomers, Lock table, Downloads, name (4.3). */
+  private async settings(set: unknown): Promise<void> {
+    const meta = this.meta;
+    if (!meta || !set || typeof set !== 'object') return;
+    const s = set as Partial<RoomSettings>;
+    const changed = applySettings(meta, s);
+    // An empty password takes the password off.
+    if (typeof s.password === 'string' && s.password.length <= PASSWORD_MAX) {
+      const hash = s.password ? await passwordHash(meta.code, s.password) : null;
+      if (this.meta !== meta) return;
+      if (hash !== meta.passwordHash) {
+        meta.passwordHash = hash;
+        changed.push('password');
+      }
+    }
+    if (!changed.length) return;
+    this.markDirty();
+    this.broadcast({ t: 'settings', settings: publicSettings(meta) });
+    if (changed.includes('locked')) this.say(meta.settings.locked ? say.locked : say.unlocked);
+    if (changed.some((k) => k !== 'locked' && k !== 'name')) this.say(say.settings);
+    this.queueHeartbeat();
+  }
+
+  /** Set a player's rank (6.1). The crown's own is what it falls back to. */
+  private rank(player: unknown, rank: unknown): void {
+    const meta = this.meta!;
+    const seat = typeof player === 'string' ? seatOf(meta, player) : undefined;
+    if (!seat || !isRank(rank) || seat.rank === rank) return;
+    seat.rank = rank;
+    this.markDirty();
+    this.broadcastPlayers();
+  }
+
+  /**
+   * Kick drops a player, who may come back by the link; Ban also blocks their
+   * identity for the room's life (4.6, O49). Their seat stays, greyed, and so
+   * does their stand. The crown cannot be kicked or banned.
+   */
+  private kick(by: Seat, player: unknown, ban: boolean): void {
+    const meta = this.meta!;
+    if (typeof player !== 'string' || player === by.id || player === meta.crown) return;
+    const seat = seatOf(meta, player);
+    if (!seat) return;
+    if (ban && !meta.bans.includes(player)) meta.bans.push(player);
+    else if (!seat.connected) return;
+    const ws = this.socketOf(player);
+    seat.connected = false;
+    this.awaiting.delete(player);
+    this.markDirty();
+    this.say(ban ? say.banned(seat) : say.kicked(seat));
+    this.broadcastPlayers();
+    if (ws) this.bye(ws, ban ? 'banned' : 'kicked');
+    this.queueHeartbeat();
+  }
+
+  /** Pass the crown by hand (O20): the old crown keeps Everything, and gets the table as any player sees it. */
+  private pass(from: Seat, player: unknown): void {
+    const meta = this.meta!;
+    if (typeof player !== 'string' || player === from.id) return;
+    const to = seatOf(meta, player);
+    const ws = to?.connected ? this.socketOf(player) : undefined;
+    if (!to || !ws) return;
+    from.rank = 'everything';
+    meta.crown = player;
+    this.markDirty();
+    this.broadcast({ t: 'crown', player });
+    this.say(say.passed(from, to));
+    this.giveCrown(ws);
+    const old = this.socketOf(from.id);
+    if (old) this.sendTable(old, from.id);
+    this.broadcastPlayers();
+    this.queueHeartbeat();
+  }
+
   /** A chat line from a player, or a grey system line (no `from`). */
   private say(text: string, from?: string): void {
     const meta = this.meta;
@@ -665,8 +822,12 @@ export class Room extends DurableObject<Env> {
   }
 
   private send(ws: WebSocket, msg: ServerMsg): void {
+    this.sendText(ws, JSON.stringify(msg));
+  }
+
+  private sendText(ws: WebSocket, text: string): void {
     try {
-      ws.send(JSON.stringify(msg));
+      ws.send(text);
     } catch {
       // The socket is closing; its close handler tidies up.
     }

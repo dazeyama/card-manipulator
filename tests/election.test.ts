@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanNickname, cleanRoomName, colourFree, electCrown, newMeta, pickColour, playersOf, roomInfo, type Seat } from '../server/src/meta';
+import { applySettings, cleanNickname, cleanRoomName, colourFree, electCrown, newMeta, passwordHash, pickColour, playersOf, roomInfo, type Seat } from '../server/src/meta';
 import { PLAYER_COLOURS } from '../shared/protocol';
 
 function seat(id: string, rank: Seat['rank'], joinedAt: number, connected = true, colour = ''): Seat {
@@ -74,6 +74,21 @@ describe('room meta', () => {
     const m = newMeta('7KQ2MX', 'a', 'T', 'cube', 0);
     PLAYER_COLOURS.forEach((c, i) => m.seats.push(seat(`p${i}`, 'move', i, i !== 6, c)));
     expect(pickColour(m, PLAYER_COLOURS[0], 'new')).toBe(PLAYER_COLOURS[6]);
+  });
+
+  it('takes only well-formed settings, and says what changed', () => {
+    const m = newMeta('7KQ2MX', 'a', 'T', 'cube', 0);
+    expect(applySettings(m, { visibility: 'public', tag: 'play', newcomers: 'cards', locked: true, downloads: false, name: ' New  name ' })).toEqual(['name', 'visibility', 'tag', 'newcomers', 'locked', 'downloads']);
+    expect(m.settings).toEqual({ name: 'New name', visibility: 'public', tag: 'play', newcomers: 'cards', locked: true, downloads: false });
+    expect(applySettings(m, { visibility: 'open' as never, tag: 'draft' as never, newcomers: 'king' as never, locked: 'yes' as never })).toEqual([]);
+    expect(applySettings(m, { locked: true })).toEqual([]);
+  });
+
+  it('hashes the password with the room code', async () => {
+    const a = await passwordHash('7KQ2MX', 'swordfish');
+    expect(a).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(await passwordHash('7KQ2MX', 'swordfish')).toBe(a);
+    expect(await passwordHash('8KQ2MX', 'swordfish')).not.toBe(a);
   });
 
   it('cleans names', () => {
