@@ -13,6 +13,8 @@ import { dieSize } from '../state/dice';
 import { remoteHeld } from '../state/remoteHeld';
 import { CARD_T } from '../state/types';
 import type { PresenceView } from './index';
+import { glovePicture, isGlove, type Glove } from '../ui/cursorArt';
+import { CURSOR_PX, CURSOR_SIZE_EVENT, cursorSizeNow } from '../ui/cursorSize';
 import type { RoomSync } from './connect';
 
 /** Remote poses are drawn this far behind their stream, so two samples are always at hand (8.3). */
@@ -28,9 +30,17 @@ interface Sample {
 }
 
 interface Cursor {
+  id: string;
   el: HTMLDivElement;
   tag: HTMLSpanElement;
+  /** The plain arrow, shown until the first glove picture is ready. */
+  svg: SVGSVGElement;
   arrow: SVGPathElement;
+  /** The player's glove, in their colour (decision 293). */
+  img: HTMLImageElement;
+  glove: Glove;
+  /** The glove, colour and size the picture was last asked for. */
+  key: string;
   x: number;
   y: number;
   seen: number;
@@ -60,11 +70,18 @@ export class Presence implements PresenceView {
   constructor(private readonly sync: RoomSync) {
     this.held.clear();
     sync.app.onFrame((now) => this.frame(now));
+    window.addEventListener(CURSOR_SIZE_EVENT, this.resize);
   }
+
+  /** The viewer's Cursor size changed: every remote glove is drawn again at it. */
+  private readonly resize = (): void => {
+    for (const c of this.cursors.values()) this.picture(c);
+  };
 
   /** Leaving the room: no one else's cursor, hold or glow stays. */
   stop(): void {
     this.stopped = true;
+    window.removeEventListener(CURSOR_SIZE_EVENT, this.resize);
     this.reset();
     for (const c of this.cursors.values()) c.el.remove();
     this.cursors.clear();
@@ -91,7 +108,8 @@ export class Presence implements PresenceView {
   stream(msg: StreamMsg): void {
     if (this.stopped || msg.from === this.sync.online.room.me) return;
     const now = performance.now();
-    if (msg.cur) this.cursorTo(msg.from, msg.cur[0], msg.cur[1], now);
+    // The glove they show (decision 293); absent or unknown, the plain arrow.
+    if (msg.cur) this.cursorTo(msg.from, msg.cur[0], msg.cur[1], now, isGlove(msg.cs) ? msg.cs : 'arrow');
     else this.hideCursor(msg.from);
     if (msg.sel) {
       this.selections.set(msg.from, msg.sel);
@@ -240,6 +258,8 @@ export class Presence implements PresenceView {
         c.arrow.setAttribute('fill', p.colour);
         c.tag.style.background = p.colour;
         c.tag.textContent = p.nickname;
+        // A new colour: the glove again, in it.
+        this.picture(c);
       }
     }
     this.retint();
@@ -315,7 +335,7 @@ export class Presence implements PresenceView {
 
   // ---- cursors (5.4: always shown, never hideable, O18) ----
 
-  private cursorTo(id: string, x: number, y: number, now: number): void {
+  private cursorTo(id: string, x: number, y: number, now: number, glove: Glove): void {
     let c = this.cursors.get(id);
     if (!c) c = this.makeCursor(id);
     if (!c) return;
@@ -323,6 +343,36 @@ export class Presence implements PresenceView {
     c.y = y;
     c.seen = now;
     c.shown = true;
+    if (c.glove !== glove) {
+      c.glove = glove;
+      this.picture(c);
+    }
+  }
+
+  /**
+   * Draw a remote cursor as its player's glove (decision 293): their colour, the
+   * viewer's Cursor size, no emoji, its click point on the table point. Until
+   * the first picture is ready the plain arrow shows; after that a new glove
+   * replaces the last one only once it is ready.
+   */
+  private picture(c: Cursor): void {
+    const p = this.sync.online.room.player(c.id);
+    if (!p || this.stopped) return;
+    const px = CURSOR_PX[cursorSizeNow()];
+    const key = `${c.glove}|${p.colour}|${px}`;
+    if (key === c.key) return;
+    c.key = key;
+    glovePicture(c.glove, p.colour, px).then((pic) => {
+      if (c.key !== key || this.stopped) return;
+      c.img.src = pic.url;
+      Object.assign(c.img.style, { display: 'block', left: `${-pic.hx}px`, top: `${-pic.hy}px`, width: `${pic.side}px`, height: `${pic.side}px` });
+      c.svg.style.display = 'none';
+      // The name just below and to the right of the glove.
+      c.tag.style.left = `${Math.round(pic.side * 0.5 - pic.hx)}px`;
+      c.tag.style.top = `${Math.round(pic.side * 0.82 - pic.hy)}px`;
+    }).catch(() => {
+      // No picture: the arrow it has stays.
+    });
   }
 
   private hideCursor(id: string): void {
@@ -356,10 +406,16 @@ export class Presence implements PresenceView {
       position: 'absolute', left: '14px', top: '18px', padding: '1px 6px', borderRadius: '8px', whiteSpace: 'nowrap',
       font: '600 11px/16px system-ui, sans-serif', color: '#1d1d1f', background: p.colour, boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
     });
-    el.append(svg, tag);
+    const img = document.createElement('img');
+    img.className = 'remote-cursor-glove';
+    img.alt = '';
+    img.draggable = false;
+    Object.assign(img.style, { position: 'absolute', display: 'none', pointerEvents: 'none', filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))' });
+    el.append(svg, img, tag);
     this.sync.app.overlay.append(el);
-    const c: Cursor = { el, tag, arrow, x: 0, y: 0, seen: 0, shown: false };
+    const c: Cursor = { id, el, tag, svg, arrow, img, glove: 'arrow', key: '', x: 0, y: 0, seen: 0, shown: false };
     this.cursors.set(id, c);
+    this.picture(c);
     return c;
   }
 

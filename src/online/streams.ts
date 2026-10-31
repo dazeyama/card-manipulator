@@ -44,9 +44,13 @@ export function diePose6(at: THREE.Vector3, q: THREE.Quaternion): Pose6 {
  * physics knows them), then the top of the hand (the end of `hold`, bottom to
  * top), within POSES_MAX; the selection within SELECTION_MAX.
  */
-export function composeStream(side: 0 | 1, cur: [number, number] | undefined, hold: [string, Pose6][], fly: [string, Pose6][], sel?: string[]): StreamOut {
+export function composeStream(side: 0 | 1, cur: [number, number] | undefined, hold: [string, Pose6][], fly: [string, Pose6][], sel?: string[], cs?: string): StreamOut {
   const out: StreamOut = { side };
-  if (cur) out.cur = cur;
+  if (cur) {
+    out.cur = cur;
+    // The glove my cursor shows, so others draw the same one (decision 293).
+    if (cs) out.cs = cs.slice(0, 16);
+  }
   const flying = fly.slice(0, POSES_MAX);
   const room = POSES_MAX - flying.length;
   const holding = room > 0 ? hold.slice(Math.max(0, hold.length - room)) : [];
@@ -119,7 +123,7 @@ export class Streams {
       this.selAt = now;
       sel = all;
     }
-    const out = fitStream(composeStream(app.side, cur, hold, fly, sel));
+    const out = fitStream(composeStream(app.side, cur, hold, fly, sel, app.cursorGlove));
     const { sel: sent, ...moving } = out;
     const key = JSON.stringify(moving);
     if (key === this.last && !sent) return;

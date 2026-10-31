@@ -53,3 +53,11 @@ describe('a stream stays under the 64 KB a message may be (O104)', () => {
     expect(Object.keys(out.hold ?? {})).toHaveLength(POSES_MAX - 80);
   });
 });
+
+describe('the cursor glove goes with the cursor (decision 293)', () => {
+  it('sends the glove only with a table point, cut to 16 characters', () => {
+    expect(composeStream(0, [1, 2], [], [], undefined, 'fist').cs).toBe('fist');
+    expect(composeStream(0, undefined, [], [], undefined, 'fist').cs).toBeUndefined();
+    expect(composeStream(0, [1, 2], [], [], undefined, 'x'.repeat(40)).cs).toHaveLength(16);
+  });
+});
