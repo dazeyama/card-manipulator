@@ -38,7 +38,12 @@ export const RADIAL_MENU: RadialWedge[] = [
     { label: 'EDHREC', key: 'E', presses: ['e'] },
     { label: 'Elo', key: 'E E', presses: ['e', 'e'] },
   ] },
-  { label: 'Draw', icon: '🖐️', cards: true, items: [{ label: 'Draw', key: '0', presses: ['0'] }] },
+  // A count, then click where the hand goes, as the keys do; N asks how many (decision 300).
+  { label: 'Draw', icon: '🖐️', cards: true, items: [
+    { label: '1 card', key: '1', presses: ['1'] },
+    { label: '7 cards', key: '7', presses: ['7'] },
+    { label: 'N cards', key: '0', presses: ['0'] },
+  ] },
   // One-step undo: Ctrl + Z again is the redo, so a Redo item would do the same (decision 298).
   { label: 'Undo', icon: '↩️', cards: false, items: [{ label: 'Undo', key: 'Ctrl Z', presses: ['ctrl+z'] }] },
 ];

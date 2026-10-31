@@ -15,12 +15,17 @@ describe('radial menu contents', () => {
   });
 
   it('starts every wedge with its main action and only Undo works without cards', () => {
-    expect(RADIAL_MENU.map((w) => w.items[0].presses.join(' '))).toEqual(['s', 'f', 'r', 'x', 'h', 'c', '0', 'ctrl+z']);
+    expect(RADIAL_MENU.map((w) => w.items[0].presses.join(' '))).toEqual(['s', 'f', 'r', 'x', 'h', 'c', '1', 'ctrl+z']);
     expect(RADIAL_MENU.filter((w) => !w.cards).map((w) => w.label)).toEqual(['Undo']);
   });
 
-  it('gives Draw and Undo no outer ring', () => {
-    expect(RADIAL_MENU.filter((w) => w.items.length < 2).map((w) => w.label)).toEqual(['Draw', 'Undo']);
+  it('gives only Undo no outer ring', () => {
+    expect(RADIAL_MENU.filter((w) => w.items.length < 2).map((w) => w.label)).toEqual(['Undo']);
+  });
+
+  it('draws 1, 7 or N cards', () => {
+    const draw = RADIAL_MENU.find((w) => w.label === 'Draw')!;
+    expect(draw.items.map((i) => i.presses.join(' '))).toEqual(['1', '7', '0']);
   });
 });
 
@@ -77,9 +82,9 @@ describe('pick', () => {
     // 270° is Draw's wedge by angle, but Sort's outer ring reaches it.
     const fromSort = pick(RADIAL_MENU, ...at(225, 80), g);
     expect(labelOf(285, 150, fromSort)).toBe('Elo');
-    // Coming from Draw, which has no ring, the same spot is Draw.
+    // Coming from Draw, the same spot is Draw's own ring: 7 cards, from 254° to 286°.
     const fromDraw = pick(RADIAL_MENU, ...at(270, 80), g);
-    expect(labelOf(285, 150, fromDraw)).toBe('Draw');
+    expect(labelOf(285, 150, fromDraw)).toBe('7 cards');
   });
 
   it('falls back to the wedge itself where there is no ring', () => {

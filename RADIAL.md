@@ -34,7 +34,7 @@ Clockwise from the top. Letting go on the inner wedge does the first item.
 | Spread | Spread (X) | Reverse spread (X X) |
 | Hand | Fan as hand (H) | Full size on stand (H H) |
 | Sort | Curve (C) | Colour columns (C C), Curve per colour (Shift C), EDHREC (E), Elo (E E) |
-| Draw | Draw N (0): how many, with a Face down tick | none |
+| Draw | 1 card (1) | 7 cards (7), N cards (0): how many, with a Face down tick (decision 300) |
 | Undo | Undo (Ctrl Z) | Redo (Ctrl Z again) |
 
 Deliberately left off: pile tools (tokens, name, copy, delete, frame), dice, camera, search, save.
