@@ -171,9 +171,11 @@ export class Hud {
       return;
     }
     const sel = this.app.store.selection.size;
-    this.liveEl.textContent = sel
+    // Cards hidden from this browser in a room are never searched (ONLINE.md 7.3).
+    const hidden = sel && out.hidden ? ` · ${out.hidden.toLocaleString()} hidden card${out.hidden === 1 ? '' : 's'} not searched` : '';
+    this.liveEl.textContent = (sel
       ? `${sel.toLocaleString()} → ${out.matches.length.toLocaleString()} match`
-      : `${out.matches.length.toLocaleString()} of ${out.scope.toLocaleString()} match`;
+      : `${out.matches.length.toLocaleString()} of ${out.scope.toLocaleString()} match`) + hidden;
   }
 
   /** Enter: refine the selection, or search the table when nothing is selected. True if the query ran. */

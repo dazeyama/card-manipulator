@@ -12,6 +12,8 @@ import { toast } from './toasts';
 export class ExportPanel {
   private readonly el: HTMLDivElement;
   private readonly title: HTMLDivElement;
+  /** 'n hidden cards not exported' (rooms, ONLINE.md 7.3). */
+  private readonly note: HTMLDivElement;
   private readonly preview: HTMLTextAreaElement;
   private readonly names: HTMLInputElement;
   private readonly sets: HTMLInputElement;
@@ -20,6 +22,7 @@ export class ExportPanel {
 
   constructor(private readonly app: App) {
     this.title = h('div', { class: 'pe-title' });
+    this.note = h('div', { class: 'muted small' });
     this.names = h('input', { type: 'radio', name: 'export-format', value: 'names' });
     this.sets = h('input', { type: 'radio', name: 'export-format', value: 'sets' });
     this.preview = h('textarea', { class: 'export-preview', readonly: '', spellcheck: 'false', 'aria-label': 'Decklist' });
@@ -29,6 +32,7 @@ export class ExportPanel {
     const close = h('button', { class: 'btn small ghost' }, 'Close');
     this.el = h('div', { class: 'pile-editor export-panel', hidden: '' },
       this.title,
+      this.note,
       h('div', { class: 'row small' },
         h('label', { class: 'inline' }, this.names, ' 4 Lightning Bolt'),
         h('label', { class: 'inline' }, this.sets, ' 4 Lightning Bolt (M11) 149'),
@@ -90,7 +94,7 @@ export class ExportPanel {
     let n = 0;
     for (const u of this.uids) {
       const c = store.cards.get(u);
-      const r = c && store.records.get(c.scryfallId);
+      const r = c && store.recordOf(c);
       if (!c || !r) continue;
       const name = namedPileOf(store, c);
       const key = c.pileId ?? 'loose';
@@ -109,7 +113,7 @@ export class ExportPanel {
     const out: CsvCard[] = [];
     for (const u of this.uids) {
       const c = store.cards.get(u);
-      const r = c && store.records.get(c.scryfallId);
+      const r = c && store.recordOf(c);
       if (!c || !r) continue;
       out.push({ pile: namedPileOf(store, c) ?? '', name: r.name, set: r.set, number: r.collector_number, finish: c.finish, scryfallId: r.id });
     }
@@ -121,6 +125,14 @@ export class ExportPanel {
     const cards = groups.reduce((s, g) => s + g.cards.length, 0);
     this.title.textContent = `Export ${this.label}: ${cards} card${cards === 1 ? '' : 's'}${groups.length > 1 ? ` in ${groups.length} piles` : ''}`;
     this.preview.value = decklistText(groups, this.app.store.settings.exportWithSet);
+    // Cards hidden from this browser in a room are skipped, and the panel says so (7.3).
+    const store = this.app.store;
+    const hidden = this.uids.filter((u) => {
+      const c = store.cards.get(u);
+      return c && !store.canSee(c);
+    }).length;
+    this.note.textContent = hidden ? `${hidden.toLocaleString()} hidden card${hidden === 1 ? '' : 's'} not exported` : '';
+    this.note.hidden = !hidden;
   }
 
   private async copy(): Promise<void> {

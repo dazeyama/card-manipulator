@@ -11,6 +11,8 @@ interface Entry {
   finish: Finish;
   faceUp: boolean;
   count: number;
+  /** Hidden from this browser when removed (rooms, ONLINE.md 7.3): listed as "Hidden card". */
+  hidden?: boolean;
 }
 
 export class RemovedTray {
@@ -35,12 +37,19 @@ export class RemovedTray {
 
   /** Remove cards from the table into the tray. */
   remove(uids: Iterable<string>): number {
-    const removed: Card[] = this.app.store.removeCards(uids);
+    const store = this.app.store;
+    const list = [...uids];
+    const hidden = new Set(list.filter((u) => {
+      const c = store.cards.get(u);
+      return c && !store.canSee(c);
+    }));
+    const removed: Card[] = store.removeCards(list);
     for (const c of removed) {
-      const key = `${c.scryfallId}|${c.finish}`;
+      const secret = hidden.has(c.uid);
+      const key = `${secret ? 'hidden:' : ''}${c.scryfallId}|${c.finish}`;
       const e = this.entries.get(key);
       if (e) e.count++;
-      else this.entries.set(key, { scryfallId: c.scryfallId, finish: c.finish, faceUp: c.faceUp, count: 1 });
+      else this.entries.set(key, { scryfallId: c.scryfallId, finish: c.finish, faceUp: c.faceUp, count: 1, ...(secret ? { hidden: true } : {}) });
     }
     this.render();
     return removed.length;
@@ -49,7 +58,8 @@ export class RemovedTray {
   /** Undo brought these removed cards back to the table: they leave the tray (decision 204). */
   take(cards: { scryfallId: string; finish: Finish }[]): void {
     for (const c of cards) {
-      const key = `${c.scryfallId}|${c.finish}`;
+      const plain = `${c.scryfallId}|${c.finish}`;
+      const key = this.entries.has(plain) ? plain : `hidden:${plain}`;
       const e = this.entries.get(key);
       if (!e) continue;
       if (--e.count <= 0) this.entries.delete(key);
@@ -77,13 +87,13 @@ export class RemovedTray {
     this.head.replaceChildren(h('span', { class: 'tray-title' }, `Removed (${n})`), all);
     this.el.classList.toggle('empty', n === 0);
     const rows = [...this.entries.entries()]
-      .map(([k, e]) => ({ k, e, name: this.app.store.records.get(e.scryfallId)?.name ?? '…' }))
+      .map(([k, e]) => ({ k, e, name: e.hidden ? 'Hidden card' : this.app.store.records.get(e.scryfallId)?.name ?? '…' }))
       .sort((a, b) => a.name.localeCompare(b.name));
     this.list.replaceChildren(
       ...rows.map(({ k, e, name }) => {
         const back = h('button', { class: 'btn small ghost', title: 'Spawn back' }, '↩');
         back.addEventListener('click', () => this.spawnBack([k]));
-        return h('div', { class: 'tray-row' }, h('span', {}, `${e.count} ${name}${e.finish !== 'nonfoil' ? ' ✦' : ''}`), back);
+        return h('div', { class: 'tray-row' }, h('span', {}, `${e.count} ${name}${e.finish !== 'nonfoil' && !e.hidden ? ' ✦' : ''}`), back);
       }),
     );
   }

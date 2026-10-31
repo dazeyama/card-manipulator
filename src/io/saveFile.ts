@@ -6,12 +6,22 @@ import { getRecords } from '../scryfall/cardData';
 import { fetchByIds } from '../scryfall/resolve';
 import { readBasics } from '../state/basics';
 import { DEFAULT_SETTINGS, type Card, type CardRecord, type TableDoc } from '../state/types';
-import type { TableState } from '../../shared/table';
+import { HIDDEN, type TableState } from '../../shared/table';
+
+/**
+ * Is this card written as hidden (ONLINE.md 7.5, O75)? A non-crown browser in a
+ * room writes what it may not see as an unknowable card; the crown's copy is
+ * complete, and a card loaded as hidden stays hidden.
+ */
+function writtenHidden(app: App, c: Card): boolean {
+  if (c.scryfallId === HIDDEN) return true;
+  return !!app.online && !app.online.room.isCrown && !app.store.canSee(c);
+}
 
 export function toDoc(app: App, withCardData: boolean): TableDoc {
   const store = app.store;
   const cards = [...store.cards.values()].map((c) => ({
-    uid: c.uid, scryfallId: c.scryfallId, finish: c.finish,
+    ...(writtenHidden(app, c) ? { uid: c.uid, scryfallId: HIDDEN, finish: 'nonfoil' as const, hidden: true as const } : { uid: c.uid, scryfallId: c.scryfallId, finish: c.finish }),
     x: round(c.x), y: round(c.y), z: round(c.z), yaw: round(c.yaw, 5), faceUp: c.faceUp,
     pileId: c.pileId && store.named.has(c.pileId) ? c.pileId : null,
     spreadOf: c.spreadOf,
@@ -25,7 +35,7 @@ export function toDoc(app: App, withCardData: boolean): TableDoc {
   const cardData: Record<string, CardRecord> = {};
   if (withCardData) {
     for (const c of store.cards.values()) {
-      const r = store.records.get(c.scryfallId);
+      const r = writtenHidden(app, c) ? undefined : store.records.get(c.scryfallId);
       if (r) cardData[r.id] = r;
     }
   }
@@ -41,17 +51,18 @@ export function toDoc(app: App, withCardData: boolean): TableDoc {
     spreads: [...store.spreads.values()].map((s) => ({ ...s, uids: [...s.uids] })),
     cardData,
     mats: [...store.mats.values()].map((m) => ({ ...m, x: round(m.x), y: round(m.y), yaw: round(m.yaw, 5) })),
-    elo: eloOnTable(store),
+    elo: eloOnTable(app),
     basics: store.basics,
     dice: [...store.dice.values()].map((d) => ({ ...d, x: round(d.x), y: round(d.y), z: round(d.z), yaw: round(d.yaw, 5) })),
   };
 }
 
 /** The Elo ratings of the cards on the table, by oracle id (decision 192). */
-function eloOnTable(store: App['store']): Record<string, number> {
+function eloOnTable(app: App): Record<string, number> {
+  const store = app.store;
   const out: Record<string, number> = {};
   for (const c of store.cards.values()) {
-    const oracle = store.records.get(c.scryfallId)?.oracle_id;
+    const oracle = writtenHidden(app, c) ? undefined : store.records.get(c.scryfallId)?.oracle_id;
     const elo = oracle ? store.elo.get(oracle) : undefined;
     if (oracle && elo !== undefined) out[oracle] = round(elo, 1);
   }
@@ -67,7 +78,8 @@ function round(v: number, places = 3): number {
 export function tableOfDoc(doc: TableDoc): TableState {
   return {
     name: doc.name || 'Untitled table',
-    cards: doc.cards.map((c): Card => ({ ...c, pileId: c.pileId ?? null, spreadOf: c.spreadOf ?? null })),
+    // A card saved as hidden from a room stays unknowable: a back forever (7.5).
+    cards: doc.cards.map(({ hidden, ...c }): Card => ({ ...c, ...(hidden ? { scryfallId: HIDDEN, finish: 'nonfoil' as const } : {}), pileId: c.pileId ?? null, spreadOf: c.spreadOf ?? null })),
     named: (doc.piles ?? []).map((p) => ({ id: p.id, name: p.name, filter: p.filter ?? null, anchor: p.anchor ?? { x: 0, y: 0 }, yaw: p.yaw ?? 0 })),
     spreads: (doc.spreads ?? []).map((s) => ({ ...s, uids: [...s.uids] })),
     mats: (doc.mats ?? []).map((m) => ({ ...m })),
@@ -96,7 +108,8 @@ export async function loadDoc(app: App, doc: TableDoc): Promise<void> {
   const store = app.store;
   store.updateSettings({ ...DEFAULT_SETTINGS, ...doc.settings });
 
-  const ids = [...new Set(doc.cards.map((c) => c.scryfallId))];
+  // A hidden card has no record to fetch (7.5).
+  const ids = [...new Set(doc.cards.map((c) => c.scryfallId))].filter((id) => id !== HIDDEN);
   const records = new Map<string, CardRecord>(Object.entries(doc.cardData ?? {}));
   const missing = ids.filter((id) => !records.has(id) && !store.records.has(id));
   if (missing.length) {

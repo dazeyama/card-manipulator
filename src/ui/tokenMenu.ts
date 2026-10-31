@@ -42,7 +42,8 @@ export class TokenMenu {
   async open(uid: string, at: { x: number; y: number }): Promise<void> {
     const store = this.app.store;
     const card = store.cards.get(uid);
-    const record = card && store.records.get(card.scryfallId);
+    // A card hidden from this browser in a room makes nothing it can show (ONLINE.md 7.3).
+    const record = card && store.recordOf(card);
     if (!card || !record) return;
     this.card = uid;
     this.made = 0;

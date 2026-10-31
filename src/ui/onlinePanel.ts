@@ -22,6 +22,7 @@ import { PlayerRows } from './playerRows';
 import { ColourPicker, joinByCodeDialog, joinPrompt } from './joinPrompt';
 import { hideRoomState, roomNameLine, showRoomState } from './roomStates';
 import { isPhoneOrTablet, showDesktopOnly } from './desktopOnly';
+import type { HiddenGate } from '../online/hidden';
 
 /** How this browser came into the room: it made it (Go online), or joined by a link. */
 export type Role = 'maker' | 'joiner';
@@ -59,6 +60,8 @@ export interface OnlineDeps {
   saveCopy: () => void;
   /** Bring this browser's own table back (its autosave), when the page opened on a room link and never showed it. */
   ownTable: () => Promise<void>;
+  /** The hidden gate (7.3), told when a room starts, welcomes me, or ends. */
+  hidden: HiddenGate;
 }
 
 /** Dev only: `?fakeroom` goes online and joins with FakeSession, no room server needed. */
@@ -256,6 +259,7 @@ export class OnlineUi {
     const online = this.deps.control.connect(code, hello, role);
     // From here, leaving brings this browser's own table back (RoomControl.disconnect).
     this.needOwnTable = false;
+    this.deps.hidden.attach(online);
     this.role = role;
     this.welcomed = false;
     this.known = new Map();
@@ -306,6 +310,8 @@ export class OnlineUi {
       const room = this.online!.room;
       this.known = new Map(room.players.map((p) => [p.id, { ...p }]));
       this.lastCrown = room.crown;
+      // Now I know who I am: my own stands' cards show (7.1).
+      this.deps.hidden.attach(this.online);
       if (first && this.role === 'joiner') {
         // A joiner starts at the default offline view, on the near side (O37, O36).
         this.app.rig.setMirrored(false);
@@ -413,6 +419,7 @@ export class OnlineUi {
   private exit(how: 'leave' | 'offline', clearState = true): void {
     this.unwatch();
     if (this.online) this.deps.control.disconnect(how);
+    this.deps.hidden.attach(null);
     this.role = null;
     this.route = null;
     this.welcomed = false;

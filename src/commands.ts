@@ -14,6 +14,7 @@ import { rankLayout, type RankCard, type RankMode } from './state/rankLayout';
 import { colourLayout, type ColourCard } from './state/colourLayout';
 import { alignTo, fitOnStand, fromSlope, inFrontOf, isStand, SLOPE_LEN, slopePose, standW } from './state/stand';
 import type { Mat } from './state/types';
+import { hiddenRow, splitHidden } from './online/hidden';
 
 export interface Landing {
   uid: string;
@@ -206,6 +207,14 @@ function offStand(app: App, uids: string[], spots: Placed[]): Placed[] {
   return m && isStand(m) ? inFrontOf(m, spots) : spots;
 }
 
+/** The hidden cards of a layout land face down (rooms, ONLINE.md 7.3). */
+function facingDown(landings: Landing[], hidden: string[]): Landing[] {
+  if (!hidden.length) return landings;
+  const set = new Set(hidden);
+  for (const l of landings) if (set.has(l.uid)) l.faceUp = false;
+  return landings;
+}
+
 function centroid(app: App, uids: string[]): { x: number; y: number } {
   let x = 0, y = 0;
   for (const u of uids) {
@@ -271,8 +280,10 @@ export class Commands {
   curve(cards: string[], byColour: boolean, centre?: { x: number; y: number }): void {
     const store = this.app.store;
     if (!cards.length) return;
-    const info: CurveCard[] = cards.map((uid) => {
-      const r = store.records.get(store.cards.get(uid)!.scryfallId);
+    // Cards hidden from this browser in a room aren't sorted: they go after, face down (ONLINE.md 7.3).
+    const { seen, hidden } = splitHidden(this.app, cards);
+    const info: CurveCard[] = seen.map((uid) => {
+      const r = store.recordOf(store.cards.get(uid)!);
       // Double-faced cards sort by their front face.
       const front = r?.faces[0];
       const type = (r?.type_line ?? '').split('//')[0];
@@ -284,11 +295,12 @@ export class Commands {
     // Centred where the cards are, or at `centre` (Shift + C: the middle of the view, decision 191).
     const middle = centre ?? centroid(this.app, cards);
     const layout = curveLayout(info, middle, { byColour, split: store.settings.curveSplit });
-    const uids = layout.map((p) => p.uid);
+    const uids = [...layout.map((p) => p.uid), ...hidden];
     // Off a card stand: in front of it, unless placed in the middle of the view (Shift + C).
     // The right way up from your side (decision 267).
-    const spots = alignTo(layout.map((p) => p.at), middle, this.app.facing);
-    const landings = placeSequential(this.app, uids, centre ? spots : offStand(this.app, uids, spots));
+    const laid: Placed[] = layout.map((p) => p.at);
+    const spots = alignTo([...laid, ...hiddenRow(laid, hidden.length, middle)], middle, this.app.facing);
+    const landings = facingDown(placeSequential(this.app, uids, centre ? spots : offStand(this.app, uids, spots)), hidden);
     land(this.app, landings, { stagger: Math.min(2, 400 / uids.length), arc: 10 });
     // Remember the curve (one per colour row), so C on it stacks it back up.
     const groupOf = new Map(info.map((c) => [c.uid, byColour ? c.group : 'all']));
@@ -334,17 +346,20 @@ export class Commands {
     const store = this.app.store;
     cards = [...new Set(cards)].filter((u) => store.cards.has(u));
     if (!cards.length) return;
-    const info: RankCard[] = cards.map((uid) => {
+    // Cards hidden from this browser in a room aren't ranked: they go after, face down (ONLINE.md 7.3).
+    const { seen, hidden } = splitHidden(this.app, cards);
+    const info: RankCard[] = seen.map((uid) => {
       const card = store.cards.get(uid)!;
-      const r = store.records.get(card.scryfallId);
+      const r = store.recordOf(card);
       const rank = typeof r?.edhrec_rank === 'number' ? r.edhrec_rank : undefined;
       return { uid, name: r?.name ?? '', creature: /\bCreature\b/.test((r?.type_line ?? '').split('//')[0]), value: mode === 'elo' ? store.eloOf(card) : rank };
     });
     leaveSpreads(this.app, cards);
     const middle = centroid(this.app, cards);
     const layout = rankLayout(info, middle, { mode, split: store.settings.curveSplit });
-    const uids = layout.map((p) => p.uid);
-    const landings = placeSequential(this.app, uids, offStand(this.app, uids, alignTo(layout.map((p) => p.at), middle, this.app.facing)));
+    const uids = [...layout.map((p) => p.uid), ...hidden];
+    const laid: Placed[] = layout.map((p) => p.at);
+    const landings = facingDown(placeSequential(this.app, uids, offStand(this.app, uids, alignTo([...laid, ...hiddenRow(laid, hidden.length, middle)], middle, this.app.facing))), hidden);
     land(this.app, landings, { stagger: Math.min(2, 400 / uids.length), arc: 10 });
     // Remember the view, so E on it stacks it back up.
     const spots = new Map(landings.map((l) => [l.uid, { x: l.x, y: l.y }]));
@@ -360,8 +375,10 @@ export class Commands {
     const store = this.app.store;
     cards = [...new Set(cards)].filter((u) => store.cards.has(u));
     if (!cards.length) return;
-    const info: ColourCard[] = cards.map((uid) => {
-      const r = store.records.get(store.cards.get(uid)!.scryfallId);
+    // Cards hidden from this browser in a room aren't sorted: they go after, face down (ONLINE.md 7.3).
+    const { seen, hidden } = splitHidden(this.app, cards);
+    const info: ColourCard[] = seen.map((uid) => {
+      const r = store.recordOf(store.cards.get(uid)!);
       // Double-faced cards sort by their front face, as on the curve.
       const type = (r?.type_line ?? '').split('//')[0];
       const colours = r ? (r.colors.length ? r.colors : r.faces[0]?.colors ?? []) : [];
@@ -370,8 +387,9 @@ export class Commands {
     leaveSpreads(this.app, cards);
     const middle = centroid(this.app, cards);
     const layout = colourLayout(info, middle, { split: store.settings.curveSplit });
-    const uids = layout.map((p) => p.uid);
-    const landings = placeSequential(this.app, uids, offStand(this.app, uids, alignTo(layout.map((p) => p.at), middle, this.app.facing)));
+    const uids = [...layout.map((p) => p.uid), ...hidden];
+    const laid: Placed[] = layout.map((p) => p.at);
+    const landings = facingDown(placeSequential(this.app, uids, offStand(this.app, uids, alignTo([...laid, ...hiddenRow(laid, hidden.length, middle)], middle, this.app.facing))), hidden);
     land(this.app, landings, { stagger: Math.min(2, 400 / uids.length), arc: 10 });
     for (const u of uids) this.rankOf.delete(u);
     const spots = new Map(landings.map((l) => [l.uid, { x: l.x, y: l.y }]));

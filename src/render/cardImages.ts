@@ -6,6 +6,7 @@ import type { Card, CardRecord } from '../state/types';
 import { Atlas, BACK_KEY, IMG_H, IMG_W, drawPlaceholder, type Slot } from './atlas';
 import type { CardLayer } from './cards';
 import { ImageLoader } from './images';
+import { HIDDEN } from '../../shared/table';
 
 export class CardImages {
   readonly loader = new ImageLoader(IMG_W, IMG_H);
@@ -33,7 +34,17 @@ export class CardImages {
     return this.waiting.size;
   }
 
+  /**
+   * May this card's face be drawn (rooms, ONLINE.md 7.3)? Set by
+   * src/online/hidden.ts; a card it refuses shows the Magic back on both faces.
+   */
+  gate: ((card: Card) => boolean) | null = null;
+
   slotsFor(card: Card): { front: Slot; back: Slot } {
+    if (card.scryfallId === HIDDEN || (this.gate && !this.gate(card))) {
+      const back = this.atlas.get(BACK_KEY)!;
+      return { front: back, back };
+    }
     const r = this.store.records.get(card.scryfallId);
     if (!r) {
       const key = `missing:${card.scryfallId}`;

@@ -61,7 +61,12 @@ export class InspectPanel {
     if (uid === this.shown) return;
     this.shown = uid;
     const card = uid ? this.app.store.cards.get(uid) : undefined;
-    const r = card ? this.app.store.records.get(card.scryfallId) : undefined;
+    // A card hidden from this browser in a room (ONLINE.md 7.3): nothing but that.
+    if (card && !this.app.store.canSee(card)) {
+      this.body.replaceChildren(h('p', { class: 'muted inspect-empty' }, 'Hidden card'));
+      return;
+    }
+    const r = card ? this.app.store.recordOf(card) : undefined;
     if (!card || !r) {
       this.body.replaceChildren(h('p', { class: 'muted inspect-empty' }, 'Rest the cursor on a card to see it here. Click the image to pin it.'));
       return;

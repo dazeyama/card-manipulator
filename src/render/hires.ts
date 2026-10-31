@@ -108,7 +108,8 @@ export class HiRes {
     const cx = width / 2, cy = height / 2;
     const scored: { uid: string; d: number }[] = [];
     for (const card of app.store.cards.values()) {
-      if (!card.faceUp) continue;
+      // A card hidden from this browser in a room shows its back up close too (ONLINE.md 7.3).
+      if (!card.faceUp || !app.store.canSee(card)) continue;
       const pose = app.layer.pose(card.uid);
       if (!pose) continue;
       const s = rig.worldToScreen(pose.x, pose.y, pose.z);
@@ -117,7 +118,8 @@ export class HiRes {
     }
     scored.sort((a, b) => a.d - b.d);
     const want = new Set<string>();
-    if (this.hovered && app.store.cards.has(this.hovered)) want.add(this.hovered);
+    const hovered = this.hovered ? app.store.cards.get(this.hovered) : undefined;
+    if (hovered && app.store.canSee(hovered)) want.add(hovered.uid);
     // Nearest the middle first; a card whose face is almost all covered is skipped.
     for (const s of scored) {
       if (want.size >= this.quality.max) break;
@@ -155,7 +157,7 @@ export class HiRes {
 
   private attach(uid: string): void {
     const card = this.app.store.cards.get(uid);
-    const r = card && this.app.store.records.get(card.scryfallId);
+    const r = card && this.app.store.recordOf(card);
     // Scryfall's large image sits at the same path as the normal one.
     const url = this.quality.image === 'large' ? r?.image_normal?.replace('/normal/', '/large/') : r?.image_normal;
     if (!url) return;

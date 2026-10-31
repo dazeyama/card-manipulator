@@ -62,6 +62,7 @@ import type { TableDoc } from './state/types';
 // Rooms: Rules & UI.
 import { OnlineUi, showWelcomeNote, standInControl } from './ui/onlinePanel';
 import { parseHash } from './online/link';
+import { HiddenGate } from './online/hidden';
 
 const root = document.getElementById('app')!;
 const top = h('div', { class: 'top-host' });
@@ -1027,8 +1028,11 @@ scryfall.onStatus((s) => {
 // --- Rooms: Rules & UI ---
 // The Online button, avatars and panel, and the room flows (ONLINE.md 12). The room
 // layer is reached through RoomControl: a FakeSession stand-in until the Sync fork's lands.
+// The hidden gate (ONLINE.md 7.3): in a room, cards this browser may not see draw as backs and read as unknown.
+const hiddenGate = new HiddenGate(app);
 const onlineUi = new OnlineUi(app, topBar, {
   control: standInControl(app),
+  hidden: hiddenGate,
   saveCopy: () => saveFile(),
   ownTable: async () => {
     autosave.paused = false;

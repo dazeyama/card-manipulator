@@ -32,7 +32,8 @@ export function installClipboard(app: App, spawnOptions: () => SpawnOptions): vo
     const cards: ExportCard[] = [];
     for (const uid of store.selection) {
       const card = store.cards.get(uid);
-      const record = card && store.records.get(card.scryfallId);
+      // A card hidden from this browser in a room is not copied (ONLINE.md 7.3).
+      const record = card && store.recordOf(card);
       if (!card || !record) continue;
       cards.push({ name: record.name, set: record.set, number: record.collector_number, finish: card.finish });
       const key = `${record.id}|${card.finish}`;

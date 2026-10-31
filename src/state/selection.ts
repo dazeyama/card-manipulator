@@ -8,7 +8,8 @@ import type { Card } from './types';
 export function queryCard(store: Store, card: Card): QueryCard {
   return {
     card,
-    record: store.records.get(card.scryfallId),
+    // Undefined for a card hidden here (rooms, ONLINE.md 7.3).
+    record: store.recordOf(card),
     selected: store.selection.has(card.uid),
     pileName: namedPileOf(store, card),
     elo: store.eloOf(card),
@@ -20,7 +21,8 @@ export function namedPileOf(store: Store, card: Card): string | null {
   return store.named.get(card.pileId)?.name ?? store.piles.get(card.pileId)?.name ?? null;
 }
 
-export type QueryOutcome = { ok: true; matches: string[]; scope: number } | { ok: false; error: string };
+/** `hidden`: cards in scope this browser may not see (rooms, 7.3), which never match. */
+export type QueryOutcome = { ok: true; matches: string[]; scope: number; hidden: number } | { ok: false; error: string };
 
 /** Cards in scope that match: the selection if any, else the whole table (spec 9.3, 9.6). */
 export function runQuery(store: Store, query: string, scope: 'auto' | 'selection' | 'table' = 'auto'): QueryOutcome {
@@ -30,8 +32,10 @@ export function runQuery(store: Store, query: string, scope: 'auto' | 'selection
   const pool: Card[] = useSelection
     ? [...store.selection].map((u) => store.cards.get(u)!).filter(Boolean)
     : [...store.cards.values()];
-  const matches = pool.filter((c) => compiled.test(queryCard(store, c))).map((c) => c.uid);
-  return { ok: true, matches, scope: pool.length };
+  // A hidden card never matches: its identity is not this browser's to search (7.3).
+  const seen = pool.filter((c) => store.canSee(c));
+  const matches = seen.filter((c) => compiled.test(queryCard(store, c))).map((c) => c.uid);
+  return { ok: true, matches, scope: pool.length, hidden: pool.length - seen.length };
 }
 
 /** Refine the selection, or search the table when nothing is selected. Returns the outcome. */
@@ -89,7 +93,7 @@ export function summarize(store: Store): SelectionSummary {
     else loose++;
     const name = namedPileOf(store, c);
     pileName = pileName === undefined ? name : pileName === name ? name : null;
-    const r = store.records.get(c.scryfallId);
+    const r = store.recordOf(c);
     if (!r) continue;
     if (!r.colors.length) pips.C++;
     for (const col of r.colors) if (col in pips) pips[col as keyof typeof pips]++;

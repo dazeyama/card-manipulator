@@ -290,8 +290,19 @@ export class Store {
     if (records.length) this.events.emit('records', records.map((r) => r.id));
   }
 
+  /**
+   * May this browser show the card's identity (rooms, ONLINE.md 7.3)? Always
+   * true offline; src/online/hidden.ts sets the room's gate.
+   */
+  canSee: (card: Card) => boolean = () => true;
+
+  /**
+   * The card's record as this browser may show it: undefined for a card hidden
+   * here (7.3). Panels, exports, searches and layouts read cards through this;
+   * the crown's judge reads `records` itself.
+   */
   recordOf(card: Card): CardRecord | undefined {
-    return this.records.get(card.scryfallId);
+    return this.canSee(card) ? this.records.get(card.scryfallId) : undefined;
   }
 
   // ---- selection ----
