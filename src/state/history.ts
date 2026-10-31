@@ -1,35 +1,22 @@
 // One-step undo (decision 204): a snapshot of what an action can change on
 // the table, and the difference between two snapshots. Pure, tested without
 // a browser; src/undo.ts takes the snapshots and puts one back.
+//
+// The snapshot is the table as a room shares it (ONLINE.md 11.3: a TableSnap
+// is a TableState), so undo and rooms speak the same shape.
 
-import type { Spread, Store } from './store';
-import type { Die } from './dice';
-import type { Card, Mat, NamedPile } from './types';
+import type { Store } from './store';
+import type { Card } from './types';
+import type { TableState } from '../../shared/table';
 
 /** A card as undo keeps it: everything an action can change. */
 export type CardSnap = Pick<Card, 'uid' | 'scryfallId' | 'finish' | 'x' | 'y' | 'z' | 'yaw' | 'faceUp' | 'pileId' | 'spreadOf' | 'laidAt' | 'stand' | 'side'>;
 
-export interface TableSnap {
-  cards: CardSnap[];
-  named: NamedPile[];
-  spreads: Spread[];
-  mats: Mat[];
-  /** Dice (decision 255). */
-  dice: Die[];
-}
+/** Cards, named piles, spreads, mats, dice, basics and the table's name. */
+export type TableSnap = TableState;
 
 export function snapshot(store: Store): TableSnap {
-  return {
-    cards: [...store.cards.values()].map((c) => ({
-      uid: c.uid, scryfallId: c.scryfallId, finish: c.finish,
-      x: c.x, y: c.y, z: c.z, yaw: c.yaw, faceUp: c.faceUp,
-      pileId: c.pileId, spreadOf: c.spreadOf, laidAt: c.laidAt ? { ...c.laidAt } : undefined, stand: c.stand, side: c.side,
-    })),
-    named: [...store.named.values()].map((p) => ({ ...p, anchor: { ...p.anchor } })),
-    spreads: [...store.spreads.values()].map((s) => ({ ...s, anchor: { ...s.anchor }, uids: [...s.uids] })),
-    mats: [...store.mats.values()].map((m) => ({ ...m })),
-    dice: [...store.dice.values()].map((d) => ({ ...d })),
-  };
+  return store.table();
 }
 
 /** What turns the table at `now` back into `then`: cards to add back, to take away, and to move. */
@@ -58,7 +45,7 @@ export function diffCards(now: TableSnap, then: TableSnap): CardDiff {
   };
 }
 
-/** True if nothing an action can change differs between the two. */
+/** True if nothing an action can change differs between the two (basics and the name are not undone). */
 export function sameTable(a: TableSnap, b: TableSnap): boolean {
   const d = diffCards(a, b);
   return !d.add.length && !d.remove.length && !d.move.length
