@@ -1053,12 +1053,18 @@ pileEditor.open = (...args: Parameters<typeof openPileEditor>) => {
   if (allowedNow('named')) openPileEditor(...args);
 };
 // Buttons by what they do: the HUD's commands, the top bar's files, the Spawn panel's spawns.
+// Save and export buttons are hidden, not greyed, while Downloads is off (4.3).
 const gateByText = (host: Element, rules: [string | RegExp, Action][]) => {
   for (const b of host.querySelectorAll('button')) {
     const text = b.textContent?.trim() ?? '';
     const rule = rules.find(([t]) => (typeof t === 'string' ? text === t : t.test(text)));
-    if (rule) guard.gate(b, rule[1]);
+    if (rule) guard.gate(b, rule[1], rule[1] === 'download');
   }
+};
+// The pile badges' export button and Ctrl + E open the Export panel: Downloads (O50).
+const openExporter = exporter.open.bind(exporter);
+exporter.open = (...args: Parameters<typeof openExporter>) => {
+  if (allowedNow('download')) openExporter(...args);
 };
 const hudButtons = bottom.querySelector('.hud-buttons');
 if (hudButtons) gateByText(hudButtons, [[/Export/, 'download'], [/^(?!.*Split)/, 'move']]);

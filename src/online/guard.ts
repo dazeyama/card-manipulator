@@ -113,7 +113,7 @@ export function keyAction(name: string): Action | null {
 }
 
 export class Guard {
-  private readonly gated: { el: HTMLElement; why: () => string | null; title: string }[] = [];
+  private readonly gated: { el: HTMLElement; why: () => string | null; title: string; hide: boolean }[] = [];
 
   constructor(readonly owner: App) {
     app = owner;
@@ -146,10 +146,14 @@ export class Guard {
     return mayRemoveCards([...store.selection]);
   }
 
-  /** Grey a button by rank: its title says what is needed, and clicks are refused with the toast. */
-  gate(el: HTMLElement, action: Action | (() => string | null)): void {
+  /**
+   * Grey a button by rank: its title says what is needed, and clicks are refused
+   * with the toast. With `hide` it is hidden instead (Downloads off hides the save and
+   * export buttons, 4.3).
+   */
+  gate(el: HTMLElement, action: Action | (() => string | null), hide = false): void {
     const why = typeof action === 'function' ? action : () => whyNot(action);
-    this.gated.push({ el, why, title: el.title });
+    this.gated.push({ el, why, title: el.title, hide });
     el.addEventListener('click', (e) => {
       const reason = why();
       if (!reason) return;
@@ -167,6 +171,7 @@ export class Guard {
       g.el.classList.toggle('guarded', !!reason);
       g.el.setAttribute('aria-disabled', String(!!reason));
       g.el.title = reason ?? g.title;
+      if (g.hide) g.el.hidden = !!reason;
     }
   }
 
