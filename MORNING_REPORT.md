@@ -8,12 +8,12 @@ The unattended build of `ONLINE.md` (decision 288): one hub session and three ar
 
 | | |
 |---|---|
-| **Phases gated** | none yet (seed committed) |
-| **BROKEN items** | none yet |
-| **Tests** | 239 passing at the seed |
+| **Phases gated** | O1 (tag `online-1`) |
+| **BROKEN items** | none |
+| **Tests** | 409 passing in 45 files at gate O1 (239 at the seed) |
 | **Run it** | `npm run dev` (vite 5173 + a local room server on 8787), or `start.bat`. Tab A: Go online. Tab B: the room link with `?player=B` before the `#` (dev only, O90), so one browser is two players. |
-| **Room server** | not deployed yet; `npx wrangler whoami` was signed in at the seed |
-| **For you to do** | before your first push with server code: the GitHub secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (ONLINE.md 3.5); edit the word list in `shared/words.ts` (O79) |
+| **Room server** | **deployed** after gate O1: `https://card-manipulator-rooms.daisyamanita.workers.dev` (free plan, Durable Objects on SQLite, checked live: create, hello, welcome, ping, close). `.env.production` points the site at it. The admin key is a Worker secret and sits in `server/.admin-key` (git-ignored) for `#/admin`. |
+| **For you to do** | before your first push with server code: the GitHub secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (ONLINE.md 3.5), or `worker.yml` fails (the site deploy is separate and unaffected, O92); edit the word list in `shared/words.ts` (O79) |
 | **Ports in the run** | hub 5177 + 8787 (O95: your own `start.bat` server holds 5173), Server 5174 + 8788, Sync 5175 + 8789, Rules & UI 5176 + 8790 |
 
 ### Seed (hub)
@@ -23,9 +23,20 @@ The unattended build of `ONLINE.md` (decision 288): one hub session and three ar
 - Contracts: `shared/table.ts` (`TableState`, `HIDDEN`), `shared/ops.ts` (`Op` with `batch`, `cardsTouched`), `shared/protocol.ts` (every message, limits, colours, snapshot parts, `playerIdOf`), `shared/permissions.ts` (ranks, `needs`, `allowed`); `src/online/room.ts` (`RoomState`), `session.ts` (`Session`, `FakeSession`), `identity.ts` (with `?player=`), `index.ts` (`Online`, `app.online`). `CardMove` carries the links a landing sets; `Mat.owner`. Decisions O93 to O95.
 - `tests/protocol.test.ts` (9 tests).
 
-### Phase O1: rooms by link
+### Phase O1: rooms by link ✅
 
-(written at the gate)
+**Built.** *Server:* the Worker's routes, the Room object (hello, welcome, mirror and op log in SQLite, proposals to the crown, confirms stamped with seq, streams, chat, crown election, the maker's reclaim, close on empty), a minimal Lobby, `worker.yml`. *Sync:* the store as the one choke point with `shared/apply.ts` as its proven twin, the WebSocket session (version check, reconnect, ping), outbox with rollback, inbox in seq order, the crown's authority in the socket handler, 10 Hz streams, presence (cursors, held and flying cards and dice, selection colours). *Rules & UI:* the Online button and avatars, the Online panel (short form, Room, Settings, Players, Chat), joining by link with the join prompt, the whole-page states, the first-visit welcome note with Join a table.
+
+**Gate results** (2026-10-30, all three forks frozen; the folder had moved on into O2 to O4 pieces, which the checks included):
+- `npm run typecheck`: clean (client and server). `npm test`: **409 passed** in 45 files. `npm run build`: OK.
+- **Two-tab check** on `rooms-hub` (vite 5177, wrangler 8787), at 1920 x 1080: every item of ONLINE.md 16's O1 list passed: tab A went online (room code, panel, 👑 avatar); tab B opened the link with `?player=B`: the join prompt named the room and its host with A's red greyed, and Join brought in all 450 cards and the playmat at the default camera; A's held drag showed in B lifted 12.9 mm in A's red glow where A held it, and both tabs agreed on the landing to 0.01 mm; a flick in A streamed its flight to B at 10 Hz (rising to 56 mm, turning over) and one `move` landed it face up in both; the grab race (B pressing a card A held before hearing of the hold) was refused with "That card is in Ann's hand"; B's press on the held card picked up the card under it instead; A's cursor and name tag showed on B's felt; B's ten selected cards glowed orange in A while A's own selection stayed blue; chat both ways with grey join lines; closing A made B crown at once ("Bea is the crown now"), and reopening the link in A's browser gave it back ("Ann took the crown back", Bea kept Move); Go offline gave B "The room has closed." with Save a copy and left A's 450 cards where they were; a reload of both tabs at once closed the room (O61), and the link then said "This room has closed", Back to my table restoring A's table with the room's changes.
+- Consoles clean in both tabs; `__errors` empty throughout.
+- **How it was driven:** the built-in browser shows one tab at a time, so drags, the flick and the cursor were driven with synthetic pointer events in one tab and checked in the other by reading its presence buffers and drawn poses, then by screenshot. A background tab's 10 Hz stream timer is throttled by the browser to about once a second; nothing about that is the app's.
+- **Screenshots:** `reports/screenshots/online-1/` (10).
+- **Fixed in the gate (hub):** remote cursors vanished after 4 s of a resting mouse, since the stream only sends what changed (`f60211b`).
+- **Commit and tag:** `d562346` "Phase O1 gate", tag `online-1`. Worker deployed after it (`3e7a7bd0`), `.env.production` committed.
+- **Agent decisions in O1:** O93 to O97, O100.
+- **BROKEN:** none. **Small things noticed:** the maker's own chat line reads "Ann joined as Move" although Ann is the crown (passed to Server); the "You are the crown now" toast had faded before it could be read (the chat line was there); the dev `__shot` helper stalls while the browser pane is hidden (dev only).
 
 ### Phase O2: permissions and hidden information
 
@@ -64,7 +75,19 @@ Each fork writes its own here, newest first: "- <Fork>, <date>: **<piece>**: wha
 
 ### Your QA checklist
 
-(built from ONLINE.md Section 16 at each gate)
+Run `npm run dev` (or `start.bat`). Tab A at `http://localhost:5173/`; tab B at `http://localhost:5173/?player=B#/room/CODE` (the `?player=B` keeps the two tabs two players in one browser, dev only). Two windows side by side show both at once, which the built-in browser could not.
+
+**Phase O1, rooms by link**
+- [ ] Tab A: a table with cards, 🌐 **Go online**: the panel shows a code and **Copy link**; the top bar shows your avatar with 👑.
+- [ ] Tab B: open the link: the join prompt, pick a colour, Join: the same cards appear, the camera at the default view; A's avatar row shows two players.
+- [ ] Drag a card in A: B sees it float in A's colour and land where A put it. Toss one: B sees the flight. Both drag the same card at once: the second gets "That card is in …'s hand".
+- [ ] Move the mouse in A: B sees A's arrow and name tag on the felt where A points, following the camera; it stays when A's mouse rests.
+- [ ] Select ten cards in B: A sees them glow in B's colour; A's own selection stays blue.
+- [ ] Chat both ways; a grey line for the join.
+- [ ] Close tab A: B gets "You are the crown now" within a second and can keep playing. Reopen the link in a new tab from A's browser: the crown comes back to A ("… took the crown back"); B keeps its rank.
+- [ ] Press **Go offline** in A: B sees the Room closed screen with Save a copy; A's table is unchanged offline.
+- [ ] Close every tab: the link now shows "This room has closed".
+- [ ] **Only you can judge:** how live drags and tosses *feel* from the other side (the 100 ms buffer, the 120 ms landing ease), real latency between two machines, and the cursor and glow colours on the felt.
 
 ### Performance
 
