@@ -3,10 +3,13 @@
 // colours, O18), nickname, the side they are on (↑ near, ↓ far), their rank,
 // 👑 on the crown and "away" for a player whose browser has gone (O19).
 // For the crown (O23): a rank picker on every other row, and a ⋯ menu with
-// Pass crown, Kick, Ban and Give stand to… (4.5, 4.6, 6.3).
+// Pass crown, Kick, Ban and Give stand to… (4.5, 4.6, 6.3). Everything is a
+// co-host (O111): the picker (View to Cards) and the menu without Pass crown,
+// on the rows of players below Everything only.
 
 import { PLAYER_COLOURS, type Player } from '../../shared/protocol';
-import { RANK_LABEL, RANKS, type Rank } from '../../shared/permissions';
+import { grantableRanks, RANK_LABEL, type Rank } from '../../shared/permissions';
+import { mayManagePlayer } from '../online/guard';
 import type { App } from '../app';
 import { isFullStand, isStand } from '../state/stand';
 import type { Mat } from '../state/types';
@@ -72,18 +75,20 @@ export class PlayerRows {
     const name = h('span', { class: 'player-name' }, p.nickname, ...(mine ? [h('span', { class: 'muted' }, ' (you)')] : []));
     const side = h('span', { class: 'player-side', title: p.side ? 'On the far side of the table' : 'On the near side of the table' }, p.side ? '↓' : '↑');
     const crown = p.isCrown ? h('span', { class: 'player-crown', title: 'The crown: the host of the room' }, '👑') : null;
-    const rank = room.isCrown && !p.isCrown ? this.rankPicker(p) : h('span', { class: 'player-rank muted' }, p.isCrown ? 'Crown' : RANK_LABEL[p.rank]);
+    const manage = mayManagePlayer(room, p);
+    const rank = manage ? this.rankPicker(p) : h('span', { class: 'player-rank muted' }, p.isCrown ? 'Crown' : RANK_LABEL[p.rank]);
     const away = p.connected ? null : h('span', { class: 'player-away' }, 'away');
-    const menu = room.isCrown && !mine ? this.menuButton(p) : null;
+    const menu = manage ? this.menuButton(p) : null;
     const row = h('div', { class: 'player-row' + (p.connected ? '' : ' away') + (mine ? ' mine' : '') }, swatch, name, side, ...(crown ? [crown] : []), h('span', { class: 'grow' }), ...(away ? [away] : []), rank, ...(menu ? [menu] : []));
     row.dataset.player = p.id;
     return row;
   }
 
-  /** The crown sets a player's rank (O21, O23). */
+  /** The crown sets a player's rank (O21, O23); Everything up to Cards (O111). */
   private rankPicker(p: Player): HTMLSelectElement {
+    const room = this.room!;
     const sel = h('select', { class: 'rank-picker', 'aria-label': `${p.nickname}'s rank`, title: 'What this player may do' });
-    for (const r of RANKS) {
+    for (const r of grantableRanks(room.isCrown ? 'crown' : room.rank)) {
       const o = h('option', { value: r }, RANK_LABEL[r]);
       o.selected = r === p.rank;
       sel.append(o);
@@ -92,9 +97,10 @@ export class PlayerRows {
     return sel;
   }
 
-  /** The crown's ⋯ menu on another player's row. */
+  /** The ⋯ menu on another player's row: the crown's, or a co-host's without Pass crown (O111). */
   private menuButton(p: Player): HTMLButtonElement {
-    const b = h('button', { class: 'icon-btn player-menu-btn', title: 'Pass the crown, kick, ban, give a stand', 'aria-label': `More for ${p.nickname}` }, '⋯');
+    const title = this.room!.isCrown ? 'Pass the crown, kick, ban, give a stand' : 'Kick, ban, give a stand';
+    const b = h('button', { class: 'icon-btn player-menu-btn', title, 'aria-label': `More for ${p.nickname}` }, '⋯');
     b.addEventListener('click', (e) => {
       e.stopPropagation();
       this.openMenu(b, p);
@@ -114,15 +120,17 @@ export class PlayerRows {
       });
       return el;
     };
-    const items: HTMLElement[] = [
-      item('👑 Pass crown', async () => {
-        if (await confirmDialog(`Pass the crown to ${p.nickname}? You keep Everything.`, 'Pass crown')) session.send({ t: 'pass', player: p.id });
-      }),
+    const items: HTMLElement[] = [];
+    // Passing the crown stays the crown's (O111).
+    if (this.room?.isCrown) items.push(item('👑 Pass crown', async () => {
+      if (await confirmDialog(`Pass the crown to ${p.nickname}? You keep Everything.`, 'Pass crown')) session.send({ t: 'pass', player: p.id });
+    }));
+    items.push(
       item('Kick', () => session.send({ t: 'kick', player: p.id }), true),
       item('Ban', async () => {
         if (await confirmDialog(`Ban ${p.nickname}? They can't come back while the room is open.`, 'Ban')) session.send({ t: 'ban', player: p.id });
       }, true),
-    ];
+    );
     // Give stand to…: an unowned stand to a player (a full stand only to one who owns none, O27).
     const store = this.app.store;
     const hasFull = [...store.mats.values()].some((m) => isFullStand(m) && m.owner === p.id);

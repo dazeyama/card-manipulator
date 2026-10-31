@@ -11,8 +11,8 @@
 
 import type { App } from '../app';
 import type { CustomGesture, MouseInput } from '../input/mouse';
-import { addAction, refusal, removeAction, type Action, type PieceRecord } from '../../shared/permissions';
-import { MAX_CARDS } from '../../shared/protocol';
+import { addAction, mayManage, refusal, removeAction, type Action, type PieceRecord, type Rank } from '../../shared/permissions';
+import { MAX_CARDS, type Player } from '../../shared/protocol';
 import { isStand } from '../state/stand';
 import type { Mat } from '../state/types';
 import { toast, type ToastKind } from '../ui/toasts';
@@ -31,12 +31,16 @@ export function roomToast(message: string, kind: ToastKind = 'info'): void {
 /** Actions that only look: they work while reconnecting and while the table is locked. */
 const LOOKING = new Set<Action>(['camera', 'hover', 'inspect', 'search', 'refine', 'select', 'chat', 'download']);
 
+/** The room's co-host actions (O111): the crown's and Everything's, whether or not the table is locked. */
+const CO_HOST = new Set<Action>(['rank', 'kick', 'ban', 'lock', 'standGive']);
+
 /** Why I may not do this right now, in the toast's words, or null when I may (always offline). */
 export function whyNot(action: Action): string | null {
   const room = app?.online?.room;
   if (!room) return null;
   // While the socket is down the table is read-only (4.7).
   if (!room.connected && !LOOKING.has(action)) return 'Reconnecting… the table is read-only for now';
+  if (CO_HOST.has(action) && !room.isCrown && room.rank !== 'everything') return 'Only the crown and Everything can do that';
   return refusal(room.isCrown ? 'crown' : room.rank, action, { locked: room.locked, downloads: room.downloads });
 }
 
@@ -45,6 +49,15 @@ export function allowedNow(action: Action, quiet = false): boolean {
   const why = whyNot(action);
   if (why && !quiet) roomToast(why, 'warn');
   return !why;
+}
+
+/**
+ * May I set this player's rank, kick or ban them, or give them a stand (O111)?
+ * The crown any other player; Everything only those below Everything, never the crown.
+ */
+export function mayManagePlayer(room: { me: string; isCrown: boolean; rank: Rank }, p: Pick<Player, 'id' | 'isCrown' | 'rank'>): boolean {
+  if (p.id === room.me || p.isCrown) return false;
+  return mayManage(room.isCrown ? 'crown' : room.rank, p.rank);
 }
 
 /** Why I may not touch this stand (6.3): it is another player's, or nobody's yet. Null offline and for the owner. */

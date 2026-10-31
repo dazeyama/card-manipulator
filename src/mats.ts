@@ -14,7 +14,7 @@ import { inSpace, land, placeSequential } from './commands';
 import { drawPlate, setOutlineResolution, standGroup } from './render/standMesh';
 import { fullStandsOf, isFullStand, isSmallStand, isStand, LIP_H, onStand, SMALL_NAME_MAX, STAND_D, STAND_H, STAND_W, standHeightAt, standW } from './state/stand';
 import { confirmDialog, textDialog } from './ui/confirm';
-import { allowedNow, mayTouchStand, roomToast, whyNot } from './online/guard';
+import { allowedNow, mayManagePlayer, mayTouchStand, roomToast, whyNot } from './online/guard';
 import { spillStands } from './online/outbox';
 import { MAT_H, MAT_W, type Mat } from './state/types';
 import { newUid } from './state/store';
@@ -375,9 +375,11 @@ export class Mats {
     const items: HTMLElement[] = [head];
     if (!m.owner) items.push(item('Claim it', () => this.claim(uid)));
     if (mine) items.push(item('Release it (nobody’s)', () => this.app.store.setMatOwner(uid, null)));
-    // The crown hands a stand to anyone (O23).
+    // The crown hands a stand to anyone (O23); Everything an unowned one to a player below it (O111).
     if (room.isCrown) {
       for (const p of room.players) if (p.id !== m.owner) items.push(item(`Give to ${p.nickname}`, () => this.giveTo(uid, p.id)));
+    } else if (!m.owner && room.canDo('standGive')) {
+      for (const p of room.players) if (mayManagePlayer(room, p)) items.push(item(`Give to ${p.nickname}`, () => this.giveTo(uid, p.id)));
     }
     if (!mine) items.push(item('Spill its cards', () => void this.spill(uid), true));
     const pop = document.createElement('div');
@@ -408,11 +410,11 @@ export class Mats {
     this.app.store.setMatOwner(uid, me);
   }
 
-  /** The crown's Give to… (6.3): a full stand only to a player who owns none. */
+  /** Give to… (6.3): the crown's, or Everything's for an unowned stand (O111); a full stand only to a player who owns none. */
   private giveTo(uid: string, player: string): void {
     const online = this.app.online;
     const m = this.app.store.mats.get(uid);
-    if (!online?.room.isCrown || !m) return;
+    if (!online || !m || (!online.room.isCrown && (m.owner || !allowedNow('standGive')))) return;
     if (isFullStand(m) && fullStandsOf(this.app.store.mats.values(), player).length) {
       roomToast(`${online.room.nameOf(player)} already has a hand stand`, 'warn');
       return;

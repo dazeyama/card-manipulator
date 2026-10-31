@@ -178,7 +178,7 @@ export class OnlineUi {
     const reconnecting = room.connection === 'reconnecting' || room.connection === 'connecting';
     this.status.className = 'room-status' + (reconnecting ? ' amber' : '');
     this.status.textContent = reconnecting ? (this.welcomed ? 'Reconnecting…' : 'Connecting…') : room.locked ? '🔒' : '';
-    this.status.title = room.locked && !reconnecting ? 'The table is locked: only the crown can change it' : '';
+    this.status.title = room.locked && !reconnecting ? 'The table is locked: everyone below Everything can only look' : '';
     this.topBar.setNameEditable(room.isCrown);
     this.deps.guard?.refresh();
   }
@@ -316,7 +316,11 @@ export class OnlineUi {
         // Closed for good with no goodbye: this identity opened the room in another tab (close code 4001).
         if (room.connection === 'closed') setTimeout(() => this.replacedElsewhere(), 0);
       }),
-      ev.on('me', bar),
+      // My rank changed: Everything's Lock table switch comes or goes (O111).
+      ev.on('me', () => {
+        bar();
+        this.panel.refresh();
+      }),
       online.session.events.on('message', (m) => this.onMessage(m)),
       online.session.events.on('bye', (r) => this.onBye(r)),
     );
@@ -831,11 +835,12 @@ export class OnlinePanel {
     this.rows.render();
   }
 
-  /** Settings (12.2, 4.3): the crown changes them (O23); everyone else sees them greyed. */
+  /** Settings (12.2, 4.3): the crown changes them (O23), Everything Lock table too (O111); everyone else sees them greyed. */
   private settingsSection(online: Online): HTMLElement {
     const room = online.room;
     const s = room.settings;
     const crown = room.isCrown;
+    const coHost = !crown && room.canDo('lock');
     const send = (set: Partial<RoomSettings>) => online.session.send({ t: 'settings', set });
     const radios = <T extends string>(name: string, options: [T, string][], value: T, onPick: (v: T) => void) =>
       h('div', { class: 'row tight wrap' }, ...options.map(([v, label]) => {
@@ -879,19 +884,19 @@ export class OnlinePanel {
     }
     newcomers.disabled = !crown;
     newcomers.addEventListener('change', () => send({ newcomers: newcomers.value as Rank }));
-    const toggle = (label: string, on: boolean, title: string, set: (v: boolean) => Partial<RoomSettings>) => {
+    const toggle = (label: string, on: boolean, title: string, set: (v: boolean) => Partial<RoomSettings>, live = crown) => {
       const box = h('input', { type: 'checkbox', class: 'switch' });
       box.checked = on;
-      box.disabled = !crown;
+      box.disabled = !live;
       box.addEventListener('change', () => send(set(box.checked)));
-      return h('label', { class: 'setting-row', title }, h('span', {}, label), box);
+      return h('label', { class: 'setting-row' + (live && !crown ? ' live' : ''), title }, h('span', {}, label), box);
     };
     return h('div', { class: 'online-section settings-section' + (crown ? '' : ' readonly') },
-      h('div', { class: 'online-section-title' }, crown ? 'Settings' : 'Settings (the crown’s)'),
+      h('div', { class: 'online-section-title' }, crown ? 'Settings' : coHost ? 'Settings (the crown’s; Lock table is yours too)' : 'Settings (the crown’s)'),
       h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Visibility'), visibility, passRow),
       h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Tag'), tag),
       h('label', { class: 'setting-row' }, h('span', {}, 'Newcomers start as'), newcomers),
-      toggle('🔒 Lock table', s.locked, 'Everyone but the crown can only look while it is locked; ranks come back on unlock', (v) => ({ locked: v })),
+      toggle('🔒 Lock table', s.locked, 'Everyone below Everything can only look while it is locked; ranks come back on unlock', (v) => ({ locked: v }), crown || coHost),
       toggle('Downloads for everyone', s.downloads, 'Off hides Save a copy, Save as file and Export for everyone but the crown', (v) => ({ downloads: v })),
     );
   }

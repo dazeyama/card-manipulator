@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Guard, keyAction, touchable } from '../src/online/guard';
+import { Guard, keyAction, mayManagePlayer, touchable } from '../src/online/guard';
 import type { App } from '../src/app';
 import type { Card, Mat } from '../src/state/types';
 
@@ -21,6 +21,20 @@ describe('the guard (ONLINE.md 6.4)', () => {
     expect(keyAction('shift+c')).toBe('move');
     expect(keyAction('m')).toBeNull();
     expect(keyAction('ctrl+e')).toBe('download');
+  });
+
+  it('lets the crown manage any other player and Everything only those below it (O111)', () => {
+    const crown = { me: 'c', isCrown: true, rank: 'everything' as const };
+    const coHost = { me: 'e', isCrown: false, rank: 'everything' as const };
+    const cards = { me: 'k', isCrown: false, rank: 'cards' as const };
+    const p = (id: string, rank: 'move' | 'cards' | 'everything', isCrown = false) => ({ id, rank, isCrown });
+    expect(mayManagePlayer(crown, p('e', 'everything'))).toBe(true);
+    expect(mayManagePlayer(crown, p('c', 'everything', true))).toBe(false);
+    expect(mayManagePlayer(coHost, p('k', 'cards'))).toBe(true);
+    expect(mayManagePlayer(coHost, p('e2', 'everything'))).toBe(false);
+    expect(mayManagePlayer(coHost, p('c', 'everything', true))).toBe(false);
+    expect(mayManagePlayer(coHost, p('e', 'everything'))).toBe(false);
+    expect(mayManagePlayer(cards, p('m', 'move'))).toBe(false);
   });
 
   it('keeps cards on other players’ and unowned stands out of a command’s targets (6.3)', () => {
