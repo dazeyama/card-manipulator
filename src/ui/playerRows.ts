@@ -6,7 +6,7 @@
 // Pass crown, Kick, Ban and Give stand to… (4.5, 4.6, 6.3).
 
 import { PLAYER_COLOURS, type Player } from '../../shared/protocol';
-import { RANK_LABEL, RANKS, type Rank } from '../../shared/permissions';
+import { PICKABLE_RANKS, RANK_LABEL, type Rank } from '../../shared/permissions';
 import type { App } from '../app';
 import { isFullStand, isStand } from '../state/stand';
 import type { Mat } from '../state/types';
@@ -83,7 +83,8 @@ export class PlayerRows {
   /** The crown sets a player's rank (O21, O23). */
   private rankPicker(p: Player): HTMLSelectElement {
     const sel = h('select', { class: 'rank-picker', 'aria-label': `${p.nickname}'s rank`, title: 'What this player may do' });
-    for (const r of RANKS) {
+    // Everything is hidden from the pickers (O111), unless the player already has it.
+    for (const r of p.rank === 'everything' ? [...PICKABLE_RANKS, p.rank] : PICKABLE_RANKS) {
       const o = h('option', { value: r }, RANK_LABEL[r]);
       o.selected = r === p.rank;
       sel.append(o);
@@ -116,7 +117,7 @@ export class PlayerRows {
     };
     const items: HTMLElement[] = [
       item('👑 Pass crown', async () => {
-        if (await confirmDialog(`Pass the crown to ${p.nickname}? You keep Everything.`, 'Pass crown')) session.send({ t: 'pass', player: p.id });
+        if (await confirmDialog(`Pass the crown to ${p.nickname}? You keep Cards.`, 'Pass crown')) session.send({ t: 'pass', player: p.id });
       }),
       item('Kick', () => session.send({ t: 'kick', player: p.id }), true),
       item('Ban', async () => {
