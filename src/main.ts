@@ -936,39 +936,41 @@ const removeSelection = () => {
 keyboard.bind('delete', removeSelection);
 keyboard.bind('backspace', removeSelection);
 
-// Each button shows its key in brackets after the icon (decision 156).
-hud.addButton('📚 (S) Stack', 'Gather the selection into one stack (S); neat in Tidy mode', () => commands.stack());
-hud.addButton('🪟 (X) Spread', 'Spread the selection (X): then click the table to spread it there, or drag a box to fit it inside', () => startSpread([...store.selection]));
-hud.addButton('🧹 (T) Tidy', 'Square up each pile the selection touches (T)', () => commands.tidy());
-hud.addButton('🃏 (F) Flip', 'Flip the selection over (F)', () => commands.flip());
-hud.addButton('🎴 (H) Fan', 'Fan the selection like a hand of cards, or stack a fan back up (H)', () => commands.toggleFan([...store.selection]));
-// Before Curve (decision 200): the rank view, by EDHREC; a click again within a moment switches to Elo, like E E (decision 198).
-let lastRankClick = 0;
-hud.addButton('🏆 (E) Rank', 'Rank: columns by EDHREC rank (E), or by CubeCobra Elo (E E or a second click); again on a sorted view stacks it back up', () => {
-  const now = performance.now();
-  const twice = now - lastRankClick < DOUBLE_TAP_MS;
-  lastRankClick = twice ? 0 : now;
-  if (twice) commands.rankSort([...store.selection], 'elo');
-  else commands.toggleRank([...store.selection]);
-});
-hud.addButton('📊 (C) Curve', 'Curve the selection out by mana value, or stack it back up if it already is (C)', () => commands.toggleCurve([...store.selection], false));
-// The colour view (decision 217); Shift + C's colour rows stay on the keyboard.
-hud.addButton('🎨 (C C) Color', 'Color: a column per colour, W U B R G, colourless, multicolour, lands (C C); C on it stacks it back up. Shift + C curves everything out in a row per colour', () => {
-  const sel = [...store.selection];
-  const sorted = commands.curvedGroup(sel);
-  if (sorted) commands.toggleCurve(sel, false);
-  else commands.colourSort(sel);
-});
-// Split creatures: curves put creatures and non-creatures in separate bands (decision 107).
-const splitBtn = hud.addButton('🐉 Split', 'Split creatures: curves and the rank view (E) put creatures and non-creatures in separate bands', () => store.updateSettings({ curveSplit: !store.settings.curveSplit }));
+// The bar's commands (decision 301): icon buttons with their key in the corner, and two groups
+// laid out as on the radial menu, each a button for its first command and ▴ for the rest.
+const arrange = hud.addGroup('Arrange', [
+  { icon: '📚', key: 'S', label: 'Stack', title: 'Gather the selection into one stack (S); neat in Tidy mode', run: () => commands.stack() },
+  { icon: '🧹', key: 'T', label: 'Tidy', title: 'Square up each pile the selection touches (T)', run: () => commands.tidy() },
+  { icon: '🪟', key: 'X', label: 'Spread', title: 'Spread the selection (X): then click the table to spread it there, or drag a box to fit it inside', run: () => startSpread([...store.selection]) },
+  { icon: '🎴', key: 'H', label: 'Fan', title: 'Fan the selection like a hand of cards, or stack a fan back up (H)', run: () => commands.toggleFan([...store.selection]) },
+]);
+const flipBtn = hud.addAction({ icon: '🃏', key: 'F', label: 'Flip', title: 'Flip the selection over (F)', run: () => commands.flip() });
+// Split creatures: curves put creatures and non-creatures in separate bands (decision 107), a tick in the Sort menu.
+const splitRow = hud.tickRow('🐉', 'Split creatures', 'Curves and the rank view (E) put creatures and non-creatures in separate bands', () => store.updateSettings({ curveSplit: !store.settings.curveSplit }));
+const sort = hud.addGroup('Sort', [
+  { icon: '📊', key: 'C', label: 'Curve', title: 'Curve the selection out by mana value, or stack it back up if it already is (C)', run: () => commands.toggleCurve([...store.selection], false) },
+  // The colour view (decision 217).
+  { icon: '🎨', key: 'C C', label: 'Colour columns', title: 'A column per colour, W U B R G, colourless, multicolour, lands (C C); C on it stacks it back up', run: () => {
+    const sel = [...store.selection];
+    const sorted = commands.curvedGroup(sel);
+    if (sorted) commands.toggleCurve(sel, false);
+    else commands.colourSort(sel);
+  } },
+  { icon: '🌈', key: 'Shift C', label: 'Curve per colour', title: 'Curve everything out in a row per colour, in the middle of the view (Shift + C)', run: () => curveAll() },
+  // The rank views (decision 198): EDHREC, again on a sorted view stacks it back up; CubeCobra Elo.
+  { icon: '🏆', key: 'E', label: 'EDHREC', title: 'Columns by EDHREC rank (E); again on a sorted view stacks it back up', run: () => commands.toggleRank([...store.selection]) },
+  { icon: '📈', key: 'E E', label: 'Elo', title: 'Columns by CubeCobra Elo (E E)', run: () => commands.rankSort([...store.selection], 'elo') },
+], [splitRow]);
 const syncSplit = () => {
-  splitBtn.classList.toggle('on', store.settings.curveSplit);
-  splitBtn.setAttribute('aria-pressed', String(store.settings.curveSplit));
+  splitRow.classList.toggle('on', store.settings.curveSplit);
+  splitRow.setAttribute('aria-checked', String(store.settings.curveSplit));
 };
 store.events.on('settings', syncSplit);
 syncSplit();
-const exportBtn = hud.addButton('📤 (Ctrl E) Export', 'Export the selection as a decklist or CSV (Ctrl + E)', () => exportSelection());
+const exportBtn = hud.addAction({ icon: '📤', key: 'Ctrl E', label: 'Export', title: 'Export the selection as a decklist or CSV (Ctrl + E)', run: () => exportSelection() });
 exportBtn.classList.add('export-trigger');
+/** The bar's buttons that move cards, greyed by rank in a room. */
+const hudMoves: HTMLElement[] = [arrange.main, ...arrange.rows, flipBtn, sort.main, ...sort.rows];
 function exportSelection(): void {
   const r = exportBtn.getBoundingClientRect();
   exporter.open([...store.selection], 'selection', { x: r.left + r.width / 2 - 120, y: r.top - 360 });
@@ -1091,8 +1093,8 @@ const openExporter = exporter.open.bind(exporter);
 exporter.open = (...args: Parameters<typeof openExporter>) => {
   if (allowedNow('download')) openExporter(...args);
 };
-const hudButtons = bottom.querySelector('.hud-buttons');
-if (hudButtons) gateByText(hudButtons, [[/Export/, 'download'], [/^(?!.*Split)/, 'move']]);
+for (const b of hudMoves) guard.gate(b, 'move');
+guard.gate(exportBtn, 'download', true);
 guard.gate(pointBtn, 'move');
 gateByText(topBar.actions, [['New', 'replace'], ['Open…', 'replace'], ['Save', 'download'], ['Export', 'download']]);
 gateByText(left, [['Spawn', 'addCards'], ['Spawn cube', 'addCards'], ['Spawn basics', 'addTokens'], ['Choose basics…', 'basics'], ['Spawn playmat', 'matAdd']]);

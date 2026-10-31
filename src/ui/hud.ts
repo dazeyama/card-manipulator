@@ -33,6 +33,9 @@ const CHIPS: { label: string; term: string; title?: string; cls?: string }[] = [
   { label: 'Face down', term: 'is:facedown', title: 'Lying face down on the table', cls: 'chip-table' },
 ];
 
+/** A command on the bar (decision 301): its emoji, its key, its name, and what it does for the hover title. */
+export type HudAction = { icon: string; key: string; label: string; title: string; run: () => void };
+
 export class Hud {
   readonly el: HTMLElement;
   readonly input: HTMLInputElement;
@@ -90,6 +93,16 @@ export class Hud {
         app.canvas.focus();
       }
     });
+    // A group's menu closes on a press anywhere outside it, and on Esc, which then doesn't reach the table.
+    window.addEventListener('pointerdown', (e) => {
+      if (this.menu && !(e.target instanceof Node && this.menu.el.parentElement?.contains(e.target))) this.closeMenu();
+    }, true);
+    window.addEventListener('keydown', (e) => {
+      if (!this.menu || e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      this.closeMenu();
+    }, true);
     app.store.events.on('selection', () => {
       if (!this.applying) this.input.value = '';
       this.schedule();
@@ -110,11 +123,89 @@ export class Hud {
     this.input.after(el);
   }
 
-  addButton(label: string, title: string, run: () => void): HTMLButtonElement {
-    const b = h('button', { class: 'btn small', title }, label);
-    b.addEventListener('click', run);
+  /** A command as an icon button with its key in the corner (decision 301). */
+  addAction(a: HudAction): HTMLButtonElement {
+    const b = this.iconButton(a);
     this.buttons.append(b);
     return b;
+  }
+
+  /**
+   * A group of commands, grouped as on the radial menu (decision 301): the
+   * button does the first, and ▴ beside it opens all of them upward, with
+   * `extras` (tick rows) under a line.
+   */
+  addGroup(name: string, actions: HudAction[], extras: HTMLElement[] = []): { main: HTMLButtonElement; rows: HTMLButtonElement[] } {
+    const main = this.iconButton(actions[0]);
+    main.title += ` · ${name}: the rest under ▴`;
+    const more = h('button', { class: 'btn small hud-more', title: `${name}: ${actions.map((a) => a.label).join(', ')}`, 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, '▴');
+    const menu = h('div', { class: 'hud-menu', role: 'menu' }, h('div', { class: 'hud-menu-title' }, name));
+    menu.hidden = true;
+    const rows = actions.map((a) => {
+      const row = h('button', { class: 'hud-menu-item', role: 'menuitem', title: a.title },
+        h('span', { class: 'hud-menu-icon' }, a.icon),
+        h('span', { class: 'hud-menu-label' }, a.label),
+        h('kbd', {}, a.key),
+      );
+      row.addEventListener('click', () => {
+        this.closeMenu();
+        a.run();
+      });
+      menu.append(row);
+      return row;
+    });
+    if (extras.length) menu.append(h('div', { class: 'hud-menu-sep' }), ...extras);
+    const group = h('div', { class: 'hud-group' }, main, more, menu);
+    more.addEventListener('click', () => (this.menu?.el === menu ? this.closeMenu() : this.showMenu(menu, more)));
+    this.buttons.append(group);
+    return { main, rows };
+  }
+
+  /** A tick row for a group's menu, such as Split creatures; the caller keeps its `on` class current. */
+  tickRow(icon: string, label: string, title: string, run: () => void): HTMLButtonElement {
+    const row = h('button', { class: 'hud-menu-item hud-menu-tick', role: 'menuitemcheckbox', title },
+      h('span', { class: 'hud-menu-icon' }, icon),
+      h('span', { class: 'hud-menu-label' }, label),
+      h('span', { class: 'hud-menu-check' }, '✓'),
+    );
+    // Stays open, so the tick is seen to change.
+    row.addEventListener('click', run);
+    return row;
+  }
+
+  private iconButton(a: HudAction): HTMLButtonElement {
+    const b = h('button', { class: 'btn small hud-icon', title: `${a.label}: ${a.title}`, 'aria-label': a.label },
+      h('span', { class: 'hud-icon-emoji' }, a.icon),
+      h('span', { class: 'hud-icon-key' }, a.key),
+    );
+    b.addEventListener('click', a.run);
+    return b;
+  }
+
+  private menu: { el: HTMLElement; more: HTMLButtonElement } | null = null;
+
+  private showMenu(el: HTMLElement, more: HTMLButtonElement): void {
+    this.closeMenu();
+    this.menu = { el, more };
+    el.hidden = false;
+    more.classList.add('on');
+    more.setAttribute('aria-expanded', 'true');
+    // Opened from the left edge of its group, or from the right edge when it would leave the window.
+    el.style.left = '0';
+    el.style.right = '';
+    if (el.getBoundingClientRect().right > window.innerWidth - 8) {
+      el.style.left = 'auto';
+      el.style.right = '0';
+    }
+  }
+
+  private closeMenu(): void {
+    if (!this.menu) return;
+    const { el, more } = this.menu;
+    this.menu = null;
+    el.hidden = true;
+    more.classList.remove('on');
+    more.setAttribute('aria-expanded', 'false');
   }
 
   private schedule(): void {

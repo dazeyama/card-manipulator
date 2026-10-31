@@ -145,7 +145,26 @@ textarea.decklist { width: 100%; height: 190px; resize: vertical; font: 12px/1.4
 .filter { flex: 1; font-family: var(--mono); font-size: 13px; padding: 6px 10px; }
 .filter-live { font-size: 12px; color: var(--text-2); white-space: nowrap; min-width: 120px; }
 .filter-live.error { color: var(--danger); white-space: normal; max-width: 340px; }
-.hud-buttons { display: flex; gap: 4px; }
+.hud-buttons { display: flex; gap: 4px; align-items: center; }
+/* Icon buttons with their key in the corner, and groups opening upward (decision 301). */
+.btn.hud-icon { display: inline-flex; align-items: center; gap: 2px; height: 30px; padding: 0 4px 0 7px; }
+.hud-icon-emoji { font-size: 17px; line-height: 1; }
+.hud-icon-key { align-self: flex-end; margin-bottom: 3px; font: 600 8.5px/1 var(--mono); color: var(--text-2); white-space: nowrap; }
+.hud-group { position: relative; display: inline-flex; }
+.hud-group > .hud-icon { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.btn.hud-more { height: 30px; padding: 0 5px; margin-left: -1px; border-top-left-radius: 0; border-bottom-left-radius: 0; font-size: 10px; color: var(--text-2); }
+.btn.hud-more.on { color: var(--accent); }
+.hud-menu { position: absolute; bottom: calc(100% + 6px); z-index: 5; min-width: 210px; padding: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.16); }
+.hud-menu[hidden] { display: none; }
+.hud-menu-title { padding: 3px 8px 4px; font-size: 11px; font-weight: 650; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.04em; }
+.hud-menu-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px; border: 0; border-radius: 5px; background: none; cursor: pointer; text-align: left; white-space: nowrap; }
+.hud-menu-item:hover { background: var(--accent-soft); }
+.hud-menu-icon { width: 20px; text-align: center; font-size: 15px; }
+.hud-menu-label { flex: 1; }
+.hud-menu-item kbd { font: 600 11px/1 var(--mono); color: var(--text-2); }
+.hud-menu-check { visibility: hidden; color: var(--accent); font-weight: 700; }
+.hud-menu-tick.on .hud-menu-check { visibility: visible; }
+.hud-menu-sep { height: 1px; margin: 4px 6px; background: var(--line); }
 .chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
 .chip { border: 1px solid var(--line); background: var(--panel-2); border-radius: 12px; padding: 1px 9px; font-size: 12px; cursor: pointer; }
 .chip:hover { border-color: var(--accent); background: var(--accent-soft); }
