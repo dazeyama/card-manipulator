@@ -12,7 +12,7 @@ import { getIdentity, setColour, setNickname } from '../online/identity';
 import { checkServer, copyText, createRoom, inviteLink, parseHash, roomHash, roomInfo, roomLink, setHash, type RoomRoute, type ServerTrouble } from '../online/link';
 import { NICKNAME_MAX, PASSWORD_MAX, PLAYER_COLOURS, ROOM_NAME_MAX, type ByeReason, type Player, type RoomInfo, type RoomSettings, type ServerMsg, type Tag, type Visibility } from '../../shared/protocol';
 import { RANK_LABEL, RANKS, type Rank } from '../../shared/permissions';
-import { isStand } from '../state/stand';
+import { isFullStand, isSmallStand, isStand } from '../state/stand';
 import type { TopBar } from './topBar';
 import { confirmDialog } from './confirm';
 import { h } from './dom';
@@ -314,6 +314,7 @@ export class OnlineUi {
       this.lastLocked = room.locked;
       // Now I know who I am: my own stands' cards show (7.1).
       this.deps.hidden.attach(this.online);
+      if (first && this.role === 'maker' && room.isCrown) this.stampOwners();
       if (first && this.role === 'joiner') {
         // A joiner starts at the default offline view, on the near side (O37, O36).
         this.app.rig.setMirrored(false);
@@ -327,6 +328,23 @@ export class OnlineUi {
     } else if (m.t === 'snapshot') {
       this.progress(m.part, m.parts, m.count, m.cards?.length ?? 0);
     }
+  }
+
+  /**
+   * Going online (O65): stands from before have no owner; the crown takes the
+   * full stand nearest its side and every small stand, so they mean something at once.
+   */
+  private stampOwners(): void {
+    const room = this.online?.room;
+    if (!room) return;
+    const store = this.app.store;
+    const stands = [...store.mats.values()].filter(isStand);
+    for (const m of stands) if (m.owner) store.setMatOwner(m.uid, null);
+    for (const m of stands) if (isSmallStand(m)) store.setMatOwner(m.uid, room.me);
+    // The near side is toward lower y; the far side (mirror mode) toward higher (decision 267).
+    const toward = this.app.side ? -1 : 1;
+    const nearest = stands.filter(isFullStand).sort((a, b) => toward * (a.y - b.y))[0];
+    if (nearest) store.setMatOwner(nearest.uid, room.me);
   }
 
   /** The thin "Joining: 2,000 of 4,300 cards" line while a table arrives (4.4). */

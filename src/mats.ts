@@ -12,8 +12,10 @@ import type { CustomGesture, Mods } from './input/mouse';
 import { ImageLoader } from './render/images';
 import { inSpace, land, placeSequential } from './commands';
 import { drawPlate, setOutlineResolution, standGroup } from './render/standMesh';
-import { isSmallStand, isStand, LIP_H, onStand, SMALL_NAME_MAX, STAND_D, STAND_H, STAND_W, standHeightAt, standW } from './state/stand';
-import { textDialog } from './ui/confirm';
+import { fullStandsOf, inFrontOf, isFullStand, isSmallStand, isStand, LIP_H, onStand, SMALL_NAME_MAX, STAND_D, STAND_H, STAND_W, standHeightAt, standW } from './state/stand';
+import { confirmDialog, textDialog } from './ui/confirm';
+import { allowedNow, mayTouchStand, roomToast, whyNot } from './online/guard';
+import { messyLayout } from './state/piles';
 import { MAT_H, MAT_W, type Mat } from './state/types';
 import { newUid } from './state/store';
 
@@ -100,6 +102,9 @@ export class Mats {
   private readonly editButton: HTMLButtonElement;
   private readonly untapButton: HTMLButtonElement;
   private readonly lifeButton: HTMLButtonElement;
+  /** In a room, a stand's 👤: whose it is, and Claim, Release, Give to…, Spill (ONLINE.md 6.3). */
+  private readonly ownerButton: HTMLButtonElement;
+  private ownerPopup: HTMLElement | null = null;
   private readonly button: HTMLButtonElement;
   private readonly lockButton: HTMLButtonElement;
   private readonly buttons: HTMLDivElement;
@@ -136,7 +141,7 @@ export class Mats {
     this.lockButton.addEventListener('pointerdown', (e) => e.stopPropagation());
     this.lockButton.addEventListener('click', () => {
       const m = this.hovered ? app.store.mats.get(this.hovered) : undefined;
-      if (m) app.store.setMatLocked(m.uid, !m.locked);
+      if (m && this.mayHandle(m)) app.store.setMatLocked(m.uid, !m.locked);
     });
     this.buttons = document.createElement('div');
     this.buttons.className = 'mat-buttons';
@@ -149,7 +154,8 @@ export class Mats {
     this.editButton.addEventListener('pointerdown', (e) => e.stopPropagation());
     this.editButton.addEventListener('click', () => {
       const m = this.hovered ? app.store.mats.get(this.hovered) : undefined;
-      if (!m) return;
+      // In a room only the stand's owner renames it (ONLINE.md 6.3).
+      if (!m || !this.mayHandle(m)) return;
       // A small stand's plate takes one short word (decision 285).
       const small = isSmallStand(m);
       const ask = small ? `A short word for the plate, up to ${SMALL_NAME_MAX} letters:` : 'The name on the plate, read from across the table:';
@@ -164,7 +170,7 @@ export class Mats {
     this.untapButton.title = 'Untap: turn every card on it upright';
     this.untapButton.addEventListener('pointerdown', (e) => e.stopPropagation());
     this.untapButton.addEventListener('click', () => {
-      if (this.hovered) this.untap(this.hovered);
+      if (this.hovered && allowedNow('move')) this.untap(this.hovered);
     });
     // ❤️ in the free top-left corner shows or hides the mat's life total (decision 241).
     this.lifeButton = document.createElement('button');
@@ -172,9 +178,19 @@ export class Mats {
     this.lifeButton.addEventListener('pointerdown', (e) => e.stopPropagation());
     this.lifeButton.addEventListener('click', () => {
       const m = this.hovered ? app.store.mats.get(this.hovered) : undefined;
-      if (m) app.store.setMatLifeHidden(m.uid, !m.lifeHidden);
+      if (m && allowedNow('mat')) app.store.setMatLifeHidden(m.uid, !m.lifeHidden);
     });
-    this.buttons.append(this.lockButton, this.untapButton, this.button, this.editButton, this.lifeButton);
+    this.ownerButton = document.createElement('button');
+    this.ownerButton.className = 'mat-mirror-btn';
+    this.ownerButton.textContent = '👤';
+    this.ownerButton.addEventListener('pointerdown', (e) => e.stopPropagation());
+    this.ownerButton.addEventListener('click', () => {
+      if (this.hovered) this.ownerMenu(this.hovered, this.ownerButton);
+    });
+    document.addEventListener('pointerdown', (e) => {
+      if (this.ownerPopup && !(e.target instanceof Node && this.ownerPopup.contains(e.target))) this.closeOwnerMenu();
+    }, true);
+    this.buttons.append(this.lockButton, this.untapButton, this.button, this.editButton, this.lifeButton, this.ownerButton);
     app.overlay.append(this.buttons);
 
     window.addEventListener('pointermove', (e) => {
@@ -196,7 +212,28 @@ export class Mats {
   /** Set up a new card stand at a spot, with this name on its plate (decision 220); `width` for a small one (decisions 282, 283). */
   spawnStand(name: string, at: { x: number; y: number }, width?: number): void {
     // Facing whoever sets it up: its slope toward them, its plate away (decision 267).
-    this.app.store.addMat({ uid: newUid('m'), kind: 'stand', scryfallId: '', name, art: '', x: at.x, y: at.y, yaw: this.app.facing, ...(width ? { width } : {}) });
+    const m: Mat = { uid: newUid('m'), kind: 'stand', scryfallId: '', name, art: '', x: at.x, y: at.y, yaw: this.app.facing, ...(width ? { width } : {}) };
+    const why = this.standSpawnBlock(m);
+    if (why) {
+      roomToast(why, 'warn');
+      return;
+    }
+    // In a room the stand is its spawner's (O27).
+    const online = this.app.online;
+    if (online) m.owner = online.room.me;
+    this.app.store.addMat(m);
+  }
+
+  /**
+   * Why this stand may not be spawned now, or null: Move in a room (O59), and one
+   * full stand per player, offline too, where the table is one player (O27, O32).
+   */
+  standSpawnBlock(m: Mat): string | null {
+    const online = this.app.online;
+    const rank = online ? whyNot('standOwn') : null;
+    if (rank) return rank;
+    if (isFullStand(m) && fullStandsOf(this.app.store.mats.values(), online ? online.room.me : null).length) return 'You already have a hand stand';
+    return null;
   }
 
   /** The selection rim for a stand this wide, made when first needed. */
@@ -212,6 +249,8 @@ export class Mats {
 
   /** Lay a new mat on the table at a spot. */
   spawn(scryfallId: string, name: string, art: string, at: { x: number; y: number }): void {
+    // Playmats are Everything's to add (ONLINE.md 6.2, O24).
+    if (!allowedNow('matAdd')) return;
     this.app.store.addMat({ uid: newUid('m'), scryfallId, name, art, x: at.x, y: at.y, yaw: this.app.facing });
   }
 
@@ -219,7 +258,7 @@ export class Mats {
   rotate(uid: string): void {
     const store = this.app.store;
     const m = store.mats.get(uid);
-    if (!m) return;
+    if (!m || !this.mayHandle(m)) return;
     const yaw = Math.round((m.yaw - Math.PI / 2) / (Math.PI / 2)) * (Math.PI / 2);
     // A card stand turns its cards with it, about its centre (decision 221).
     const members = isStand(m) ? this.cardsOn(uid) : [];
@@ -288,12 +327,121 @@ export class Mats {
   remove(uid: string): void {
     const store = this.app.store;
     const m = store.mats.get(uid);
+    // In a room, a stand that isn't yours is spilled, its cards face down, never shown (ONLINE.md 6.3).
+    const online = this.app.online;
+    if (online && m && isStand(m) && m.owner !== online.room.me) {
+      void this.spill(uid, false);
+      return;
+    }
     // A card stand's cards drop to the table where it stood (decision 221).
     const members = m && isStand(m) ? this.cardsOn(uid).map((u) => store.cards.get(u)!).sort((a, b) => a.z - b.z) : [];
     store.removeMat(uid);
     if (members.length) {
       land(this.app, inSpace(null, () => placeSequential(this.app, members.map((c) => c.uid), members.map((c) => ({ x: c.x, y: c.y, yaw: c.yaw })))), { keepSide: true });
     }
+  }
+
+  // ---- ownership in a room (ONLINE.md 6.3) ----
+
+  /** May I move, turn, lock, rename or remove this one? A playmat is Move's; a stand its owner's (O26, O27). */
+  private mayHandle(m: Mat): boolean {
+    if (!this.app.online) return true;
+    if (!isStand(m)) return allowedNow('mat');
+    return allowedNow('standOwn') && mayTouchStand(m);
+  }
+
+  /** The 👤 menu on a stand's lip: whose it is, and what this player may do about it. */
+  private ownerMenu(uid: string, anchor: HTMLElement): void {
+    this.closeOwnerMenu();
+    const online = this.app.online;
+    const m = this.app.store.mats.get(uid);
+    if (!online || !m || !isStand(m)) return;
+    const room = online.room;
+    const mine = m.owner === room.me;
+    const item = (label: string, run: () => void, danger = false) => {
+      const b = document.createElement('button');
+      b.className = 'menu-item' + (danger ? ' danger' : '');
+      b.textContent = label;
+      b.addEventListener('click', () => {
+        this.closeOwnerMenu();
+        run();
+      });
+      return b;
+    };
+    const head = document.createElement('div');
+    head.className = 'menu-head';
+    head.textContent = mine ? 'Your stand' : m.owner ? `${room.nameOf(m.owner)}’s stand` : 'Nobody’s stand';
+    const items: HTMLElement[] = [head];
+    if (!m.owner) items.push(item('Claim it', () => this.claim(uid)));
+    if (mine) items.push(item('Release it (nobody’s)', () => this.app.store.setMatOwner(uid, null)));
+    // The crown hands a stand to anyone (O23).
+    if (room.isCrown) {
+      for (const p of room.players) if (p.id !== m.owner) items.push(item(`Give to ${p.nickname}`, () => this.giveTo(uid, p.id)));
+    }
+    if (!mine) items.push(item('Spill its cards', () => void this.spill(uid), true));
+    const pop = document.createElement('div');
+    pop.className = 'player-menu';
+    pop.append(...items);
+    const r = anchor.getBoundingClientRect();
+    pop.style.left = `${Math.max(8, r.left + r.width / 2 - 95)}px`;
+    pop.style.top = `${r.bottom + 6}px`;
+    document.body.append(pop);
+    this.ownerPopup = pop;
+  }
+
+  private closeOwnerMenu(): void {
+    this.ownerPopup?.remove();
+    this.ownerPopup = null;
+  }
+
+  /** Claim an unowned stand (O65): Move if you own no full stand yet, Everything regardless. */
+  private claim(uid: string): void {
+    const online = this.app.online;
+    const m = this.app.store.mats.get(uid);
+    if (!online || !m || m.owner || !allowedNow('standOwn')) return;
+    const me = online.room.me;
+    if (isFullStand(m) && fullStandsOf(this.app.store.mats.values(), me).length && !allowedNow('standClaim', true)) {
+      roomToast('You already have a hand stand', 'warn');
+      return;
+    }
+    this.app.store.setMatOwner(uid, me);
+  }
+
+  /** The crown's Give to… (6.3): a full stand only to a player who owns none. */
+  private giveTo(uid: string, player: string): void {
+    const online = this.app.online;
+    const m = this.app.store.mats.get(uid);
+    if (!online?.room.isCrown || !m) return;
+    if (isFullStand(m) && fullStandsOf(this.app.store.mats.values(), player).length) {
+      roomToast(`${online.room.nameOf(player)} already has a hand stand`, 'warn');
+      return;
+    }
+    this.app.store.setMatOwner(uid, player);
+  }
+
+  /**
+   * Spill (O31; Everything and the crown): the stand goes and its cards drop
+   * face down in a messy pile in front of it, never shown on the way.
+   */
+  async spill(uid: string, ask = true): Promise<void> {
+    const app = this.app;
+    const store = app.store;
+    const m = store.mats.get(uid);
+    if (!m || !isStand(m) || !allowedNow('standSpill')) return;
+    const room = app.online?.room;
+    const whose = m.owner ? `${room?.nameOf(m.owner) ?? 'Someone'}’s stand` : 'this stand';
+    if (ask && !(await confirmDialog(`Spill ${whose}? Its cards drop face down in front of it.`, 'Spill'))) return;
+    const members = this.cardsOn(uid).map((u) => store.cards.get(u)!).sort((a, b) => a.z - b.z);
+    store.removeMat(uid);
+    if (!members.length) return;
+    const uids = members.map((c) => c.uid);
+    const pile = inFrontOf(m, messyLayout(uids.length, { x: m.x, y: m.y, yaw: m.yaw }));
+    const landings = inSpace(null, () => placeSequential(app, uids, pile));
+    for (const l of landings) {
+      l.faceUp = false;
+      l.stand = null;
+    }
+    land(app, landings, { keepSide: true });
   }
 
   // ---- drawing ----
@@ -596,9 +744,17 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
       this.untapButton.hidden = stand;
       this.lifeButton.hidden = stand;
       this.editButton.hidden = !stand;
+      // In a room, the stand's 👤 sits in the middle of its lip (ONLINE.md 6.3).
+      const online = this.app.online;
+      this.ownerButton.hidden = !stand || !online;
       if (stand) {
         at(this.lockButton, -standW(m) / 2 + BUTTON_INSET, -STAND_D / 2 + 4, LIP_H);
         at(this.editButton, standW(m) / 2 - BUTTON_INSET, -STAND_D / 2 + 4, LIP_H);
+        if (online) {
+          at(this.ownerButton, 0, -STAND_D / 2 + 4, LIP_H);
+          const title = m.owner === online.room.me ? 'Your stand: Release' : m.owner ? `${online.room.nameOf(m.owner)}’s stand` : 'Nobody’s stand: Claim it';
+          if (this.ownerButton.title !== title) this.ownerButton.title = title;
+        }
       } else {
         const ix = MAT_W / 2 - BUTTON_INSET, iy = MAT_H / 2 - BUTTON_INSET;
         // ❤️ stays by the life total, which changes top corners on a turned mat (decision 273).

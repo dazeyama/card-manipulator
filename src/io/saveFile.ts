@@ -82,7 +82,8 @@ export function tableOfDoc(doc: TableDoc): TableState {
     cards: doc.cards.map(({ hidden, ...c }): Card => ({ ...c, ...(hidden ? { scryfallId: HIDDEN, finish: 'nonfoil' as const } : {}), pileId: c.pileId ?? null, spreadOf: c.spreadOf ?? null })),
     named: (doc.piles ?? []).map((p) => ({ id: p.id, name: p.name, filter: p.filter ?? null, anchor: p.anchor ?? { x: 0, y: 0 }, yaw: p.yaw ?? 0 })),
     spreads: (doc.spreads ?? []).map((s) => ({ ...s, uids: [...s.uids] })),
-    mats: (doc.mats ?? []).map((m) => ({ ...m })),
+    // A stand loaded from a file has no owner (ONLINE.md 6.3).
+    mats: (doc.mats ?? []).map(({ owner, ...m }) => ({ ...m })),
     dice: Array.isArray(doc.dice) ? doc.dice.map((d) => ({ ...d })) : [],
     // Older files have no basics: they keep the defaults (decision 210).
     basics: readBasics(doc.basics),

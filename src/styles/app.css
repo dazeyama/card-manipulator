@@ -402,3 +402,4 @@ input.switch:checked { background: var(--accent); }
 input.switch:checked::after { left: 16px; }
 input.switch:disabled { opacity: 0.55; cursor: default; }
 input.switch:focus { box-shadow: 0 0 0 3px var(--accent-soft); }
+.menu-head { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-2); padding: 4px 8px 3px; }
