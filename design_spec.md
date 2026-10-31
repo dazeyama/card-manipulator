@@ -1217,4 +1217,6 @@ All dated 2026-10-27, from the brainstorming session.
 
 ## Appendix B: Open items
 
-None as of 2026-10-29. One-step undo, the last open item, is built (decision 204).
+- **Radial menu on Space** (2026-10-31): planned with the owner, not built. Hold Space, flick to one of eight wedges (Stack, Flip, Turn, Spread, Hand, Sort, Draw, Undo) with variants in an outer ring; acts as the key would where the menu opened. Everything needed to build it is in **RADIAL.md**; Space was freed for it by decision 296.
+
+One-step undo, the previous open item, is built (decision 204).

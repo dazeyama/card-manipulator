@@ -1,0 +1,51 @@
+# Radial menu (open item, planned 2026-10-31)
+
+A ring of the main card actions that opens on **Space** (Space was unbound for it, decision 296). Agreed with the owner in an interactive Q&A; not built yet. Mockup: `reports/mockups/radial-menu.png` (source `radial-menu.svg`).
+
+When you build it, log it as the next decision in design_spec.md Appendix A, add it to spec Section 16, clear its line in Appendix B, and delete or fold in this file.
+
+## How it works
+
+- **Hold, flick, release.** Hold Space: the menu opens centred on the cursor. Move toward a wedge and let go to do it. Letting go in the dead centre cancels.
+- **Tap leaves it open.** A quick tap of Space (let go before leaving the centre) keeps it open: click a wedge to do it. Esc, Space again, or a click outside closes it.
+- **Two rings.** The inner ring holds 8 wedges; letting go on one does its main action. Pushing further out past the inner ring shows that wedge's **variants** in an outer ring, centred on it; letting go there does the variant. A small dot on a wedge's outer edge marks one that has variants.
+- **Labels.** Each wedge shows the help panel's emoji, its name, and its key underneath (S, C C, Shift C...).
+- **Not while holding cards.** It doesn't open mid-drag (agent call).
+
+## What it acts on
+
+Exactly what the key would act on, **as if the key were pressed where the menu was opened**: the selection, or the pile under the cursor there (`hoveredPile()` / `hoveredCard()` in `src/main.ts`). The cursor moves while you flick, so capture `mouse.hovered` and `app.pointer` when the menu opens and use those when the action runs.
+
+Actions that need a second click behave just like their keys: **Spread** arms the spread (X) and **Draw** opens the 0 prompt; the owner then clicks where. (Agent call, to match the keys.)
+
+In a room, route each action through the same key names so `keyboard.guard` applies rank gating; wedges the player's rank can't use are dimmed.
+
+**Empty table, nothing selected:** the menu still opens, but every card wedge is dimmed; only Undo works.
+
+## The wedges
+
+Clockwise from the top. Letting go on the inner wedge does the first item.
+
+| Wedge | Inner (main action) | Outer ring (variants) |
+|---|---|---|
+| Stack | Stack (S) | Shuffle (S S), Tidy (T) |
+| Flip | Flip (F) | Face all up (F F) |
+| Turn | Turn 90° (R) | Upright (R R) |
+| Spread | Spread (X) | Reverse spread (X X) |
+| Hand | Fan as hand (H) | Full size on stand (H H) |
+| Sort | Curve (C) | Colour columns (C C), Curve per colour (Shift C), EDHREC (E), Elo (E E) |
+| Draw | Draw N (0): how many, with a Face down tick | none |
+| Undo | Undo (Ctrl Z) | Redo (Ctrl Z again) |
+
+Deliberately left off: pile tools (tokens, name, copy, delete, frame), dice, camera, search, save.
+
+## Building notes
+
+- Many variants are double taps inside one key handler (`lastS`, `lastC`... with `DOUBLE_TAP_MS` in `src/main.ts`). Don't fake two key presses. Pull each into a named function the key and the menu both call.
+- **Pure module** (`src/input/radial.ts` or similar), tested with vitest:
+  - the menu definition;
+  - hit-testing from the angle and distance off the centre to a wedge and variant;
+  - the tap-versus-flick rule.
+- **The overlay** is DOM/SVG in `src/ui/`, styled like the other panels: white wedges, `--line` borders, `--accent-soft` for the hovered wedge, solid `--accent` for the chosen variant. It scales with the cursor size setting and the UI fit.
+- **Space:** `keydown` (not a repeat, not typing) opens; `keyup` resolves; `blur` cancels. Call `preventDefault` so Space doesn't press focused buttons or scroll.
+- Update the help panel (`src/ui/helpPanel.ts`) and the hint line (`src/ui/hints.ts`).
