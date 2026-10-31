@@ -1,17 +1,21 @@
 // The name filter (ONLINE.md 10.4, O15, O79): a short blocklist for room and
 // player names, the owner's to edit. A name is normalised (lower case,
-// accents dropped, 0→o 1→i 3→e 4→a 5→s 7→t @→a $→s, then everything but
-// letters stripped) and blocked if any entry appears anywhere in it. Chat is
-// not filtered (O68).
+// accents dropped, 0→o 1→i 3→e 4→a 5→s 7→t @→a $→s) and checked two ways:
 //
-// Entries are chosen to be rare inside innocent words, since spaces are
-// stripped and matching is by substring: no "ass" (glass), "cock"
-// (Cockatrice), "rape" (Grapeshot) or "rapist" (therapist). Add or remove
-// freely; keep them lower case, letters only.
+// - BLOCKED entries are found anywhere once everything but letters is
+//   stripped, so "F U C K" and "f.u.c.k" are caught;
+// - WHOLE_WORDS entries only as the start of a word, because inside other
+//   words and across spaces they hit ordinary names: "shit" in "Push It",
+//   "twat" in "Saltwater" and "Friday Night Watch", "cunt" in "Magic
+//   Untapped" and "Scunthorpe" (O106).
+//
+// Entries are chosen to be rare inside innocent words: no "ass" (glass),
+// "cock" (Cockatrice), "rape" (Grapeshot) or "rapist" (therapist). Add or
+// remove freely; keep them lower case, letters only. Chat is not filtered (O68).
 
 export const BLOCKED: string[] = [
   // Profanity
-  'fuck', 'shit', 'cunt', 'bitch', 'bastard', 'asshole', 'dickhead', 'whore', 'slut', 'twat', 'wanker', 'bollocks',
+  'fuck', 'bitch', 'bastard', 'asshole', 'dickhead', 'whore', 'slut', 'wanker', 'bollocks',
   // Sexual
   'jizz', 'pussy', 'cocksucker', 'blowjob', 'cumshot', 'dildo', 'porn', 'hentai', 'incest',
   // Slurs
@@ -22,22 +26,35 @@ export const BLOCKED: string[] = [
   'pedophil', 'paedophil', 'molest', 'killyourself',
 ];
 
+/** Matched only where a word begins with them ("shitty" yes, "Push It" no). */
+export const WHOLE_WORDS: string[] = ['shit', 'twat', 'cunt'];
+
 const LEET: Record<string, string> = { '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '7': 't', '@': 'a', $: 's' };
 
-/** A name as the filter reads it: lower case, look-alike digits turned to letters, nothing but a to z. */
-export function normalise(name: string): string {
+/** Lower case, accents dropped, look-alike digits turned to letters. */
+function letters(name: string): string {
   return name
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
-    .replace(/[013457@$]/g, (ch) => LEET[ch])
-    .replace(/[^a-z]/g, '');
+    .replace(/[013457@$]/g, (ch) => LEET[ch]);
+}
+
+/** A name as the filter reads it: nothing but a to z. */
+export function normalise(name: string): string {
+  return letters(name).replace(/[^a-z]/g, '');
+}
+
+/** The name's words, normalised. */
+export function words(name: string): string[] {
+  return letters(name).split(/[^a-z]+/).filter(Boolean);
 }
 
 /** True when the name holds a blocked word. */
 export function isBlocked(name: string): boolean {
   const n = normalise(name);
-  return BLOCKED.some((w) => n.includes(w));
+  if (BLOCKED.some((w) => n.includes(w))) return true;
+  return words(name).some((word) => WHOLE_WORDS.some((w) => word.startsWith(w)));
 }
 
 /** The name, or `fallback` ("Table 7KQ2MX", "Player 3") when it is blocked. */

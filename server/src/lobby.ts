@@ -6,12 +6,14 @@
 // within seconds, far sooner than the minute between heartbeats, so a list
 // kept only in memory came up empty. A row is written when it changes, and
 // otherwise at most every 90 s to keep its last-seen time fresh enough for the
-// 3-minute pruning. Reports and delisting are kept too; the rate windows live
-// in memory only.
+// 3-minute pruning. Reports, delisting and the rate limits' counts are kept
+// too (O106).
 
 import { DurableObject } from 'cloudflare:workers';
 import type { LobbyRow } from '../../shared/protocol';
+import { CREATE_RATE, JOIN_RATE, REPORT_RATE } from './limits';
 import { LobbyBook, type AdminRow, type Flags, type LobbyBeat, type ReportResult } from './lobbyBook';
+import { StoredWindow } from './storedWindow';
 import type { Env } from './worker';
 
 export type { LobbyBeat, AdminRow } from './lobbyBook';
@@ -23,12 +25,19 @@ export class Lobby extends DurableObject<Env> {
   private readonly book: LobbyBook;
   /** Each row as last written, to skip writes that would change nothing. */
   private readonly written = new Map<string, { json: string; seen: number }>();
+  private prunedAt = 0;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
-    // Rate limits are off only where server/.dev.vars says so (local development, O99).
-    this.book = new LobbyBook(env.RATE_LIMITS !== 'off');
     const sql = ctx.storage.sql;
+    // Rate limits are off only where server/.dev.vars says so (local development, O99);
+    // their counts are stored, so an eviction does not reset them (O106).
+    this.book = new LobbyBook(env.RATE_LIMITS !== 'off', {
+      createByIp: new StoredWindow(sql, 'rate_create_ip', CREATE_RATE.limit, CREATE_RATE.windowMs),
+      createById: new StoredWindow(sql, 'rate_create_id', CREATE_RATE.limit, CREATE_RATE.windowMs),
+      joinByIp: new StoredWindow(sql, 'rate_join_ip', JOIN_RATE.limit, JOIN_RATE.windowMs),
+      reportsBy: new StoredWindow(sql, 'rate_report', REPORT_RATE.limit, REPORT_RATE.windowMs),
+    });
     sql.exec('CREATE TABLE IF NOT EXISTS flags (code TEXT PRIMARY KEY, json TEXT NOT NULL)');
     sql.exec('CREATE TABLE IF NOT EXISTS rooms (code TEXT PRIMARY KEY, json TEXT NOT NULL, seen INTEGER NOT NULL)');
     for (const r of sql.exec<{ code: string; json: string }>('SELECT code, json FROM flags')) {
@@ -95,10 +104,12 @@ export class Lobby extends DurableObject<Env> {
     this.ctx.storage.sql.exec('DELETE FROM flags WHERE code = ?', code);
   }
 
-  /** Drop silent rooms (with their flags); trim the rate windows now and then. */
+  /** Drop silent rooms (with their flags); trim the rate windows at most once a minute. */
   private prune(): void {
     const now = Date.now();
     for (const code of this.book.prune(now)) this.forgetRoom(code);
+    if (now - this.prunedAt < 60_000) return;
+    this.prunedAt = now;
     this.book.pruneLimits(now);
   }
 

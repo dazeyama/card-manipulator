@@ -2,9 +2,9 @@
 // tune. Limits the client checks too (players, cards, message sizes, name
 // lengths) live in shared/protocol.ts and are re-exported here. Pure.
 
-// MAX_REPLACE_BYTES: a crown's `confirm` of a `replace` (New table, Load file) carries the whole table (O97).
+// MAX_OP_BYTES: an op or a confirm may carry a whole cube, or a replace its whole table (O104).
 export {
-  MAX_PLAYERS, MAX_CARDS, MAX_MESSAGE_BYTES, MAX_SNAPSHOT_PART_BYTES, MAX_REPLACE_BYTES, SNAPSHOT_PART_CARDS,
+  MAX_PLAYERS, MAX_CARDS, MAX_MESSAGE_BYTES, MAX_SNAPSHOT_PART_BYTES, MAX_OP_BYTES, SNAPSHOT_PART_CARDS,
   NICKNAME_MAX, ROOM_NAME_MAX, PASSWORD_MAX, CHAT_TEXT_MAX, CHAT_LINES, STREAM_HZ,
 } from '../../shared/protocol';
 

@@ -22,6 +22,8 @@ export class RoomStorage {
    * on from memory, unsaved, rather than failing the players in it.
    */
   refused = false;
+  /** Told once when a write is first refused (the Room then stays awake, O106). */
+  onRefused: (() => void) | null = null;
 
   constructor(private readonly storage: DurableObjectStorage) {
     this.init();
@@ -98,6 +100,7 @@ export class RoomStorage {
       if (isQuotaError(err)) {
         this.refused = true;
         console.warn('room storage: the free plan refused a write for the day; carrying on from memory', err);
+        this.onRefused?.();
       } else console.warn('room storage: a write failed', err);
     }
   }

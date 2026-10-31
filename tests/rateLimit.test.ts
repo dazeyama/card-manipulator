@@ -35,6 +35,18 @@ describe('sliding window', () => {
     expect(w.hit('a', 1000)).toBe(true);
   });
 
+  it('takes back the latest hit (a guess that turned out right)', () => {
+    const w = new SlidingWindow(2, 1000);
+    w.hit('a', 0);
+    w.hit('a', 10);
+    expect(w.allows('a', 20)).toBe(false);
+    w.refund('a');
+    expect(w.count('a', 20)).toBe(1);
+    w.refund('a');
+    w.refund('a');
+    expect(w.size).toBe(0);
+  });
+
   it('prunes emptied keys', () => {
     const w = new SlidingWindow(3, 1000);
     w.hit('a', 0);

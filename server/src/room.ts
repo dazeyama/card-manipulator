@@ -20,7 +20,7 @@ import { SlidingWindow } from '../../shared/rateLimit';
 import { affectedCards, carriesIdentities, redactOp, redactTable, viewOf, visibilityDiff, type TableView } from '../../shared/redact';
 import type { TableState } from '../../shared/table';
 import {
-  CHAT_RATE, CHAT_TEXT_MAX, CLOSE_BYE, CLOSE_REPLACED, HEARTBEAT_MS, MAX_CARDS, MAX_PLAYERS, MAX_REPLACE_BYTES,
+  CHAT_RATE, CHAT_TEXT_MAX, CLOSE_BYE, CLOSE_REPLACED, HEARTBEAT_MS, MAX_CARDS, MAX_PLAYERS,
   NO_CROWN_WAIT_MS, OPLOG_FLUSH_MS, PASSWORD_MAX, PASSWORD_RATE, SNAPSHOT_EVERY_OPS, STREAMS_PER_SECOND, WRONG_PASSWORD_DELAY_MS,
 } from './limits';
 import type { LobbyBeat } from './lobby';
@@ -29,6 +29,7 @@ import {
   publicSettings, roomInfo, say, seatOf, type Meta, type Seat,
 } from './meta';
 import { RoomStorage } from './storage';
+import { StoredWindow } from './storedWindow';
 import type { Env } from './worker';
 
 type Hello = Extract<ClientMsg, { t: 'hello' }>;
@@ -62,15 +63,6 @@ const OP_KINDS = new Set(['add', 'remove', 'move', 'grab', 'release', 'reuid', '
 /** A light shape check before an op reaches the mirror or the crown; applyOp and the judge read the rest. */
 function isOp(x: unknown): x is Op {
   return !!x && typeof x === 'object' && OP_KINDS.has((x as { t?: unknown }).t as string);
-}
-
-/** Cards an op would add that the table does not have yet (for the cap, 8.7). */
-function cardsAdded(table: TableState, op: Op): number {
-  if (op.t === 'replace') return op.table.cards.length - table.cards.length;
-  if (op.t === 'batch') return op.ops.reduce((n, o) => n + cardsAdded(table, o), 0);
-  if (op.t !== 'add') return 0;
-  const have = new Set(table.cards.map((c) => c.uid));
-  return op.cards.filter((c) => !have.has(c.uid)).length;
 }
 
 /** True if the op can change who may see a card (a move, a mat change), anywhere in a batch. */
@@ -111,14 +103,18 @@ export class Room extends DurableObject<Env> {
   private readonly awaiting = new Set<string>();
   private readonly chatRate = new SlidingWindow(CHAT_RATE.limit, CHAT_RATE.windowMs);
   private readonly streamRate = new SlidingWindow(STREAMS_PER_SECOND, 1000);
-  /** Wrong passwords per ip (10.4); over the limit, `bye rate` until the window empties. */
-  private readonly passwordRate = new SlidingWindow(PASSWORD_RATE.limit, PASSWORD_RATE.windowMs);
+  /** Wrong passwords per ip (10.4); over the limit, `bye rate` until the window empties. Stored, so hibernation does not reset it (O106). */
+  private readonly passwordRate: StoredWindow;
+  /** Set once a storage write was refused (O106): keeps the object in memory, so seq and the meta never roll back. */
+  private awake: ReturnType<typeof setInterval> | null = null;
   private saveQueued = false;
   private beatQueued = false;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     this.store = new RoomStorage(ctx.storage);
+    this.store.onRefused = () => this.stayAwake();
+    this.passwordRate = new StoredWindow(ctx.storage.sql, 'rate_password', PASSWORD_RATE.limit, PASSWORD_RATE.windowMs);
     // Pings are answered without waking the object (the client sends exactly this text).
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('{"t":"ping"}', '{"t":"pong"}'));
     this.meta = this.store.loadMeta();
@@ -138,6 +134,7 @@ export class Room extends DurableObject<Env> {
   create(c: CreateRoom): boolean {
     if (this.meta) return false;
     this.store.init();
+    this.passwordRate.init();
     this.meta = newMeta(c.code, c.maker, c.name, c.tag, Date.now());
     this.mirror = null;
     this.seq = 0;
@@ -186,8 +183,8 @@ export class Room extends DurableObject<Env> {
     const id = a?.id ?? null;
     const meta = this.meta;
     const isCrown = !!id && !!meta && id === meta.crown;
-    // A crown's replace carries the whole table (O97); everything else keeps 9's limits.
-    const limit = msg.t === 'confirm' && isCrown && isOp(msg.op) && msg.op.t === 'replace' ? MAX_REPLACE_BYTES : maxBytes(msg.t);
+    // Ops and confirms may be up to 1 MiB (a whole cube in one spawn, a replace; O104); everything else keeps 9's limits.
+    const limit = maxBytes(msg.t);
     if (raw.length > limit / 3 && byteLength(raw) > limit) return this.bye(ws, 'size');
     if (msg.t === 'hello') return this.hello(ws, msg, a?.ip ?? '');
     if (!id || !meta) return;
@@ -260,6 +257,7 @@ export class Room extends DurableObject<Env> {
     await this.ctx.storage.setAlarm(now + HEARTBEAT_MS);
     this.chatRate.prune(now);
     this.streamRate.prune(now);
+    this.passwordRate.prune(now);
     this.heartbeat();
   }
 
@@ -279,13 +277,14 @@ export class Room extends DurableObject<Env> {
     const existing = seatOf(meta, id);
     // The door code (3.2): asked of newcomers; a seat already admitted keeps its place (O98).
     if (meta.passwordHash && !existing) {
-      if (!this.passwordRate.allows(ip, Date.now())) return this.bye(ws, 'rate');
+      // Counted before the await, so hellos sent together cannot all slip past the count; a right key takes it back.
+      if (!this.passwordRate.hit(ip, Date.now())) return this.bye(ws, 'rate');
       const given = typeof h.key === 'string' && h.key ? await passwordHash(meta.code, h.key) : '';
       if (given !== meta.passwordHash) {
-        this.passwordRate.hit(ip, Date.now());
         await new Promise((r) => setTimeout(r, WRONG_PASSWORD_DELAY_MS));
         return this.bye(ws, 'password');
       }
+      this.passwordRate.refund(ip);
       if (!this.meta) return this.bye(ws, 'closed');
     }
     // Joins: 30 an hour per ip, counted in the Lobby (10.4); a seat coming back is not a join.
@@ -390,13 +389,14 @@ export class Room extends DurableObject<Env> {
    * mirror, unredacted, then every proposal still waiting for a judge. With no
    * mirror yet (a room just gone online), ask for the crown's table instead.
    */
-  private giveCrown(ws: WebSocket): void {
+  private giveCrown(ws: WebSocket, withPending = true): void {
     if (!this.mirror) this.send(ws, { t: 'needSnapshot' });
     else {
       const parts = this.partsFor(null);
       this.send(ws, { t: 'youAreCrown', parts: parts.length });
       for (const p of parts) this.send(ws, p);
     }
+    if (!withPending) return;
     for (const p of this.pending.values()) {
       if (p.timer) clearTimeout(p.timer);
       p.timer = null;
@@ -468,6 +468,8 @@ export class Room extends DurableObject<Env> {
     if (how === 'closed') for (const s of this.sockets()) this.bye(s.ws, 'closed');
     if (this.flushTimer) clearTimeout(this.flushTimer);
     this.flushTimer = null;
+    if (this.awake) clearInterval(this.awake);
+    this.awake = null;
     for (const p of this.pending.values()) if (p.timer) clearTimeout(p.timer);
     this.pending.clear();
     this.awaiting.clear();
@@ -516,27 +518,23 @@ export class Room extends DurableObject<Env> {
     if (!isOp(msg.op) || typeof msg.by !== 'string') return;
     const op = msg.op;
     const id = typeof msg.id === 'string' ? msg.id : undefined;
-    // The size cap's backstop (8.7): the crown's judge should have refused first.
-    if (this.mirror && this.mirror.cards.length + cardsAdded(this.mirror, op) > MAX_CARDS && cardsAdded(this.mirror, op) > 0) {
-      if (id) {
-        this.pending.delete(`${msg.by}:${id}`);
-        const ws = this.socketOf(msg.by);
-        if (ws) this.send(ws, { t: 'refused', id, reason: 'cap' });
-      }
-      return;
-    }
-    this.seq++;
-    const c: ConfirmedOp = { seq: this.seq, by: msg.by, ...(id ? { id } : {}), op };
     const before = this.mirror;
+    let after = before;
     if (before) {
       try {
-        this.mirror = applyOp(before, op);
+        after = applyOp(before, op);
       } catch (err) {
         console.warn('mirror: op did not apply, asking the crown for its table', err);
         const crown = this.meta?.crown ? this.socketOf(this.meta.crown) : undefined;
         if (crown) this.send(crown, { t: 'needSnapshot' });
       }
     }
+    // The size cap's backstop (8.7), on the cards the op leaves: a shuffle's re-key keeps the
+    // count, and a table taken online over the cap still works. The crown's judge refuses first.
+    if (before && after && after.cards.length > MAX_CARDS && after.cards.length > before.cards.length) return this.refuseCap(msg.by, id);
+    this.mirror = after;
+    this.seq++;
+    const c: ConfirmedOp = { seq: this.seq, by: msg.by, ...(id ? { id } : {}), op };
     if (id) this.pending.delete(`${msg.by}:${id}`);
     // The room's name is the table's name (4.1).
     if (op.t === 'table') this.rename(op.name);
@@ -583,6 +581,24 @@ export class Room extends DurableObject<Env> {
       const whose = !owner ? 'an unowned stand' : owner === c.by ? 'their own stand' : `${seatOf(meta, owner)?.nickname ?? 'someone'}'s stand`;
       this.say(`${by} spilled ${whose}`);
     }
+  }
+
+  /**
+   * The cap's backstop said no to an op the crown has already applied (O106):
+   * its proposer is refused, and the crown is handed the mirror's table again
+   * (youAreCrown, without the waiting proposals), so its own table drops the op
+   * too and stays the room's. Never silent, even for the crown's id-less ops.
+   */
+  private refuseCap(by: string, id: string | undefined): void {
+    if (id) {
+      this.pending.delete(`${by}:${id}`);
+      const ws = this.socketOf(by);
+      if (ws) this.send(ws, { t: 'refused', id, reason: 'cap' });
+    }
+    const crown = this.meta?.crown ? this.socketOf(this.meta.crown) : undefined;
+    if (!crown) return;
+    this.send(crown, { t: 'chat', line: { at: Date.now(), text: `The table is full: ${MAX_CARDS.toLocaleString('en-US')} cards` } });
+    this.giveCrown(crown, false);
   }
 
   private refuse(msg: Extract<ClientMsg, { t: 'refuse' }>): void {
@@ -830,6 +846,18 @@ export class Room extends DurableObject<Env> {
       this.saveQueued = false;
       if (this.meta) this.store.saveMeta(this.meta);
     });
+  }
+
+  /**
+   * A storage write was refused (the free plan's rows for the day): from now on
+   * this room lives in memory only. A pending interval keeps the object from
+   * hibernating, since waking would reload the older stored seq and meta and
+   * every client would drop the ops stamped after it (O106). Cleared on close.
+   */
+  private stayAwake(): void {
+    if (this.awake) return;
+    console.warn(`room ${this.meta?.code ?? ''} stays awake: its storage is refused for today`);
+    this.awake = setInterval(() => {}, 10_000);
   }
 
   /** Open sockets that have said hello, with their player ids. */

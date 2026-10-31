@@ -4,7 +4,7 @@
 // ip and identity, joins per ip, reports per identity). The Lobby Durable
 // Object wraps it and persists the flags (reports, delisted).
 
-import { SlidingWindow } from '../../shared/rateLimit';
+import { SlidingWindow, type RateWindow } from '../../shared/rateLimit';
 import type { AdminRow, LobbyRow, Visibility } from '../../shared/protocol';
 import { CREATE_RATE, JOIN_RATE, LOBBY_STALE_MS, PUBLIC_LIST_MAX, REPORT_RATE, REPORTS_TO_DELIST } from './limits';
 
@@ -30,16 +30,38 @@ function row(b: LobbyBeat): LobbyRow {
   return { code: b.code, name: b.name, players: b.players, max: b.max, password: b.password, tag: b.tag, crown: b.crown, cards: b.cards, since: b.since };
 }
 
+/** The Lobby's rate limits (10.4). In memory by default; the Lobby object passes stored ones (O106). */
+export interface LobbyWindows {
+  createByIp: RateWindow;
+  createById: RateWindow;
+  joinByIp: RateWindow;
+  reportsBy: RateWindow;
+}
+
+export function memoryWindows(): LobbyWindows {
+  return {
+    createByIp: new SlidingWindow(CREATE_RATE.limit, CREATE_RATE.windowMs),
+    createById: new SlidingWindow(CREATE_RATE.limit, CREATE_RATE.windowMs),
+    joinByIp: new SlidingWindow(JOIN_RATE.limit, JOIN_RATE.windowMs),
+    reportsBy: new SlidingWindow(REPORT_RATE.limit, REPORT_RATE.windowMs),
+  };
+}
+
 export class LobbyBook {
   private readonly rooms = new Map<string, LobbyBeat & { seen: number }>();
   readonly flags = new Map<string, Flags>();
-  private readonly createByIp = new SlidingWindow(CREATE_RATE.limit, CREATE_RATE.windowMs);
-  private readonly createById = new SlidingWindow(CREATE_RATE.limit, CREATE_RATE.windowMs);
-  private readonly joinByIp = new SlidingWindow(JOIN_RATE.limit, JOIN_RATE.windowMs);
-  private readonly reportsBy = new SlidingWindow(REPORT_RATE.limit, REPORT_RATE.windowMs);
+  private readonly createByIp: RateWindow;
+  private readonly createById: RateWindow;
+  private readonly joinByIp: RateWindow;
+  private readonly reportsBy: RateWindow;
 
   /** `limits` false turns the creation and join limits off (local development, O99). */
-  constructor(private readonly limits = true) {}
+  constructor(private readonly limits = true, windows: LobbyWindows = memoryWindows()) {
+    this.createByIp = windows.createByIp;
+    this.createById = windows.createById;
+    this.joinByIp = windows.joinByIp;
+    this.reportsBy = windows.reportsBy;
+  }
 
   /** A room's heartbeat (8.8). */
   beat(b: LobbyBeat, now: number): void {

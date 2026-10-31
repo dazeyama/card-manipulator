@@ -1,12 +1,32 @@
 // A sliding-window counter (ONLINE.md 10.4): at most `limit` hits per key in
 // any `windowMs`. Pure: the caller passes the time, so tests need no clock.
 // The server keeps one per control (chat, joins, wrong passwords, creation,
-// reports, streams).
+// reports, streams). Limits that must outlast hibernation use the same shape
+// kept in storage (server/src/storedWindow.ts).
 
-export class SlidingWindow {
+/** A rate limit's counter, in memory or in storage. */
+export interface RateWindow {
+  /** Count a hit for `key` at `now`. False (and not counted) when the key is over its limit. */
+  hit(key: string, now: number): boolean;
+  /** True when `key` may hit now, without counting. */
+  allows(key: string, now: number): boolean;
+  /** Take back `key`'s latest hit (a guess that turned out right). */
+  refund(key: string): void;
+  /** Forget hits older than the window. */
+  prune(now: number): void;
+}
+
+export class SlidingWindow implements RateWindow {
   private readonly hits = new Map<string, number[]>();
 
   constructor(readonly limit: number, readonly windowMs: number) {}
+
+  refund(key: string): void {
+    const times = this.hits.get(key);
+    if (!times) return;
+    times.pop();
+    if (!times.length) this.hits.delete(key);
+  }
 
   /** Count a hit for `key` at `now`. False (and not counted) when the key is over its limit. */
   hit(key: string, now: number): boolean {
