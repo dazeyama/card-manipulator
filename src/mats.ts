@@ -251,7 +251,8 @@ export class Mats {
   spawn(scryfallId: string, name: string, art: string, at: { x: number; y: number }): void {
     // Playmats are Everything's to add (ONLINE.md 6.2, O24).
     if (!allowedNow('matAdd')) return;
-    this.app.store.addMat({ uid: newUid('m'), scryfallId, name, art, x: at.x, y: at.y, yaw: this.app.facing });
+    // The life total starts hidden; the 🤍 corner button shows it (decision 290).
+    this.app.store.addMat({ uid: newUid('m'), scryfallId, name, art, x: at.x, y: at.y, yaw: this.app.facing, lifeHidden: true });
   }
 
   /** R over a mat: a quarter turn clockwise, like a card. */
