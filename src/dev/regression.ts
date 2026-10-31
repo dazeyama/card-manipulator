@@ -18,6 +18,7 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const frame = () => new Promise((r) => requestAnimationFrame(r));
 
 export function installRegression(app: App, ui: Ui): void {
+  installRoomTools(app);
   (window as unknown as { __regression: () => Promise<Result[]> }).__regression = async () => {
     const results: Result[] = [];
     const check = (phase: number, name: string, ok: boolean, detail = '') => results.push({ phase, check: name, ok, detail });
@@ -213,5 +214,32 @@ export function installRegression(app: App, ui: Ui): void {
     const errors = ((window as unknown as { __errors: string[] }).__errors ?? []).slice(errorsBefore);
     check(8, 'no page errors during the pass', errors.length === 0, errors.join(' | '));
     return results;
+  };
+}
+
+/**
+ * Rooms (ONLINE.md 11.3, O90), dev only. `__room('B')` opens this room in a
+ * second tab as player B (its own identity through `?player=`), for the phase
+ * gate's two-tab check, and returns the link. `__roomState()` sums up what the
+ * room layer knows: code, me, crown, players, seq, holds and pending ops.
+ */
+function installRoomTools(app: App): void {
+  const w = window as unknown as Record<string, unknown>;
+  w.__room = (name = 'B'): string => {
+    const code = app.online?.room.code;
+    if (!code) return 'Not in a room: Go online first';
+    const url = `${location.origin}${location.pathname}?player=${encodeURIComponent(name)}#/room/${code}`;
+    window.open(url, '_blank');
+    return url;
+  };
+  w.__roomState = () => {
+    const o = app.online;
+    if (!o) return null;
+    const r = o.room;
+    return {
+      code: r.code, me: r.me, crown: r.crown, isCrown: r.isCrown, connection: r.connection,
+      players: r.players.map((p) => `${p.nickname}${p.isCrown ? ' (crown)' : ''}${p.connected ? '' : ' (away)'}`),
+      cards: app.store.cards.size, heldByOthers: o.presence.held.size,
+    };
   };
 }

@@ -35,13 +35,17 @@ interface Entry {
   lift: number;
   foil: boolean;
   hidden: boolean;
+  /** Another player's colour (their selection or hold, ONLINE.md 5.4), or null. */
+  tint: THREE.Color | null;
 }
 
 const vertexHead = /* glsl */ `
 attribute vec3 aFront;
 attribute vec3 aBack;
 attribute vec4 aFlags;
+attribute vec3 aGlow;
 uniform float uPlain;
+varying vec3 vGlow;
 varying vec3 vFront;
 varying vec3 vBack;
 varying vec4 vFlags;
@@ -54,6 +58,7 @@ varying vec3 vWorldP;
 const vertexBody = /* glsl */ `
 vFront = aFront;
 vBack = aBack;
+vGlow = aGlow;
 // The mirror window draws cards plainly: no selection rim, no hover glow (decision 144).
 vFlags = vec4(aFlags.x * (1.0 - uPlain), aFlags.y * (1.0 - uPlain), aFlags.z, aFlags.w);
 vLocal = position;
@@ -94,6 +99,7 @@ uniform vec3 uAccent;
 uniform float uTime;
 // Render pixels per screen pixel beyond the screen's own (2 in High graphics, decision 152).
 uniform float uSuper;
+varying vec3 vGlow;
 varying vec3 vFront;
 varying vec3 vBack;
 varying vec4 vFlags;
@@ -147,8 +153,9 @@ if (abs(vFace) < 0.5) {
   totalEmissiveRadiance += vec3(0.40, 0.385, 0.36) * lit * (1.0 - 0.35 * line * fade);
   diffuseColor.rgb = vec3(0.0);
 }
-diffuseColor.rgb = mix(diffuseColor.rgb, uAccent, rim * 0.85 + vFlags.x * 0.06);
-totalEmissiveRadiance += uAccent * rim * 0.55;
+// The rim in the accent blue for your own selection, another player's colour for theirs (ONLINE.md 5.4).
+diffuseColor.rgb = mix(diffuseColor.rgb, vGlow, rim * 0.85 + vFlags.x * 0.06);
+totalEmissiveRadiance += vGlow * rim * 0.55;
 if (vFlags.z > 0.5 && vFace > 0.5) totalEmissiveRadiance += foilSheen(vLocal.xy, normalize(vWorldN), vWorldP);
 `;
 
@@ -192,6 +199,9 @@ export class CardLayer {
   private aFront: THREE.InstancedBufferAttribute;
   private aBack: THREE.InstancedBufferAttribute;
   private aFlags: THREE.InstancedBufferAttribute;
+  private aGlow: THREE.InstancedBufferAttribute;
+  private glowDirty = false;
+  private readonly accent: THREE.Color;
   private readonly entries = new Map<string, Entry>();
   private byIndex: Entry[] = [];
   private readonly dirtyMatrix = new Set<Entry>();
@@ -213,6 +223,7 @@ export class CardLayer {
 
   constructor(private readonly scene: THREE.Scene, atlas: Atlas, accent: THREE.Color, capacity = 256) {
     this.capacity = capacity;
+    this.accent = accent;
     this.geometry = new THREE.BoxGeometry(CARD_W, CARD_H, CARD_T);
     this.uniforms = {
       uAtlas: { value: atlas.texture },
@@ -237,6 +248,7 @@ export class CardLayer {
     this.aFront = mesh.geometry.getAttribute('aFront') as THREE.InstancedBufferAttribute;
     this.aBack = mesh.geometry.getAttribute('aBack') as THREE.InstancedBufferAttribute;
     this.aFlags = mesh.geometry.getAttribute('aFlags') as THREE.InstancedBufferAttribute;
+    this.aGlow = mesh.geometry.getAttribute('aGlow') as THREE.InstancedBufferAttribute;
     scene.add(mesh);
   }
 
@@ -254,6 +266,7 @@ export class CardLayer {
     geo.setAttribute('aFront', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3));
     geo.setAttribute('aBack', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3));
     geo.setAttribute('aFlags', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4));
+    geo.setAttribute('aGlow', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3));
     const mesh = new THREE.InstancedMesh(geo, this.material, capacity);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.count = 0;
@@ -313,7 +326,7 @@ export class CardLayer {
   add(uid: string, pose: Pose, front: Slot, back: Slot, foil: boolean): void {
     if (this.entries.has(uid)) return;
     if (this.byIndex.length >= this.capacity) this.grow(this.capacity * 2);
-    const entry: Entry = { uid, index: this.byIndex.length, pose: { ...pose }, selected: false, hovered: false, lift: 0, foil, hidden: false };
+    const entry: Entry = { uid, index: this.byIndex.length, pose: { ...pose }, selected: false, hovered: false, lift: 0, foil, hidden: false, tint: null };
     this.byIndex.push(entry);
     this.entries.set(uid, entry);
     this.writeSlots(entry, front, back);
@@ -336,8 +349,10 @@ export class CardLayer {
       copyAttr(this.aFront, from, last.index);
       copyAttr(this.aBack, from, last.index);
       copyAttr(this.aFlags, from, last.index);
+      copyAttr(this.aGlow, from, last.index);
       this.slotsDirty = true;
       this.flagsDirty = true;
+      this.glowDirty = true;
       this.dirtyMatrix.add(last);
     }
     this.setCount(this.byIndex.length);
@@ -415,6 +430,17 @@ export class CardLayer {
     this.writeFlags(e);
   }
 
+  /**
+   * Glow in another player's colour, for their selection or what they hold
+   * (ONLINE.md 5.4); null for none. Your own selection still glows in the accent.
+   */
+  setTint(uid: string, color: THREE.Color | null): void {
+    const e = this.entries.get(uid);
+    if (!e || (e.tint === color || (e.tint && color && e.tint.equals(color)))) return;
+    e.tint = color ? color.clone() : null;
+    this.writeFlags(e);
+  }
+
   setHidden(uid: string, on: boolean): void {
     const e = this.entries.get(uid);
     if (!e || e.hidden === on) return;
@@ -452,6 +478,10 @@ export class CardLayer {
       this.aFlags.needsUpdate = true;
       this.flagsDirty = false;
     }
+    if (this.glowDirty) {
+      this.aGlow.needsUpdate = true;
+      this.glowDirty = false;
+    }
   }
 
   private compose(e: Entry): void {
@@ -471,8 +501,11 @@ export class CardLayer {
   }
 
   private writeFlags(e: Entry): void {
-    this.aFlags.setXYZW(e.index, e.selected ? 1 : 0, e.hovered ? 1 : 0, e.foil ? 1 : 0, e.hidden ? 1 : 0);
+    this.aFlags.setXYZW(e.index, e.selected || e.tint ? 1 : 0, e.hovered ? 1 : 0, e.foil ? 1 : 0, e.hidden ? 1 : 0);
     this.flagsDirty = true;
+    const glow = e.selected || !e.tint ? this.accent : e.tint;
+    this.aGlow.setXYZ(e.index, glow.r, glow.g, glow.b);
+    this.glowDirty = true;
   }
 
   private grow(capacity: number): void {
@@ -481,7 +514,9 @@ export class CardLayer {
     const nf = mesh.geometry.getAttribute('aFront') as THREE.InstancedBufferAttribute;
     const nb = mesh.geometry.getAttribute('aBack') as THREE.InstancedBufferAttribute;
     const nl = mesh.geometry.getAttribute('aFlags') as THREE.InstancedBufferAttribute;
+    const ng = mesh.geometry.getAttribute('aGlow') as THREE.InstancedBufferAttribute;
     (nf.array as Float32Array).set(this.aFront.array as Float32Array);
+    (ng.array as Float32Array).set(this.aGlow.array as Float32Array);
     (nb.array as Float32Array).set(this.aBack.array as Float32Array);
     (nl.array as Float32Array).set(this.aFlags.array as Float32Array);
     (mesh.instanceMatrix.array as Float32Array).set(old.instanceMatrix.array as Float32Array);
@@ -493,9 +528,11 @@ export class CardLayer {
     this.aFront = nf;
     this.aBack = nb;
     this.aFlags = nl;
+    this.aGlow = ng;
     this.capacity = capacity;
     this.slotsDirty = true;
     this.flagsDirty = true;
+    this.glowDirty = true;
     mesh.instanceMatrix.needsUpdate = true;
   }
 }

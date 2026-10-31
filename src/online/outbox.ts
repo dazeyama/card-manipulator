@@ -1,0 +1,187 @@
+// What goes out to the room (ONLINE.md 8.6, 11.2). The store tells the outbox
+// every local change as an op and its inverse; the writes one action makes
+// (all in one turn of the event loop) go as one op, a `batch` when there are
+// several. The change is already on this browser's table (O63): the op waits
+// as pending until the crown confirms it (dropped) or refuses it (its inverse
+// is applied, except to what someone else has changed since, which keeps the
+// newer state). The crown's own ops are confirmed on the spot, never pending.
+
+import type { App } from '../app';
+import { newUid } from '../state/store';
+import type { Op } from '../../shared/ops';
+import { cardsTouched, diceTouched } from '../../shared/ops';
+import type { RefuseReason } from '../../shared/protocol';
+import type { RoomSync } from './connect';
+
+interface Pending {
+  id: string;
+  op: Op;
+  /** What takes the op back off this table; null for a hold, which changes no table. */
+  inverse: Op | null;
+  cards: Set<string>;
+  dice: Set<string>;
+  /** Uids someone else's confirmed op touched while this one waited. */
+  others: Set<string>;
+  /** Run when the crown refuses it (a refused grab drops the cards back). */
+  refused?: (reason: RefuseReason) => void;
+}
+
+/** The room's outbox for each app, while it is in a room. */
+const boxes = new WeakMap<App, Outbox>();
+
+/** This app's outbox, or null offline. */
+export function outboxOf(app: App): Outbox | null {
+  return boxes.get(app) ?? null;
+}
+
+export class Outbox {
+  private queue: { op: Op; inverse: Op }[] = [];
+  private queued = false;
+  private readonly pending = new Map<string, Pending>();
+  /** The undo precondition for the next op sent (8.6), set by undo. */
+  pre: Record<string, number> | null = null;
+
+  constructor(private readonly sync: RoomSync) {
+    boxes.set(sync.app, this);
+  }
+
+  stop(): void {
+    if (boxes.get(this.sync.app) === this) boxes.delete(this.sync.app);
+    this.queue = [];
+    this.pending.clear();
+  }
+
+  /** The store's hook: one local change. Every change of the same turn goes in one op. */
+  readonly record = (op: Op, inverse: Op): void => {
+    this.queue.push({ op, inverse });
+    if (this.queued) return;
+    this.queued = true;
+    queueMicrotask(() => this.flush());
+  };
+
+  /** Send what this turn changed now, rather than at the end of the turn. */
+  flush(): void {
+    this.queued = false;
+    const q = this.queue;
+    this.queue = [];
+    // Until the room's table has arrived, this table is about to be replaced: nothing of it goes out.
+    if (!q.length || this.sync.inbox.loading) return;
+    const op: Op = q.length === 1 ? q[0].op : { t: 'batch', ops: q.map((x) => x.op) };
+    const inverse: Op = q.length === 1 ? q[0].inverse : { t: 'batch', ops: q.map((x) => x.inverse).reverse() };
+    const pre = this.pre;
+    this.pre = null;
+    this.send(op, inverse, pre ? { pre } : {});
+  }
+
+  /**
+   * Propose an op that is already on this table. The crown's go straight out
+   * as confirmed; anyone else's wait for the crown.
+   */
+  send(op: Op, inverse: Op | null, opts: { pre?: Record<string, number>; refused?: (reason: RefuseReason) => void } = {}): string {
+    const id = newUid('o');
+    const { session, online, authority } = this.sync;
+    if (online.room.isCrown) {
+      authority.own(id, op, inverse, opts);
+      return id;
+    }
+    this.pending.set(id, { id, op, inverse, cards: new Set(cardsTouched(op)), dice: new Set(diceTouched(op)), others: new Set(), refused: opts.refused });
+    session.send({ t: 'op', id, op, ...(opts.pre ? { pre: opts.pre } : {}) });
+    return id;
+  }
+
+  /** Ask for a hold on cards and dice picked up (8.4): they are in your hand at once; `refused` drops them back. */
+  grab(uids: string[], dice: string[], refused: (reason: RefuseReason) => void): void {
+    if (!uids.length && !dice.length) return;
+    this.flush();
+    this.send({ t: 'grab', uids, ...(dice.length ? { dice } : {}) }, null, { refused });
+  }
+
+  /** The hand emptied without landing (Esc, a cancelled drag). */
+  release(uids: string[], dice: string[] = []): void {
+    if (!uids.length && !dice.length) return;
+    this.flush();
+    this.send({ t: 'release', uids, ...(dice.length ? { dice } : {}) }, null);
+  }
+
+  /**
+   * A confirmed op came back. True if it was one of mine, now done: if
+   * someone else's op touched the same things while it waited, the crown
+   * applied mine after theirs, so it is applied again to agree with it.
+   */
+  confirmed(id: string | undefined, by: string, op: Op): boolean {
+    if (!id || by !== this.sync.online.room.me) return false;
+    const p = this.pending.get(id);
+    if (!p) return false;
+    this.pending.delete(id);
+    if (p.others.size) this.sync.inbox.applyRemote(op, by);
+    return true;
+  }
+
+  /** Someone else's confirmed op: note what it touched in every op of mine still waiting. */
+  othersTouched(op: Op): void {
+    if (!this.pending.size) return;
+    const cards = cardsTouched(op);
+    const dice = diceTouched(op);
+    for (const p of this.pending.values()) {
+      for (const u of cards) if (p.cards.has(u)) p.others.add(u);
+      for (const u of dice) if (p.dice.has(u)) p.others.add(u);
+    }
+  }
+
+  /** The crown said no: take my change back off the table, but not from what others changed since. */
+  refused(id: string, reason: RefuseReason): void {
+    const p = this.pending.get(id);
+    if (!p) return;
+    this.pending.delete(id);
+    if (p.inverse) {
+      const back = without(p.inverse, p.others);
+      if (back) this.sync.inbox.applyRemote(back, this.sync.online.room.me);
+    }
+    p.refused?.(reason);
+    this.sync.refusedToast(reason, p.op);
+  }
+
+  /** A fresh snapshot replaced the table: nothing of mine is waiting any more. */
+  clear(): void {
+    this.queue = [];
+    this.pending.clear();
+  }
+
+  /** Ops of mine not yet confirmed (for tests and the dev tools). */
+  get waiting(): number {
+    return this.pending.size;
+  }
+}
+
+/** An op without the parts that touch these uids (cards, dice, mats, piles); null if nothing is left. */
+export function without(op: Op, skip: Set<string>): Op | null {
+  if (!skip.size) return op;
+  switch (op.t) {
+    case 'add': {
+      const cards = op.cards.filter((c) => !skip.has(c.uid));
+      return cards.length ? { ...op, cards } : null;
+    }
+    case 'remove':
+    case 'grab':
+    case 'release': {
+      const uids = op.uids.filter((u) => !skip.has(u));
+      const dice = 'dice' in op && op.dice ? op.dice.filter((u) => !skip.has(u)) : undefined;
+      return uids.length || dice?.length ? { ...op, uids, ...(dice ? { dice } : {}) } : null;
+    }
+    case 'move': {
+      const moves = op.moves.filter((m) => !skip.has(m.uid));
+      return moves.length ? { ...op, moves } : null;
+    }
+    case 'dice': {
+      const set = op.set?.filter((d) => !skip.has(d.uid));
+      const remove = op.remove?.filter((u) => !skip.has(u));
+      return set?.length || remove?.length ? { t: 'dice', ...(set?.length ? { set } : {}), ...(remove?.length ? { remove } : {}) } : null;
+    }
+    case 'batch': {
+      const ops = op.ops.map((o) => without(o, skip)).filter((o): o is Op => !!o);
+      return ops.length ? { t: 'batch', ops } : null;
+    }
+    default:
+      return op;
+  }
+}

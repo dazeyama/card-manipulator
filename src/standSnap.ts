@@ -14,8 +14,14 @@ const REACH = Math.hypot(STAND_W, STAND_D) / 2 + Math.hypot(CARD_W, CARD_H) / 2;
 
 export function installStandSnap(app: App): void {
   let queued = false;
+  // In a room, the browser whose change put a card under a stand lifts it, and
+  // its lift goes to the room like any move; changes from the room are left alone,
+  // or every browser would send the same lift (ONLINE.md 11.1).
+  let local = false;
   const run = () => {
     queued = false;
+    if (!local) return;
+    local = false;
     const store = app.store;
     const stands = [...store.mats.values()].filter(isStand);
     if (!stands.length) return;
@@ -36,6 +42,7 @@ export function installStandSnap(app: App): void {
     }
   };
   const queue = () => {
+    if (app.store.origin === 'local') local = true;
     if (queued) return;
     queued = true;
     // Next frame: a landing still in flight just heads for the slope instead.

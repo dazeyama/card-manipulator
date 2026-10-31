@@ -5,12 +5,14 @@
 //
 // FakeSession answers the hello with a one-player room (me, crown and maker)
 // and confirms every op straight back, so the UI can be built before the
-// server exists. The real WebSocket session (reconnect, version check) is the
-// Sync fork's and lives here too.
+// server exists. WsSession is the real one: one WebSocket to the room server,
+// the version check first (O48), reconnecting with backoff (4.7), a ping to
+// keep it alive.
 
 import { Emitter } from '../state/store';
-import { defaultRoomSettings, PLAYER_COLOURS, playerIdOf, type ByeReason, type ClientMsg, type Player, type PublicSettings, type ServerMsg } from '../../shared/protocol';
+import { defaultRoomSettings, isServerMsg, PLAYER_COLOURS, playerIdOf, PROTOCOL, type ByeReason, type ClientMsg, type Player, type PublicSettings, type ServerMsg, type VersionReply } from '../../shared/protocol';
 import { RoomState, type Connection } from './room';
+import { roomServer, socketUrl } from './link';
 
 /** What a session says in its hello (9.1), besides the protocol version. */
 export interface Hello {
@@ -131,6 +133,133 @@ export class FakeSession implements Session {
   }
 
   private setState(c: Connection): void {
+    this.room.setConnection(c);
+    this.events.emit('state', c);
+  }
+}
+
+/** Waits between reconnect tries (4.7): 1, 2, 4, 8 s, then every 10 s. */
+const BACKOFF_MS = [1000, 2000, 4000, 8000];
+const RETRY_MS = 10_000;
+/** A ping this often keeps the socket and the room awake, and finds a dead one. */
+const PING_MS = 25_000;
+
+/** The room server's socket (ONLINE.md 11.2): hello, reconnect, version check, dispatch. */
+export class WsSession implements Session {
+  readonly room: RoomState;
+  readonly events = new Emitter<SessionEvents>();
+  /** Brings the hello up to date just before it is sent (the side you are on now, after an M). */
+  beforeHello: ((hello: Hello) => void) | null = null;
+  private ws: WebSocket | null = null;
+  private closed = false;
+  private tries = 0;
+  private retryTimer = 0;
+  private pingTimer = 0;
+
+  constructor(code: string, private readonly hello: Hello, private readonly server: string | null = roomServer()) {
+    this.room = new RoomState(code);
+    void this.open();
+  }
+
+  send(msg: ClientMsg): void {
+    const ws = this.ws;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify(msg));
+  }
+
+  close(): void {
+    if (this.closed) return;
+    this.closed = true;
+    this.stop();
+    this.setState('closed');
+  }
+
+  private stop(): void {
+    clearTimeout(this.retryTimer);
+    clearInterval(this.pingTimer);
+    const ws = this.ws;
+    this.ws = null;
+    if (ws && ws.readyState <= WebSocket.OPEN) ws.close(1000);
+  }
+
+  private async open(): Promise<void> {
+    if (this.closed) return;
+    const url = this.server ? socketUrl(this.room.code, this.server) : null;
+    if (!this.server || !url) return this.retry();
+    // The server speaks one version (O48): a stale page is told to reload.
+    try {
+      const res = await fetch(`${this.server}/api/version`);
+      if (res.status === 429 && !res.headers.get('content-type')?.includes('json')) return this.end('quota');
+      if (!res.ok) return this.retry();
+      const v = (await res.json()) as VersionReply;
+      if (v.protocol !== PROTOCOL) return this.end('version');
+    } catch {
+      return this.retry();
+    }
+    if (this.closed) return;
+    const ws = new WebSocket(url);
+    this.ws = ws;
+    ws.onopen = () => {
+      if (this.ws !== ws) return;
+      this.tries = 0;
+      this.beforeHello?.(this.hello);
+      ws.send(JSON.stringify({ t: 'hello', v: PROTOCOL, ...this.hello }));
+      this.setState('open');
+      clearInterval(this.pingTimer);
+      this.pingTimer = window.setInterval(() => this.send({ t: 'ping' }), PING_MS);
+    };
+    ws.onmessage = (e) => {
+      if (this.ws !== ws || typeof e.data !== 'string') return;
+      let msg: unknown;
+      try {
+        msg = JSON.parse(e.data);
+      } catch {
+        return;
+      }
+      if (isServerMsg(msg)) this.receive(msg);
+    };
+    ws.onclose = (e) => {
+      if (this.ws !== ws) return;
+      this.ws = null;
+      clearInterval(this.pingTimer);
+      // 4000 follows a bye; 4001: this identity connected again elsewhere (another tab), which keeps the seat (O97).
+      if (e.code === 4000 || e.code === 4001) {
+        this.closed = true;
+        this.setState('closed');
+        return;
+      }
+      if (!this.closed) this.retry();
+    };
+  }
+
+  /** Try again after the next wait; meanwhile the room shows Reconnecting… */
+  private retry(): void {
+    if (this.closed) return;
+    this.setState(this.room.me ? 'reconnecting' : 'connecting');
+    const wait = this.tries < BACKOFF_MS.length ? BACKOFF_MS[this.tries] : RETRY_MS;
+    this.tries++;
+    clearTimeout(this.retryTimer);
+    this.retryTimer = window.setTimeout(() => void this.open(), wait);
+  }
+
+  private receive(msg: ServerMsg): void {
+    this.room.apply(msg);
+    this.events.emit('message', msg);
+    // Every goodbye ends the session: kicked, banned, closed, full, a wrong password, too big, too fast, over quota.
+    if (msg.t === 'bye') this.end(msg.reason);
+  }
+
+  /** The server (or the version check) said goodbye: no reconnecting. */
+  private end(reason: ByeReason): void {
+    if (this.closed) return;
+    this.closed = true;
+    this.stop();
+    this.events.emit('bye', reason);
+    this.setState('closed');
+  }
+
+  private setState(c: Connection): void {
+    if (this.room.connection === c) return;
     this.room.setConnection(c);
     this.events.emit('state', c);
   }

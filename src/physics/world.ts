@@ -368,6 +368,18 @@ export class Physics {
     pose.yaw = this.e.z;
   }
 
+  /**
+   * The cards and dice this browser's physics has in flight (ONLINE.md 8.5):
+   * the acting player's browser simulates a toss or a roll and streams the
+   * poses; nobody else's has bodies for them.
+   */
+  flying(): { cards: string[]; dice: string[] } {
+    return {
+      cards: this.sessions.flatMap((s) => s.bodies.map((b) => b.uid)),
+      dice: this.rolls.flatMap((r) => r.bodies.map((b) => b.uid)),
+    };
+  }
+
   /** True while a card is falling under physics. */
   falling(uid: string): boolean {
     return this.sessions.some((s) => s.bodies.some((b) => b.uid === uid));

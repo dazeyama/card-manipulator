@@ -60,7 +60,9 @@ import { loadDoc, toDoc, validateDoc } from './io/saveFile';
 import { downloadText, pickFile, slug } from './io/download';
 import type { TableDoc } from './state/types';
 // Rooms: Rules & UI.
-import { OnlineUi, showWelcomeNote, standInControl } from './ui/onlinePanel';
+import { OnlineUi, showWelcomeNote } from './ui/onlinePanel';
+// Rooms: Sync.
+import { RoomLayer } from './online/connect';
 import { parseHash } from './online/link';
 import { HiddenGate } from './online/hidden';
 
@@ -1025,13 +1027,19 @@ scryfall.onStatus((s) => {
   }
 });
 
+// --- Rooms: Sync ---
+// The room layer (ONLINE.md 11): the session, the store's hook to the outbox, the inbox,
+// the crown's judge, streams and presence. The Online panel drives it as its RoomControl.
+const roomLayer = new RoomLayer(app, { drag, dice, diceLayer, autosave });
+// --- end Rooms: Sync ---
+
 // --- Rooms: Rules & UI ---
 // The Online button, avatars and panel, and the room flows (ONLINE.md 12). The room
-// layer is reached through RoomControl: a FakeSession stand-in until the Sync fork's lands.
+// layer is reached through RoomControl (the Sync fork's RoomLayer).
 // The hidden gate (ONLINE.md 7.3): in a room, cards this browser may not see draw as backs and read as unknown.
 const hiddenGate = new HiddenGate(app);
 const onlineUi = new OnlineUi(app, topBar, {
-  control: standInControl(app),
+  control: roomLayer,
   hidden: hiddenGate,
   saveCopy: () => saveFile(),
   ownTable: async () => {

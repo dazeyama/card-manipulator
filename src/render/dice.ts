@@ -12,6 +12,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { ACCENT, type App } from '../app';
 import { D20_RADIUS, D20_VALUES, d20Geometry, d20Yaw, DIE_SIZE, dieSize, DIE_WHITE, dieTurn, faceOf, FACE_VALUES, isDark, type Die } from '../state/dice';
 import { outlineMaterial } from './standMesh';
+import { remoteHeld } from '../state/remoteHeld';
 
 /** Pip spots for each number, on a 3 x 3 grid from -1 to 1. */
 const PIPS: Record<number, [number, number][]> = {
@@ -172,6 +173,9 @@ export class DiceLayer {
   private readonly blue = outlineMaterial(ACCENT, 5);
   private readonly drawn = new Map<string, Drawn>();
   private selected = new Set<string>();
+  /** Another player's colour on dice they select or hold (ONLINE.md 5.4). */
+  private readonly tints = new Map<string, string>();
+  private readonly tinted = new Map<string, ReturnType<typeof outlineMaterial>>();
   /** Dice whose pose something else is setting (a drag or a roll). */
   readonly carried = new Set<string>();
 
@@ -217,7 +221,7 @@ export class DiceLayer {
         const body = new THREE.Mesh(d20 ? this.d20Geometry : this.geometry, this.materialFor(die));
         body.castShadow = true;
         body.receiveShadow = true;
-        const edges = new LineSegments2(d20 ? this.d20Edges : this.edgeGeometry, this.selected.has(die.uid) ? this.blue : this.black);
+        const edges = new LineSegments2(d20 ? this.d20Edges : this.edgeGeometry, this.outlineFor(die.uid));
         const group = new THREE.Group();
         group.add(body, edges);
         this.group.add(group);
@@ -277,7 +281,25 @@ export class DiceLayer {
 
   setSelected(uids: Set<string>): void {
     this.selected = new Set(uids);
-    for (const [uid, d] of this.drawn) d.edges.material = uids.has(uid) ? this.blue : this.black;
+    for (const [uid, d] of this.drawn) d.edges.material = this.outlineFor(uid);
+  }
+
+  /** Outline a die in another player's colour (`#rrggbb`), or not (null). Your own selection stays blue. */
+  setTint(uid: string, color: string | null): void {
+    if ((this.tints.get(uid) ?? null) === color) return;
+    if (color) this.tints.set(uid, color);
+    else this.tints.delete(uid);
+    const d = this.drawn.get(uid);
+    if (d) d.edges.material = this.outlineFor(uid);
+  }
+
+  private outlineFor(uid: string): ReturnType<typeof outlineMaterial> {
+    if (this.selected.has(uid)) return this.blue;
+    const tint = this.tints.get(uid);
+    if (!tint) return this.black;
+    let m = this.tinted.get(tint);
+    if (!m) this.tinted.set(tint, (m = outlineMaterial(new THREE.Color(tint), 5)));
+    return m;
   }
 
   /** The die under a screen point, nearest first, or null. */
@@ -290,6 +312,8 @@ export class DiceLayer {
     const inv = new THREE.Matrix4();
     const hit = new THREE.Vector3();
     for (const [uid, d] of this.drawn) {
+      // Another player's dice in hand or rolling are theirs until they land (ONLINE.md 8.4).
+      if (remoteHeld.has(uid)) continue;
       const size = d.look.startsWith('d20') ? dieSize('d20') : DIE_SIZE;
       box.setFromCenterAndSize(new THREE.Vector3(), new THREE.Vector3(size, size, size));
       d.group.updateMatrixWorld();

@@ -3,6 +3,7 @@
 // with 2,000 cards.
 
 import { slopesOf } from '../state/rest';
+import { remoteHeld } from '../state/remoteHeld';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
 import type { CameraRig } from './camera';
 import type { CardLayer } from './cards';
@@ -19,7 +20,8 @@ export function pickCard(rig: CameraRig, layer: CardLayer, sx: number, sy: numbe
   let best: string | null = null;
   let bestT = Infinity;
   layer.forEach((uid, p) => {
-    if (skip?.has(uid)) return;
+    // Another player's held cards are theirs until they land (ONLINE.md 8.4).
+    if (skip?.has(uid) || remoteHeld.has(uid)) return;
     const c = Math.cos(-p.yaw), s = Math.sin(-p.yaw);
     // Met at its resting height, not where the hover pop draws it: a card is hovered only
     // over the part of it that shows before it pops (decision 175).
@@ -65,6 +67,7 @@ export function marqueeCards(rig: CameraRig, layer: CardLayer, rect: ScreenRect)
   const pr = rig.camera.projectionMatrix.elements;
   const { width, height } = rig.viewport;
   layer.forEach((uid, p) => {
+    if (remoteHeld.has(uid)) return;
     // Inline projection: view space, then clip space.
     const vx = e[0] * p.x + e[4] * p.y + e[8] * p.z + e[12];
     const vy = e[1] * p.x + e[5] * p.y + e[9] * p.z + e[13];

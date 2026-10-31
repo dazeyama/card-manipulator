@@ -7,6 +7,7 @@
 import { detectPiles } from './piles';
 import type { Store } from './store';
 import type { Pile } from './types';
+import { remoteHeld } from './remoteHeld';
 
 export function redetect(store: Store, moved: Set<string> = new Set()): void {
   const named = new Set(store.named.keys());
@@ -19,7 +20,13 @@ export function redetect(store: Store, moved: Set<string> = new Set()): void {
   // Cards on each card stand, and on the table, form piles apart (decision 221):
   // a stand's cards are laid out in its slope's own frame.
   const spaces = new Map<string, { uid: string; x: number; y: number; z: number; yaw: number }[]>();
+  // Cards in another player's hand are off the table until they land (ONLINE.md 8.4); they keep their named pile.
+  const away = new Map<string, string | null>();
   for (const c of store.cards.values()) {
+    if (remoteHeld.has(c.uid)) {
+      away.set(c.uid, c.pileId);
+      continue;
+    }
     if (spreadMember.has(c.uid)) continue;
     const key = c.stand ?? '';
     let cards = spaces.get(key);
@@ -50,6 +57,10 @@ export function redetect(store: Store, moved: Set<string> = new Set()): void {
   for (const [uid, id] of spreadMember) {
     const c = store.cards.get(uid);
     if (c) c.pileId = id;
+  }
+  for (const [uid, id] of away) {
+    const c = store.cards.get(uid);
+    if (c && id && named.has(id)) c.pileId = id;
   }
 }
 

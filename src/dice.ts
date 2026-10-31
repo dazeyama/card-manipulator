@@ -12,6 +12,8 @@ import { shortAngle } from './physics/motion';
 import type { DiceLayer } from './render/dice';
 import { d20Yaw, DARK_COLOURS, DIE_SIZE, dieSize, dieTurn, gatherOffsets, maxValue, valueRange, valueUp, yawOf, type Die, type DieKind } from './state/dice';
 import { newUid } from './state/store';
+import { remoteHeld } from './state/remoteHeld';
+import { outboxOf } from './online/outbox';
 import { snapYaw } from './state/piles';
 import { isStand, standHeightAt } from './state/stand';
 import { CARD_H, CARD_T, CARD_W } from './state/types';
@@ -51,6 +53,8 @@ export class Dice {
   private readonly upright = new Map<string, { at: THREE.Vector3; q: THREE.Quaternion; start: number }>();
   /** Dice let go with cards, hanging where they were let go until those cards come to rest (decision 274). */
   private landing: { dice: { uid: string; x: number; y: number; die: Die }[]; cards: string[]; since: number }[] = [];
+  /** Dice whose hold a room's crown refused (someone else grabbed them first): dropped from the hand. */
+  private readonly lost = new Set<string>();
   /**
    * Dragging selected dice brings the selected cards along (decision 274): main.ts
    * starts their drag from the press, gathered `aside` from the cursor, or
@@ -64,6 +68,26 @@ export class Dice {
   /** True while dice are being carried (for the cursor, decision 260). */
   get dragging(): boolean {
     return !!this.carrying;
+  }
+
+  /** The dice in the hand now, and any let go with cards still waiting in the air (for a room's stream, ONLINE.md 8.3). */
+  get heldUids(): string[] {
+    return [...(this.carrying ?? []).map((c) => c.uid), ...this.landing.flatMap((l) => l.dice.map((d) => d.uid))];
+  }
+
+  /** A room's crown refused the hold (8.4): someone else was first. These dice go back where they lie. */
+  private dropBack(uids: string[]): void {
+    const gone = new Set(uids.filter((u) => this.busy.has(u)));
+    if (!gone.size) return;
+    if (this.carrying) this.carrying = this.carrying.filter((c) => !gone.has(c.uid));
+    this.landing = this.landing.map((l) => ({ ...l, dice: l.dice.filter((d) => !gone.has(d.uid)) })).filter((l) => l.dice.length);
+    for (const u of gone) {
+      this.lost.add(u);
+      this.busy.delete(u);
+      this.layer.carried.delete(u);
+      const d = this.app.store.dice.get(u);
+      if (d) this.layer.place(u, d);
+    }
   }
 
   constructor(private readonly app: App, private readonly layer: DiceLayer) {
@@ -333,6 +357,7 @@ export class Dice {
     const minY = Math.min(rect.y0, rect.y1), maxY = Math.max(rect.y0, rect.y1);
     const out: string[] = [];
     for (const d of this.app.store.dice.values()) {
+      if (remoteHeld.has(d.uid)) continue;
       const s = this.app.rig.worldToScreen(d.x, d.y, d.z);
       if (s.x >= minX && s.x <= maxX && s.y >= minY && s.y <= maxY) out.push(d.uid);
     }
@@ -374,7 +399,13 @@ export class Dice {
       this.face.set(h.uid, Math.abs(Math.abs(d) - Math.PI) < 1e-3 ? Math.PI : d);
       this.busy.add(h.uid);
       this.layer.carried.add(h.uid);
+      this.lost.delete(h.uid);
     }
+    // In a room, picking them up asks the crown for a hold (ONLINE.md 8.4); in hand at once.
+    const uids = held.map((h) => h.uid);
+    outboxOf(this.app)?.grab([], uids, (reason) => {
+      if (reason === 'held') this.dropBack(uids);
+    });
     return held;
   }
 
@@ -472,6 +503,13 @@ export class Dice {
     const skip = () => new Set(held?.map((h) => h.uid) ?? []);
     const finish = (keep: boolean, x: number, y: number) => {
       if (!held) return;
+      // Dice another player was first to grab went back already (8.4).
+      held = held.filter((h) => !this.lost.has(h.uid));
+      if (!held.length) {
+        held = null;
+        this.carrying = null;
+        return;
+      }
       const p = keep ? at(x, y) : null;
       // Let go with cards: they hang where they were let go until the cards come to rest,
       // then land on them, or on what else is there (decision 274).

@@ -19,6 +19,8 @@ import { CARD_H, CARD_T, CARD_W } from '../state/types';
 import { alignTo, isStand, raySlope, slopePose, standTopUnder } from '../state/stand';
 import type { Mat } from '../state/types';
 import { inSpace } from '../commands';
+import { outboxOf } from '../online/outbox';
+import { remoteHeld } from '../state/remoteHeld';
 
 export type DragMode = 'single' | 'gather' | 'formation' | 'rigid';
 
@@ -236,6 +238,8 @@ export class DragController {
   begin(uids: string[], mode: DragMode, sx: number, sy: number, pressed?: string, aside = { x: 0, y: 0 }): CustomGesture | null {
     const store = this.app.store;
     const grab = this.app.rig.screenToPlane(sx, sy, 0);
+    // In a room, what another player holds is theirs until it lands (ONLINE.md 8.4).
+    if (remoteHeld.size) uids = uids.filter((u) => !remoteHeld.has(u));
     if (!grab || !uids.length) return null;
     // Bottom to top, so the stacking order survives the trip.
     const cards = uids.map((u) => store.cards.get(u)!).filter(Boolean).sort((a, b) => a.z - b.z);
@@ -301,6 +305,8 @@ export class DragController {
     // What rested on the lifted cards falls now (decision 100).
     this.app.rest?.lifted(this.held.map((h) => h.uid));
     this.active = true;
+    // In a room, a hold from the crown (8.4): in the hand at once; if someone else was first, back they go.
+    this.askHold(this.held.map((h) => h.uid));
     this.flicked = false;
     this.vel = { x: 0, y: 0 };
     this.screen = { x: sx, y: sy };
@@ -483,6 +489,7 @@ export class DragController {
     app.motion.held.add(uid);
     app.rest?.lifted([uid]);
     app.store.setSelection([...app.store.selection, uid]);
+    this.askHold([uid]);
     this.showLabel(this.screen.x, this.screen.y);
   }
 
@@ -902,8 +909,19 @@ export class DragController {
     this.held = [];
   }
 
+  /** Ask a room's crown for a hold on cards just picked up (ONLINE.md 8.4); refused, they drop back. */
+  private askHold(uids: string[]): void {
+    outboxOf(this.app)?.grab(uids, [], (reason) => {
+      if (reason !== 'held' || !this.active) return;
+      const lost = new Set(uids);
+      if (this.held.some((c) => lost.has(c.uid))) this.cancel();
+    });
+  }
+
   cancel(): void {
     const held = this.held;
+    // The hand emptied without landing: a room hears the hold is over (8.4).
+    if (held.length) outboxOf(this.app)?.release(held.map((c) => c.uid));
     this.finish();
     for (const c of held) {
       this.app.motion.held.delete(c.uid);
