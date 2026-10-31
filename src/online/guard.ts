@@ -61,6 +61,29 @@ export function mayTouchStand(m: Mat | undefined, quiet = false): boolean {
   return !why;
 }
 
+/**
+ * The cards a command may act on (6.3): in a room, those on a stand this
+ * player may not touch are left out, the crown's own included (the crown's UI
+ * hides what anyone's would, 7.1), with one toast when any were. Offline, all.
+ */
+export function touchable(uids: string[], quiet = false): string[] {
+  if (!app?.online) return uids;
+  const store = app.store;
+  const out: string[] = [];
+  const refused = new Map<string, string>();
+  for (const u of uids) {
+    const stand = store.cards.get(u)?.stand;
+    const why = stand ? standWhyNot(store.mats.get(stand)) : null;
+    if (why) refused.set(stand!, why);
+    else out.push(u);
+  }
+  if (refused.size && !quiet) {
+    const [why] = refused.values();
+    roomToast(refused.size === 1 ? `${why}: those cards were left out` : 'Cards on other players’ stands were left out', 'warn');
+  }
+  return out;
+}
+
 /** May I move these cards: Move rank, and the owner of any stand they lie on? */
 export function mayMoveCards(uids: Iterable<string>, quiet = false): boolean {
   if (!app?.online) return true;
@@ -87,17 +110,21 @@ export function maySpawn(records: PieceRecord[], count: number, quiet = false): 
   return true;
 }
 
-/** May I remove these cards (removing follows adding, O25), from stands I may touch? */
+/**
+ * May I remove these cards (removing follows adding, O25)? Judged on the ones
+ * actually removed: cards on stands I may not touch are left out (touchable).
+ */
 export function mayRemoveCards(uids: string[], quiet = false): boolean {
-  if (!app?.online || !uids.length) return true;
+  if (!app?.online) return true;
+  uids = touchable(uids, true);
+  if (!uids.length) return true;
   const store = app.store;
   // The real records, as the judge sees them: rank is about what the cards are, not what I may see.
   const records = uids.map((u) => {
     const c = store.cards.get(u);
     return c ? store.records.get(c.scryfallId) : undefined;
   });
-  if (!allowedNow(removeAction(records), quiet)) return false;
-  return mayMoveCards(uids, quiet) || false;
+  return allowedNow(removeAction(records), quiet);
 }
 
 /** The action a key's command is (6.2), for the keys that change the table; null for looking and personal keys. */
@@ -106,6 +133,8 @@ export function keyAction(name: string): Action | null {
   if (name === 'ctrl+z') return 'move';
   if (name === 'd') return 'diceAdd';
   if (name === 'n') return 'named';
+  // Shift + T is your own Tidy mode, a personal setting (O44).
+  if (name === 'shift+t') return null;
   // Stack, spread, tidy, curve and colours, ranks, fan, turn or roll, flip, place, draw or set a die.
   if (/^(shift\+)?[sxtcehrfp0-9]$/.test(name)) return 'move';
   // Looking (Esc, Ctrl + A, Ctrl + F, /, V, Home, Z, ?) and personal keys (M, Shift + T) need nothing.
@@ -189,12 +218,13 @@ export class Guard {
       return mayMoveCards(moving) ? cardDrag(uid, x, y, mods) : null;
     };
     const middle = h.middleClickCard;
+    // Flips and turns go through Commands, which leaves out cards on stands you may not touch.
     if (middle) h.middleClickCard = (uid) => {
-      if (mayMoveCards(store.selection.has(uid) ? [...store.selection] : [uid])) middle(uid);
+      if (allowedNow('move')) middle(uid);
     };
     const double = h.doubleClickCard;
     if (double) h.doubleClickCard = (uid, before) => {
-      if (mayMoveCards([uid, ...before])) double(uid, before);
+      if (allowedNow('move')) double(uid, before);
     };
     const wheel = h.wheelObject;
     if (wheel) h.wheelObject = (x, y, up, shift) => {

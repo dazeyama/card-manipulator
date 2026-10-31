@@ -15,6 +15,7 @@ import { colourLayout, type ColourCard } from './state/colourLayout';
 import { alignTo, fitOnStand, fromSlope, inFrontOf, isStand, SLOPE_LEN, slopePose, standW } from './state/stand';
 import type { Mat } from './state/types';
 import { hiddenRow, splitHidden } from './online/hidden';
+import { mayTouchStand, touchable } from './online/guard';
 
 export interface Landing {
   uid: string;
@@ -263,6 +264,8 @@ export class Commands {
 
   /** S: gather the selection into one stack at its centroid, loose unless Tidy mode is on. */
   stack(cards: string[] = this.sel): void {
+    // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
+    cards = touchable(cards);
     const uids = byHeight(this.app, cards);
     if (uids.length < 1) return;
     leaveSpreads(this.app, uids);
@@ -278,6 +281,8 @@ export class Commands {
    * into a row per colour (decision 107).
    */
   curve(cards: string[], byColour: boolean, centre?: { x: number; y: number }): void {
+    // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
+    cards = touchable(cards);
     const store = this.app.store;
     if (!cards.length) return;
     // Cards hidden from this browser in a room aren't sorted: they go after, face down (ONLINE.md 7.3).
@@ -343,6 +348,8 @@ export class Commands {
    * (decision 198), cascading like a curve, centred where they are.
    */
   rankSort(cards: string[], mode: RankMode): void {
+    // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
+    cards = touchable(cards);
     const store = this.app.store;
     cards = [...new Set(cards)].filter((u) => store.cards.has(u));
     if (!cards.length) return;
@@ -372,6 +379,8 @@ export class Commands {
    * C on it stacks it back up.
    */
   colourSort(cards: string[]): void {
+    // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
+    cards = touchable(cards);
     const store = this.app.store;
     cards = [...new Set(cards)].filter((u) => store.cards.has(u));
     if (!cards.length) return;
@@ -398,6 +407,8 @@ export class Commands {
 
   /** E: the rank view by EDHREC, or stack the cards back up if they are already laid out in one (decision 198). */
   toggleRank(cards: string[]): void {
+    // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
+    cards = touchable(cards);
     const sorted = this.laidOutGroup(this.rankOf, [...new Set(cards)]);
     if (sorted) {
       for (const u of sorted) this.rankOf.delete(u);
@@ -412,6 +423,8 @@ export class Commands {
    * place, stack it back up instead, as S would.
    */
   toggleFan(cards: string[]): void {
+    // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
+    cards = touchable(cards);
     cards = [...new Set(cards)];
     const fanned = this.laidOutGroup(this.fanOf, cards);
     if (fanned) {
@@ -427,6 +440,8 @@ export class Commands {
    * or with `small` (H H, decision 272) a hand of the usual size in the slope's middle.
    */
   fan(cards: string[], small = false): void {
+    // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
+    cards = touchable(cards);
     cards = [...new Set(cards)].filter((u) => this.app.store.cards.has(u));
     if (cards.length < 2) return;
     const uids = byHeight(this.app, cards);
@@ -448,6 +463,9 @@ export class Commands {
    * the hand stacks it back up.
    */
   dealHand(source: string[], count: number, at: { x: number; y: number }, stand: Mat | null = null): void {
+    // In a room, neither from nor onto a stand this player may not touch (ONLINE.md 6.3).
+    source = touchable(source);
+    if (stand && !mayTouchStand(stand)) return;
     const store = this.app.store;
     const top = byHeight(this.app, source.filter((u) => store.cards.has(u))).slice(-count);
     if (!top.length) return;
@@ -473,6 +491,9 @@ export class Commands {
    * clicked there, or in front of it if they don't fit.
    */
   dealPiles(source: string[], count: number, at: { x: number; y: number }, stand: Mat | null = null): void {
+    // In a room, neither from nor onto a stand this player may not touch (ONLINE.md 6.3).
+    source = touchable(source);
+    if (stand && !mayTouchStand(stand)) return;
     const store = this.app.store;
     const top = byHeight(this.app, source.filter((u) => store.cards.has(u))).slice(-count);
     if (!top.length) return;
@@ -498,6 +519,8 @@ export class Commands {
    * last, on the right and on top, their faces as they were.
    */
   joinSlopeHand(m: Mat, dealt: string[]): void {
+    // Never re-lays a hand on a stand this player may not touch (ONLINE.md 6.3).
+    if (!mayTouchStand(m, true)) return;
     const set = new Set(dealt);
     const uids = [...this.onStand(m).filter((u) => !set.has(u)), ...dealt.filter((u) => this.app.store.cards.has(u))];
     if (!uids.length) return;
@@ -508,6 +531,8 @@ export class Commands {
   }
 
   toggleCurve(cards: string[], byColour: boolean): void {
+    // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
+    cards = touchable(cards);
     cards = [...new Set(cards)];
     const curved = byColour ? null : this.curvedGroup(cards);
     if (curved) {
@@ -518,6 +543,8 @@ export class Commands {
 
   /** S twice quickly (decision 106): stack the cards in a random order, a shuffle. */
   shuffle(cards: string[] = this.sel): void {
+    // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
+    cards = touchable(cards);
     if (cards.length < 2) return;
     const uids = shuffled(cards);
     leaveSpreads(this.app, uids);
@@ -530,6 +557,8 @@ export class Commands {
 
   /** X: spread the selection in a grid at its centroid. A selection that is exactly one stack spreads beside it instead. */
   spread(cards: string[] = this.sel): void {
+    // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
+    cards = touchable(cards);
     const uids = cards;
     if (!uids.length) return;
     const pile = this.app.store.pileOf(uids[0]);
@@ -551,6 +580,9 @@ export class Commands {
    * so a double-click or X on it stacks it back there.
    */
   spreadTo(cards: string[], layout: (count: number) => Placed[], reverse = false, stand: string | null = null): void {
+    // In a room, neither from nor onto a stand this player may not touch (ONLINE.md 6.3).
+    cards = touchable(cards);
+    if (stand && !mayTouchStand(this.app.store.mats.get(stand))) return;
     const store = this.app.store;
     if (!cards.length) return;
     const pile = store.pileOf(cards[0]);
@@ -580,6 +612,9 @@ export class Commands {
    * whatever is there, loose or (in Tidy mode) squared, keeping their order.
    */
   stackAt(cards: string[], at: { x: number; y: number }, stand: Mat | null = null, faceDown = false): void {
+    // In a room, neither from nor onto a stand this player may not touch (ONLINE.md 6.3).
+    cards = touchable(cards);
+    if (stand && !mayTouchStand(stand)) return;
     if (!cards.length) return;
     const ordered = byHeight(this.app, cards);
     leaveSpreads(this.app, ordered);
@@ -591,6 +626,8 @@ export class Commands {
 
   /** T: square up each pile the selection touches, without merging piles. Loose cards snap to a quarter turn. */
   tidy(cards: string[] = this.sel): void {
+    // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
+    cards = touchable(cards);
     const store = this.app.store;
     const landings: Landing[] = [];
     const done = new Set<string>();
@@ -616,6 +653,8 @@ export class Commands {
    * up a card at an odd angle; `upright` (R twice quickly) stands them upright (decision 102).
    */
   rotate(uids: string[] = this.sel, upright = false): void {
+    // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
+    uids = touchable(uids);
     if (!uids.length) return;
     const landings = uids.map((u) => {
       const c = this.app.store.cards.get(u)!;
@@ -629,6 +668,8 @@ export class Commands {
    * about the long axis; a selection flips in a quick cascade (spec 10.5, 15.5).
    */
   flip(uids: string[] = this.sel, shortest = false): void {
+    // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
+    uids = touchable(uids);
     const store = this.app.store;
     const cards = uids.map((u) => store.cards.get(u)!).filter(Boolean).sort((a, b) => b.z - a.z);
     if (!cards.length) return;
@@ -661,6 +702,8 @@ export class Commands {
 
   /** F twice quickly (decision 105): every card faces up; only the face-down ones turn. */
   faceUp(uids: string[] = this.sel): void {
+    // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
+    uids = touchable(uids);
     this.flip(uids.filter((u) => this.app.store.cards.get(u)?.faceUp === false), true);
   }
 
@@ -688,6 +731,8 @@ export class Commands {
 
   /** Double-click: spread a pile beside its spot, or restack the spread a card belongs to (spec 10.6). */
   toggleSpread(uid: string): void {
+    // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
+    if (!touchable([uid]).length) return;
     const store = this.app.store;
     const card = store.cards.get(uid);
     if (!card) return;

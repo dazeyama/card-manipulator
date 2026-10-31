@@ -3,8 +3,13 @@
 
 import type { App } from '../app';
 import { spawnCards } from '../spawn';
+import { touchable } from '../online/guard';
+import { HIDDEN } from '../../shared/table';
 import type { Card, Finish } from '../state/types';
 import { h } from './dom';
+
+/** The one key every hidden removed card shares: no identity, no finish (ONLINE.md 7.3). */
+const HIDDEN_KEY = 'hidden|nonfoil';
 
 interface Entry {
   scryfallId: string;
@@ -38,18 +43,20 @@ export class RemovedTray {
   /** Remove cards from the table into the tray. */
   remove(uids: Iterable<string>): number {
     const store = this.app.store;
-    const list = [...uids];
+    // In a room, cards on a stand this player may not touch stay (ONLINE.md 6.3).
+    const list = touchable([...uids]);
     const hidden = new Set(list.filter((u) => {
       const c = store.cards.get(u);
       return c && !store.canSee(c);
     }));
     const removed: Card[] = store.removeCards(list);
     for (const c of removed) {
+      // A hidden card is kept without its identity, on every browser, the crown's too (7.3): one row, never spawned back.
       const secret = hidden.has(c.uid);
-      const key = `${secret ? 'hidden:' : ''}${c.scryfallId}|${c.finish}`;
+      const key = secret ? HIDDEN_KEY : `${c.scryfallId}|${c.finish}`;
       const e = this.entries.get(key);
       if (e) e.count++;
-      else this.entries.set(key, { scryfallId: c.scryfallId, finish: c.finish, faceUp: c.faceUp, count: 1, ...(secret ? { hidden: true } : {}) });
+      else this.entries.set(key, secret ? { scryfallId: HIDDEN, finish: 'nonfoil', faceUp: false, count: 1, hidden: true } : { scryfallId: c.scryfallId, finish: c.finish, faceUp: c.faceUp, count: 1 });
     }
     this.render();
     return removed.length;
@@ -59,7 +66,7 @@ export class RemovedTray {
   take(cards: { scryfallId: string; finish: Finish }[]): void {
     for (const c of cards) {
       const plain = `${c.scryfallId}|${c.finish}`;
-      const key = this.entries.has(plain) ? plain : `hidden:${plain}`;
+      const key = this.entries.has(plain) ? plain : HIDDEN_KEY;
       const e = this.entries.get(key);
       if (!e) continue;
       if (--e.count <= 0) this.entries.delete(key);
@@ -68,12 +75,17 @@ export class RemovedTray {
   }
 
   private spawnBack(keys: string[]): void {
-    const items = keys
-      .map((k) => this.entries.get(k)!)
-      .filter((e) => e && this.app.store.records.has(e.scryfallId))
-      .map((e) => ({ record: this.app.store.records.get(e.scryfallId)!, finish: e.finish, count: e.count }));
+    // Hidden cards can't come back (that would show them); the rest only if their record is here.
+    const restore = keys.filter((k) => {
+      const e = this.entries.get(k);
+      return e && !e.hidden && this.app.store.records.has(e.scryfallId);
+    });
+    const items = restore.map((k) => {
+      const e = this.entries.get(k)!;
+      return { record: this.app.store.records.get(e.scryfallId)!, finish: e.finish, count: e.count };
+    });
     if (!items.length) return;
-    for (const k of keys) this.entries.delete(k);
+    for (const k of restore) this.entries.delete(k);
     const s = this.app.store.settings;
     spawnCards(this.app, items, { arrival: s.arrival, faceUp: s.spawnFaceUp, where: s.spawnWhere });
     this.render();
@@ -91,7 +103,8 @@ export class RemovedTray {
       .sort((a, b) => a.name.localeCompare(b.name));
     this.list.replaceChildren(
       ...rows.map(({ k, e, name }) => {
-        const back = h('button', { class: 'btn small ghost', title: 'Spawn back' }, '↩');
+        const back = h('button', { class: 'btn small ghost', title: e.hidden ? 'A hidden card can’t be spawned back' : 'Spawn back' }, '↩');
+        back.disabled = !!e.hidden;
         back.addEventListener('click', () => this.spawnBack([k]));
         return h('div', { class: 'tray-row' }, h('span', {}, `${e.count} ${name}${e.finish !== 'nonfoil' && !e.hidden ? ' ✦' : ''}`), back);
       }),

@@ -39,6 +39,17 @@ export class InspectPanel {
       if (this.pinned && uids.includes(this.pinned)) this.pinned = null;
       this.refresh();
     });
+    // In a room the shown card may become hidden as it moves, flips or a stand changes hands (ONLINE.md 7.3):
+    // look again, so the crown (who never forgets an identity) shows "Hidden card" like everyone else.
+    const recheck = () => {
+      const shown = this.shown;
+      this.shown = null;
+      if (shown) this.show(shown);
+    };
+    app.store.events.on('moved', (uids) => {
+      if (this.shown && uids.includes(this.shown)) recheck();
+    });
+    app.store.events.on('mats', recheck);
     this.refresh();
   }
 

@@ -416,14 +416,17 @@ export class OnlineUi {
     this.byeSeen = true;
     const online = this.online;
     const wasCrown = !!online?.room.isCrown;
-    if (!this.welcomed && this.route && (reason === 'password' || reason === 'full')) {
-      const route = this.route;
-      this.exit('leave', false);
+    // Leaving by who made the room, not who wears the crown: the maker's table is the room's, a joiner's own waits in autosave (O9).
+    const how = this.exitHow();
+    // A wrong password or a full room, on joining or on a reconnect (a newcomer took the eighth seat, or a pruned seat met the password).
+    if (reason === 'password' || reason === 'full') {
+      const route: RoomRoute = this.route ?? { kind: 'room', code: online?.room.code ?? '' };
+      this.exit(how, false);
       if (reason === 'password') void this.join({ kind: 'room', code: route.code }, 'Wrong password');
       else void this.fullPage(route, null);
       return;
     }
-    const back = () => this.exit(wasCrown ? 'offline' : 'leave');
+    const back = () => this.exit(how);
     switch (reason) {
       case 'closed': {
         const canSave = wasCrown || !!online?.room.downloads;
@@ -444,19 +447,31 @@ export class OnlineUi {
         showRoomState({ title: 'You were banned from this room.', lines: [], buttons: [{ label: 'Back to my table', primary: true, run: back }] });
         break;
       case 'version':
-        this.exit(wasCrown ? 'offline' : 'leave', false);
+        this.exit(how, false);
         this.showReload();
         break;
       case 'quota':
         this.showQuota(back);
         break;
       case 'rate':
-        showRoomState({ title: 'Too many tries', lines: ['Too many wrong passwords from here. Try again in ten minutes.'], buttons: [{ label: 'Back to my table', primary: true, run: back }] });
+        showRoomState({ title: 'Too many tries', lines: ['Too many joins or wrong passwords from this connection. Try again in a few minutes.'], buttons: [{ label: 'Back to my table', primary: true, run: back }] });
+        break;
+      case 'size':
+        showRoomState({ title: 'The room server closed the connection', lines: ['This browser sent more than a room allows at once.'], buttons: [{ label: 'Back to my table', primary: true, run: back }] });
         break;
       default:
-        showRoomState({ title: 'The room server closed the connection', lines: ['It sent more than a room allows at once.'], buttons: [{ label: 'Back to my table', primary: true, run: back }] });
+        showRoomState({ title: 'The room server closed the connection', lines: [], buttons: [{ label: 'Back to my table', primary: true, run: back }] });
         break;
     }
+  }
+
+  /**
+   * How leaving ends here: the maker keeps the table as it stands ('offline',
+   * O8); anyone else, crown or not, gets their own table back ('leave', O9).
+   * A maker back by a link (a reload) is still the maker (O6).
+   */
+  private exitHow(): 'leave' | 'offline' {
+    return this.role === 'maker' || this.online?.room.isMaker ? 'offline' : 'leave';
   }
 
   /** Leave the room layer and go back to this browser's table. */
@@ -492,18 +507,24 @@ export class OnlineUi {
     const store = this.app.store;
     const waiting = [...store.mats.values()].some((m) => isStand(m) && m.owner === me && [...store.cards.values()].some((c) => c.stand === m.uid));
     if (waiting && !(await confirmDialog('Leave the room? Your stand waits for you until the room closes.', 'Leave'))) return;
-    this.exit('leave');
+    // The maker keeps the table as it stands; anyone else gets their own back (O9).
+    this.exit(this.exitHow());
     roomToast('You left the room');
   }
 
-  /** Go offline (O8): the crown closes the room for everyone; its table stays as it is. */
+  /**
+   * Go offline (O8): the crown closes the room for everyone. The maker's table
+   * stays as it is; a crown who joined goes back to their own table (O9).
+   */
   async goOffline(): Promise<void> {
     const online = this.online;
     if (!online?.room.isCrown) return;
-    if (!(await confirmDialog('Close the room for everyone? Your table stays as it is.', 'Go offline'))) return;
+    const how = this.exitHow();
+    const ask = how === 'offline' ? 'Close the room for everyone? Your table stays as it is.' : 'Close the room for everyone? You go back to your own table: Save a copy first to keep this one.';
+    if (!(await confirmDialog(ask, 'Go offline'))) return;
     online.session.send({ t: 'close' });
-    this.exit('offline');
-    roomToast('The room is closed. Your table is offline, as it was.', 'ok');
+    this.exit(how);
+    roomToast(how === 'offline' ? 'The room is closed. Your table is offline, as it was.' : 'The room is closed. Your own table is back.', 'ok');
   }
 
   async copyLink(): Promise<void> {
@@ -542,7 +563,7 @@ export class OnlineUi {
       title: 'Rooms are resting',
       lines: ['The room server is over its free daily limit. Rooms are back after midnight UTC.'],
       buttons: [{ label: 'Back to my table', primary: true, run: back ?? (() => {
-        if (this.online) this.exit(this.online.room.isCrown ? 'offline' : 'leave');
+        if (this.online) this.exit(this.exitHow());
         else {
           hideRoomState();
           setHash('');
@@ -557,15 +578,15 @@ export class OnlineUi {
   private replacedElsewhere(): void {
     const online = this.online;
     if (!online || this.byeSeen || online.room.connection !== 'closed') return;
-    const wasCrown = online.room.isCrown;
+    const how = this.exitHow();
     const route: RoomRoute = this.route ?? { kind: 'room', code: online.room.code };
     showRoomState({
       title: 'This room is open in another tab',
       lines: ['Your seat moved to the newest tab you opened it in.'],
       buttons: [
-        { label: 'Back to my table', run: () => this.exit(wasCrown ? 'offline' : 'leave') },
+        { label: 'Back to my table', run: () => this.exit(how) },
         { label: 'Use it here', primary: true, run: () => {
-          this.exit(wasCrown ? 'offline' : 'leave');
+          this.exit(how);
           void this.join(route);
         } },
       ],
@@ -785,10 +806,12 @@ export class OnlinePanel {
       buttons.push(save);
     }
     if (room.isCrown) {
-      const off = h('button', { class: 'btn small danger', title: 'Close the room for everyone; your table stays as it is' }, 'Go offline');
+      const off = h('button', { class: 'btn small danger', title: room.isMaker ? 'Close the room for everyone; your table stays as it is' : 'Close the room for everyone; you go back to your own table' }, 'Go offline');
       off.addEventListener('click', () => void this.ui.goOffline());
       buttons.push(off);
-    } else {
+    }
+    // A crown who joined may also just leave: the crown passes on (4.5).
+    if (!room.isCrown || !room.isMaker) {
       const leave = h('button', { class: 'btn small danger', title: 'Leave the room and go back to your own table' }, 'Leave');
       leave.addEventListener('click', () => void this.ui.leave());
       buttons.push(leave);
