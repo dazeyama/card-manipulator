@@ -158,7 +158,12 @@ export class Authority {
     return this.checkOp(op, from, who, applied);
   }
 
-  private checkOp(op: Op, from: string, who: Rank | 'crown', applied: boolean): RefuseReason | null {
+  /**
+   * `freed`: stands the same batch removes or spills, whose cards it may take
+   * off with them (a spill laid out by the spiller, 6.3); the removal itself is
+   * judged as a removal.
+   */
+  private checkOp(op: Op, from: string, who: Rank | 'crown', applied: boolean, freed: Set<string> = new Set()): RefuseReason | null {
     const store = this.sync.app.store;
     const settings = this.sync.online.room.settings;
     const crown = who === 'crown';
@@ -175,15 +180,17 @@ export class Authority {
     });
     /** A stand is its owner's (6.3); the crown may touch any. */
     const notMine = (standUid: string | null | undefined) => {
-      if (crown || !standUid) return false;
+      if (crown || !standUid || freed.has(standUid)) return false;
       const m = store.mats.get(standUid);
       return !!m && isStand(m) && m.owner !== from;
     };
     const first = (...reasons: (RefuseReason | null)[]) => reasons.find((r) => r) ?? null;
     switch (op.t) {
       case 'batch': {
+        const gone = new Set(freed);
+        for (const o of op.ops) if (o.t === 'mat') for (const u of [...(o.remove ?? []), ...(o.spill ?? [])]) gone.add(u);
         for (const o of op.ops) {
-          const r = this.checkOp(o, from, who, applied);
+          const r = this.checkOp(o, from, who, applied, gone);
           if (r) return r;
         }
         return null;

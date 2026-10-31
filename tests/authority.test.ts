@@ -152,6 +152,14 @@ describe('stands (6.3)', () => {
     expect(JSON.stringify(confirm.op)).not.toContain('"spill"');
   });
 
+  it('takes a spill laid out by the spiller: the stand removed and its cards moved off, in one batch', () => {
+    const { propose, store } = room({ mo: 'move', ev: 'everything' });
+    const spill: Op = { t: 'batch', ops: [{ t: 'mat', remove: ['st'] }, { t: 'move', moves: [{ uid: 'onSam', stand: null, x: 0, y: 300, faceUp: false }] }] };
+    expect(propose('mo', spill)).toBe('rank');
+    expect(propose('ev', spill)).toBe('ok');
+    expect(store.cards.get('onSam')!.stand).toBeUndefined();
+  });
+
   it('lets a player claim an unowned stand at Move when they own no full stand', () => {
     const { propose, store } = room({ pat: 'move' });
     store.addMat(stand('free'));
