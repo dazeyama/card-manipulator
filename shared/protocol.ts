@@ -297,6 +297,14 @@ export interface LobbyRow {
   since: number;
 }
 
+/** One row of the admin page (12.8): every open room, listed or not. */
+export interface AdminRow extends LobbyRow {
+  visibility: Visibility;
+  locked: boolean;
+  reports: number;
+  delisted: boolean;
+}
+
 // ---- identity (5.1) ----
 
 /** Bytes as base64url, no padding. */
