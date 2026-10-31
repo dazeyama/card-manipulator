@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isQuotaError } from '../server/src/quota';
-import { MAX_BANS, MAX_SEATS, addBan, makeRoomForSeat, newMeta, type Seat } from '../server/src/meta';
+import { MAX_BANS, MAX_SEATS, addBan, makeRoomForSeat, newMeta, restoreLive, type Seat } from '../server/src/meta';
 
 describe('quota errors', () => {
   it('knows the free plan saying no for the day', () => {
@@ -54,5 +54,29 @@ describe('seat and ban caps', () => {
     for (let i = 0; i < MAX_BANS + 5; i++) addBan(m, `b${i}`);
     expect(m.bans.length).toBe(MAX_BANS);
     expect(m.bans[0]).toBe('b5');
+  });
+});
+
+describe('waking after refused writes (O108)', () => {
+  it('carries the highest seq the sockets saw, and restores newer seats and the crown', () => {
+    const m = newMeta('7KQ2MX', 'ann', 'T', 'cube', 0);
+    m.seats.push({ ...seat('ann', true), rank: 'everything' }, seat('bea', true));
+    m.crown = 'ann';
+    const cal = { ...seat('cal', true), colour: '#2a9d8f' };
+    const seen = restoreLive(m, [
+      { seq: 41, seat: { ...seat('bea', true), rank: 'cards' }, crown: true },
+      { seq: 44, seat: cal, crown: false },
+    ]);
+    expect(seen).toBe(44);
+    expect(m.crown).toBe('bea');
+    expect(m.seats.find((s) => s.id === 'bea')?.rank).toBe('cards');
+    expect(m.seats.find((s) => s.id === 'cal')?.colour).toBe('#2a9d8f');
+    expect(m.seats.map((s) => s.id)).toEqual(['ann', 'bea', 'cal']);
+  });
+
+  it('with nothing noted, changes nothing', () => {
+    const m = newMeta('7KQ2MX', 'ann', 'T', 'cube', 0);
+    expect(restoreLive(m, [])).toBe(0);
+    expect(m.seats).toEqual([]);
   });
 });

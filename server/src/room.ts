@@ -20,13 +20,13 @@ import { SlidingWindow } from '../../shared/rateLimit';
 import { affectedCards, carriesIdentities, redactOp, redactTable, viewOf, visibilityDiff, type TableView } from '../../shared/redact';
 import type { TableState } from '../../shared/table';
 import {
-  CHAT_RATE, CHAT_TEXT_MAX, CLOSE_BYE, CLOSE_REPLACED, HEARTBEAT_MS, MAX_CARDS, MAX_PLAYERS,
+  CHAT_RATE, CHAT_TEXT_MAX, CLOSE_BYE, CLOSE_REPLACED, CLOSE_RESYNC, HEARTBEAT_MS, MAX_CARDS, MAX_PLAYERS,
   NO_CROWN_WAIT_MS, OPLOG_FLUSH_MS, PASSWORD_MAX, PASSWORD_RATE, SNAPSHOT_EVERY_OPS, STREAMS_PER_SECOND, WRONG_PASSWORD_DELAY_MS,
 } from './limits';
 import type { LobbyBeat } from './lobby';
 import {
-  addBan, addChat, applySettings, cleanNickname, cleanRoomName, colourFree, electCrown, isRank, makeRoomForSeat, newMeta, passwordHash, pickColour, playersOf,
-  publicSettings, roomInfo, say, seatOf, type Meta, type Seat,
+  addBan, addChat, applySettings, cleanNickname, cleanRoomName, colourFree, electCrown, isRank, makeRoomForSeat, newMeta, passwordHash, pickColour, playersOf, restoreLive,
+  publicSettings, roomInfo, say, seatOf, type LiveNote, type Meta, type Seat,
 } from './meta';
 import { RoomStorage } from './storage';
 import { StoredWindow } from './storedWindow';
@@ -41,6 +41,8 @@ interface Attachment {
   /** The player id, once its hello was accepted. */
   id: string | null;
   ip: string;
+  /** While storage writes are refused: what this socket's player and the room stood at (O108). */
+  live?: LiveNote;
 }
 
 /** A proposal on its way to the crown, kept until the crown confirms or refuses it (so a hand-over re-sends it). */
@@ -105,15 +107,20 @@ export class Room extends DurableObject<Env> {
   private readonly streamRate = new SlidingWindow(STREAMS_PER_SECOND, 1000);
   /** Wrong passwords per ip (10.4); over the limit, `bye rate` until the window empties. Stored, so hibernation does not reset it (O106). */
   private readonly passwordRate: StoredWindow;
-  /** Set once a storage write was refused (O106): keeps the object in memory, so seq and the meta never roll back. */
-  private awake: ReturnType<typeof setInterval> | null = null;
+  /**
+   * Woken with storage behind what the sockets saw (O108): the crown's next table
+   * is pushed to everyone, a new epoch, since the mirror missed the ops in between.
+   */
+  private newEpoch = false;
+  /** Players whose socket the server closed to resync them (O107): no "left" and "is back" lines. */
+  private readonly resyncing = new Set<string>();
   private saveQueued = false;
   private beatQueued = false;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     this.store = new RoomStorage(ctx.storage);
-    this.store.onRefused = () => this.stayAwake();
+    this.store.onRefused = () => this.noteLive();
     this.passwordRate = new StoredWindow(ctx.storage.sql, 'rate_password', PASSWORD_RATE.limit, PASSWORD_RATE.windowMs);
     // Pings are answered without waking the object (the client sends exactly this text).
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('{"t":"ping"}', '{"t":"pong"}'));
@@ -123,6 +130,15 @@ export class Room extends DurableObject<Env> {
       if (m) {
         this.mirror = m.table;
         this.seq = m.seq;
+      }
+      // Storage refused before this wake: the sockets remember more than it does (O108).
+      const notes = this.ctx.getWebSockets().map((ws) => (ws.deserializeAttachment() as Attachment | null)?.live).filter((n): n is LiveNote => !!n);
+      if (notes.length) {
+        const seen = restoreLive(this.meta, notes);
+        if (seen > this.seq) {
+          this.seq = seen;
+          this.newEpoch = true;
+        }
       }
       this.wake(m?.replayed ?? 0);
     }
@@ -171,6 +187,11 @@ export class Room extends DurableObject<Env> {
   }
 
   async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
+    await this.handle(ws, raw);
+    if (this.store.refused) this.noteLive();
+  }
+
+  private async handle(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
     if (typeof raw !== 'string') return this.bye(ws, 'size');
     let msg: unknown;
     try {
@@ -239,10 +260,12 @@ export class Room extends DurableObject<Env> {
       // Already closed.
     }
     await this.left(ws);
+    if (this.store.refused) this.noteLive();
   }
 
   async webSocketError(ws: WebSocket): Promise<void> {
     await this.left(ws);
+    if (this.store.refused) this.noteLive();
   }
 
   /**
@@ -347,7 +370,7 @@ export class Room extends DurableObject<Env> {
     }
     this.broadcastPlayers();
     if (!existing) this.say(!isCrown ? say.joined(seat) : id === meta.maker ? say.opened(seat) : say.joinedCrown(seat));
-    else if (!wasHere) this.say(say.back(seat));
+    else if (!wasHere && !this.resyncing.delete(id)) this.say(say.back(seat));
     if (reclaimedFrom) this.say(say.reclaimed(seat));
     this.queueHeartbeat();
   }
@@ -381,7 +404,7 @@ export class Room extends DurableObject<Env> {
       return;
     }
     const crown = meta.crown ? this.socketOf(meta.crown) : undefined;
-    if (crown && replayed > 0) this.send(crown, { t: 'needSnapshot' });
+    if (crown && (replayed > 0 || this.newEpoch)) this.send(crown, { t: 'needSnapshot' });
   }
 
   /**
@@ -389,14 +412,13 @@ export class Room extends DurableObject<Env> {
    * mirror, unredacted, then every proposal still waiting for a judge. With no
    * mirror yet (a room just gone online), ask for the crown's table instead.
    */
-  private giveCrown(ws: WebSocket, withPending = true): void {
+  private giveCrown(ws: WebSocket): void {
     if (!this.mirror) this.send(ws, { t: 'needSnapshot' });
     else {
       const parts = this.partsFor(null);
       this.send(ws, { t: 'youAreCrown', parts: parts.length });
       for (const p of parts) this.send(ws, p);
     }
-    if (!withPending) return;
     for (const p of this.pending.values()) {
       if (p.timer) clearTimeout(p.timer);
       p.timer = null;
@@ -437,7 +459,8 @@ export class Room extends DurableObject<Env> {
 
   // ---- leaving ----
 
-  private async left(ws: WebSocket): Promise<void> {
+  /** A socket is gone. `resync`: the server closed it to resync its player (O107), who will be back in a moment. */
+  private async left(ws: WebSocket, resync = false): Promise<void> {
     const a = ws.deserializeAttachment() as Attachment | null;
     const id = a?.id;
     const meta = this.meta;
@@ -448,10 +471,15 @@ export class Room extends DurableObject<Env> {
     if (!seat?.connected) return;
     seat.connected = false;
     this.awaiting.delete(id);
-    // The last one out closes the room (O61).
-    if (!this.sockets(ws).length) return this.closeRoom('empty');
+    if (resync) this.resyncing.add(id);
+    // The last one out closes the room (O61); one being resynced comes back (the alarm closes it if not).
+    if (!this.sockets(ws).length) {
+      if (!resync) return this.closeRoom('empty');
+      this.markDirty();
+      return;
+    }
     this.markDirty();
-    this.say(say.left(seat));
+    if (!resync) this.say(say.left(seat));
     if (meta.crown === id) {
       const next = electCrown(meta.seats);
       meta.crown = null;
@@ -468,11 +496,11 @@ export class Room extends DurableObject<Env> {
     if (how === 'closed') for (const s of this.sockets()) this.bye(s.ws, 'closed');
     if (this.flushTimer) clearTimeout(this.flushTimer);
     this.flushTimer = null;
-    if (this.awake) clearInterval(this.awake);
-    this.awake = null;
     for (const p of this.pending.values()) if (p.timer) clearTimeout(p.timer);
     this.pending.clear();
     this.awaiting.clear();
+    this.resyncing.clear();
+    this.newEpoch = false;
     this.meta = null;
     this.mirror = null;
     this.seq = 0;
@@ -584,21 +612,28 @@ export class Room extends DurableObject<Env> {
   }
 
   /**
-   * The cap's backstop said no to an op the crown has already applied (O106):
-   * its proposer is refused, and the crown is handed the mirror's table again
-   * (youAreCrown, without the waiting proposals), so its own table drops the op
-   * too and stays the room's. Never silent, even for the crown's id-less ops.
+   * The cap's backstop said no to an op the crown has already applied (O106,
+   * O107): its proposer is refused, and the crown's socket is closed without a
+   * goodbye (CLOSE_RESYNC, which the session reconnects after). The crown passes
+   * and comes back through the ordinary hand-over, which gives the mirror and the
+   * waiting proposals to a browser with nothing in flight. Never silent.
    */
   private refuseCap(by: string, id: string | undefined): void {
-    if (id) {
+    const crownId = this.meta?.crown;
+    if (id && by !== crownId) {
       this.pending.delete(`${by}:${id}`);
       const ws = this.socketOf(by);
       if (ws) this.send(ws, { t: 'refused', id, reason: 'cap' });
     }
-    const crown = this.meta?.crown ? this.socketOf(this.meta.crown) : undefined;
+    const crown = crownId ? this.socketOf(crownId) : undefined;
     if (!crown) return;
-    this.send(crown, { t: 'chat', line: { at: Date.now(), text: `The table is full: ${MAX_CARDS.toLocaleString('en-US')} cards` } });
-    this.giveCrown(crown, false);
+    console.warn(`room ${this.meta?.code}: the crown's table passed the ${MAX_CARDS} card cap; resyncing it`);
+    try {
+      crown.close(CLOSE_RESYNC, 'resync');
+    } catch {
+      // Already closing.
+    }
+    void this.left(crown, true);
   }
 
   private refuse(msg: Extract<ClientMsg, { t: 'refuse' }>): void {
@@ -664,6 +699,11 @@ export class Room extends DurableObject<Env> {
       this.awaiting.delete(id);
       const ws = this.socketOf(id);
       if (ws) this.sendTable(ws, id);
+    }
+    // After a wake whose storage lagged (O108): everyone takes the crown's table, which the mirror missed part of.
+    if (this.newEpoch) {
+      this.newEpoch = false;
+      for (const s of this.sockets()) if (s.id !== this.meta?.crown) this.sendTable(s.ws, s.id);
     }
     if (first) this.queueHeartbeat();
   }
@@ -849,15 +889,22 @@ export class Room extends DurableObject<Env> {
   }
 
   /**
-   * A storage write was refused (the free plan's rows for the day): from now on
-   * this room lives in memory only. A pending interval keeps the object from
-   * hibernating, since waking would reload the older stored seq and meta and
-   * every client would drop the ops stamped after it (O106). Cleared on close.
+   * Storage writes are refused (the free plan's rows for the day), so what is
+   * stored falls behind. Each socket's attachment, which the runtime keeps through
+   * hibernation outside storage, notes the seq, its player's seat and the crown, so
+   * a wake carries seq forward instead of rolling every client back (O108). The
+   * room may hibernate as usual; nothing is pinned in memory.
    */
-  private stayAwake(): void {
-    if (this.awake) return;
-    console.warn(`room ${this.meta?.code ?? ''} stays awake: its storage is refused for today`);
-    this.awake = setInterval(() => {}, 10_000);
+  private noteLive(): void {
+    const meta = this.meta;
+    if (!meta) return;
+    for (const s of this.sockets()) {
+      const seat = seatOf(meta, s.id);
+      const a = s.ws.deserializeAttachment() as Attachment | null;
+      if (!seat || !a) continue;
+      const note: Attachment = { id: s.id, ip: a.ip, live: { seq: this.seq, seat: { ...seat }, crown: s.id === meta.crown } };
+      s.ws.serializeAttachment(note);
+    }
   }
 
   /** Open sockets that have said hello, with their player ids. */

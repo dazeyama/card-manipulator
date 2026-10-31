@@ -172,6 +172,34 @@ export function applySettings(meta: Meta, set: Partial<RoomSettings>): string[] 
   return changed;
 }
 
+/**
+ * What a socket remembers through hibernation while storage writes are refused
+ * (O108): the room's seq, its player's seat, and whether that player is crown.
+ * Kept in the socket's attachment, which the runtime holds outside storage.
+ */
+export interface LiveNote {
+  seq: number;
+  seat: Seat;
+  crown: boolean;
+}
+
+/**
+ * After a wake, bring the stored meta up to what the sockets remember (O108):
+ * seats that joined or changed after the last save, and the crown. Returns the
+ * highest seq any socket saw (0 when none noted anything).
+ */
+export function restoreLive(meta: Meta, notes: LiveNote[]): number {
+  let seq = 0;
+  for (const n of notes) {
+    seq = Math.max(seq, n.seq);
+    const have = seatOf(meta, n.seat.id);
+    if (have) Object.assign(have, n.seat);
+    else meta.seats.push({ ...n.seat });
+    if (n.crown) meta.crown = n.seat.id;
+  }
+  return seq;
+}
+
 /** Seats kept at most (8 connected, the rest away): the meta stays far under its 128 KB (10.2, O100). */
 export const MAX_SEATS = 32;
 /** Bans kept at most; the oldest go first. */

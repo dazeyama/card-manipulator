@@ -52,3 +52,5 @@ export const PUBLIC_LIST_MAX = 1000;
 export const CLOSE_BYE = 4000;
 /** The same identity connected again from another socket: the older one is closed and should not reconnect (O97). */
 export const CLOSE_REPLACED = 4001;
+/** The crown's table passed the cap's backstop: its socket is closed so it reconnects and is resynced by the hand-over (O107). */
+export const CLOSE_RESYNC = 4002;
