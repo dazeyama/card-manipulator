@@ -272,6 +272,10 @@ export interface RoomInfo {
   password: boolean;
   tag: Tag;
   open: boolean;
+  /** The crown's nickname ("hosted by Dazey", 12.3). */
+  crown: string;
+  /** Colours held by a seated player, connected or away (O19), with the holder's first letter, for the join prompt's greyed swatches. */
+  taken: { colour: string; initial: string }[];
 }
 
 /** One row of the public list (O13). */
