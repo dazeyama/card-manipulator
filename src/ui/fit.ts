@@ -8,6 +8,18 @@ export const DESIGN_WIDTH = 1800;
 /** Below this the interface would be too small to use. */
 export const MIN_WIDTH = 1280;
 
+/** Below this the bars' text would be too small to use: the warning shows instead (decision 289). */
+export const MIN_SCALE = 0.6;
+
+/**
+ * The scale that fits bars whose content is `ratio` times wider than their room
+ * at `scale` (decision 289: more buttons than the 1800 px layout had, or a
+ * wider system font, such as the Mac's). A ratio of 1 or less: as it is.
+ */
+export function shrinkToFit(scale: number, ratio: number): number {
+  return ratio > 1.001 ? scale / ratio : scale;
+}
+
 /** How much to shrink the bars and panels for a window this wide, or null when it is too narrow. */
 export function uiScale(width: number): number | null {
   if (width >= DESIGN_WIDTH) return 1;
@@ -35,15 +47,41 @@ export function installFit(): void {
     if (!cover.hidden) e.stopImmediatePropagation();
   }, true);
 
+  const apply = (scale: number) => document.documentElement.style.setProperty('--ui-zoom', String(scale));
+  // How much wider the top and bottom bars' content is than their room, 1 when it fits.
+  const bars = [...document.querySelectorAll<HTMLElement>('.top-host, .bottom-host')];
+  const overflow = () => Math.max(1, ...bars.map((b) => (b.clientWidth ? b.scrollWidth / b.clientWidth : 1)));
   const fit = () => {
     const width = window.innerWidth;
-    const scale = uiScale(width);
-    document.documentElement.style.setProperty('--ui-zoom', String(scale ?? MIN_WIDTH / DESIGN_WIDTH));
+    let scale = uiScale(width);
+    if (scale !== null) {
+      apply(scale);
+      // Then shrink further until the bars' buttons fit, measured, not assumed (decision 289).
+      for (let i = 0; i < 3; i++) {
+        const next = shrinkToFit(scale, overflow());
+        if (next === scale) break;
+        scale = next;
+        apply(scale);
+      }
+      if (scale < MIN_SCALE) scale = null;
+    }
+    apply(scale ?? MIN_WIDTH / DESIGN_WIDTH);
     cover.hidden = scale !== null;
     if (scale === null) {
       body.textContent = `Card Manipulator needs a window at least ${MIN_WIDTH.toLocaleString()} px wide to show all its controls. This one is ${Math.round(width).toLocaleString()} px.`;
     }
   };
   window.addEventListener('resize', fit);
+  // The bars change (buttons added at boot, avatars when a room fills): fit again, once per burst.
+  let queued = 0;
+  const refit = () => {
+    if (queued) return;
+    queued = window.setTimeout(() => {
+      queued = 0;
+      fit();
+    }, 50);
+  };
+  const watch = new MutationObserver(refit);
+  for (const b of bars) watch.observe(b, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'class', 'style'] });
   fit();
 }

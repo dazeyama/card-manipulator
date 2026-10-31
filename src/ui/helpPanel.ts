@@ -4,6 +4,7 @@
 
 import { h } from './dom';
 import type { ContextHints } from './hints';
+import { CURSOR_LABEL, cursorChoice, cursorSizeNow, setCursorChoice, type CursorChoice } from './cursorSize';
 
 type Line = [string, string, string];
 
@@ -70,9 +71,23 @@ export class HelpPanel {
     const hide = h('input', { type: 'checkbox' });
     hide.checked = hints.hidden;
     hide.addEventListener('change', () => (hints.hidden = hide.checked));
+    // Cursor size (decision 289): Auto sizes to the screen; remembered in this browser.
+    const size = h('select', { 'aria-label': 'Cursor size' });
+    const fill = () => {
+      size.replaceChildren(
+        h('option', { value: 'auto' }, `Auto (${CURSOR_LABEL[cursorSizeNow('auto')]})`),
+        ...(['small', 'medium', 'large'] as const).map((s) => h('option', { value: s }, CURSOR_LABEL[s])),
+      );
+      size.value = cursorChoice();
+    };
+    fill();
+    size.addEventListener('change', () => setCursorChoice(size.value as CursorChoice));
     this.el = h('div', { class: 'help-panel', hidden: '' },
       h('div', { class: 'help-head' }, h('span', { class: 'pe-title' }, 'Controls'), h('span', { class: 'muted small' }, 'Keys act on the selection, or on the pile under the cursor.')),
-      h('label', { class: 'inline help-hide' }, hide, 'Hide control hints'),
+      h('div', { class: 'help-options' },
+        h('label', { class: 'inline help-hide' }, hide, 'Hide control hints'),
+        h('label', { class: 'inline help-cursor' }, 'Cursor size', size),
+      ),
       ...GROUPS.map(([title, lines]) =>
         h('div', { class: 'help-group' },
           h('div', { class: 'help-group-title' }, title),

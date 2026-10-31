@@ -164,7 +164,7 @@ Start from this list. Any further package, runtime or dev, may be added when its
 
 **Browsers:** current Chrome and Edge only (decision 41). Firefox and Safari are not tested or supported.
 
-**Window width** (decision 157): the bars and panels are laid out for a window **1800 px** wide. Narrower windows shrink the top bar, side panels and bottom bar to fit (CSS zoom, down to about 71%); the play space is never scaled. Below **1280 px** a warning covers the page, giving the window's width and suggesting a wider window or browser zoom out (Ctrl and minus), and goes away by itself once there is room. Keys don't reach the table while it shows.
+**Window width** (decision 157): the bars and panels are laid out for a window **1800 px** wide. Narrower windows shrink the top bar, side panels and bottom bar to fit (CSS zoom, down to about 71%); the play space is never scaled. Below **1280 px** a warning covers the page, giving the window's width and suggesting a wider window or browser zoom out (Ctrl and minus), and goes away by itself once there is room. Keys don't reach the table while it shows. The scale is then checked against the top and bottom bars themselves: when their buttons need more room than the 1800 px layout had (more buttons since, or a wider system font such as the Mac's), everything shrinks a little more until they fit, and no bar can widen the page past the window's edges (decision 289).
 
 ### 4.3 Repository layout
 
@@ -796,7 +796,7 @@ All keys are inactive while a text field has focus.
 
 ### 16.1 Cursors
 
-The cursor shows what the mouse will do, and what a held key changes (owner, 2026-10-27, decisions 116 and 118–123). Everything is 48 px in one style, the 1930s rubber-hose look: over empty table a pointy arrow with a dashed marquee box, hand-drawn with the gloves' heavy outline and soft shading; over cards cartoon white gloves. An emoji in the corner marks a held key's effect.
+The cursor shows what the mouse will do, and what a held key changes (owner, 2026-10-27, decisions 116 and 118–123). Everything is drawn at 48 px in one style (shown at the Cursor size chosen in the ? panel: Auto, Small 28, Medium 36 or Large 48 px, decision 289), the 1930s rubber-hose look: over empty table a pointy arrow with a dashed marquee box, hand-drawn with the gloves' heavy outline and soft shading; over cards cartoon white gloves. An emoji in the corner marks a held key's effect.
 
 | Cursor | When | Means |
 |---|---|---|
@@ -1206,6 +1206,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 286 | Owner (2026-10-30): **Ctrl + click** builds a **mixed selection of cards and dice**, besides the box. **(agent)** Ctrl + click on a die adds it to (or takes it from) the selection and keeps the selected cards; Ctrl + click on a card does the same and keeps the selected dice; Ctrl + drag of an unselected die adds it and carries the cards along (decision 274). A plain click on either still selects only that, and dragging an unselected card still picks up just it, even with Ctrl held. |
 | 287 | Owner (2026-10-30): the stand's **name plate** and the **dice faces** follow the graphics mode's **anisotropic filtering** (decision 152's presets: 8 in Low, 16 in High), as the cards, playmats and wood already did, instead of a fixed 8. Changing the mode updates them at once. |
 | 288 | Owner (2026-10-30): the next feature is **rooms**: up to eight players on one table, like MIRO shares a board, for cube work and simulated live play; tables are offline by default and go online in one click; shared by link, with a public table browser and password rooms; a rank ladder set by the room's crown, which can be passed. Its design is **`ONLINE.md`**, written today from a long round of the owner's answers, self-contained, with its own decision log (**O1 onward**); no code changes yet. This spec keeps winning for everything that is not about rooms. |
+| 289 | Owner (2026-10-31), on a 13" MacBook Air: the **cursor is way too large**, and **buttons at the left and right edges of the bars are cut off**. Owner's answers: Chrome at 100%, full screen or maximized; cursor size **Auto plus a setting**. **(agent)** The bars had outgrown decision 157's 1800 px (the Online button, avatars, Mirror, Graphics), and the page's single grid column grew with the widest bar, pushing the inspect panel and both bars' ends past the window. The column is now held to the window, and after the width-based scale the fit measures the top and bottom bars and shrinks by however much their content still overflows (never below 60%, else the too-narrow warning), refitting when their buttons change. Cursors: every cursor is drawn at 48 px as before and then scaled, click point too, to Small 28, Medium 36 or Large 48 px; Auto picks Large on screens 1600 px or wider, Medium below, and one step smaller on macOS (so Small on a 13" Air, Large on the owner's 1080p monitor); the ? panel's **Cursor size** overrides it, remembered in this browser. Checked at 1470 x 780: nothing past the edges, and with deliberately wider button text the scale dropped from 0.82 to 0.80 with nothing past the edges. |
 
 ## Appendix B: Open items
 

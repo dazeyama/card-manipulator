@@ -26,7 +26,9 @@ import drawUrl from '../../art/cursors/gestures/draw-48-bold.png';
 import removeUrl from '../../art/cursors/gestures/remove-48-bold.png';
 import fanUrl from '../../art/cursors/gestures/fan-48-bold.png';
 import hotspots from '../../art/cursors/cursors.json';
+import { CURSOR_PX, CURSOR_SIZE_EVENT, cursorSizeNow, scaleHotspot } from './cursorSize';
 
+/** The size the art is drawn at; each finished cursor is then scaled to the chosen size (decision 289). */
 const SIZE = 48;
 const VERSION = '48-bold';
 
@@ -129,8 +131,25 @@ function tintedEmoji(emoji: string, tint: string): HTMLCanvasElement {
   return c;
 }
 
+/**
+ * A finished cursor image as a CSS cursor value, scaled from the 48 px art to
+ * `px` (a gesture image of another size scales by the same share), its click
+ * point moved with it (decision 289).
+ */
+function cursorValue(c: HTMLCanvasElement, hx: number, hy: number, fallback: string, px: number): string {
+  if (px === SIZE) return `url(${c.toDataURL()}) ${hx} ${hy}, ${fallback}`;
+  const side = Math.max(1, Math.round((c.width * px) / SIZE));
+  const out = document.createElement('canvas');
+  out.width = out.height = side;
+  const g = out.getContext('2d')!;
+  g.imageSmoothingEnabled = true;
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(c, 0, 0, side, side);
+  return `url(${out.toDataURL()}) ${scaleHotspot(hx, c.width, side)} ${scaleHotspot(hy, c.width, side)}, ${fallback}`;
+}
+
 /** The glove with its emoji in the bottom right corner, as a CSS cursor value. */
-function compose(img: HTMLImageElement, hand: Hand, emoji: string, fallback: string): string {
+function compose(img: HTMLImageElement, hand: Hand, emoji: string, fallback: string, px: number): string {
   const c = document.createElement('canvas');
   c.width = c.height = SIZE;
   const g = c.getContext('2d')!;
@@ -138,7 +157,7 @@ function compose(img: HTMLImageElement, hand: Hand, emoji: string, fallback: str
   if (emoji) drawEmoji(g, emoji, SIZE);
   // The gesture gloves hold their click point in the middle, like the open hand and the fist.
   const [hx, hy] = hand === 'open' || hand === 'fist' ? (hotspots[hand][VERSION] as [number, number]) : hand === 'holdOne' ? [SIZE / 2, SIZE / 2] : ARROW_TIP;
-  return `url(${c.toDataURL()}) ${hx} ${hy}, ${fallback}`;
+  return cursorValue(c, hx, hy, fallback, px);
 }
 
 /** Picks the cursor every frame from what is under the mouse, what is held and which keys are down. */
@@ -173,30 +192,40 @@ export class Cursors {
     window.addEventListener('pointerdown', keys);
     window.addEventListener('blur', () => (this.shift = this.alt = this.ctrl = false));
     void this.build();
+    // The ? panel's Cursor size (decision 289): every cursor is drawn again at the new size.
+    window.addEventListener(CURSOR_SIZE_EVENT, () => void this.build());
     app.onFrame(() => this.update());
   }
 
+  /** Counts builds, so a slower earlier one never overwrites a later size. */
+  private builds = 0;
+
   private async build(): Promise<void> {
+    const run = ++this.builds;
+    const size = CURSOR_PX[cursorSizeNow()];
+    const value = (c: HTMLCanvasElement, hx: number, hy: number, fallback: string) => cursorValue(c, hx, hy, fallback, size);
     const images = await Promise.all((Object.keys(ART) as Hand[]).map(async (h) => [h, await loadImage(ART[h])] as const));
+    if (run !== this.builds) return;
     const art = new Map(images);
     for (const [state, [hand, emoji, fallback]] of Object.entries(STATES) as [State, [Hand, string, string]][]) {
-      this.cursors[state] = compose(art.get(hand)!, hand, emoji, fallback);
+      this.cursors[state] = compose(art.get(hand)!, hand, emoji, fallback, size);
     }
     // A badge lifts its whole pile.
     document.documentElement.style.setProperty('--cursor-pile', this.cursors.openPile!);
     // Buttons, tabs, chips and other clickable things: the pointing glove, not the system hand (decision 130).
     const point = await loadImage(pointUrl);
+    if (run !== this.builds) return;
     const [px, py] = hotspots.point[VERSION] as [number, number];
     const c = document.createElement('canvas');
     c.width = c.height = SIZE;
     c.getContext('2d')!.drawImage(point, 0, 0, SIZE, SIZE);
-    this.pointCursor = `url(${c.toDataURL()}) ${px} ${py}, pointer`;
+    this.pointCursor = value(c, px, py, 'pointer');
     const pk = document.createElement('canvas');
     pk.width = pk.height = SIZE;
     const pg = pk.getContext('2d')!;
     pg.drawImage(point, 0, 0, SIZE, SIZE);
     drawEmoji(pg, '📦', SIZE);
-    this.packCursor = `url(${pk.toDataURL()}) ${px} ${py}, pointer`;
+    this.packCursor = value(pk, px, py, 'pointer');
     document.documentElement.style.setProperty('--cursor-point', this.pointCursor);
     // Drawing a hand: the pointing glove with the number as a keycap (decision 143);
     // 0 (any number, decision 162) shows the numbers keycap.
@@ -206,7 +235,7 @@ export class Cursors {
       const g = d.getContext('2d')!;
       g.drawImage(point, 0, 0, SIZE, SIZE);
       drawEmoji(g, n ? `${n}️⃣` : '🔢', SIZE);
-      this.drawCursors[n] = `url(${d.toDataURL()}) ${px} ${py}, pointer`;
+      this.drawCursors[n] = value(d, px, py, 'pointer');
     }
     // X: the glove with a blue-tinted 🪟; the reverse spread mirrors the glove to point
     // the other way and tints the 🪟 pink, still in the bottom right corner (decision 216).
@@ -215,7 +244,7 @@ export class Cursors {
     const sg = sp.getContext('2d')!;
     sg.drawImage(point, 0, 0, SIZE, SIZE);
     sg.drawImage(tintedEmoji('🪟', SPREAD_TINT), 0, 0);
-    this.spreadCursor = `url(${sp.toDataURL()}) ${px} ${py}, pointer`;
+    this.spreadCursor = value(sp, px, py, 'pointer');
     const rv = document.createElement('canvas');
     rv.width = rv.height = SIZE;
     const rg = rv.getContext('2d')!;
@@ -225,17 +254,18 @@ export class Cursors {
     rg.drawImage(point, 0, 0, SIZE, SIZE);
     rg.restore();
     rg.drawImage(tintedEmoji('🪟', REVERSE_TINT), 0, 0);
-    this.reverseCursor = `url(${rv.toDataURL()}) ${SIZE - 1 - px} ${py}, pointer`;
+    this.reverseCursor = value(rv, SIZE - 1 - px, py, 'pointer');
     for (const [name, [url, emoji]] of Object.entries(GESTURES) as [Gesture, [string, string]][]) {
       // Each at its own size: Shuffle's two hands are drawn bigger (decisions 166, 167).
       const img = await loadImage(url);
+      if (run !== this.builds) return;
       const side = img.naturalWidth || SIZE;
       const c = document.createElement('canvas');
       c.width = c.height = side;
       const g = c.getContext('2d')!;
       g.drawImage(img, 0, 0, side, side);
       if (emoji) drawEmoji(g, emoji, side);
-      this.gestureCursors[name] = `url(${c.toDataURL()}) ${side / 2} ${side / 2}, grabbing`;
+      this.gestureCursors[name] = value(c, side / 2, side / 2, 'grabbing');
     }
     this.shown = '';
   }

@@ -26,7 +26,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .overlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 
 /* ---- layout ---- */
-#app { display: grid; grid-template-rows: auto 1fr auto; }
+#app { display: grid; grid-template-rows: auto 1fr auto; grid-template-columns: minmax(0, 1fr); }
+.top-host, .bottom-host { min-width: 0; }
 .middle { display: flex; min-height: 0; }
 .stage-host { position: relative; flex: 1; min-width: 0; display: flex; }
 .stage-host .stage { flex: 1; }
@@ -280,7 +281,8 @@ label.inline { display: inline-flex; flex-direction: row; align-items: center; g
 .die-swatch { width: 20px; height: 20px; padding: 0; border: 2px solid #111; border-radius: 5px; cursor: var(--cursor-point, pointer); }
 .die-swatch:hover { transform: scale(1.18); box-shadow: 0 0 0 2px var(--accent); }
 .token-thumb { width: 30px; height: 42px; object-fit: cover; border-radius: 3px; flex: none; background: #ddd; }
-.help-hide { margin: 2px 0 4px; }
+.help-options { display: flex; align-items: center; gap: 18px; margin: 2px 0 4px; }
+.help-cursor select { margin-left: 6px; }
 
 /* ---- basic lands on the Card tab (decision 210) ---- */
 .basics { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 10px; }
