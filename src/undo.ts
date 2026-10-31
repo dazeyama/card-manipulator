@@ -32,6 +32,8 @@ export class Undo {
   private restoring = false;
   /** The last swap was an undo, so the next one is a redo. */
   private undone = false;
+  /** In a room, someone else changed what your last action changed (O41): Ctrl + Z says so instead of undoing. */
+  private overtaken = false;
 
   constructor(private readonly app: App, private readonly tray: RemovedTray, private readonly drag: DragController) {
     const store = app.store;
@@ -41,6 +43,7 @@ export class Undo {
       this.saved = this.pending;
       this.pending = null;
       this.undone = false;
+      this.overtaken = false;
     };
     store.events.on('added', changed);
     store.events.on('removed', changed);
@@ -50,8 +53,13 @@ export class Undo {
     store.events.on('reset', () => {
       if (this.restoring) return;
       this.saved = this.pending = null;
+      this.overtaken = false;
     });
-    // In a room, what others change is theirs: undo takes back only your own last action (O41).
+    // In a room, what others change is theirs: undo takes back only your own last action (O41),
+    // and not at all once someone else has changed what it changed.
+    store.events.on('roomBefore', (op) => {
+      if (this.saved && changedByMe(this.saved, op, store)) this.overtaken = true;
+    });
     store.events.on('room', (op) => this.fold(op));
     // Captured first, so the snapshot is taken before the key or press acts. Hotkeys
     // also call markKey just before they run (KeyboardInput.beforeKey).
@@ -84,8 +92,14 @@ export class Undo {
   }
 
   /** Ctrl + Z: swap the table with the undo point. Says which it was, or null if there was nothing to swap. */
-  swap(): 'undo' | 'redo' | null {
+  swap(): 'undo' | 'redo' | 'touched' | null {
     if (!this.saved || this.drag.dragging) return null;
+    // Someone else moved what your last action moved (8.6, 12.4): nothing to take back now.
+    if (this.overtaken) {
+      this.overtaken = false;
+      this.saved = this.pending = null;
+      return 'touched';
+    }
     const now = snapshot(this.app.store);
     const then = this.saved;
     if (sameTable(now, then)) return null;
@@ -186,6 +200,43 @@ export class Undo {
   }
 }
 
+/** The cards, dice, mats, named piles and spreads an op touches. */
+function keysOf(op: Op): { cards: string[]; dice: string[]; mats: Set<string>; named: Set<string>; spreads: Set<string> } {
+  const mats = new Set<string>();
+  const named = new Set<string>();
+  const spreads = new Set<string>();
+  const walk = (o: Op) => {
+    if (o.t === 'batch') o.ops.forEach(walk);
+    else if (o.t === 'mat') [...(o.set ?? []).map((m) => m.uid), ...(o.remove ?? []), ...(o.spill ?? [])].forEach((u) => mats.add(u));
+    else if (o.t === 'named') [...(o.set ?? []).map((p) => p.id), ...(o.remove ?? [])].forEach((u) => named.add(u));
+    else if (o.t === 'spread') [...(o.set ?? []).map((s) => s.id), ...(o.remove ?? [])].forEach((u) => spreads.add(u));
+  };
+  walk(op);
+  return { cards: cardsTouched(op), dice: diceTouched(op), mats, named, spreads };
+}
+
+/**
+ * Whether an op from the room touches something your last action changed:
+ * something that differs between the kept table (before your action, with
+ * others' changes folded in) and the table now.
+ */
+export function changedByMe(snap: TableSnap, op: Op, store: Store): boolean {
+  const k = keysOf(op);
+  const differ = <T>(list: T[], keys: Iterable<string>, key: (t: T) => string, now: (k: string) => unknown) => {
+    const kept = new Map(list.map((t) => [key(t), t]));
+    for (const id of keys) if (JSON.stringify(kept.get(id)) !== JSON.stringify(now(id))) return true;
+    return false;
+  };
+  return differ(snap.cards, k.cards, (c) => c.uid, (u) => {
+    const c = store.cards.get(u);
+    return c ? snapCard(c) : undefined;
+  })
+    || differ(snap.dice, k.dice, (d) => d.uid, (u) => store.dice.get(u))
+    || differ(snap.mats, k.mats, (m) => m.uid, (u) => store.mats.get(u))
+    || differ(snap.named, k.named, (p) => p.id, (id) => store.named.get(id))
+    || differ(snap.spreads, k.spreads, (s) => s.id, (id) => store.spreads.get(id));
+}
+
 /** Bring a kept snapshot up to date with the store for everything an op touched (cards, dice, mats, named piles, spreads). */
 export function foldInto(snap: TableSnap, op: Op, store: Store): void {
   const sync = <T>(list: T[], keys: Iterable<string>, key: (t: T) => string, now: (k: string) => T | undefined): T[] => {
@@ -198,16 +249,7 @@ export function foldInto(snap: TableSnap, op: Op, store: Store): void {
     }
     return out;
   };
-  const mats = new Set<string>();
-  const named = new Set<string>();
-  const spreads = new Set<string>();
-  const walk = (o: Op) => {
-    if (o.t === 'batch') o.ops.forEach(walk);
-    else if (o.t === 'mat') [...(o.set ?? []).map((m) => m.uid), ...(o.remove ?? []), ...(o.spill ?? [])].forEach((u) => mats.add(u));
-    else if (o.t === 'named') [...(o.set ?? []).map((p) => p.id), ...(o.remove ?? [])].forEach((u) => named.add(u));
-    else if (o.t === 'spread') [...(o.set ?? []).map((s) => s.id), ...(o.remove ?? [])].forEach((u) => spreads.add(u));
-  };
-  walk(op);
+  const { mats, named, spreads } = keysOf(op);
   snap.cards = sync(snap.cards, cardsTouched(op), (c) => c.uid, (u) => {
     const c = store.cards.get(u);
     return c ? snapCard(c) : undefined;

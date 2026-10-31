@@ -104,6 +104,8 @@ keyboard.bind('ctrl+z', () => {
   const did = undo.swap();
   if (did === 'undo') toast('Undone (Ctrl + Z again to redo)', 'info', 1600);
   else if (did === 'redo') toast('Redone', 'info', 1200);
+  // In a room: someone else moved what your last action moved (ONLINE.md 12.4).
+  else if (did === 'touched') toast('Someone else has moved those since', 'warn', 2000);
   else toast(drag.dragging ? 'Let go of the cards first' : 'Nothing to undo', 'info', 1400);
 });
 const autosave = new Autosave(app);

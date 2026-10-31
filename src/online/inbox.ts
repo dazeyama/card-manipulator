@@ -202,6 +202,7 @@ export class Inbox {
     const app = this.sync.app;
     const store = app.store;
     const eased = this.sync.presence.landing(op, by);
+    if (!mine) store.events.emit('roomBefore', op);
     store.remote(() => {
       applyToStore(store, op);
       if (op.t !== 'replace') this.settleDrawn(cardsTouched(op), eased);

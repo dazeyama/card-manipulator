@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { foldInto } from '../src/undo';
+import { changedByMe, foldInto } from '../src/undo';
 import { Store } from '../src/state/store';
 import { snapshot } from '../src/state/history';
 import type { Card } from '../src/state/types';
@@ -23,5 +23,15 @@ describe('undo online takes back only your own action (ONLINE.md 8.6, O41)', () 
     expect(by.get('theirs')!.x).toBe(999);
     expect(by.has('gone')).toBe(false);
     expect(kept.dice[0].value).toBe(6);
+  });
+
+  it('knows when someone else touches what your last action changed', () => {
+    const store = new Store();
+    store.addCards([card('mine'), card('other', 100)]);
+    const kept = snapshot(store);
+    store.moveCards([{ uid: 'mine', x: 50 }]);
+    // Before their op is applied: theirs touches only the other card, then yours.
+    expect(changedByMe(kept, { t: 'move', moves: [{ uid: 'other', x: 9 }] }, store)).toBe(false);
+    expect(changedByMe(kept, { t: 'move', moves: [{ uid: 'mine', x: 9 }] }, store)).toBe(true);
   });
 });
