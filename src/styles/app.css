@@ -430,3 +430,4 @@ input.switch:focus { box-shadow: 0 0 0 3px var(--accent-soft); }
 .admin-table tr.delisted td { background: #fdf6f6; }
 .admin-actions { white-space: nowrap; }
 .admin-actions .btn + .btn { margin-left: 4px; }
+.row[hidden] { display: none; }
