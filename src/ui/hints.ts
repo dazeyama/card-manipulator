@@ -35,7 +35,7 @@ const HINTS: Record<string, Hint[]> = {
     ['📐', 'Ctrl: drag lands tidy · click checks cards in and out', 'ctrl'],
     ['🔗', 'Alt keeps formation', 'alt'],
     ['🃏', 'Middle-click flips'],
-    ['🔄', 'Double-click taps and untaps'],
+    ['🔄', 'Double-click taps; on face down, selects the stack'],
     ['📊', 'C curves, C C by color'],
     ['🏆', 'E ranks by EDHREC, E E by Elo'],
     ['🎴', 'H fans'],

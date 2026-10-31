@@ -228,6 +228,11 @@ mouse.hooks.cardDrag = (uid, x, y, mods) => {
 drag.onDealt = (m, uids) => commands.joinSlopeHand(m, uids);
 mouse.hooks.doubleClickCard = (uid, before) => {
   if (!store.cards.has(uid)) return;
+  // A face-down card: select its whole stack, never turn it; tapping is for face-up cards (decision 291).
+  if (!store.cards.get(uid)!.faceUp) {
+    store.setSelection(store.pileOf(uid)?.cardUids.slice() ?? [uid]);
+    return;
+  }
   let targets: string[];
   if (before.length > 1 && before.includes(uid)) {
     targets = before.filter((u) => store.cards.has(u));
