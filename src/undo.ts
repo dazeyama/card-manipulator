@@ -11,6 +11,7 @@
 import type { App } from './app';
 import { land } from './commands';
 import type { DragController } from './physics/feel';
+import type { CardMove } from './state/store';
 import { diffCards, sameTable, snapshot, type TableSnap } from './state/history';
 import type { RemovedTray } from './ui/tray';
 
@@ -105,20 +106,21 @@ export class Undo {
       store.addCards(d.add.map((c) => ({ ...c, laidAt: c.laidAt ? { ...c.laidAt } : undefined })));
       this.tray.take(d.add);
     }
-    // Piles, spreads and lie-flat marks as they were; positions fly back.
+    // Piles, spreads and lie-flat marks as they were; positions fly back. All
+    // through the store, so a room hears of it (ONLINE.md 11.1).
+    const links: CardMove[] = [];
     for (const c of then.cards) {
       const card = store.cards.get(c.uid);
       if (!card) continue;
-      card.pileId = c.pileId;
-      card.spreadOf = c.spreadOf;
-      card.laidAt = c.laidAt ? { ...c.laidAt } : undefined;
-      card.stand = c.stand;
-      card.side = c.side;
+      const laid = (card.laidAt?.x !== c.laidAt?.x) || (card.laidAt?.y !== c.laidAt?.y);
+      if (card.pileId === c.pileId && card.spreadOf === c.spreadOf && !laid && card.stand === c.stand && card.side === c.side) continue;
+      links.push({ uid: c.uid, pileId: c.pileId, spreadOf: c.spreadOf, laidAt: c.laidAt ? { ...c.laidAt } : null, stand: c.stand ?? null, side: c.side ?? null });
     }
-    store.named.clear();
-    for (const p of then.named) store.named.set(p.id, { ...p, anchor: { ...p.anchor } });
-    store.spreads.clear();
-    for (const s of then.spreads) store.spreads.set(s.id, { ...s, anchor: { ...s.anchor }, uids: [...s.uids] });
+    if (links.length) store.moveCards(links);
+    const named = new Set(then.named.map((p) => p.id));
+    store.setNamed(then.named.filter((p) => JSON.stringify(store.named.get(p.id)) !== JSON.stringify(p)), [...store.named.keys()].filter((id) => !named.has(id)));
+    const spreads = new Set(then.spreads.map((sp) => sp.id));
+    store.setSpreads(then.spreads.filter((sp) => JSON.stringify(store.spreads.get(sp.id)) !== JSON.stringify(sp)), [...store.spreads.keys()].filter((id) => !spreads.has(id)));
     this.restoreMats(then);
     // Dice as they were (decision 255).
     if (JSON.stringify([...store.dice.values()]) !== JSON.stringify(then.dice)) store.replaceDice(then.dice);

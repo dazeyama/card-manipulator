@@ -28,13 +28,12 @@ export class NamedPiles {
     const sp = store.spreads.get(pileId);
     const anchor = pile?.anchor ?? existing?.anchor ?? sp?.anchor ?? { x: 0, y: 0 };
     const yaw = existing?.yaw ?? sp?.yaw ?? (pile ? store.cards.get(pile.cardUids[0])?.yaw ?? 0 : 0);
-    store.named.set(pileId, { id: pileId, name: clean, filter: filter?.trim() || null, anchor: { ...anchor }, yaw });
+    // Through the store, so a room hears of it (ONLINE.md 11.1).
+    store.setNamed([{ id: pileId, name: clean, filter: filter?.trim() || null, anchor: { ...anchor }, yaw }]);
     // Cards of the pile now belong to it by name.
-    for (const u of pile?.cardUids ?? []) {
-      const c = store.cards.get(u);
-      if (c) c.pileId = pileId;
-    }
-    if (sp) sp.pileId = pileId;
+    const members = (pile?.cardUids ?? []).filter((u) => store.cards.has(u));
+    if (members.length) store.moveCards(members.map((u) => ({ uid: u, pileId })));
+    if (sp && sp.pileId !== pileId) store.setSpreads([{ ...sp, pileId }]);
     if (pile) {
       pile.name = clean;
       pile.filter = filter?.trim() || null;
@@ -46,14 +45,14 @@ export class NamedPiles {
   /** Back to an emergent pile (spec 11.3: un-naming). */
   unname(id: string): void {
     const store = this.app.store;
-    store.named.delete(id);
+    store.setNamed([], [id]);
     const pile = store.piles.get(id);
     if (pile) {
       pile.name = null;
       pile.filter = null;
     }
     const sp = store.spreads.get(id);
-    if (sp) sp.pileId = null;
+    if (sp?.pileId) store.setSpreads([{ ...sp, pileId: null }]);
     store.events.emit('piles', undefined);
   }
 
@@ -94,13 +93,19 @@ export class NamedPiles {
   createEmpty(name: string, at: { x: number; y: number }, filter: string | null = null): string | null {
     const id = newUid('p');
     const store = this.app.store;
-    store.named.set(id, { id, name: '', filter: null, anchor: { ...at }, yaw: 0 });
-    const err = this.promote(id, name, filter);
-    if (err) {
-      store.named.delete(id);
-      return err;
-    }
-    return null;
+    // Checked first, so a refused name never reaches the table (or a room).
+    const err = this.checkName(id, name) ?? this.checkFilter(filter);
+    if (err) return err;
+    store.setNamed([{ id, name: '', filter: null, anchor: { ...at }, yaw: 0 }]);
+    return this.promote(id, name, filter);
+  }
+
+  /** Whether a pile may take this name: not empty, and not another pile's. */
+  checkName(id: string, name: string): string | null {
+    const clean = name.trim();
+    if (!clean) return 'A named pile needs a name';
+    const clash = [...this.app.store.named.values()].find((n) => n.id !== id && n.name.toLowerCase() === clean.toLowerCase());
+    return clash ? `There is already a pile called ${clash.name}` : null;
   }
 
   checkFilter(filter: string | null): string | null {

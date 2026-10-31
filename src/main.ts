@@ -884,8 +884,7 @@ keyboard.bind('n', () => {
   if (!store.selection.size) {
     const at = app.lastTablePoint;
     const id = `p${Date.now().toString(36)}`;
-    store.named.set(id, { id, name: 'New pile', filter: null, anchor: { x: at.x, y: at.y }, yaw: 0 });
-    store.events.emit('piles', undefined);
+    store.setNamed([{ id, name: 'New pile', filter: null, anchor: { x: at.x, y: at.y }, yaw: 0 }]);
     pileEditor.open(id, near, true);
     return;
   }

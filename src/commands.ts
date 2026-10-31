@@ -24,6 +24,8 @@ export interface Landing {
   faceUp?: boolean;
   /** The card stand it lands on, or null for the table (decision 221); left out, it stays where it is. */
   stand?: string | null;
+  /** Where an X spread laid it, so it stays flat there (decision 160); left out, unchanged. */
+  laidAt?: { x: number; y: number } | null;
 }
 
 /**
@@ -74,12 +76,9 @@ export function land(app: App, landings: Landing[], opts: { stagger?: number; du
   app.physics?.release(landings.map((l) => l.uid));
   // Onto a card stand, or off one onto the table (decision 221). Moved, a card
   // is now the side's that moved it (decision 267), unless this only turns or squares it.
-  for (const l of landings) {
-    const c = app.store.cards.get(l.uid);
-    if (c && l.stand !== undefined) c.stand = l.stand ?? undefined;
-    if (c && !opts.keepSide) c.side = app.side || undefined;
-  }
-  app.store.moveCards(landings);
+  // One move through the store, so a room hears of it (ONLINE.md 11.1).
+  const side = app.side || null;
+  app.store.moveCards(opts.keepSide ? landings : landings.map((l) => ({ ...l, side })));
   const stagger = opts.stagger ?? Math.min(1.5, 200 / landings.length);
   landings.forEach((l, i) => {
     app.motion.held.delete(l.uid);
@@ -219,19 +218,24 @@ function centroid(app: App, uids: string[]): { x: number; y: number } {
 
 /** Take cards out of any spread they are part of (spec 10.6: a card dragged out leaves it). */
 export function leaveSpreads(app: App, uids: Iterable<string>): void {
+  const store = app.store;
   const set = new Set(uids);
-  for (const sp of [...app.store.spreads.values()]) {
-    const before = sp.uids.length;
-    sp.uids = sp.uids.filter((u) => !set.has(u));
-    if (sp.uids.length !== before) {
-      for (const u of set) {
-        const c = app.store.cards.get(u);
-        if (c?.spreadOf === sp.id) c.spreadOf = null;
-      }
-      if (!sp.uids.length) app.store.spreads.delete(sp.id);
+  const keep: Spread[] = [];
+  const gone: string[] = [];
+  const freed: { uid: string; spreadOf: null }[] = [];
+  for (const sp of store.spreads.values()) {
+    const left = sp.uids.filter((u) => !set.has(u));
+    if (left.length === sp.uids.length) continue;
+    for (const u of set) {
+      if (store.cards.get(u)?.spreadOf === sp.id) freed.push({ uid: u, spreadOf: null });
     }
+    if (left.length) keep.push({ ...sp, uids: left });
+    else gone.push(sp.id);
   }
-  app.store.events.emit('piles', undefined);
+  // Through the store, so a room hears of it (ONLINE.md 11.1).
+  if (freed.length) store.moveCards(freed);
+  if (keep.length || gone.length) store.setSpreads(keep, gone);
+  else store.events.emit('piles', undefined);
 }
 
 export class Commands {
@@ -536,8 +540,8 @@ export class Commands {
     if (whole) {
       const bottom = store.cards.get(pile!.cardUids[0])!;
       const spread: Spread = { id: pile!.id, anchor: { ...pile!.anchor }, yaw: snapYaw(bottom.yaw), uids: ordered, pileId: pile!.name ? pile!.id : null };
-      store.spreads.set(spread.id, spread);
-      for (const u of ordered) store.cards.get(u)!.spreadOf = spread.id;
+      store.setSpreads([spread]);
+      store.moveCards(ordered.map((u) => ({ uid: u, spreadOf: spread.id })));
     }
     // X X lays each row right to left, so the mana costs show instead of the names (decision 215).
     const spots = layout(ordered.length);
@@ -547,7 +551,7 @@ export class Commands {
     // Spread onto a slope, every card comes face up, for showing (decision 227).
     if (stand) for (const l of landings) l.faceUp = true;
     // Overlapping cards would tip to rest on each other; these stay flat where they are laid (decision 160).
-    for (const l of landings) store.cards.get(l.uid)!.laidAt = { x: l.x, y: l.y };
+    for (const l of landings) l.laidAt = { x: l.x, y: l.y };
     land(this.app, landings, { stagger: Math.min(4, 300 / ordered.length), arc: 6 });
   }
 
@@ -676,8 +680,8 @@ export class Commands {
     const topFirst = [...pile.cardUids].reverse();
     const bottom = store.cards.get(pile.cardUids[0])!;
     const spread: Spread = { id: pile.id, anchor: { ...pile.anchor }, yaw: snapYaw(bottom.yaw), uids: topFirst, pileId: pile.name ? pile.id : null };
-    store.spreads.set(spread.id, spread);
-    for (const u of topFirst) store.cards.get(u)!.spreadOf = spread.id;
+    store.setSpreads([spread]);
+    store.moveCards(topFirst.map((u) => ({ uid: u, spreadOf: spread.id })));
     const spots = alignTo(spreadLayout(topFirst.length, spread.anchor), spread.anchor, this.app.facing);
     land(this.app, inSpace(bottom.stand ?? null, () => placeSequential(this.app, topFirst, spots)), { stagger: Math.min(4, 300 / topFirst.length), arc: 6 });
   }
@@ -688,8 +692,8 @@ export class Commands {
     const sp = store.spreads.get(spreadId);
     if (!sp) return;
     const uids = sp.uids.filter((u) => store.cards.get(u)?.spreadOf === spreadId);
-    store.spreads.delete(spreadId);
-    for (const u of uids) store.cards.get(u)!.spreadOf = null;
+    store.setSpreads([], [spreadId]);
+    store.moveCards(uids.map((u) => ({ uid: u, spreadOf: null })));
     const bottomFirst = [...uids].reverse();
     const m = standOf(this.app, bottomFirst);
     land(this.app, inSpace(m?.uid ?? null, () => pileAt(this.app, bottomFirst, { x: sp.anchor.x, y: sp.anchor.y, yaw: sp.yaw })), { stagger: Math.min(4, 300 / Math.max(1, uids.length)), arc: 6 });

@@ -6,6 +6,7 @@ import { getRecords } from '../scryfall/cardData';
 import { fetchByIds } from '../scryfall/resolve';
 import { readBasics } from '../state/basics';
 import { DEFAULT_SETTINGS, type Card, type CardRecord, type TableDoc } from '../state/types';
+import type { TableState } from '../../shared/table';
 
 export function toDoc(app: App, withCardData: boolean): TableDoc {
   const store = app.store;
@@ -62,6 +63,20 @@ function round(v: number, places = 3): number {
   return Math.round(v * k) / k;
 }
 
+/** The table a document holds, as a room shares it (ONLINE.md 8.1). */
+export function tableOfDoc(doc: TableDoc): TableState {
+  return {
+    name: doc.name || 'Untitled table',
+    cards: doc.cards.map((c): Card => ({ ...c, pileId: c.pileId ?? null, spreadOf: c.spreadOf ?? null })),
+    named: (doc.piles ?? []).map((p) => ({ id: p.id, name: p.name, filter: p.filter ?? null, anchor: p.anchor ?? { x: 0, y: 0 }, yaw: p.yaw ?? 0 })),
+    spreads: (doc.spreads ?? []).map((s) => ({ ...s, uids: [...s.uids] })),
+    mats: (doc.mats ?? []).map((m) => ({ ...m })),
+    dice: Array.isArray(doc.dice) ? doc.dice.map((d) => ({ ...d })) : [],
+    // Older files have no basics: they keep the defaults (decision 210).
+    basics: readBasics(doc.basics),
+  };
+}
+
 /** Check the shape of a document read from a file. Returns an error message or null. */
 export function validateDoc(doc: unknown): string | null {
   const d = doc as Partial<TableDoc> | null;
@@ -79,8 +94,6 @@ export function validateDoc(doc: unknown): string | null {
  */
 export async function loadDoc(app: App, doc: TableDoc): Promise<void> {
   const store = app.store;
-  store.clear();
-  store.setName(doc.name || 'Untitled table');
   store.updateSettings({ ...DEFAULT_SETTINGS, ...doc.settings });
 
   const ids = [...new Set(doc.cards.map((c) => c.scryfallId))];
@@ -92,20 +105,11 @@ export async function loadDoc(app: App, doc: TableDoc): Promise<void> {
   }
   store.addRecords([...records.values()].filter((r) => !store.records.has(r.id)));
 
-  for (const p of doc.piles ?? []) {
-    store.named.set(p.id, { id: p.id, name: p.name, filter: p.filter ?? null, anchor: p.anchor ?? { x: 0, y: 0 }, yaw: p.yaw ?? 0 });
-  }
-  for (const s of doc.spreads ?? []) store.spreads.set(s.id, { ...s, uids: [...s.uids] });
-  const cards: Card[] = doc.cards.map((c) => ({ ...c, pileId: c.pileId ?? null, spreadOf: c.spreadOf ?? null }));
-  store.addCards(cards);
-  for (const m of doc.mats ?? []) store.addMat({ ...m });
+  // The whole table at once: in a room, the crown's Load file is one `replace` op (ONLINE.md 8.2).
+  store.elo.clear();
+  store.replaceTable(tableOfDoc(doc));
   if (doc.elo) store.setElo(Object.entries(doc.elo));
-  // Older files have no basics: they keep the defaults (decision 210).
-  store.setBasics(readBasics(doc.basics));
-  store.replaceDice(Array.isArray(doc.dice) ? doc.dice : []);
   if (doc.camera) app.rig.fromState(doc.camera);
-  store.events.emit('settled', cards.map((c) => c.uid));
-  store.events.emit('piles', undefined);
 
   const stillMissing = ids.filter((id) => !store.records.has(id));
   if (stillMissing.length) {

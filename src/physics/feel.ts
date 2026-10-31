@@ -245,12 +245,14 @@ export class DragController {
     const side = this.app.side;
     const turned = new Set<string>();
     this.keepSide = mode === 'formation';
+    const turns: { uid: string; yaw: number; side: 0 | 1 | null }[] = [];
     for (const c of cards) {
       if (this.keepSide || (c.side ?? 0) === side) continue;
-      c.yaw += Math.PI;
-      c.side = side || undefined;
+      turns.push({ uid: c.uid, yaw: c.yaw + Math.PI, side: side || null });
       turned.add(c.uid);
     }
+    // Through the store, so a room hears of it (ONLINE.md 11.1).
+    if (turns.length) store.moveCards(turns);
     leaveSpreads(this.app, cards.map((c) => c.uid));
     const minZ = cards[0].z;
     // A tidy stack dragged whole stays snappy and rigid (decision 96).
@@ -973,24 +975,21 @@ export class DragController {
       }
     }
     let keepId = targetId;
+    // Through the store, so a room hears of it (ONLINE.md 11.1).
     if (!store.named.has(targetId) && sources.size) {
       keepId = [...sources][0];
       sources.delete(keepId);
-      for (const u of store.piles.get(targetId)?.cardUids ?? []) {
-        const c = store.cards.get(u);
-        if (c) c.pileId = keepId;
-      }
+      const relabel = (store.piles.get(targetId)?.cardUids ?? []).filter((u) => store.cards.has(u));
+      if (relabel.length) store.moveCards(relabel.map((u) => ({ uid: u, pileId: keepId })));
     }
     const keeper = store.named.get(keepId);
     for (const id of sources) {
       const lost = store.named.get(id);
       if (lost && keeper) store.events.emit('notice', `${lost.name} merged into ${keeper.name}; ${keeper.name} keeps its name`);
-      store.named.delete(id);
     }
-    for (const u of accepted) {
-      const c = store.cards.get(u);
-      if (c) c.pileId = keepId;
-    }
+    if (sources.size) store.setNamed([], [...sources]);
+    const joining = accepted.filter((u) => store.cards.has(u));
+    if (joining.length) store.moveCards(joining.map((u) => ({ uid: u, pileId: keepId })));
   }
 
   /** The pile (or empty named outline) a release lands on, if any. */
@@ -1017,10 +1016,8 @@ export class DragController {
     const off = CARD_W + 28;
     const at = { x: anchor.x + Math.cos(yaw) * off, y: anchor.y + Math.sin(yaw) * off, yaw };
     const uids = held.map((c) => c.uid);
-    for (const u of uids) {
-      const c = store.cards.get(u);
-      if (c && c.pileId === pileId) c.pileId = null;
-    }
+    const leaving = uids.filter((u) => store.cards.get(u)?.pileId === pileId);
+    if (leaving.length) store.moveCards(leaving.map((u) => ({ uid: u, pileId: null })));
     const spots = messyLayout(uids.length, at).map((p) => ({ x: p.x, y: p.y, yaw: p.yaw }));
     land(app, placeSequential(app, uids, spots), { duration: 260, arc: 8 });
     // The shake: a quick wobble once they have slid off.
