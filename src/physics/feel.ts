@@ -20,6 +20,7 @@ import { alignTo, isStand, raySlope, slopePose, standTopUnder } from '../state/s
 import type { Mat } from '../state/types';
 import { inSpace } from '../commands';
 import { outboxOf } from '../online/outbox';
+import { standWhyNot } from '../online/guard';
 import { remoteHeld } from '../state/remoteHeld';
 
 export type DragMode = 'single' | 'gather' | 'formation' | 'rigid';
@@ -367,7 +368,8 @@ export class DragController {
   private pointAt(sx: number, sy: number): { x: number; y: number; stand: Mat | null } | null {
     const r = this.app.rig.rayFrom(sx, sy);
     for (const m of this.app.store.mats.values()) {
-      if (!isStand(m)) continue;
+      // In a room, a stand you may not touch is plain table here: cards let go over it land in front of it (6.3).
+      if (!isStand(m) || standWhyNot(m)) continue;
       const hit = raySlope(m, r.origin, r.direction);
       if (hit) return { ...hit, stand: m };
     }

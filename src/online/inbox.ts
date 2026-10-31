@@ -171,6 +171,7 @@ export class Inbox {
     this.waiting = [];
     for (const msg of waiting) this.op(msg);
     if (this.sync.online.room.isCrown) this.sync.authority.start();
+    this.sync.tableArrived();
   }
 
   /** A confirmed op, in seq order. */

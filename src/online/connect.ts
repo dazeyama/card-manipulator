@@ -176,7 +176,8 @@ export class RoomSync {
     if (app.online === this.online) app.online = null;
     // A joiner's way out, whatever it is (Leave, or Go offline with a crown it inherited, review 13), brings
     // its own table back: the room's was never its own. The autosave stays paused until it is back (O9, O72).
-    if (this.role === 'joiner') {
+    // The maker back by link after a reload is no joiner: the room's table is its own (O6).
+    if (this.role === 'joiner' && !this.online.room.isMaker) {
       this.deps.drag.cancel();
       app.physics?.abandonAll();
       void this.deps.autosave.restore()
@@ -187,7 +188,12 @@ export class RoomSync {
           }
         })
         .finally(() => (this.deps.autosave.paused = false));
-    }
+    } else this.deps.autosave.paused = false;
+  }
+
+  /** The room's table has arrived: the maker back by link after a reload saves it again, as its own (O6, O7). */
+  tableArrived(): void {
+    if (this.role === 'joiner' && this.online.room.isMaker) this.deps.autosave.paused = false;
   }
 }
 

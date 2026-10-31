@@ -6,7 +6,8 @@
 
 import type { App } from './app';
 import { inSpace, land, placeSequential } from './commands';
-import { isStand, liftOntoSlope, STAND_D, STAND_W, underStand } from './state/stand';
+import { standWhyNot } from './online/guard';
+import { inFrontOf, isStand, liftOntoSlope, STAND_D, STAND_W, underStand } from './state/stand';
 import { CARD_H, CARD_W, type Card, type Mat } from './state/types';
 
 /** A card can be under a stand only if its centre is this close to the stand's, mm. */
@@ -37,6 +38,12 @@ export function installStandSnap(app: App): void {
     for (const [m, cards] of under) {
       // Bottom first, so piles keep their order on the slope.
       cards.sort((a, b) => a.z - b.z);
+      // In a room, a stand you may not touch takes no cards: they go on the table in front of it instead (6.3).
+      if (standWhyNot(m)) {
+        const front = inFrontOf(m, cards.map((c) => ({ x: c.x, y: c.y, yaw: c.yaw })));
+        land(app, inSpace(null, () => placeSequential(app, cards.map((c) => c.uid), front)), { arc: 8, keepSide: true });
+        continue;
+      }
       const spots = cards.map((c) => ({ ...liftOntoSlope(m, c.x, c.y), yaw: c.yaw }));
       land(app, inSpace(m.uid, () => placeSequential(app, cards.map((c) => c.uid), spots)), { arc: 8, keepSide: true });
     }

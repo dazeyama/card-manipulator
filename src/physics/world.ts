@@ -16,6 +16,7 @@ import { snapYaw } from '../state/piles';
 import { restingTop } from './restSync';
 import { CARD_H, CARD_T, CARD_W, type Mat } from '../state/types';
 import { isStand, LIP_D, LIP_H, STAND_D, STAND_W, standProfile, standW, standWorld, unrollPoint } from '../state/stand';
+import { standWhyNot } from '../online/guard';
 import { D20_RADIUS, d20Geometry, DIE_SIZE, dieSize, type DieKind } from '../state/dice';
 import type { Pose } from '../render/cards';
 
@@ -447,7 +448,8 @@ export class Physics {
       let at: { x: number; y: number } | null = null;
       let stand: string | null = null;
       for (const m of app.store.mats.values()) {
-        if (!isStand(m) || r.z < 2) continue;
+        // Not onto a stand you may not touch (6.3): the card stays on the table, and standSnap puts it in front.
+        if (!isStand(m) || r.z < 2 || standWhyNot(m)) continue;
         at = unrollPoint(m, r.x, r.y);
         if (at) {
           stand = m.uid;
