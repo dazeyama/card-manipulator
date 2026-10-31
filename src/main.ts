@@ -369,6 +369,8 @@ const badges = new Badges(app, {
     el.append(out);
   },
   doubleClick(id) {
+    // In a room, restacking or spreading a pile needs Move (ONLINE.md 6.2); Commands leaves out stands you may not touch.
+    if (!allowedNow('move')) return;
     if (id.startsWith('spread:')) commands.restack(id.slice(7));
     else {
       const first = pileCards(id)[0];

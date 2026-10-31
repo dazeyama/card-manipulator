@@ -757,6 +757,8 @@ export class Commands {
     const sp = store.spreads.get(spreadId);
     if (!sp) return;
     const uids = sp.uids.filter((u) => store.cards.get(u)?.spreadOf === spreadId);
+    // In a room, never a spread on a stand this player may not touch, the crown's too (ONLINE.md 6.3).
+    if (touchable(uids).length < uids.length) return;
     store.setSpreads([], [spreadId]);
     store.moveCards(uids.map((u) => ({ uid: u, spreadOf: null })));
     const bottomFirst = [...uids].reverse();
