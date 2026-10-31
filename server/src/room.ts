@@ -16,6 +16,7 @@ import {
   PROTOCOL, byteLength, isClientMsg, joinSnapshot, maxBytes, playerIdOf, splitSnapshot,
   type ByeReason, type ClientMsg, type RoomInfo, type RoomSettings, type ServerMsg, type SnapshotPart, type Tag,
 } from '../../shared/protocol';
+import { grantableRanks, mayManage, type Rank } from '../../shared/permissions';
 import { SlidingWindow } from '../../shared/rateLimit';
 import { affectedCards, carriesIdentities, redactOp, redactTable, viewOf, visibilityDiff, type TableView } from '../../shared/redact';
 import type { TableState } from '../../shared/table';
@@ -237,19 +238,22 @@ export class Room extends DurableObject<Env> {
       case 'ping':
         return this.send(ws, { t: 'pong' });
     }
-    // The room's own controls are the crown's alone (O23, 6.4).
-    if (!isCrown) return;
+    // The room's controls (O23, 6.4) are the crown's; ranks, kicks, bans and Lock table are also a
+    // co-host's, an Everything player's, over players below Everything (O111).
+    const who: Rank | 'crown' = isCrown ? 'crown' : seat.rank;
+    if (who !== 'crown' && who !== 'everything') return;
     switch (msg.t) {
       case 'settings':
-        return this.settings(msg.set);
+        return this.settings(seat, msg.set, isCrown);
       case 'rank':
-        return this.rank(msg.player, msg.rank);
+        return this.rank(who, msg.player, msg.rank);
       case 'kick':
-        return this.kick(seat, msg.player, false);
+        return this.kick(seat, who, msg.player, false);
       case 'ban':
-        return this.kick(seat, msg.player, true);
+        return this.kick(seat, who, msg.player, true);
       case 'pass':
-        return this.pass(seat, msg.player);
+        if (isCrown) this.pass(seat, msg.player);
+        return;
     }
   }
 
@@ -771,10 +775,12 @@ export class Room extends DurableObject<Env> {
   // ---- the crown's controls (O23) ----
 
   /** Visibility, password, tag, newcomers, Lock table, Downloads, name (4.3). */
-  private async settings(set: unknown): Promise<void> {
+  private async settings(by: Seat, set: unknown, crown: boolean): Promise<void> {
     const meta = this.meta;
     if (!meta || !set || typeof set !== 'object') return;
-    const s = set as Partial<RoomSettings>;
+    const raw = set as Partial<RoomSettings>;
+    // A co-host may lock and unlock the table, nothing else (O111); the rest is the crown's.
+    const s: Partial<RoomSettings> = crown ? raw : typeof raw.locked === 'boolean' ? { locked: raw.locked } : {};
     const changed = applySettings(meta, s);
     // An empty password takes the password off.
     if (typeof s.password === 'string' && s.password.length <= PASSWORD_MAX) {
@@ -788,16 +794,21 @@ export class Room extends DurableObject<Env> {
     if (!changed.length) return;
     this.markDirty();
     this.broadcast({ t: 'settings', settings: publicSettings(meta) });
-    if (changed.includes('locked')) this.say(meta.settings.locked ? say.locked : say.unlocked);
+    if (changed.includes('locked')) this.say(meta.settings.locked ? say.locked(by) : say.unlocked(by));
     if (changed.some((k) => k !== 'locked' && k !== 'name')) this.say(say.settings);
     this.queueHeartbeat();
   }
 
-  /** Set a player's rank (6.1). The crown's own is what it falls back to. */
-  private rank(player: unknown, rank: unknown): void {
+  /**
+   * Set a player's rank (6.1). The crown sets any, its own too (what it falls
+   * back to); a co-host sets those below Everything, never the crown, and gives
+   * View to Cards (O111).
+   */
+  private rank(who: Rank | 'crown', player: unknown, rank: unknown): void {
     const meta = this.meta!;
     const seat = typeof player === 'string' ? seatOf(meta, player) : undefined;
     if (!seat || !isRank(rank) || seat.rank === rank) return;
+    if (who !== 'crown' && (seat.id === meta.crown || !mayManage(who, seat.rank) || !grantableRanks(who).includes(rank))) return;
     seat.rank = rank;
     this.markDirty();
     this.broadcastPlayers();
@@ -806,20 +817,22 @@ export class Room extends DurableObject<Env> {
   /**
    * Kick drops a player, who may come back by the link; Ban also blocks their
    * identity for the room's life (4.6, O49). Their seat stays, greyed, and so
-   * does their stand. The crown cannot be kicked or banned.
+   * does their stand. The crown cannot be kicked or banned; the crown kicks
+   * anyone else, a co-host only players below Everything (O111).
    */
-  private kick(by: Seat, player: unknown, ban: boolean): void {
+  private kick(by: Seat, who: Rank | 'crown', player: unknown, ban: boolean): void {
     const meta = this.meta!;
     if (typeof player !== 'string' || player === by.id || player === meta.crown) return;
     const seat = seatOf(meta, player);
-    if (!seat) return;
+    // A co-host only over players below Everything (O111).
+    if (!seat || !mayManage(who, seat.rank)) return;
     if (ban && !meta.bans.includes(player)) addBan(meta, player);
     else if (!seat.connected) return;
     const ws = this.socketOf(player);
     seat.connected = false;
     this.awaiting.delete(player);
     this.markDirty();
-    this.say(ban ? say.banned(seat) : say.kicked(seat));
+    this.say(ban ? say.banned(by, seat) : say.kicked(by, seat));
     this.broadcastPlayers();
     if (ws) this.bye(ws, ban ? 'banned' : 'kicked');
     this.queueHeartbeat();

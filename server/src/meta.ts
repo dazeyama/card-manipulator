@@ -243,9 +243,10 @@ export const say = {
   crown: (s: Seat) => `${s.nickname} is the crown now`,
   reclaimed: (s: Seat) => `${s.nickname} took the crown back`,
   passed: (from: Seat, to: Seat) => `${from.nickname} passed the crown to ${to.nickname}`,
-  kicked: (s: Seat) => `${s.nickname} was kicked`,
-  banned: (s: Seat) => `${s.nickname} was banned`,
-  locked: 'The table is locked',
-  unlocked: 'The table is unlocked',
+  // Who did it is named: the crown, or a co-host (O111).
+  kicked: (by: Seat, s: Seat) => `${by.nickname} kicked ${s.nickname}`,
+  banned: (by: Seat, s: Seat) => `${by.nickname} banned ${s.nickname}`,
+  locked: (by: Seat) => `${by.nickname} locked the table`,
+  unlocked: (by: Seat) => `${by.nickname} unlocked the table`,
   settings: 'Room settings changed',
 };
