@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Outbox, without } from '../src/online/outbox';
+import { Outbox, splitOp, without } from '../src/online/outbox';
+import type { CardSnap } from '../src/state/history';
 import type { RoomSync } from '../src/online/connect';
 import type { Op } from '../shared/ops';
 import type { ClientMsg } from '../shared/protocol';
@@ -134,5 +135,83 @@ describe('without: an op minus what touches some uids', () => {
     expect(without({ t: 'dice', set: [{ uid: 'd1', x: 0, y: 0, z: 10, yaw: 0, value: 1 }], remove: ['d2'] }, skip)).toEqual({ t: 'dice', remove: ['d2'] });
     expect(without({ t: 'batch', ops: [{ t: 'remove', uids: ['a'] }, { t: 'table', name: 'x' }] }, skip)).toEqual({ t: 'batch', ops: [{ t: 'table', name: 'x' }] });
     expect(without({ t: 'table', name: 'x' }, new Set())).toEqual({ t: 'table', name: 'x' });
+  });
+});
+
+const snap = (i: number): CardSnap => ({ uid: `c${i}`, scryfallId: `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`, finish: 'nonfoil', x: i, y: -i, z: 0.15, yaw: 0, faceUp: true, pileId: null, spreadOf: null });
+
+describe('big ops go out in parts of at most 1,000 cards (O104)', () => {
+  it('splits an add, each part with its own inverse', () => {
+    const cards = Array.from({ length: 2500 }, (_, i) => snap(i));
+    const parts = splitOp({ t: 'add', cards }, { t: 'remove', uids: cards.map((c) => c.uid) });
+    expect(parts.map(([op]) => (op as Extract<Op, { t: 'add' }>).cards.length)).toEqual([1000, 1000, 500]);
+    const [op, inverse] = parts[1];
+    expect((op as Extract<Op, { t: 'add' }>).cards[0].uid).toBe('c1000');
+    expect(inverse).toEqual({ t: 'remove', uids: Array.from({ length: 1000 }, (_, i) => `c${1000 + i}`) });
+  });
+
+  it('splits a remove and a move, every part of a shuffle still marked', () => {
+    const uids = Array.from({ length: 1200 }, (_, i) => `c${i}`);
+    expect(splitOp({ t: 'remove', uids }, null).map(([op]) => (op as Extract<Op, { t: 'remove' }>).uids.length)).toEqual([1000, 200]);
+    const moves = uids.map((uid, i) => ({ uid, x: i }));
+    const parts = splitOp({ t: 'move', moves, shuffle: true }, { t: 'move', moves: uids.map((uid) => ({ uid, x: 0 })) });
+    expect(parts).toHaveLength(2);
+    expect(parts.every(([op]) => op.t === 'move' && op.shuffle)).toBe(true);
+    expect((parts[1][1] as Extract<Op, { t: 'move' }>).moves.map((m) => m.uid)).toEqual(uids.slice(1000));
+  });
+
+  it('leaves small ops and every other kind whole', () => {
+    expect(splitOp(move('a', 1), move('a', 0))).toEqual([[move('a', 1), move('a', 0)]]);
+    const table: Op = { t: 'table', name: 'x' };
+    expect(splitOp(table, null)).toEqual([[table, null]]);
+  });
+
+  it('sends a spawn of 2,500 cards as three ops; a refusal takes back only its own part', async () => {
+    const { sync, sent, applied } = fakeSync();
+    const box = new Outbox(sync);
+    const cards = Array.from({ length: 2500 }, (_, i) => snap(i));
+    box.record({ t: 'add', cards }, { t: 'remove', uids: cards.map((c) => c.uid) });
+    await turn();
+    const ops = sent as Extract<ClientMsg, { t: 'op' }>[];
+    expect(ops.map((m) => (m.op as Extract<Op, { t: 'add' }>).cards.length)).toEqual([1000, 1000, 500]);
+    expect(Math.max(...ops.map((m) => JSON.stringify(m).length))).toBeLessThan(512 * 1024);
+    box.refused(ops[2].id, 'cap');
+    expect(applied).toEqual([{ t: 'remove', uids: cards.slice(2000).map((c) => c.uid) }]);
+  });
+
+  it('gives each part of an undo only its own precondition', async () => {
+    const { sync, sent } = fakeSync();
+    const box = new Outbox(sync);
+    const uids = Array.from({ length: 1500 }, (_, i) => `c${i}`);
+    box.pre = Object.fromEntries(uids.map((u) => [u, 3]));
+    box.record({ t: 'move', moves: uids.map((uid) => ({ uid, x: 1 })) }, { t: 'move', moves: uids.map((uid) => ({ uid, x: 0 })) });
+    await turn();
+    const ops = sent as Extract<ClientMsg, { t: 'op' }>[];
+    expect(ops.map((m) => Object.keys(m.pre ?? {}).length)).toEqual([1000, 500]);
+  });
+
+  it('sends a turn too big for one message change by change', async () => {
+    const { sync, sent } = fakeSync();
+    const box = new Outbox(sync);
+    const cards = Array.from({ length: 6000 }, (_, i) => snap(i));
+    // Three big changes in one turn: about 1 MB as one batch.
+    for (let k = 0; k < 3; k++) {
+      const part = cards.slice(k * 2000, (k + 1) * 2000);
+      box.record({ t: 'add', cards: part }, { t: 'remove', uids: part.map((c) => c.uid) });
+    }
+    await turn();
+    const ops = sent as Extract<ClientMsg, { t: 'op' }>[];
+    expect(ops.every((m) => m.op.t === 'add')).toBe(true);
+    expect(ops.map((m) => (m.op as Extract<Op, { t: 'add' }>).cards.length)).toEqual([1000, 1000, 1000, 1000, 1000, 1000]);
+  });
+
+  it('keeps a turn of small changes as one batch', async () => {
+    const { sync, sent } = fakeSync();
+    const box = new Outbox(sync);
+    box.record(move('a', 1), move('a', 0));
+    box.record(move('b', 1), move('b', 0));
+    await turn();
+    expect(sent).toHaveLength(1);
+    expect((sent[0] as Extract<ClientMsg, { t: 'op' }>).op.t).toBe('batch');
   });
 });

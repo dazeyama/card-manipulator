@@ -12,7 +12,7 @@ import { newUid } from '../state/store';
 import { spillOps } from './authority';
 import type { Op } from '../../shared/ops';
 import { cardsTouched, diceTouched } from '../../shared/ops';
-import type { RefuseReason } from '../../shared/protocol';
+import { byteLength, type RefuseReason } from '../../shared/protocol';
 import type { RoomSync } from './connect';
 
 interface Pending {
@@ -27,6 +27,15 @@ interface Pending {
   /** Run when the crown refuses it (a refused grab drops the cards back). */
   refused?: (reason: RefuseReason) => void;
 }
+
+/**
+ * At most this many cards in one add, remove or move (O104): a whole cube
+ * spawned, or a layout of the whole table, goes out as several ops, each
+ * judged and confirmed on its own, so no message comes near the server's 1 MiB.
+ */
+export const OP_CARDS = 1000;
+/** A turn's batch bigger than this goes out change by change instead, each split as above. */
+const BATCH_MAX_BYTES = 900 * 1024;
 
 /** The room's outbox for each app, while it is in a room. */
 const boxes = new WeakMap<App, Outbox>();
@@ -68,11 +77,19 @@ export class Outbox {
     this.queue = [];
     // Until the room's table has arrived, this table is about to be replaced: nothing of it goes out.
     if (!q.length || this.sync.inbox.loading) return;
-    const op: Op = q.length === 1 ? q[0].op : { t: 'batch', ops: q.map((x) => x.op) };
-    const inverse: Op = q.length === 1 ? q[0].inverse : { t: 'batch', ops: q.map((x) => x.inverse).reverse() };
     const pre = this.pre;
     this.pre = null;
-    this.send(op, inverse, pre ? { pre } : {});
+    if (q.length > 1) {
+      const op: Op = { t: 'batch', ops: q.map((x) => x.op) };
+      if (byteLength(JSON.stringify(op)) <= BATCH_MAX_BYTES) {
+        this.send(op, { t: 'batch', ops: q.map((x) => x.inverse).reverse() }, pre ? { pre } : {});
+        return;
+      }
+    }
+    // One change, or a turn too big to go as one: each change on its own, big ones in parts (O104).
+    for (const x of q) {
+      for (const [op, inverse] of splitOp(x.op, x.inverse)) this.send(op, inverse, pre ? { pre: preFor(pre, op) } : {});
+    }
   }
 
   /**
@@ -202,33 +219,76 @@ export function spillStands(app: App, uids: string[]): void {
 
 /** An op without the parts that touch these uids (cards, dice, mats, piles); null if nothing is left. */
 export function without(op: Op, skip: Set<string>): Op | null {
-  if (!skip.size) return op;
+  return skip.size ? keepOnly(op, (u) => !skip.has(u)) : op;
+}
+
+/** An op with only the card and die parts whose uids pass `keep`; null if nothing is left. Other ops come back whole. */
+function keepOnly(op: Op, keep: (uid: string) => boolean): Op | null {
   switch (op.t) {
     case 'add': {
-      const cards = op.cards.filter((c) => !skip.has(c.uid));
+      const cards = op.cards.filter((c) => keep(c.uid));
       return cards.length ? { ...op, cards } : null;
     }
     case 'remove':
     case 'grab':
     case 'release': {
-      const uids = op.uids.filter((u) => !skip.has(u));
-      const dice = 'dice' in op && op.dice ? op.dice.filter((u) => !skip.has(u)) : undefined;
+      const uids = op.uids.filter(keep);
+      const dice = 'dice' in op && op.dice ? op.dice.filter(keep) : undefined;
       return uids.length || dice?.length ? { ...op, uids, ...(dice ? { dice } : {}) } : null;
     }
     case 'move': {
-      const moves = op.moves.filter((m) => !skip.has(m.uid));
+      const moves = op.moves.filter((m) => keep(m.uid));
       return moves.length ? { ...op, moves } : null;
     }
     case 'dice': {
-      const set = op.set?.filter((d) => !skip.has(d.uid));
-      const remove = op.remove?.filter((u) => !skip.has(u));
+      const set = op.set?.filter((d) => keep(d.uid));
+      const remove = op.remove?.filter(keep);
       return set?.length || remove?.length ? { t: 'dice', ...(set?.length ? { set } : {}), ...(remove?.length ? { remove } : {}) } : null;
     }
     case 'batch': {
-      const ops = op.ops.map((o) => without(o, skip)).filter((o): o is Op => !!o);
+      const ops = op.ops.map((o) => keepOnly(o, keep)).filter((o): o is Op => !!o);
       return ops.length ? { t: 'batch', ops } : null;
     }
     default:
       return op;
   }
+}
+
+/**
+ * An add, remove or move of more than `size` cards as several of at most
+ * `size`, each with the part of the inverse that takes it back (O104). Other
+ * ops come back whole.
+ */
+export function splitOp(op: Op, inverse: Op | null, size = OP_CARDS): [Op, Op | null][] {
+  let groups: string[][];
+  let part: (uids: string[]) => Op;
+  if (op.t === 'add' && op.cards.length > size) {
+    groups = chunk(op.cards.map((c) => c.uid), size);
+    part = (uids) => keepOnly(op, inSet(uids))!;
+  } else if (op.t === 'remove' && op.uids.length > size) {
+    groups = chunk(op.uids, size);
+    part = (uids) => ({ t: 'remove', uids });
+  } else if (op.t === 'move' && op.moves.length > size) {
+    groups = chunk(op.moves.map((m) => m.uid), size);
+    part = (uids) => keepOnly(op, inSet(uids))!;
+  } else return [[op, inverse]];
+  return groups.map((uids) => [part(uids), inverse ? keepOnly(inverse, inSet(uids)) : null]);
+}
+
+function chunk<T>(list: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
+  return out;
+}
+
+function inSet(uids: string[]): (uid: string) => boolean {
+  const set = new Set(uids);
+  return (u) => set.has(u);
+}
+
+/** An undo's precondition for one part of it: only the uids that part touches. */
+function preFor(pre: Record<string, number>, op: Op): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const u of [...cardsTouched(op), ...diceTouched(op)]) if (u in pre) out[u] = pre[u];
+  return out;
 }
