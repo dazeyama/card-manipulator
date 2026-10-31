@@ -25,7 +25,11 @@ export function viewOf(table: TableState): TableView {
 
 /** May this player know the card's identity (7.1)? */
 export function canSee(card: CardSnap, mats: ReadonlyMap<string, Mat>, player: string): boolean {
-  if (card.stand) return mats.get(card.stand)?.owner === player;
+  if (card.stand) {
+    // Only a stand's owner sees its cards, and only if the mat really is a stand (review N5).
+    const m = mats.get(card.stand);
+    return !!m && m.kind === 'stand' && m.owner === player;
+  }
   return card.faceUp;
 }
 

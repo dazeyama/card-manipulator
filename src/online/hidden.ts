@@ -23,7 +23,11 @@ export { HIDDEN };
 /** May `me` know this card (7.1, the client's twin of shared/redact.ts canSee)? */
 export function visibleTo(card: Pick<Card, 'scryfallId' | 'faceUp' | 'stand'>, mats: Map<string, Mat>, me: string): boolean {
   if (card.scryfallId === HIDDEN) return false;
-  if (card.stand) return mats.get(card.stand)?.owner === me;
+  if (card.stand) {
+    // Only a stand's owner sees its cards, and only if the mat really is a stand (review N5).
+    const m = mats.get(card.stand);
+    return !!m && m.kind === 'stand' && m.owner === me;
+  }
   return card.faceUp;
 }
 

@@ -152,6 +152,20 @@ export class Presence implements PresenceView {
     }
   }
 
+  /** After a snapshot: the holds confirmed before it carry on, for the cards and dice still on the table (review N7). */
+  keepHolds(holds: Map<string, string>): void {
+    if (this.stopped) return;
+    const store = this.sync.app.store;
+    const me = this.sync.online.room.me;
+    let fresh = false;
+    for (const [uid, by] of holds) {
+      if (by === me || (!store.cards.has(uid) && !store.dice.has(uid))) continue;
+      this.holders.set(uid, by);
+      fresh = this.take(uid, by) || fresh;
+    }
+    if (fresh) this.retint();
+  }
+
   // ---- confirmed ops ----
 
   /** A confirmed op: a grab puts things in its player's hand (8.4). */

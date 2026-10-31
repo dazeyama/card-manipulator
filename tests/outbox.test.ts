@@ -252,3 +252,28 @@ describe('refusals of two ops on the same card end where the crown is (review 16
     expect(end(applied)).toBe(0);
   });
 });
+
+describe('a refused drag ends where the crown is (review N6)', () => {
+  it('passes over the grab, which has nothing to take back', async () => {
+    const { sync, sent, applied } = fakeSync();
+    const box = new Outbox(sync);
+    // The turn to face you on pick-up, then the hold, then the landing; all refused (the table was locked).
+    box.record({ t: 'move', moves: [{ uid: 'a', yaw: 3.14, side: 1 }] }, { t: 'move', moves: [{ uid: 'a', yaw: 0, side: null }] });
+    box.flush();
+    box.grab(['a'], [], () => {});
+    box.record({ t: 'move', moves: [{ uid: 'a', x: 99 }] }, { t: 'move', moves: [{ uid: 'a', x: 0 }] });
+    box.flush();
+    const ids = (sent as Extract<ClientMsg, { t: 'op' }>[]).map((m) => m.id);
+    for (const id of ids) box.refused(id, 'locked');
+    let yaw = 3.14, x = 99;
+    const walk = (op: Op) => {
+      if (op.t === 'batch') op.ops.forEach(walk);
+      else if (op.t === 'move') for (const m of op.moves) {
+        if (m.yaw !== undefined) yaw = m.yaw;
+        if (m.x !== undefined) x = m.x;
+      }
+    };
+    applied.forEach(walk);
+    expect({ yaw, x }).toEqual({ yaw: 0, x: 0 });
+  });
+});

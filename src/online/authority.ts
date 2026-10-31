@@ -80,8 +80,12 @@ export class Authority {
   start(): void {
     if (this.active) return;
     this.active = true;
-    // Holds already confirmed before the crown came here are presence's; they carry on.
+    // Holds already confirmed before the crown came here are presence's (kept through the snapshot); they carry on,
+    // and so do this browser's own, if it is holding something as the crown comes to it (review N7).
     for (const [uid, by] of this.sync.presence.holders) this.heldBy.set(uid, by);
+    const me = this.sync.online.room.me;
+    const { drag, dice } = this.sync.deps ?? {};
+    for (const uid of [...(drag?.dragging ? drag.heldUids : []), ...(dice?.heldUids ?? [])]) this.heldBy.set(uid, me);
     clearInterval(this.timer);
     // Only when something changed since the last one: each snapshot counts against the free plan (15).
     this.timer = setInterval(() => {
@@ -340,15 +344,15 @@ export class Authority {
       let r: RefuseReason | null = null;
       /** Everything may claim an unowned stand even with a full stand already (O65). */
       let regardless = false;
-      if (!was || isStand(was) !== isStand(m)) {
-        // A new mat, or a playmat turned stand (or back): judged as taking the old one away and adding this one.
-        if (was) r = isStand(was) ? (was.owner === from ? may('standRemoveOwn') : may('standSpill')) : may('matRemove');
-        if (!r) {
-          if (!isStand(m)) r = may('matAdd');
-          // A stand made for someone else is Give to, the crown's (6.3).
-          else if (m.owner && m.owner !== from) r = 'stand';
-          else r = may('standOwn');
-        }
+      if (was && isStand(was) !== isStand(m)) {
+        // A playmat turned stand or a stand turned playmat: no honest page sends one, and it could
+        // take another player's stand and show its cards (review N5). The crown's alone.
+        r = 'crownOnly';
+      } else if (!was) {
+        if (!isStand(m)) r = may('matAdd');
+        // A stand made for someone else is Give to, the crown's (6.3).
+        else if (m.owner && m.owner !== from) r = 'stand';
+        else r = may('standOwn');
       } else if (!isStand(m)) r = may('mat');
       else {
         const owner = was.owner ?? null;

@@ -183,7 +183,8 @@ export class Outbox {
       if (back) {
         const handed = new Set<string>();
         for (const u of [...p.cards, ...p.dice]) {
-          const q = later.find((x) => x.cards.has(u) || x.dice.has(u));
+          // Not a grab or a release (no inverse): the next op that changes the card (review N6).
+          const q = later.find((x) => x.inverse && (x.cards.has(u) || x.dice.has(u)));
           if (!q || !q.inverse) continue;
           const part = keepOnly(back, (v) => v === u);
           if (!part) continue;

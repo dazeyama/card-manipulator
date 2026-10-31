@@ -157,6 +157,8 @@ export class Inbox {
     this.parts = [];
     const app = this.sync.app;
     this.sync.outbox.clear();
+    // Who holds what is not in the table: it carries on, for presence and a new crown's judge (review N7).
+    const holds = new Map(this.sync.presence.holders);
     this.sync.presence.reset();
     app.physics?.abandonAll();
     app.store.remote(() => {
@@ -164,6 +166,7 @@ export class Inbox {
       this.settleDrawn(table.cards.map((c) => c.uid), new Set());
     });
     this.touched.clear();
+    this.sync.presence.keepHolds(holds);
     this.need(table.cards.map((c) => c.scryfallId));
     if (seq !== undefined) this.seq = seq;
     this.waitingForTable = false;

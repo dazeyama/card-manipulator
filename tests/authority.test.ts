@@ -147,6 +147,10 @@ describe('the review fixes', () => {
     const { propose } = room({ ev: 'everything' });
     expect(propose('ev', { t: 'mat', set: [stand('st', 'ev')] })).toBe('stand');
     expect(propose('ev', { t: 'mat', set: [stand('st')] })).toBe('stand');
+    // Nor by turning it into a playmat of their own, or a playmat into a stand (review N5).
+    const { kind: _kind, ...asMat } = stand('st', 'ev');
+    expect(propose('ev', { t: 'mat', set: [asMat] })).toBe('crownOnly');
+    expect(propose('ev', { t: 'mat', set: [{ uid: 'mat', kind: 'stand', scryfallId: 'm', name: 'Mat', art: '', x: 0, y: 0, yaw: 0, owner: 'ev' }] })).toBe('crownOnly');
   });
 
   it('counts the whole op for the cap and one full stand (review 15)', () => {
