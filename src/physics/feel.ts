@@ -915,8 +915,9 @@ export class DragController {
 
   /** Ask a room's crown for a hold on cards just picked up (ONLINE.md 8.4); refused, they drop back. */
   private askHold(uids: string[]): void {
-    outboxOf(this.app)?.grab(uids, [], (reason) => {
-      if (reason !== 'held' || !this.active) return;
+    // Any refusal (someone else was first, the table locked, a rank, a stand) drops them back (review 11).
+    outboxOf(this.app)?.grab(uids, [], () => {
+      if (!this.active) return;
       const lost = new Set(uids);
       if (this.held.some((c) => lost.has(c.uid))) this.cancel();
     });

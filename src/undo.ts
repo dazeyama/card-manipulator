@@ -176,8 +176,12 @@ export class Undo {
     const spreads = new Set(then.spreads.map((sp) => sp.id));
     store.setSpreads(then.spreads.filter((sp) => JSON.stringify(store.spreads.get(sp.id)) !== JSON.stringify(sp)), [...store.spreads.keys()].filter((id) => !spreads.has(id)));
     this.restoreMats(then);
-    // Dice as they were (decision 255).
-    if (JSON.stringify([...store.dice.values()]) !== JSON.stringify(then.dice)) store.replaceDice(then.dice);
+    // Dice as they were (decision 255): only those that differ, by uid, so no other die goes out with it (reviews 9, 17).
+    const thenDice = new Map(then.dice.map((d) => [d.uid, d]));
+    const changed = then.dice.filter((d) => JSON.stringify(store.dice.get(d.uid)) !== JSON.stringify(d));
+    const gone = [...store.dice.keys()].filter((u) => !thenDice.has(u));
+    if (gone.length) store.removeDice(gone);
+    if (changed.length) store.setDice(changed);
     if (d.move.length) {
       land(app, d.move.map((c) => ({ uid: c.uid, x: c.x, y: c.y, z: c.z, yaw: c.yaw, faceUp: c.faceUp })), { stagger: Math.min(1.5, 200 / d.move.length), arc: 6, keepSide: true });
     }
@@ -239,11 +243,23 @@ export function changedByMe(snap: TableSnap, op: Op, store: Store): boolean {
 
 /** Bring a kept snapshot up to date with the store for everything an op touched (cards, dice, mats, named piles, spreads). */
 export function foldInto(snap: TableSnap, op: Op, store: Store): void {
+  // Each touched thing is replaced where it stands (as the store's Map keeps it), added at the end, or taken out.
   const sync = <T>(list: T[], keys: Iterable<string>, key: (t: T) => string, now: (k: string) => T | undefined): T[] => {
     const want = new Set(keys);
     if (!want.size) return list;
-    const out = list.filter((t) => !want.has(key(t)));
+    const out: T[] = [];
+    const seen = new Set<string>();
+    for (const t of list) {
+      const k = key(t);
+      if (!want.has(k)) out.push(t);
+      else {
+        seen.add(k);
+        const n = now(k);
+        if (n !== undefined) out.push(n);
+      }
+    }
     for (const k of want) {
+      if (seen.has(k)) continue;
       const t = now(k);
       if (t !== undefined) out.push(t);
     }

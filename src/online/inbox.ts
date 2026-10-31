@@ -129,6 +129,8 @@ export class Inbox {
 
   /** youAreCrown (4.5): the full table follows in parts, then the queued proposals. */
   takeCrown(): void {
+    // Whatever this browser judged before is stale now (review 18): the judge starts again once the table is here.
+    this.sync.authority.stop();
     this.waitingForTable = true;
     this.parts = [];
   }
@@ -185,7 +187,7 @@ export class Inbox {
     for (const u of diceTouched(msg.op)) this.touched.set(u, msg.seq);
     const { outbox, online, presence, authority } = this.sync;
     presence.confirmed(msg.op, msg.by);
-    authority.confirmed(msg.op, msg.by);
+    authority.confirmed(msg.op, msg.by, msg.seq);
     if (outbox.confirmed(msg.id, msg.by, msg.op)) return;
     // The crown applied every op when it judged it (its own when it made it).
     if (online.room.isCrown) return;

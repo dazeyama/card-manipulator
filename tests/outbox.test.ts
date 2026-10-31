@@ -215,3 +215,40 @@ describe('big ops go out in parts of at most 1,000 cards (O104)', () => {
     expect((sent[0] as Extract<ClientMsg, { t: 'op' }>).op.t).toBe('batch');
   });
 });
+
+describe('refusals of two ops on the same card end where the crown is (review 16)', () => {
+  const two = async () => {
+    const { sync, sent, applied } = fakeSync();
+    const box = new Outbox(sync);
+    box.record(move('a', 1), move('a', 0));
+    box.flush();
+    box.record(move('a', 2), move('a', 1));
+    box.flush();
+    const [first, second] = sent as Extract<ClientMsg, { t: 'op' }>[];
+    return { box, applied, first, second };
+  };
+  /** Where card a ends after the rollbacks, starting from x 2. */
+  const end = (ops: Op[]) => {
+    let x = 2;
+    const walk = (op: Op) => {
+      if (op.t === 'batch') op.ops.forEach(walk);
+      else if (op.t === 'move') for (const m of op.moves) if (m.uid === 'a' && m.x !== undefined) x = m.x;
+    };
+    ops.forEach(walk);
+    return x;
+  };
+
+  it('in the order sent', async () => {
+    const { box, applied, first, second } = await two();
+    box.refused(first.id, 'locked');
+    box.refused(second.id, 'locked');
+    expect(end(applied)).toBe(0);
+  });
+
+  it('newest first', async () => {
+    const { box, applied, first, second } = await two();
+    box.refused(second.id, 'locked');
+    box.refused(first.id, 'locked');
+    expect(end(applied)).toBe(0);
+  });
+});

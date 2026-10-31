@@ -403,9 +403,8 @@ export class Dice {
     }
     // In a room, picking them up asks the crown for a hold (ONLINE.md 8.4); in hand at once.
     const uids = held.map((h) => h.uid);
-    outboxOf(this.app)?.grab([], uids, (reason) => {
-      if (reason === 'held') this.dropBack(uids);
-    });
+    // Any refusal drops them back (review 11).
+    outboxOf(this.app)?.grab([], uids, () => this.dropBack(uids));
     return held;
   }
 

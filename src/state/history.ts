@@ -52,5 +52,10 @@ export function sameTable(a: TableSnap, b: TableSnap): boolean {
     && JSON.stringify(a.named) === JSON.stringify(b.named)
     && JSON.stringify(a.spreads) === JSON.stringify(b.spreads)
     && JSON.stringify(a.mats) === JSON.stringify(b.mats)
-    && JSON.stringify(a.dice) === JSON.stringify(b.dice);
+    && JSON.stringify(byUid(a.dice)) === JSON.stringify(byUid(b.dice));
+}
+
+/** Dice in uid order: the same dice in another order are the same dice (review 9). */
+function byUid<T extends { uid: string }>(list: T[]): T[] {
+  return [...list].sort((x, y) => (x.uid < y.uid ? -1 : x.uid > y.uid ? 1 : 0));
 }

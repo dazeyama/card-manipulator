@@ -22,10 +22,11 @@ import { MAX_CARDS, splitSnapshot, type RefuseReason, type ServerMsg } from '../
 import { HIDDEN } from '../../shared/table';
 import { inSpace, placeSequential } from '../commands';
 import { messyLayout, shuffled } from '../state/piles';
-import { fullStandsOf, inFrontOf, isFullStand, isStand } from '../state/stand';
+import { inFrontOf, isFullStand, isStand } from '../state/stand';
 import { newUid, snapCard } from '../state/store';
 import { getRecords } from '../scryfall/cardData';
 import { fetchByIds } from '../scryfall/resolve';
+import type { Finish, Mat } from '../state/types';
 import type { RoomSync } from './connect';
 
 /** A full snapshot for the mirror this often, ms, or after this many confirmed ops (10.2). */
@@ -35,6 +36,21 @@ const SNAPSHOT_EVERY_OPS = 50;
 const DROP_HOLDS_MS = 3000;
 
 type Proposal = Extract<ServerMsg, { t: 'propose' }>;
+
+/** What the earlier parts of one op have done to the table, so each part is judged as the op goes (6.4). */
+interface JudgeCtx {
+  /** Cards on the table so far. */
+  cards: number;
+  added: Set<string>;
+  gone: Set<string>;
+  /** Mats as the op has set them (null: taken away). */
+  mats: Map<string, Mat | null>;
+}
+
+/** At most this many identities of removed cards are kept, for an undo of a Delete from someone who never saw them. */
+const KEPT_IDENTITIES = 10_000;
+/** The last few confirmed ops that touched each card or die, for undo's precondition (8.6). */
+const HISTORY_PER_UID = 6;
 
 export class Authority {
   /** True while this browser is the crown and judging. */
@@ -48,6 +64,15 @@ export class Authority {
   /** Proposals waiting their turn, in the order they came (one may wait for card data). */
   private readonly queue: Proposal[] = [];
   private judging = false;
+  /**
+   * Every browser keeps, for each card and die, who touched it at which seq
+   * lately (8.6), so a crown judges an undo by its own order, also right after a
+   * handover; and the crown marks what it has applied and not yet seen echoed.
+   */
+  private readonly history = new Map<string, { seq: number; by: string }[]>();
+  private readonly pendingTouch = new Map<string, string[]>();
+  /** Identities of cards others removed, kept by the crown (review 6): an undo of that Delete gets them back. */
+  private readonly removedIds = new Map<string, { scryfallId: string; finish: Finish }>();
 
   constructor(private readonly sync: RoomSync) {}
 
@@ -74,6 +99,7 @@ export class Authority {
     for (const t of this.drops.values()) clearTimeout(t);
     this.drops.clear();
     this.queue.length = 0;
+    this.pendingTouch.clear();
   }
 
   /** Send the whole table to the server's mirror (Go online, every 30 s, when asked). */
@@ -109,14 +135,19 @@ export class Authority {
   private judgeNow(msg: Proposal): void {
     // My own changes of this turn go first: they happened first.
     this.sync.outbox.flush();
-    const reason = this.check(msg.op, msg.from, msg.pre, false);
+    // An undo of a Delete from someone who never saw those cards gets their printings back from the crown (review 6).
+    const asked = this.restoreIdentities(msg.op);
+    const reason = this.check(asked, msg.from, msg.pre, false);
     if (reason) {
       this.sync.session.send({ t: 'refuse', id: msg.id, to: msg.from, reason });
+      // A refused landing still empties the hand: the cards must not hang in the air for everyone (reviews 5, 11).
+      this.endHolds(msg.op, msg.from);
       return;
     }
     // A spill is laid out here, where every identity is known (6.3); the proposer takes the crown's version.
-    const op = this.expandSpills(msg.op);
+    const op = this.expandSpills(asked);
     this.take(op, msg.from);
+    this.markPending(op, msg.from);
     this.sync.inbox.applyRemote(op, msg.from);
     this.sync.session.send({ t: 'confirm', id: msg.id, by: msg.from, op });
     this.counted();
@@ -135,9 +166,11 @@ export class Authority {
       if (inverse) this.sync.inbox.applyRemote(inverse, me);
       opts.refused?.(reason);
       this.sync.refusedToast(reason, op);
+      this.endHolds(op, me);
       return;
     }
     this.take(op, me);
+    this.markPending(op, me);
     this.sync.session.send({ t: 'confirm', id, by: me, op });
     this.counted();
     this.afterShuffle(op);
@@ -151,22 +184,35 @@ export class Authority {
 
   /** Why the op may not go ahead, or null. `applied`: the crown's own, already on its table. */
   private check(op: Op, from: string, pre: Record<string, number> | undefined, applied: boolean): RefuseReason | null {
-    // Undo (8.6): refused if anyone has touched those things since the undoer last saw them.
-    if (pre) {
-      const touched = this.sync.inbox.touched;
-      for (const [uid, seq] of Object.entries(pre)) if ((touched.get(uid) ?? 0) !== seq) return 'touched';
-    }
+    // Undo (8.6): refused if anyone else has touched those things, in the crown's order, since the undoer last saw them.
+    if (pre && this.touchedSince(pre, from)) return 'touched';
     const room = this.sync.online.room;
     const who: Rank | 'crown' = from === room.crown ? 'crown' : room.player(from)?.rank ?? 'view';
-    return this.checkOp(op, from, who, applied);
+    const store = this.sync.app.store;
+    const ctx: JudgeCtx = { cards: store.cards.size, added: new Set(), gone: new Set(), mats: new Map() };
+    return this.checkOp(op, from, who, applied, new Set(), ctx);
+  }
+
+  /**
+   * Whether another player touched any of these since the undoer's seq (8.6):
+   * a confirmed op after it, or one the crown has applied and not yet seen
+   * echoed. The undoer's own later ops are theirs to take back.
+   */
+  private touchedSince(pre: Record<string, number>, from: string): boolean {
+    for (const [uid, seq] of Object.entries(pre)) {
+      if (this.pendingTouch.get(uid)?.some((by) => by !== from)) return true;
+      if (this.history.get(uid)?.some((e) => e.seq > seq && e.by !== from)) return true;
+    }
+    return false;
   }
 
   /**
    * `freed`: stands the same batch removes or spills, whose cards it may take
    * off with them (a spill laid out by the spiller, 6.3); the removal itself is
-   * judged as a removal.
+   * judged as a removal. `ctx`: what the earlier parts of the same op have
+   * done, so the cap and the one-stand rule count the whole op (6.4).
    */
-  private checkOp(op: Op, from: string, who: Rank | 'crown', applied: boolean, freed: Set<string> = new Set()): RefuseReason | null {
+  private checkOp(op: Op, from: string, who: Rank | 'crown', applied: boolean, freed: Set<string>, ctx: JudgeCtx): RefuseReason | null {
     const store = this.sync.app.store;
     const settings = this.sync.online.room.settings;
     const crown = who === 'crown';
@@ -187,26 +233,41 @@ export class Authority {
       const m = store.mats.get(standUid);
       return !!m && isStand(m) && m.owner !== from;
     };
+    /** On the table now, counting the earlier parts of this op. */
+    const exists = (uid: string) => ctx.added.has(uid) || (store.cards.has(uid) && !ctx.gone.has(uid));
     const first = (...reasons: (RefuseReason | null)[]) => reasons.find((r) => r) ?? null;
     switch (op.t) {
       case 'batch': {
         const gone = new Set(freed);
         for (const o of op.ops) if (o.t === 'mat') for (const u of [...(o.remove ?? []), ...(o.spill ?? [])]) gone.add(u);
         for (const o of op.ops) {
-          const r = this.checkOp(o, from, who, applied, gone);
+          const r = this.checkOp(o, from, who, applied, gone, ctx);
           if (r) return r;
         }
         return null;
       }
       case 'add': {
-        const fresh = op.cards.filter((c) => !store.cards.has(c.uid)).length;
-        const total = applied ? store.cards.size : store.cards.size + fresh;
-        if (total > MAX_CARDS && (fresh || applied)) return 'cap';
+        // An add from anyone but the crown names new cards only, never one already here (review 14),
+        // and never a card nobody here may know (review 6: the crown put back what it kept).
+        if (!crown && op.cards.some((c) => exists(c.uid) || c.scryfallId === HIDDEN)) return 'unknown';
+        const fresh = op.cards.filter((c) => !exists(c.uid));
+        const total = applied ? store.cards.size : ctx.cards + fresh.length;
+        if (total > MAX_CARDS && (fresh.length || applied)) return 'cap';
+        if (!applied) {
+          ctx.cards = total;
+          for (const c of fresh) ctx.added.add(c.uid);
+        }
         if (crown) return null;
         return first(may(addAction(op.cards.map((c) => store.records.get(c.scryfallId)))), op.cards.some((c) => notMine(c.stand)) ? 'stand' : null);
       }
       case 'remove': {
         if (heldByOther(op.uids)) return 'held';
+        for (const u of op.uids) {
+          if (!exists(u)) continue;
+          ctx.gone.add(u);
+          ctx.added.delete(u);
+          ctx.cards--;
+        }
         if (crown) return null;
         const cards = op.uids.map((u) => store.cards.get(u)).filter((c) => !!c);
         return first(may(removeAction(cards.map((c) => store.records.get(c!.scryfallId)))), cards.some((c) => notMine(c!.stand)) ? 'stand' : null);
@@ -245,54 +306,77 @@ export class Authority {
         return first(adds ? may('diceAdd') : null, changes ? may('dice') : null, op.remove?.length ? may('diceRemove') : null);
       }
       case 'mat':
-        return crown ? null : this.checkMat(op, from, may);
+        return crown ? null : this.checkMat(op, from, may, ctx);
       case 'basics':
         return crown ? null : may('basics');
       case 'table':
         return crown ? null : may('table');
       case 'replace':
+        // The cap holds for the crown's New table and Load file too (review 12): a table past it stays off the room.
+        if (op.table.cards.length > MAX_CARDS) return 'cap';
         return crown ? null : may('replace');
       case 'reuid':
         return crown ? null : may('reuid');
     }
   }
 
-  /** Playmats and stands (6.2, 6.3): what a mat op needs from someone who is not the crown. */
-  private checkMat(op: Extract<Op, { t: 'mat' }>, from: string, may: (a: Action) => RefuseReason | null): RefuseReason | null {
+  /**
+   * Playmats and stands (6.2, 6.3): what a mat op needs from someone who is
+   * not the crown, judged against the table as the op's earlier parts leave it.
+   */
+  private checkMat(op: Extract<Op, { t: 'mat' }>, from: string, may: (a: Action) => RefuseReason | null, ctx: JudgeCtx): RefuseReason | null {
     const store = this.sync.app.store;
-    const mats = [...store.mats.values()];
-    const fullOf = (except?: string) => fullStandsOf(mats, from).filter((m) => m.uid !== except).length;
+    const now = (uid: string): Mat | undefined => (ctx.mats.has(uid) ? ctx.mats.get(uid) ?? undefined : store.mats.get(uid));
+    /** Full stands the sender owns, as this op has left them so far, apart from one. */
+    const fullMine = (except: string): number => {
+      let n = 0;
+      for (const [uid, m] of ctx.mats) if (uid !== except && m && isFullStand(m) && m.owner === from) n++;
+      for (const m of store.mats.values()) if (m.uid !== except && !ctx.mats.has(m.uid) && isFullStand(m) && m.owner === from) n++;
+      return n;
+    };
+    const fullOfMine = (m: Mat | undefined) => !!m && isStand(m) && isFullStand(m) && m.owner === from;
     for (const m of op.set ?? []) {
-      const was = store.mats.get(m.uid);
-      let r: RefuseReason | null;
-      if (!was) {
-        if (!isStand(m)) r = may('matAdd');
-        else if (m.owner && m.owner !== from) r = may('standClaim');
-        else {
-          // Your own hand stand and small stands at Move; one full stand each (O27, O59).
-          r = may('standOwn');
-          if (!r && isFullStand(m) && fullOf()) r = 'oneStand';
+      const was = now(m.uid);
+      let r: RefuseReason | null = null;
+      /** Everything may claim an unowned stand even with a full stand already (O65). */
+      let regardless = false;
+      if (!was || isStand(was) !== isStand(m)) {
+        // A new mat, or a playmat turned stand (or back): judged as taking the old one away and adding this one.
+        if (was) r = isStand(was) ? (was.owner === from ? may('standRemoveOwn') : may('standSpill')) : may('matRemove');
+        if (!r) {
+          if (!isStand(m)) r = may('matAdd');
+          // A stand made for someone else is Give to, the crown's (6.3).
+          else if (m.owner && m.owner !== from) r = 'stand';
+          else r = may('standOwn');
         }
-      } else if (!isStand(was)) r = may('mat');
+      } else if (!isStand(m)) r = may('mat');
       else {
         const owner = was.owner ?? null;
         const next = m.owner ?? null;
         if (owner !== next) {
+          // Only Release your own, and Claim an unowned one for yourself (O65);
+          // Give to and taking another's are the crown's (review 8).
           if (owner === from && next === null) r = may('standOwn');
           else if (owner === null && next === from) {
-            // Claim (O65): Move if you have no full stand yet, Everything regardless.
-            r = isFullStand(was) && fullOf(was.uid) ? may('standClaim') : may('standOwn');
-          } else r = may('standClaim');
+            if (isFullStand(m) && fullMine(m.uid) > 0) {
+              r = may('standClaim');
+              regardless = true;
+            } else r = may('standOwn');
+          } else r = 'stand';
         } else if (owner === from) r = may('standOwn');
         else r = owner === null ? may('standClaim') : 'stand';
       }
+      // One full stand each (O27): a spawn, a claim, a widened small stand or a playmat turned stand alike (review 15).
+      if (!r && !regardless && fullOfMine(m) && !fullOfMine(was) && fullMine(m.uid) > 0) r = 'oneStand';
       if (r) return r;
+      ctx.mats.set(m.uid, m);
     }
     for (const uid of [...(op.remove ?? []), ...(op.spill ?? [])]) {
-      const m = store.mats.get(uid);
+      const m = now(uid);
       if (!m) continue;
       const r = isStand(m) ? (m.owner === from ? may('standRemoveOwn') : may('standSpill')) : may('matRemove');
       if (r) return r;
+      ctx.mats.set(uid, null);
     }
     return null;
   }
@@ -356,6 +440,7 @@ export class Authority {
     const fresh = shuffled(hidden.map((u) => ({ ...snapCard(store.cards.get(u)!), uid: newUid('c') })));
     const rekey: Op = { t: 'batch', ops: [{ t: 'remove', uids: hidden }, { t: 'add', cards: fresh }] };
     const me = this.sync.online.room.me;
+    this.markPending(rekey, me);
     this.sync.inbox.applyRemote(rekey, me);
     this.sync.session.send({ t: 'confirm', by: me, op: rekey });
     this.counted();
@@ -373,9 +458,18 @@ export class Authority {
         // Adds to the hand (O100): cards and dice picked up together come as two grabs.
         for (const u of [...op.uids, ...(op.dice ?? [])]) this.heldBy.set(u, by);
         return;
+      case 'remove': {
+        const store = this.sync.app.store;
+        for (const u of op.uids) {
+          const c = store.cards.get(u);
+          if (c && c.scryfallId !== HIDDEN) this.removedIds.set(u, { scryfallId: c.scryfallId, finish: c.finish });
+        }
+        while (this.removedIds.size > KEPT_IDENTITIES) this.removedIds.delete(this.removedIds.keys().next().value!);
+        for (const u of op.uids) if (this.heldBy.get(u) === by) this.heldBy.delete(u);
+        return;
+      }
       case 'release':
       case 'move':
-      case 'remove':
       case 'dice':
         for (const u of [...cardsTouched(op), ...diceTouched(op)]) if (this.heldBy.get(u) === by) this.heldBy.delete(u);
         return;
@@ -387,8 +481,61 @@ export class Authority {
     }
   }
 
-  /** A confirmed op came back from the server (everyone's, the crown's own included). Nothing to do yet. */
-  confirmed(_op: Op, _by: string): void {}
+  /**
+   * A confirmed op came back from the server (everyone's, the crown's own
+   * included): who touched what at which seq, and the crown's mark of it as
+   * applied but not yet echoed is cleared.
+   */
+  confirmed(op: Op, by: string, seq: number): void {
+    for (const u of [...cardsTouched(op), ...diceTouched(op)]) {
+      let list = this.history.get(u);
+      if (!list) this.history.set(u, (list = []));
+      list.push({ seq, by });
+      if (list.length > HISTORY_PER_UID) list.shift();
+      const waiting = this.pendingTouch.get(u);
+      if (waiting) {
+        const i = waiting.indexOf(by);
+        if (i >= 0) waiting.splice(i, 1);
+        if (!waiting.length) this.pendingTouch.delete(u);
+      }
+    }
+  }
+
+  /** The crown applied this op and has not yet seen it echoed: a quick undo by someone else must not pass it (reviews 10, 20). */
+  private markPending(op: Op, by: string): void {
+    if (!this.active) return;
+    for (const u of [...cardsTouched(op), ...diceTouched(op)]) {
+      const list = this.pendingTouch.get(u);
+      if (list) list.push(by);
+      else this.pendingTouch.set(u, [by]);
+    }
+  }
+
+  /** A refused op still ends its sender's hold on what it named, by a release on their behalf (8.4; reviews 5, 11). */
+  private endHolds(op: Op, by: string): void {
+    const store = this.sync.app.store;
+    const uids = [...cardsTouched(op), ...diceTouched(op)].filter((u) => this.heldBy.get(u) === by);
+    if (!uids.length) return;
+    const dice = uids.filter((u) => store.dice.has(u));
+    const release: Op = { t: 'release', uids: uids.filter((u) => !store.dice.has(u)), ...(dice.length ? { dice } : {}) };
+    this.take(release, by);
+    this.sync.inbox.applyRemote(release, by);
+    this.sync.session.send({ t: 'confirm', by, op: release });
+    this.counted();
+  }
+
+  /** Cards in an add that the crown removed for someone who could not see them: their kept printings put back (review 6). */
+  private restoreIdentities(op: Op): Op {
+    if (op.t === 'batch') return { t: 'batch', ops: op.ops.map((o) => this.restoreIdentities(o)) };
+    if (op.t !== 'add' || !op.cards.some((c) => c.scryfallId === HIDDEN && this.removedIds.has(c.uid))) return op;
+    return {
+      t: 'add',
+      cards: op.cards.map((c) => {
+        const kept = c.scryfallId === HIDDEN ? this.removedIds.get(c.uid) : undefined;
+        return kept ? { ...c, scryfallId: kept.scryfallId, finish: kept.finish } : c;
+      }),
+    };
+  }
 
   /**
    * The player list changed: a holder whose socket closed has their cards
@@ -423,6 +570,7 @@ export class Authority {
     const dice = uids.filter((u) => store.dice.has(u));
     const op: Op = { t: 'batch', ops: [{ t: 'release', uids: cards, ...(dice.length ? { dice } : {}) }, ...this.sync.presence.lastPoses(cards, dice)] };
     this.take(op, player);
+    this.markPending(op, player);
     this.sync.inbox.applyRemote(op, player);
     this.sync.session.send({ t: 'confirm', by: player, op });
     this.counted();

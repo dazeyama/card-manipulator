@@ -66,6 +66,10 @@ export class RoomSync {
     const room = online.room;
     this.stops.push(
       online.session.events.on('message', (m) => this.onMessage(m)),
+      // A dropped socket ends the judging: a crown back after a drop starts again from the table the server sends (review 18).
+      online.session.events.on('state', (s) => {
+        if (s !== 'open') this.authority.stop();
+      }),
       room.events.on('players', () => {
         this.presence.players();
         this.authority.players();
@@ -156,8 +160,11 @@ export class RoomSync {
     toastOnce(text);
   }
 
-  /** Leave the room layer: 'leave' brings this browser's own table back; 'offline' keeps the table (the crown closing the room). */
-  stop(how: 'leave' | 'offline'): void {
+  /**
+   * Leave the room layer. A joiner gets its own table back whichever way it
+   * goes; the maker keeps the table either way, since it was its own (O8).
+   */
+  stop(_how: 'leave' | 'offline'): void {
     for (const s of this.stops.splice(0)) s();
     this.streams.stop();
     this.presence.stop();
@@ -167,18 +174,19 @@ export class RoomSync {
     if (app.store.onLocalChange === this.outbox.record) app.store.onLocalChange = null;
     this.online.session.close();
     if (app.online === this.online) app.online = null;
+    // A joiner's way out, whatever it is (Leave, or Go offline with a crown it inherited, review 13), brings
+    // its own table back: the room's was never its own. The autosave stays paused until it is back (O9, O72).
     if (this.role === 'joiner') {
-      this.deps.autosave.paused = false;
-      if (how === 'leave') {
-        this.deps.drag.cancel();
-        app.physics?.abandonAll();
-        void this.deps.autosave.restore().then((had) => {
+      this.deps.drag.cancel();
+      app.physics?.abandonAll();
+      void this.deps.autosave.restore()
+        .then((had) => {
           if (!had) {
             app.store.clear();
             app.store.setName('Untitled table');
           }
-        });
-      }
+        })
+        .finally(() => (this.deps.autosave.paused = false));
     }
   }
 }

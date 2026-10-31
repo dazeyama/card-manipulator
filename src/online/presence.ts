@@ -196,7 +196,8 @@ export class Presence implements PresenceView {
   lastPoses(cards: string[], dice: string[]): Op[] {
     const last = (uid: string) => this.samples.get(uid)?.at(-1)?.pose;
     const store = this.sync.app.store;
-    const moves = cards.map((uid) => {
+    // A card held from a stand stays on it: taking it off would show it to everyone (review 19).
+    const moves = cards.filter((uid) => !store.cards.get(uid)?.stand).map((uid) => {
       const p = last(uid);
       const c = store.cards.get(uid)!;
       return p ? { uid, x: p[0], y: p[1], z: CARD_T / 2, yaw: p[3], stand: null } : { uid, x: c.x, y: c.y, z: c.z, yaw: c.yaw };
@@ -278,6 +279,14 @@ export class Presence implements PresenceView {
         this.q.setFromEuler(this.e);
         deps.diceLayer.pose(uid, this.v.set(p[0], p[1], p[2]), this.q);
       }
+    }
+    // A hold seen only in a stream, never confirmed, that went quiet (its grab refused): back to the store's pose (review 11).
+    for (const [uid, list] of [...this.samples]) {
+      if (this.holders.has(uid) || this.flying.has(uid) || now - (list.at(-1)?.at ?? 0) < FLY_STALE_MS) continue;
+      this.free(uid);
+      const c = app.store.cards.get(uid);
+      if (c) app.motion.animate(uid, { x: c.x, y: c.y, z: c.z, yaw: c.yaw, roll: c.faceUp ? 0 : Math.PI, tiltX: 0, tiltY: 0 }, { duration: 190 });
+      this.retint();
     }
     // A flight that went quiet without landing has ended: back to the store's pose.
     for (const [uid, f] of [...this.flying]) {

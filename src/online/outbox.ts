@@ -173,9 +173,25 @@ export class Outbox {
   refused(id: string, reason: RefuseReason): void {
     const p = this.pending.get(id);
     if (!p) return;
+    const later = [...this.pending.values()];
+    later.splice(0, later.indexOf(p) + 1);
     this.pending.delete(id);
     if (p.inverse) {
-      const back = without(p.inverse, p.others);
+      let back = without(p.inverse, p.others);
+      // A later op of mine still waiting on the same things takes this op's before-state with its own, to apply
+      // after it if it is refused too, so the earliest state wins and refusals in any order end where the crown is (review 16).
+      if (back) {
+        const handed = new Set<string>();
+        for (const u of [...p.cards, ...p.dice]) {
+          const q = later.find((x) => x.cards.has(u) || x.dice.has(u));
+          if (!q || !q.inverse) continue;
+          const part = keepOnly(back, (v) => v === u);
+          if (!part) continue;
+          q.inverse = { t: 'batch', ops: [q.inverse, part] };
+          handed.add(u);
+        }
+        if (handed.size) back = without(back, handed);
+      }
       if (back) this.sync.inbox.applyRemote(back, this.sync.online.room.me);
     }
     p.refused?.(reason);

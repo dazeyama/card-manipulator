@@ -115,6 +115,62 @@ describe('holds (8.4)', () => {
   });
 });
 
+describe('the review fixes', () => {
+  it('ends the sender\'s hold when its landing is refused, so the card never hangs (reviews 5, 11)', () => {
+    const { propose, sent, judge } = room({ sam: 'move', pat: 'move' });
+    expect(propose('pat', { t: 'grab', uids: ['a'] })).toBe('ok');
+    expect(judge.heldBy.get('a')).toBe('pat');
+    // Pat lets go over Sam's stand: refused, and the hold goes with a release on Pat's behalf.
+    expect(propose('pat', { t: 'move', moves: [{ uid: 'a', stand: 'st' }] })).toBe('stand');
+    expect(judge.heldBy.has('a')).toBe(false);
+    const release = sent.filter((m) => m.t === 'confirm').at(-1) as Extract<ClientMsg, { t: 'confirm' }>;
+    expect(release).toMatchObject({ by: 'pat', op: { t: 'release', uids: ['a'] } });
+    expect(propose('sam', { t: 'grab', uids: ['a'] })).toBe('ok');
+  });
+
+  it('puts back the printing of a card someone deleted without seeing it, when they undo (review 6)', () => {
+    const { propose, store } = room({ cd: 'cards' });
+    expect(propose('cd', { t: 'remove', uids: ['down'] })).toBe('ok');
+    expect(propose('cd', { t: 'add', cards: [{ ...card('down', { faceUp: false }), scryfallId: 'hidden' }] })).toBe('ok');
+    expect(store.cards.get('down')!.scryfallId).toBe('sdown');
+    // A hidden card the crown never kept is refused, not written over everyone's table.
+    expect(propose('cd', { t: 'add', cards: [{ ...card('nobody'), scryfallId: 'hidden' }] })).toBe('unknown');
+  });
+
+  it('refuses an add that names a card already on the table (review 14)', () => {
+    const { propose, store } = room({ tk: 'tokens' });
+    expect(propose('tk', { t: 'add', cards: [card('onSam', { scryfallId: 'stok' })] })).toBe('unknown');
+    expect(store.cards.get('onSam')!.stand).toBe('st');
+  });
+
+  it('lets nobody but the crown take or give away another player\'s stand (review 8)', () => {
+    const { propose } = room({ ev: 'everything' });
+    expect(propose('ev', { t: 'mat', set: [stand('st', 'ev')] })).toBe('stand');
+    expect(propose('ev', { t: 'mat', set: [stand('st')] })).toBe('stand');
+  });
+
+  it('counts the whole op for the cap and one full stand (review 15)', () => {
+    const { propose, store } = room({ cd: 'cards', mo: 'move' });
+    store.addRecords([record('sx', 'normal', 'Instant')]);
+    store.addCards(Array.from({ length: 4000 }, (_, i) => card('f' + i)));
+    const many = (from: number) => Array.from({ length: 600 }, (_, i) => card('n' + (from + i), { scryfallId: 'sx' }));
+    expect(propose('cd', { t: 'batch', ops: [{ t: 'add', cards: many(0) }, { t: 'add', cards: many(600) }] })).toBe('cap');
+    expect(propose('mo', { t: 'mat', set: [stand('fa', 'mo'), stand('fb', 'mo')] })).toBe('oneStand');
+    expect(propose('mo', { t: 'mat', set: [stand('fa', 'mo')] })).toBe('ok');
+    expect(propose('mo', { t: 'mat', set: [stand('sm', 'mo', 112.5)] })).toBe('ok');
+    // Widening the small stand into a second full one is a second full stand.
+    expect(propose('mo', { t: 'mat', set: [stand('sm', 'mo')] })).toBe('oneStand');
+  });
+
+  it('keeps the crown\'s own Load file of a table past the cap off the room (review 12)', () => {
+    const { store, sync, judge, sent } = room({});
+    const big = { name: 'Big', cards: Array.from({ length: 5001 }, (_, i) => card('b' + i)), named: [], spreads: [], mats: [], dice: [], basics: store.basics };
+    judge.own('x1', { t: 'replace', table: big }, null, {});
+    expect(sent.some((m) => m.t === 'confirm')).toBe(false);
+    void sync;
+  });
+});
+
 describe('stands (6.3)', () => {
   it('lets only the owner touch a stand and its cards', () => {
     const { propose } = room({ sam: 'move', pat: 'everything' });
@@ -202,11 +258,20 @@ describe('the cap, undo and shuffles', () => {
     expect(propose('cd', { t: 'add', cards: [card('over', { scryfallId: 'sx' })] })).toBe('cap');
   });
 
-  it('refuses an undo when someone touched those cards since (8.6)', () => {
-    const { propose, sync } = room({ mo: 'move' });
-    sync.inbox.touched.set('a', 7);
+  it('refuses an undo when someone else touched those cards since (8.6)', () => {
+    const { propose, judge } = room({ mo: 'move' });
+    judge.confirmed({ t: 'move', moves: [{ uid: 'a', x: 3 }] }, 'other', 7);
     expect(propose('mo', { t: 'move', moves: [{ uid: 'a', x: 1 }] }, { a: 5 })).toBe('touched');
     expect(propose('mo', { t: 'move', moves: [{ uid: 'a', x: 1 }] }, { a: 7 })).toBe('ok');
+  });
+
+  it('lets an undo past the undoer\'s own later op, but not past one the crown applied and has not seen echoed (reviews 10, 20)', () => {
+    const { propose, judge } = room({ mo: 'move', p2: 'move' });
+    judge.confirmed({ t: 'move', moves: [{ uid: 'b', x: 3 }] }, 'mo', 9);
+    expect(propose('mo', { t: 'move', moves: [{ uid: 'b', x: 1 }] }, { b: 5 })).toBe('ok');
+    // p2's move is applied by the crown; its echo has not come back yet.
+    expect(propose('p2', { t: 'move', moves: [{ uid: 'a', x: 50 }] })).toBe('ok');
+    expect(propose('mo', { t: 'move', moves: [{ uid: 'a', x: 0 }] }, { a: 0 })).toBe('touched');
   });
 
   it('re-keys hidden cards after a shuffle, keeping face-up ones (7.2)', () => {

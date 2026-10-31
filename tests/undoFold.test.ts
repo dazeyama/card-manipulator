@@ -34,4 +34,14 @@ describe('undo online takes back only your own action (ONLINE.md 8.6, O41)', () 
     expect(changedByMe(kept, { t: 'move', moves: [{ uid: 'other', x: 9 }] }, store)).toBe(false);
     expect(changedByMe(kept, { t: 'move', moves: [{ uid: 'mine', x: 9 }] }, store)).toBe(true);
   });
+
+  it('keeps the dice in the store\'s order when folding (review 9)', () => {
+    const store = new Store();
+    store.setDice([{ uid: 'd1', x: 0, y: 0, z: 10, yaw: 0, value: 1 }, { uid: 'd2', x: 30, y: 0, z: 10, yaw: 0, value: 2 }]);
+    const kept = snapshot(store);
+    store.setDice([{ uid: 'd1', x: 0, y: 0, z: 10, yaw: 0, value: 5 }]);
+    foldInto(kept, { t: 'dice', set: [{ uid: 'd1', x: 0, y: 0, z: 10, yaw: 0, value: 5 }] }, store);
+    expect(kept.dice.map((d) => d.uid)).toEqual(['d1', 'd2']);
+    expect(JSON.stringify(kept.dice)).toBe(JSON.stringify([...store.dice.values()]));
+  });
 });
