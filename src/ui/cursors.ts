@@ -27,6 +27,7 @@ import removeUrl from '../../art/cursors/gestures/remove-48-bold.png';
 import fanUrl from '../../art/cursors/gestures/fan-48-bold.png';
 import hotspots from '../../art/cursors/cursors.json';
 import { CURSOR_PX, CURSOR_SIZE_EVENT, cursorSizeNow, scaleHotspot } from './cursorSize';
+import { tint, type Glove } from './cursorArt';
 
 /** The size the art is drawn at; each finished cursor is then scaled to the chosen size (decision 289). */
 const SIZE = 48;
@@ -149,11 +150,13 @@ function cursorValue(c: HTMLCanvasElement, hx: number, hy: number, fallback: str
 }
 
 /** The glove with its emoji in the bottom right corner, as a CSS cursor value. */
-function compose(img: HTMLImageElement, hand: Hand, emoji: string, fallback: string, px: number): string {
+function compose(img: HTMLImageElement, hand: Hand, emoji: string, fallback: string, px: number, colour: string): string {
   const c = document.createElement('canvas');
   c.width = c.height = SIZE;
   const g = c.getContext('2d')!;
   g.drawImage(img, 0, 0, SIZE, SIZE);
+  // In a room, your colour (decision 293); the emoji keeps its own.
+  if (colour) tint(c, colour);
   if (emoji) drawEmoji(g, emoji, SIZE);
   // The gesture gloves hold their click point in the middle, like the open hand and the fist.
   const [hx, hy] = hand === 'open' || hand === 'fist' ? (hotspots[hand][VERSION] as [number, number]) : hand === 'holdOne' ? [SIZE / 2, SIZE / 2] : ARROW_TIP;
@@ -199,16 +202,28 @@ export class Cursors {
 
   /** Counts builds, so a slower earlier one never overwrites a later size. */
   private builds = 0;
+  /** The room colour the cursors were last drawn in ('' offline: white). */
+  private builtColour = '';
+
+  /** Your colour in a room, or '' offline (decision 293). */
+  private colourNow(): string {
+    const room = this.app.online?.room;
+    return room?.player(room.me)?.colour ?? '';
+  }
 
   private async build(): Promise<void> {
     const run = ++this.builds;
+    const colour = (this.builtColour = this.colourNow());
+    const paint = (c: HTMLCanvasElement) => {
+      if (colour) tint(c, colour);
+    };
     const size = CURSOR_PX[cursorSizeNow()];
     const value = (c: HTMLCanvasElement, hx: number, hy: number, fallback: string) => cursorValue(c, hx, hy, fallback, size);
     const images = await Promise.all((Object.keys(ART) as Hand[]).map(async (h) => [h, await loadImage(ART[h])] as const));
     if (run !== this.builds) return;
     const art = new Map(images);
     for (const [state, [hand, emoji, fallback]] of Object.entries(STATES) as [State, [Hand, string, string]][]) {
-      this.cursors[state] = compose(art.get(hand)!, hand, emoji, fallback, size);
+      this.cursors[state] = compose(art.get(hand)!, hand, emoji, fallback, size, colour);
     }
     // A badge lifts its whole pile.
     document.documentElement.style.setProperty('--cursor-pile', this.cursors.openPile!);
@@ -219,11 +234,13 @@ export class Cursors {
     const c = document.createElement('canvas');
     c.width = c.height = SIZE;
     c.getContext('2d')!.drawImage(point, 0, 0, SIZE, SIZE);
+    paint(c);
     this.pointCursor = value(c, px, py, 'pointer');
     const pk = document.createElement('canvas');
     pk.width = pk.height = SIZE;
     const pg = pk.getContext('2d')!;
     pg.drawImage(point, 0, 0, SIZE, SIZE);
+    paint(pk);
     drawEmoji(pg, '📦', SIZE);
     this.packCursor = value(pk, px, py, 'pointer');
     document.documentElement.style.setProperty('--cursor-point', this.pointCursor);
@@ -234,6 +251,7 @@ export class Cursors {
       d.width = d.height = SIZE;
       const g = d.getContext('2d')!;
       g.drawImage(point, 0, 0, SIZE, SIZE);
+      paint(d);
       drawEmoji(g, n ? `${n}️⃣` : '🔢', SIZE);
       this.drawCursors[n] = value(d, px, py, 'pointer');
     }
@@ -243,6 +261,7 @@ export class Cursors {
     sp.width = sp.height = SIZE;
     const sg = sp.getContext('2d')!;
     sg.drawImage(point, 0, 0, SIZE, SIZE);
+    paint(sp);
     sg.drawImage(tintedEmoji('🪟', SPREAD_TINT), 0, 0);
     this.spreadCursor = value(sp, px, py, 'pointer');
     const rv = document.createElement('canvas');
@@ -253,6 +272,7 @@ export class Cursors {
     rg.scale(-1, 1);
     rg.drawImage(point, 0, 0, SIZE, SIZE);
     rg.restore();
+    paint(rv);
     rg.drawImage(tintedEmoji('🪟', REVERSE_TINT), 0, 0);
     this.reverseCursor = value(rv, SIZE - 1 - px, py, 'pointer');
     for (const [name, [url, emoji]] of Object.entries(GESTURES) as [Gesture, [string, string]][]) {
@@ -264,6 +284,7 @@ export class Cursors {
       c.width = c.height = side;
       const g = c.getContext('2d')!;
       g.drawImage(img, 0, 0, side, side);
+      paint(c);
       if (emoji) drawEmoji(g, emoji, side);
       this.gestureCursors[name] = value(c, side / 2, side / 2, 'grabbing');
     }
@@ -314,6 +335,8 @@ export class Cursors {
   }
 
   private update(): void {
+    // Joined, left, or swapped colour: draw them again (decision 293).
+    if (this.colourNow() !== this.builtColour) void this.build();
     const draw = this.app.drawing;
     const state = this.pick();
     // Just after an action key, its gesture shows for a moment (decision 164).
@@ -321,6 +344,9 @@ export class Cursors {
     const age = g ? performance.now() - g.at : Infinity;
     const settling = !!g?.settle && age < GESTURE_MAX_MS && g.settle.some((u) => this.app.motion.isAnimating(u));
     const gesture = g && (age < GESTURE_MS || settling) ? this.gestureCursors[g.name] : undefined;
+    // The glove alone, for the room's stream: others draw it in your colour (decision 293).
+    const glove: Glove = gesture ? g!.name : draw || this.app.placing ? 'point' : this.app.spreading ? (this.app.spreading.reverse ? 'pointReverse' : 'point') : STATES[state][0];
+    this.app.cursorGlove = glove;
     const next = gesture
       ? gesture
       : draw
