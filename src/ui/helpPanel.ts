@@ -52,6 +52,14 @@ const GROUPS: [string, Line[]][] = [
     ['💾', 'Ctrl + S', 'save · Ctrl + E exports · Ctrl + A selects all'],
     ['❓', '?', 'this list'],
   ]],
+  // Rooms (ONLINE.md 13): no new keys; how sharing a table works.
+  ['Online', [
+    ['🌐', 'Go online', 'share your table by link: up to eight players, each with a cursor; the panel has the link, settings, players and chat · 🗂 Tables lists the public ones'],
+    ['👑', 'Crown', 'the host: ranks, kicks, settings, Lock table; passed from a player’s ⋯ in the panel'],
+    ['🪪', 'Ranks', 'View · Move · Tokens · Cards · Everything; the crown sets them'],
+    ['🂠', 'Hidden', 'your stand’s cards and face-down cards show their backs to others; 👤 on a stand’s lip says whose it is'],
+    ['🪞', 'M', 'cross to the far side of the table'],
+  ]],
 ];
 
 export class HelpPanel {
