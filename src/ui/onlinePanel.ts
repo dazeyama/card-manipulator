@@ -24,6 +24,7 @@ import { hideRoomState, roomNameLine, showRoomState } from './roomStates';
 import { isPhoneOrTablet, showDesktopOnly } from './desktopOnly';
 import type { HiddenGate } from '../online/hidden';
 import { TableBrowser } from './tableBrowser';
+import { isBlocked } from '../../shared/words';
 import { AdminPage } from './adminPage';
 
 /** How this browser came into the room: it made it (Go online), or joined by a link. */
@@ -93,6 +94,8 @@ export class OnlineUi {
   private control: RoomControl | null = null;
   private route: RoomRoute | null = null;
   private welcomed = false;
+  /** The server said goodbye (a bye always comes before its close); a close without one is close code 4001. */
+  private byeSeen = false;
   private stops: (() => void)[] = [];
   private known = new Map<string, Player>();
   private lastCrown = '';
@@ -108,7 +111,7 @@ export class OnlineUi {
     this.status = h('span', { class: 'room-status' });
     topBar.roomSlot.append(this.button, this.avatars, this.status);
     this.panel = new OnlinePanel(this);
-    this.browser = new TableBrowser((r) => void this.join(r));
+    this.browser = new TableBrowser((r) => void this.join(r), () => this.showQuota());
     void this.check();
     // While offline and without a server, look again now and then.
     window.setInterval(() => {
@@ -193,7 +196,7 @@ export class OnlineUi {
     if (!fakeRooms()) {
       const r = await createRoom({ token: id.token, nickname: form.nickname, name: store.name, tag: form.tag });
       if (typeof r === 'string') {
-        if (r === 'quota') roomToast('The room server is over its free daily limit. Rooms are back after midnight UTC.', 'warn');
+        if (r === 'quota') this.showQuota();
         else if (r === 'rate') roomToast('Too many new rooms from this browser: try again within the hour', 'warn');
         else if (r === 'version') this.showReload();
         else roomToast('Could not reach the room server', 'error');
@@ -275,6 +278,7 @@ export class OnlineUi {
     this.deps.hidden.attach(online);
     this.role = role;
     this.welcomed = false;
+    this.byeSeen = false;
     this.known = new Map();
     this.lastCrown = '';
     this.joining = null;
@@ -307,7 +311,11 @@ export class OnlineUi {
         bar();
         this.panel.refresh();
       }),
-      ev.on('connection', bar),
+      ev.on('connection', () => {
+        bar();
+        // Closed for good with no goodbye: this identity opened the room in another tab (close code 4001).
+        if (room.connection === 'closed') setTimeout(() => this.replacedElsewhere(), 0);
+      }),
       ev.on('me', bar),
       online.session.events.on('message', (m) => this.onMessage(m)),
       online.session.events.on('bye', (r) => this.onBye(r)),
@@ -405,6 +413,7 @@ export class OnlineUi {
 
   /** The server said goodbye (9.2): before the welcome it is about joining; after it, the room ended for us. */
   private onBye(reason: ByeReason): void {
+    this.byeSeen = true;
     const online = this.online;
     const wasCrown = !!online?.room.isCrown;
     if (!this.welcomed && this.route && (reason === 'password' || reason === 'full')) {
@@ -439,7 +448,7 @@ export class OnlineUi {
         this.showReload();
         break;
       case 'quota':
-        showRoomState({ title: 'Rooms are resting', lines: ['The room server is over its free daily limit. Rooms are back after midnight UTC.'], buttons: [{ label: 'Back to my table', primary: true, run: back }] });
+        this.showQuota(back);
         break;
       case 'rate':
         showRoomState({ title: 'Too many tries', lines: ['Too many wrong passwords from here. Try again in ten minutes.'], buttons: [{ label: 'Back to my table', primary: true, run: back }] });
@@ -523,6 +532,46 @@ export class OnlineUi {
 
   // ---- pages (12.7) ----
 
+  /**
+   * The Quota page (12.7, Section 15): any call refused for the free plan's spent
+   * day, or bye quota. Back to my table leaves the room if in one.
+   */
+  showQuota(back?: () => void): void {
+    this.browser.close();
+    showRoomState({
+      title: 'Rooms are resting',
+      lines: ['The room server is over its free daily limit. Rooms are back after midnight UTC.'],
+      buttons: [{ label: 'Back to my table', primary: true, run: back ?? (() => {
+        if (this.online) this.exit(this.online.room.isCrown ? 'offline' : 'leave');
+        else {
+          hideRoomState();
+          setHash('');
+          void this.backToOwnTable();
+        }
+      }) }],
+    });
+    void this.check();
+  }
+
+  /** This identity opened the room in another tab, which took the seat (close code 4001, O97). */
+  private replacedElsewhere(): void {
+    const online = this.online;
+    if (!online || this.byeSeen || online.room.connection !== 'closed') return;
+    const wasCrown = online.room.isCrown;
+    const route: RoomRoute = this.route ?? { kind: 'room', code: online.room.code };
+    showRoomState({
+      title: 'This room is open in another tab',
+      lines: ['Your seat moved to the newest tab you opened it in.'],
+      buttons: [
+        { label: 'Back to my table', run: () => this.exit(wasCrown ? 'offline' : 'leave') },
+        { label: 'Use it here', primary: true, run: () => {
+          this.exit(wasCrown ? 'offline' : 'leave');
+          void this.join(route);
+        } },
+      ],
+    });
+  }
+
   private showReload(): void {
     showRoomState({
       title: 'Reload to update',
@@ -537,10 +586,7 @@ export class OnlineUi {
       setHash('');
       void this.backToOwnTable();
     } };
-    if (t === 'quota') {
-      showRoomState({ title: 'Rooms are resting', lines: ['The room server is over its free daily limit. Rooms are back after midnight UTC.'], buttons: [{ ...back, primary: true }] });
-      return;
-    }
+    if (t === 'quota') return this.showQuota(back.run);
     showRoomState({
       title: 'The room server can’t be reached',
       lines: ['It may be down for a moment. Try again shortly.'],
@@ -678,6 +724,17 @@ export class OnlinePanel {
         nick.focus();
         return;
       }
+      // The word filter (10.4): the server would rename either anyway.
+      if (isBlocked(nickname)) {
+        error.textContent = 'That name is not allowed';
+        nick.focus();
+        return;
+      }
+      if (isBlocked(name.value)) {
+        error.textContent = 'That room name is not allowed';
+        name.focus();
+        return;
+      }
       go.disabled = true;
       go.textContent = 'Going online…';
       const done = await this.ui.goOnline({ name: name.value.trim() || app.store.name, nickname, colour: colours.value, tag: tagPlay.checked ? 'play' : 'cube' });
@@ -776,7 +833,11 @@ export class OnlinePanel {
     pass.addEventListener('change', sendPassword);
     const visibility = radios<Visibility>('room-visibility', [['unlisted', 'Unlisted'], ['public', 'Public'], ['password', 'Public + password']], s.visibility, (v) => {
       passRow.hidden = v !== 'password';
-      if (v !== 'password') send({ visibility: v });
+      // Leaving Public + password removes the password (the server takes '' as none).
+      if (v !== 'password') {
+        send({ visibility: v, ...(s.password ? { password: '' } : {}) });
+        this.ui.password = null;
+      }
       else if (pass.value.trim()) sendPassword();
       else pass.focus();
     });

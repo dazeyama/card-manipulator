@@ -7,6 +7,7 @@
 
 import { NICKNAME_MAX, PASSWORD_MAX, PLAYER_COLOURS, type RoomInfo } from '../../shared/protocol';
 import { codeFromText, type RoomRoute } from '../online/link';
+import { isBlocked } from '../../shared/words';
 import { h } from './dom';
 
 /** The eight swatches, the taken ones greyed with their holder's initial. */
@@ -94,6 +95,12 @@ export function joinPrompt(opts: JoinPromptOptions): Promise<JoinAnswer | null> 
       const nickname = nick.value.trim();
       if (!nickname) {
         error.textContent = 'Pick a nickname first';
+        nick.focus();
+        return;
+      }
+      // The word filter (10.4): the server would rename a blocked name anyway.
+      if (isBlocked(nickname)) {
+        error.textContent = 'That name is not allowed';
         nick.focus();
         return;
       }

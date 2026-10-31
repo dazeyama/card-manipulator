@@ -127,6 +127,8 @@ async function call<T>(path: string, init?: RequestInit): Promise<T | ServerTrou
 /** Is the room server there, and does it speak our protocol (O48)? */
 export async function checkServer(): Promise<'ok' | ServerTrouble> {
   const r = await call<VersionReply>('/api/version');
+  // Any 429 here is the spent day: Cloudflare's own 1027 page answers before the Worker's code (Section 15).
+  if (r === 'rate') return 'quota';
   if (typeof r === 'string') return r;
   return r.protocol === PROTOCOL ? 'ok' : 'version';
 }

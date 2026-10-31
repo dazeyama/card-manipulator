@@ -42,7 +42,7 @@ export class TableBrowser {
   private timer = 0;
   private menu: HTMLElement | null = null;
 
-  constructor(private readonly onJoin: (route: RoomRoute) => void) {
+  constructor(private readonly onJoin: (route: RoomRoute) => void, private readonly onQuota: () => void = () => {}) {
     const close = h('button', { class: 'icon-btn', title: 'Close (Esc)', 'aria-label': 'Close' }, '✕');
     close.addEventListener('click', () => this.close());
     const refresh = h('button', { class: 'btn small', title: 'Look again now' }, '↻ Refresh');
@@ -115,7 +115,8 @@ export class TableBrowser {
     this.status.textContent = 'Looking…';
     const r = await publicRooms();
     if (typeof r === 'string') {
-      this.status.textContent = r === 'quota' ? 'Rooms are back after midnight UTC' : 'The room server can’t be reached';
+      if (r === 'quota') return this.onQuota();
+      this.status.textContent = 'The room server can’t be reached';
       return;
     }
     this.rows = r;
@@ -171,6 +172,7 @@ export class TableBrowser {
       if (res === 'ok') roomToast('Reported. Thank you.', 'ok');
       else if (res === 'closed') roomToast('That table has closed', 'info');
       else if (res === 'rate') roomToast('Too many reports from here: try again later', 'warn');
+      else if (res === 'quota') this.onQuota();
       else roomToast('Could not reach the room server', 'error');
     });
     const pop = h('div', { class: 'player-menu' }, report);
