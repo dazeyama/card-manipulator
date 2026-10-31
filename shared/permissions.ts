@@ -151,10 +151,26 @@ export interface RoomRules {
  * Rank only: ownership, holds and the cap are the judge's on top.
  */
 export function allowed(who: Rank | 'crown', action: Action, rules: RoomRules = {}): boolean {
-  if (who === 'crown') return true;
+  return refusal(who, action, rules) === null;
+}
+
+/**
+ * Why a player may not do this, in the words of the toast (12.4), or null when
+ * they may: "Move or higher needed", "Only the crown can do that", "The table
+ * is locked", "Downloads are off in this room".
+ */
+export function refusal(who: Rank | 'crown', action: Action, rules: RoomRules = {}): string | null {
+  if (who === 'crown') return null;
   const need = needs(action);
-  if (need === 'crown') return false;
-  if (action === 'download' && rules.downloads === false) return false;
-  const rank: Rank = rules.locked && !LOOKING.has(action) ? 'view' : who;
-  return rankAtLeast(rank, need);
+  if (need === 'crown') return 'Only the crown can do that';
+  if (action === 'download' && rules.downloads === false) return 'Downloads are off in this room';
+  if (rules.locked && !LOOKING.has(action) && need !== 'view') return 'The table is locked';
+  return rankAtLeast(who, need) ? null : `${RANK_LABEL[need]} or higher needed`;
+}
+
+/** Scryfall layouts that count as tokens (O67): what a Tokens player may add and remove. */
+export const TOKEN_LAYOUTS = ['token', 'emblem', 'double_faced_token'];
+
+export function isTokenLayout(layout: string | undefined): boolean {
+  return !!layout && TOKEN_LAYOUTS.includes(layout);
 }
