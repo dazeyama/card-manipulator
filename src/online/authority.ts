@@ -17,7 +17,7 @@
 
 import type { Op } from '../../shared/ops';
 import { cardsTouched, diceTouched } from '../../shared/ops';
-import { addAction, refusal, removeAction, type Action, type Rank } from '../../shared/permissions';
+import { addAction, mayManage, refusal, removeAction, type Action, type Rank } from '../../shared/permissions';
 import { MAX_CARDS, splitSnapshot, type RefuseReason, type ServerMsg } from '../../shared/protocol';
 import { HIDDEN } from '../../shared/table';
 import { inSpace, placeSequential } from '../commands';
@@ -370,6 +370,9 @@ export class Authority {
             } else r = may('standOwn');
           } else if (owner === null && next !== null && this.sync.online.room.player(next)) {
             r = may('standGive');
+            // A co-host's powers reach only players below it (O111); the crown, which never comes here, gives to anyone.
+            const room = this.sync.online.room;
+            if (!r && !mayManage(room.player(from)?.rank ?? 'view', room.player(next)!.rank)) r = 'rank';
             // One full stand each (O27), for the one given it too.
             if (!r && isFullStand(m) && fullOf(next, m.uid) > 0) r = 'oneStand';
           } else r = 'stand';

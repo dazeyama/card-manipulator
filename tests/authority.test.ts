@@ -226,13 +226,15 @@ describe('stands (6.3)', () => {
     expect(store.cards.get('onSam')!.stand).toBeUndefined();
   });
 
-  it('lets a co-host give an unowned stand to a player in the room, never one someone owns (O111)', () => {
-    const { propose, store } = room({ ev: 'everything', mo: 'move', pat: 'move' });
+  it('lets a co-host give an unowned stand to a player below it, never one someone owns (O111)', () => {
+    const { propose, store } = room({ ev: 'everything', ev2: 'everything', mo: 'move', pat: 'move' });
     store.addMat(stand('free'));
     store.addMat(stand('free2'));
     // Move may not give; nor may anyone give to someone not in the room.
     expect(propose('mo', { t: 'mat', set: [stand('free', 'pat')] })).toBe('rank');
     expect(propose('ev', { t: 'mat', set: [stand('free', 'stranger')] })).toBe('stand');
+    // A co-host's powers reach only players below Everything.
+    expect(propose('ev', { t: 'mat', set: [stand('free', 'ev2')] })).toBe('rank');
     expect(propose('ev', { t: 'mat', set: [stand('free', 'pat')] })).toBe('ok');
     expect(store.mats.get('free')!.owner).toBe('pat');
     // One full stand each, for the one given it too.
