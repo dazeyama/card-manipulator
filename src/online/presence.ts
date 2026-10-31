@@ -362,7 +362,7 @@ export class Presence implements PresenceView {
 }
 
 /** A pose `at` a time, between the two samples about it; the last one once past it. */
-function poseAt(list: Sample[], at: number): Pose6 | null {
+export function poseAt(list: { at: number; pose: Pose6 }[], at: number): Pose6 | null {
   if (!list.length) return null;
   if (at <= list[0].at) return list[0].pose;
   for (let i = 1; i < list.length; i++) {
