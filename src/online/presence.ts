@@ -99,26 +99,30 @@ export class Presence implements PresenceView {
       this.selections.set(msg.from, msg.sel);
       this.retint();
     }
-    for (const [uid, pose] of Object.entries(msg.hold ?? {})) this.sample(uid, msg.from, pose, now, false);
-    for (const [uid, pose] of Object.entries(msg.fly ?? {})) this.sample(uid, msg.from, pose, now, true);
+    let fresh = false;
+    for (const [uid, pose] of Object.entries(msg.hold ?? {})) fresh = this.sample(uid, msg.from, pose, now, false) || fresh;
+    for (const [uid, pose] of Object.entries(msg.fly ?? {})) fresh = this.sample(uid, msg.from, pose, now, true) || fresh;
+    if (fresh) this.retint();
   }
 
-  private sample(uid: string, by: string, pose: Pose6, now: number, fly: boolean): void {
+  /** One streamed pose. True if the card or die has just come into that player's hand (its glow is due). */
+  private sample(uid: string, by: string, pose: Pose6, now: number, fly: boolean): boolean {
     const store = this.sync.app.store;
-    if (!store.cards.has(uid) && !store.dice.has(uid)) return;
+    if (!store.cards.has(uid) && !store.dice.has(uid)) return false;
     // A hold others may see before its grab is confirmed: draw it from the stream now.
     const owner = this.holders.get(uid);
-    if (owner && owner !== by) return;
+    if (owner && owner !== by) return false;
     if (fly) this.flying.set(uid, { by, seen: now });
-    this.take(uid, by);
+    const fresh = this.take(uid, by);
     let list = this.samples.get(uid);
     if (!list) this.samples.set(uid, (list = []));
     list.push({ at: now, pose });
     if (list.length > 12) list.splice(0, list.length - 12);
+    return fresh;
   }
 
-  /** Another player has this card or die in hand: theirs, drawn from their stream. */
-  private take(uid: string, by: string): void {
+  /** Another player has this card or die in hand: theirs, drawn from their stream. True if its glow is not theirs yet. */
+  private take(uid: string, by: string): boolean {
     const { app, deps } = this.sync;
     if (!this.held.has(uid)) {
       this.held.add(uid);
@@ -133,7 +137,7 @@ export class Presence implements PresenceView {
         if (deps.dice.selected.delete(uid)) deps.dice.select(deps.dice.selected);
       }
     }
-    if (this.tints.get(uid) !== by) this.retint();
+    return this.tints.get(uid) !== by;
   }
 
   /** It left their hand: back to the store's pose (the caller animates there). */
@@ -161,10 +165,12 @@ export class Presence implements PresenceView {
     }
     if (op.t !== 'grab') return;
     // A grab adds to the hand (O100); the holder's landing, release or leaving ends it.
+    let fresh = false;
     for (const uid of [...op.uids, ...(op.dice ?? [])]) {
       this.holders.set(uid, by);
-      this.take(uid, by);
+      fresh = this.take(uid, by) || fresh;
     }
+    if (fresh) this.retint();
   }
 
   /**

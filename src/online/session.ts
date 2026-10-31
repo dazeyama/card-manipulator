@@ -138,6 +138,12 @@ export class FakeSession implements Session {
   }
 }
 
+/**
+ * Dev only (Phase O4): every message this browser sends waits this long first,
+ * to feel the room under a slow network. Set with `__latency(ms)`.
+ */
+export const devLatency = { ms: 0 };
+
 /** Waits between reconnect tries (4.7): 1, 2, 4, 8 s, then every 10 s. */
 const BACKOFF_MS = [1000, 2000, 4000, 8000];
 const RETRY_MS = 10_000;
@@ -164,7 +170,15 @@ export class WsSession implements Session {
   send(msg: ClientMsg): void {
     const ws = this.ws;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify(msg));
+    const text = JSON.stringify(msg);
+    if (import.meta.env.DEV && devLatency.ms > 0) {
+      // In order, each after the delay, as a slow link would deliver them.
+      setTimeout(() => {
+        if (ws.readyState === WebSocket.OPEN) ws.send(text);
+      }, devLatency.ms);
+      return;
+    }
+    ws.send(text);
   }
 
   close(): void {

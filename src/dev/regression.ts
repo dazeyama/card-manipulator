@@ -3,6 +3,8 @@
 // dev build's console: await __regression(). It clears the table.
 
 import type { App } from '../app';
+import { devLatency, WsSession } from '../online/session';
+import { MAX_PLAYERS, PLAYER_COLOURS, type ClientMsg } from '../../shared/protocol';
 
 // The boot object from main.ts; loosely typed because this is a dev-only script.
 type Ui = Record<string, any>;
@@ -218,13 +220,66 @@ export function installRegression(app: App, ui: Ui): void {
 }
 
 /**
- * Rooms (ONLINE.md 11.3, O90), dev only. `__room('B')` opens this room in a
+ * Rooms (ONLINE.md 11.3, 16, O90), dev only. `__room('B')` opens this room in a
  * second tab as player B (its own identity through `?player=`), for the phase
  * gate's two-tab check, and returns the link. `__roomState()` sums up what the
- * room layer knows: code, me, crown, players, seq, holds and pending ops.
+ * room layer knows. `__latency(ms)` delays everything this page sends, to feel
+ * the room under a slow network. `__bots(n)` adds n players to the room that
+ * stream moving cursors and selections and now and then carry a card across
+ * the table, for the performance pass (15, `__bots(7)`); `__bots(0)` sends them away.
  */
 function installRoomTools(app: App): void {
   const w = window as unknown as Record<string, unknown>;
+  w.__latency = (ms = 0): string => {
+    devLatency.ms = Math.max(0, ms);
+    return devLatency.ms ? `Every message from this page now waits ${devLatency.ms} ms` : 'No added latency';
+  };
+  const bots: { session: WsSession; timer: number }[] = [];
+  w.__bots = (n = 7): string => {
+    for (const b of bots.splice(0)) {
+      clearInterval(b.timer);
+      b.session.close();
+    }
+    const code = app.online?.room.code;
+    if (!n) return 'Bots gone';
+    if (!code) return 'Not in a room: Go online first';
+    const centre = { x: app.rig.target.x, y: app.rig.target.y };
+    for (let i = 0; i < Math.min(n, MAX_PLAYERS - 1); i++) {
+      const session = new WsSession(code, { token: `dev-bot-${i}-${Math.random().toString(36).slice(2, 14)}`, nickname: `Bot ${i + 1}`, colour: PLAYER_COLOURS[(i + 1) % PLAYER_COLOURS.length], side: (i % 2) as 0 | 1 });
+      let t = Math.random() * 10;
+      let carrying: { uid: string; until: number } | null = null;
+      let tick = 0;
+      const timer = window.setInterval(() => {
+        if (!session.room.me) return;
+        t += 0.1;
+        tick++;
+        const x = centre.x + Math.cos(t * (0.6 + i * 0.07)) * (300 + i * 40);
+        const y = centre.y + Math.sin(t * (0.9 + i * 0.05)) * (220 + i * 25);
+        const msg: Extract<ClientMsg, { t: 'stream' }> = { t: 'stream', side: (i % 2) as 0 | 1, cur: [Math.round(x * 10) / 10, Math.round(y * 10) / 10] };
+        const cards = [...app.store.cards.keys()];
+        if (tick % 20 === 0 && cards.length) msg.sel = Array.from({ length: 6 }, () => cards[Math.floor(Math.random() * cards.length)]);
+        // Now and then: pick a card up, carry it under the cursor for two seconds, put it down there.
+        const now = performance.now();
+        if (!carrying && tick % 50 === i * 7 % 50 && cards.length) {
+          const uid = cards[Math.floor(Math.random() * cards.length)];
+          if (!app.online?.presence.held.has(uid)) {
+            carrying = { uid, until: now + 2000 };
+            session.send({ t: 'op', id: `bot${i}-${tick}`, op: { t: 'grab', uids: [uid] } });
+          }
+        }
+        if (carrying) {
+          if (now < carrying.until) msg.hold = { [carrying.uid]: [msg.cur![0], msg.cur![1], 12, t % 6.28, 0, 0.1] };
+          else {
+            session.send({ t: 'op', id: `bot${i}-${tick}-land`, op: { t: 'move', moves: [{ uid: carrying.uid, x: msg.cur![0], y: msg.cur![1], z: 0.15, stand: null }] } });
+            carrying = null;
+          }
+        }
+        session.send(msg);
+      }, 100);
+      bots.push({ session, timer });
+    }
+    return `${bots.length} bots joined ${code}`;
+  };
   w.__room = (name = 'B'): string => {
     const code = app.online?.room.code;
     if (!code) return 'Not in a room: Go online first';
