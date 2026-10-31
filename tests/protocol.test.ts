@@ -30,6 +30,17 @@ describe('protocol', () => {
     expect(joinSnapshot([...parts].reverse())).toEqual(t);
   });
 
+  it('closes a part by size as well as by count, so heavy cards stay under the part limit', () => {
+    // Cards with every optional field and long uids, about twice a plain card.
+    const heavy = (i: number): CardSnap => ({ ...card(i), uid: `c${String(i).padStart(40, '0')}`, scryfallId: `${String(i).padStart(36, 'f')}`, laidAt: { x: 1234.567, y: -987.654 }, stand: `m${'s'.repeat(40)}`, side: 1, pileId: `p${'q'.repeat(40)}`, spreadOf: `s${'r'.repeat(40)}` });
+    const t = { ...emptyTable('Heavy'), cards: Array.from({ length: 5000 }, (_, i) => heavy(i)) };
+    const parts = splitSnapshot(t);
+    for (const p of parts) expect(byteLength(JSON.stringify(p))).toBeLessThan(MAX_SNAPSHOT_PART_BYTES);
+    expect(parts.length).toBeGreaterThan(6);
+    expect(parts.length).toBeLessThanOrEqual(32);
+    expect(joinSnapshot(parts)).toEqual(t);
+  });
+
   it('sends an empty table as one part', () => {
     const parts = splitSnapshot(emptyTable());
     expect(parts.length).toBe(1);

@@ -140,18 +140,36 @@ export interface SnapshotPart {
   seq?: number;
 }
 
-/** A table in snapshot parts. */
+/**
+ * The cards' share of one part, in bytes: well under MAX_SNAPSHOT_PART_BYTES,
+ * since a card with a stand, a side and a lie-flat mark is twice a plain one
+ * (final review #7).
+ */
+export const SNAPSHOT_PART_BUDGET = 200 * 1024;
+
+/** A table in snapshot parts: a part closes at `perPart` cards or SNAPSHOT_PART_BUDGET bytes, whichever comes first. */
 export function splitSnapshot(table: TableState, perPart = SNAPSHOT_PART_CARDS): SnapshotPart[] {
-  const cardParts = Math.ceil(table.cards.length / perPart);
-  const parts = 1 + cardParts;
+  const groups: CardSnap[][] = [];
+  let group: CardSnap[] = [];
+  let bytes = 0;
+  for (const card of table.cards) {
+    const size = byteLength(JSON.stringify(card)) + 1;
+    if (group.length && (group.length >= perPart || bytes + size > SNAPSHOT_PART_BUDGET)) {
+      groups.push(group);
+      group = [];
+      bytes = 0;
+    }
+    group.push(card);
+    bytes += size;
+  }
+  if (group.length) groups.push(group);
+  const parts = 1 + groups.length;
   const out: SnapshotPart[] = [{
     t: 'snapshot', part: 0, parts,
     name: table.name, basics: table.basics, named: table.named, spreads: table.spreads, mats: table.mats, dice: table.dice,
     count: table.cards.length,
   }];
-  for (let i = 0; i < cardParts; i++) {
-    out.push({ t: 'snapshot', part: i + 1, parts, cards: table.cards.slice(i * perPart, (i + 1) * perPart) });
-  }
+  groups.forEach((cards, i) => out.push({ t: 'snapshot', part: i + 1, parts, cards }));
   return out;
 }
 
