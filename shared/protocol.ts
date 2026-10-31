@@ -115,6 +115,12 @@ export interface StreamOut {
   hold?: Record<string, Pose6>;
   /** My physics: tossed cards, rolling dice, until they settle. */
   fly?: Record<string, Pose6>;
+  /**
+   * **(decision 293)** The glove my cursor shows (a `Glove` name from src/ui/cursorArt.ts:
+   * open, fist, point, a gesture...), sent with `cur`; others draw it in my colour,
+   * without its emoji. At most 16 characters.
+   */
+  cs?: string;
 }
 
 // ---- snapshots (8.7) ----

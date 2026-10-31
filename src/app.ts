@@ -48,6 +48,8 @@ export class App {
   mats: Mats | null = null;
   /** Dice (decision 255), set at boot. */
   dice: Dice | null = null;
+  /** The glove your cursor shows now (a Glove of ui/cursorArt.ts), set by the cursors; a room streams it (decision 293). */
+  cursorGlove = 'arrow';
   /** The room this table is in (ONLINE.md 11.2); null while offline. */
   online: Online | null = null;
   /** The table point under the cursor the last time it was over the table (spawn "at the cursor"). */
