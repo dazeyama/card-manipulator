@@ -13,6 +13,8 @@ import { land } from './commands';
 import type { DragController } from './physics/feel';
 import type { CardMove } from './state/store';
 import { outboxOf } from './online/outbox';
+import { cardsTouched, diceTouched, type Op } from '../shared/ops';
+import { snapCard, type Store } from './state/store';
 import { diffCards, sameTable, snapshot, type TableSnap } from './state/history';
 import type { RemovedTray } from './ui/tray';
 
@@ -34,7 +36,8 @@ export class Undo {
   constructor(private readonly app: App, private readonly tray: RemovedTray, private readonly drag: DragController) {
     const store = app.store;
     const changed = () => {
-      if (this.restoring || !this.pending) return;
+      // A change from the room is not this browser's action (ONLINE.md 8.6, O41).
+      if (this.restoring || !this.pending || store.origin === 'remote') return;
       this.saved = this.pending;
       this.pending = null;
       this.undone = false;
@@ -48,6 +51,8 @@ export class Undo {
       if (this.restoring) return;
       this.saved = this.pending = null;
     });
+    // In a room, what others change is theirs: undo takes back only your own last action (O41).
+    store.events.on('room', (op) => this.fold(op));
     // Captured first, so the snapshot is taken before the key or press acts. Hotkeys
     // also call markKey just before they run (KeyboardInput.beforeKey).
     window.addEventListener('keydown', (e) => this.markKey(e), true);
@@ -103,6 +108,18 @@ export class Undo {
     this.pending = null;
     this.undone = !this.undone;
     return this.undone ? 'undo' : 'redo';
+  }
+
+  /**
+   * Another player's change was applied: the kept snapshots take it on, for
+   * everything it touched, so Ctrl + Z puts back only what this browser did.
+   */
+  private fold(op: Op): void {
+    if (op.t === 'replace') {
+      this.saved = this.pending = null;
+      return;
+    }
+    for (const snap of [this.saved, this.pending]) if (snap) foldInto(snap, op, this.app.store);
   }
 
   /** For every card and die the swap changes, the seq of the last confirmed op that touched it here (8.6). */
@@ -167,4 +184,48 @@ export class Undo {
       }
     }
   }
+}
+
+/** Bring a kept snapshot up to date with the store for everything an op touched (cards, dice, mats, named piles, spreads). */
+export function foldInto(snap: TableSnap, op: Op, store: Store): void {
+  const sync = <T>(list: T[], keys: Iterable<string>, key: (t: T) => string, now: (k: string) => T | undefined): T[] => {
+    const want = new Set(keys);
+    if (!want.size) return list;
+    const out = list.filter((t) => !want.has(key(t)));
+    for (const k of want) {
+      const t = now(k);
+      if (t !== undefined) out.push(t);
+    }
+    return out;
+  };
+  const mats = new Set<string>();
+  const named = new Set<string>();
+  const spreads = new Set<string>();
+  const walk = (o: Op) => {
+    if (o.t === 'batch') o.ops.forEach(walk);
+    else if (o.t === 'mat') [...(o.set ?? []).map((m) => m.uid), ...(o.remove ?? []), ...(o.spill ?? [])].forEach((u) => mats.add(u));
+    else if (o.t === 'named') [...(o.set ?? []).map((p) => p.id), ...(o.remove ?? [])].forEach((u) => named.add(u));
+    else if (o.t === 'spread') [...(o.set ?? []).map((s) => s.id), ...(o.remove ?? [])].forEach((u) => spreads.add(u));
+  };
+  walk(op);
+  snap.cards = sync(snap.cards, cardsTouched(op), (c) => c.uid, (u) => {
+    const c = store.cards.get(u);
+    return c ? snapCard(c) : undefined;
+  });
+  snap.dice = sync(snap.dice, diceTouched(op), (d) => d.uid, (u) => {
+    const d = store.dice.get(u);
+    return d ? { ...d } : undefined;
+  });
+  snap.mats = sync(snap.mats, mats, (m) => m.uid, (u) => {
+    const m = store.mats.get(u);
+    return m ? { ...m } : undefined;
+  });
+  snap.named = sync(snap.named, named, (p) => p.id, (id) => {
+    const p = store.named.get(id);
+    return p ? { ...p, anchor: { ...p.anchor } } : undefined;
+  });
+  snap.spreads = sync(snap.spreads, spreads, (s) => s.id, (id) => {
+    const s = store.spreads.get(id);
+    return s ? { ...s, anchor: { ...s.anchor }, uids: [...s.uids] } : undefined;
+  });
 }

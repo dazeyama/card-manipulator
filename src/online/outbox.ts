@@ -116,7 +116,7 @@ export class Outbox {
     if (!p) return false;
     this.pending.delete(id);
     // Applied again if someone else's op came first, or if the crown confirmed it differently (a spill it laid out).
-    if (p.others.size || JSON.stringify(op) !== JSON.stringify(p.op)) this.sync.inbox.applyRemote(op, by);
+    if (p.others.size || JSON.stringify(op) !== JSON.stringify(p.op)) this.sync.inbox.applyRemote(op, by, true);
     return true;
   }
 
@@ -137,7 +137,7 @@ export class Outbox {
       { t: 'mat', set: stands.map((m) => ({ ...m! })) },
       { t: 'move', moves: cards.map((c) => ({ uid: c.uid, x: c.x, y: c.y, z: c.z, yaw: c.yaw, faceUp: c.faceUp, stand: c.stand ?? null })) },
     ] };
-    inbox.applyRemote({ t: 'batch', ops: spillOps(store, [...on], app) }, online.room.me);
+    inbox.applyRemote({ t: 'batch', ops: spillOps(store, [...on], app) }, online.room.me, true);
     this.send({ t: 'mat', spill: [...on] }, inverse);
   }
 

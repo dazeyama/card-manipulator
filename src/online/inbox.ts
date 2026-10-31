@@ -203,7 +203,7 @@ export class Inbox {
    * draw it: moved and added cards head for where they now lie, as a landing
    * does, a card that was in someone's hand easing there quickly.
    */
-  applyRemote(op: Op, by: string): void {
+  applyRemote(op: Op, by: string, mine = false): void {
     const app = this.sync.app;
     const store = app.store;
     const eased = this.sync.presence.landing(op, by);
@@ -212,6 +212,8 @@ export class Inbox {
       if (op.t !== 'replace') this.settleDrawn(cardsTouched(op), eased);
       else this.settleDrawn(op.table.cards.map((c) => c.uid), eased);
     });
+    // Undo keeps others' changes out of what it takes back; my own op applied again is still mine.
+    if (!mine) store.events.emit('room', op);
     this.need(addedCards(op).map((c) => c.scryfallId));
   }
 

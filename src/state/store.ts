@@ -50,6 +50,8 @@ export interface StoreEvents {
   dice: void;
   /** Cards were given new uids (a shuffle of hidden cards, ONLINE.md 7.2): old uid, new uid. */
   renamed: [string, string][];
+  /** A change from the room was applied (ONLINE.md 8.1): undo keeps it out of what it takes back. */
+  room: Op;
 }
 
 type Listener<T> = (payload: T) => void;
