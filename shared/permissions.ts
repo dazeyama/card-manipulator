@@ -174,3 +174,27 @@ export const TOKEN_LAYOUTS = ['token', 'emblem', 'double_faced_token'];
 export function isTokenLayout(layout: string | undefined): boolean {
   return !!layout && TOKEN_LAYOUTS.includes(layout);
 }
+
+/** What a card record must have for the Tokens rank to add or remove it. */
+export interface PieceRecord {
+  layout: string;
+  type_line: string;
+}
+
+/**
+ * Token cards (O67) and basic lands (the Card tab's chips, O60) are game pieces
+ * a Tokens player may add and take away; every other card needs Cards (O25).
+ */
+export function isGamePiece(r: PieceRecord | undefined): boolean {
+  return !!r && (isTokenLayout(r.layout) || /\bBasic\b.*\bLand\b/.test(r.type_line));
+}
+
+/** The action an `add` of these cards is: Tokens rank when all are game pieces, else Cards. */
+export function addAction(records: (PieceRecord | undefined)[]): 'addTokens' | 'addCards' {
+  return records.length && records.every(isGamePiece) ? 'addTokens' : 'addCards';
+}
+
+/** The action a `remove` of these cards is (removing follows adding, O25). */
+export function removeAction(records: (PieceRecord | undefined)[]): 'removeTokens' | 'removeCards' {
+  return records.length && records.every(isGamePiece) ? 'removeTokens' : 'removeCards';
+}

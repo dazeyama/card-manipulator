@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allowed, isTokenLayout, needs, rankAtLeast, refusal, RANKS, type Action, type Need, type Rank } from '../shared/permissions';
+import { addAction, allowed, isGamePiece, isTokenLayout, needs, rankAtLeast, refusal, removeAction, RANKS, type Action, type Need, type Rank } from '../shared/permissions';
 
 // Every row of ONLINE.md 6.2, as the table says it.
 const TABLE: [Action, Need][] = [
@@ -99,6 +99,20 @@ describe('permissions', () => {
     expect(allowed('tokens', 'addCards')).toBe(false);
     expect(allowed('tokens', 'removeCards')).toBe(false);
     expect(allowed('cards', 'removeCards')).toBe(true);
+  });
+
+  it('counts tokens and basic lands as game pieces a Tokens player adds and removes (O60, O67)', () => {
+    const token = { layout: 'token', type_line: 'Token Creature — Goblin' };
+    const basic = { layout: 'normal', type_line: 'Basic Land — Forest' };
+    const snowBasic = { layout: 'normal', type_line: 'Basic Snow Land — Island' };
+    const bolt = { layout: 'normal', type_line: 'Instant' };
+    expect(addAction([token, basic, snowBasic])).toBe('addTokens');
+    expect(addAction([token, bolt])).toBe('addCards');
+    expect(addAction([undefined])).toBe('addCards');
+    expect(addAction([])).toBe('addCards');
+    expect(removeAction([token])).toBe('removeTokens');
+    expect(removeAction([basic, bolt])).toBe('removeCards');
+    expect(isGamePiece({ layout: 'normal', type_line: 'Land — Urza’s Mine' })).toBe(false);
   });
 
   it('knows which layouts are tokens (O67)', () => {

@@ -8,6 +8,7 @@
 // it; the number pops green or red, and at 5 or less it stays red.
 
 import type { App } from '../app';
+import { allowedNow } from '../online/guard';
 import { lifeCorner, MAT_T, type Mats } from '../mats';
 import type { CameraRig } from '../render/camera';
 import { isStand } from '../state/stand';
@@ -154,7 +155,8 @@ export class LifeCounters {
 
   private change(uid: string, by: number): void {
     const m = this.app.store.mats.get(uid);
-    if (!m) return;
+    // In a room, life totals are anyone's at Move (ONLINE.md 6.2, O52).
+    if (!m || !allowedNow('mat')) return;
     const b = this.badges.get(uid);
     if (b) {
       b.delta += by;
@@ -168,6 +170,7 @@ export class LifeCounters {
   }
 
   private set(uid: string, life: number): void {
+    if (!allowedNow('mat')) return;
     const b = this.badges.get(uid);
     if (b) b.delta = 0;
     this.app.store.setMatLife(uid, life);

@@ -2,6 +2,7 @@
 // short "dealt onto the table" animation.
 
 import type { App } from './app';
+import { maySpawn } from './online/guard';
 import { newUid } from './state/store';
 import { messyLayout, stackLayout, surfaceTop } from './state/piles';
 import type { Arrival, Card, CardRecord, Finish } from './state/types';
@@ -26,6 +27,8 @@ const DROP_HEIGHT = 70;
 
 /** Spawn every copy of every item as one pile. Returns the new card uids, bottom to top. */
 export function spawnCards(app: App, items: SpawnItem[], opts: SpawnOptions): string[] {
+  // In a room: Tokens for tokens and basic lands, Cards for the rest, under the cap (ONLINE.md 6.2, 8.7).
+  if (!maySpawn(items.map((i) => i.record), items.reduce((n, i) => n + i.count, 0))) return [];
   const records = items.map((i) => i.record);
   app.store.addRecords(records.filter((r) => !app.store.records.has(r.id)));
   const flat: { record: CardRecord; finish: Finish }[] = [];

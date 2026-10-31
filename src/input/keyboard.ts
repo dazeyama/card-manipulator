@@ -28,6 +28,8 @@ export class KeyboardInput {
   private readonly repeats = new Map<string, number>();
   /** Called just before a hotkey runs, so undo can keep the table as it was (decision 204). */
   beforeKey: (e: KeyboardEvent) => void = () => {};
+  /** In a room, may this key's command run (ONLINE.md 6.4)? The guard says why not itself. */
+  guard: (name: string) => boolean = () => true;
   /** Keys whose press ran a hotkey and are still down, with when it last ran. */
   private readonly down = new Map<string, number>();
 
@@ -42,7 +44,7 @@ export class KeyboardInput {
       const now = performance.now();
       if (!isTyping() && repeatDue(this.repeats.get(name), this.down.get(e.code)!, now)) {
         this.down.set(e.code, now);
-        this.bindings.get(name)?.(e);
+        if (this.guard(name)) this.bindings.get(name)?.(e);
       }
     }, true);
     window.addEventListener('keyup', (e) => this.down.delete(e.code));
@@ -86,6 +88,7 @@ export class KeyboardInput {
     if (!action) return;
     if (isTyping()) return;
     e.preventDefault();
+    if (!this.guard(this.nameOf(e))) return;
     this.down.set(e.code, performance.now());
     this.beforeKey(e);
     action(e);

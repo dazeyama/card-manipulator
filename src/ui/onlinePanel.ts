@@ -16,7 +16,7 @@ import { isStand } from '../state/stand';
 import type { TopBar } from './topBar';
 import { confirmDialog } from './confirm';
 import { h } from './dom';
-import { toast, type ToastKind } from './toasts';
+import { roomToast, type Guard } from '../online/guard';
 import { ChatStrip } from './chatStrip';
 import { PlayerRows } from './playerRows';
 import { ColourPicker, joinByCodeDialog, joinPrompt } from './joinPrompt';
@@ -62,6 +62,8 @@ export interface OnlineDeps {
   ownTable: () => Promise<void>;
   /** The hidden gate (7.3), told when a room starts, welcomes me, or ends. */
   hidden: HiddenGate;
+  /** Rank gating (6.4): its buttons follow every rank, lock, crown and connection change. */
+  guard?: Guard;
 }
 
 /** Dev only: `?fakeroom` goes online and joins with FakeSession, no room server needed. */
@@ -70,15 +72,6 @@ function fakeRooms(): boolean {
 }
 
 const FAKE_INFO: RoomInfo = { name: 'Fake room', players: 1, max: 8, password: false, tag: 'cube', open: true, crown: 'Nobody', taken: [] };
-
-/** One toast per message for its two seconds, never a stack of the same one (12.4). */
-const lastToast = new Map<string, number>();
-export function roomToast(message: string, kind: ToastKind = 'info'): void {
-  const now = performance.now();
-  if (now - (lastToast.get(message) ?? -Infinity) < 2000) return;
-  lastToast.set(message, now);
-  toast(message, kind, 2000);
-}
 
 export class OnlineUi {
   readonly panel: OnlinePanel;
@@ -149,6 +142,7 @@ export class OnlineUi {
       this.status.textContent = '';
       this.status.className = 'room-status';
       this.topBar.setNameEditable(true);
+      this.deps.guard?.refresh();
       return;
     }
     const room = online.room;
@@ -170,6 +164,7 @@ export class OnlineUi {
     this.status.textContent = reconnecting ? (this.welcomed ? 'Reconnecting…' : 'Connecting…') : room.locked ? '🔒' : '';
     this.status.title = room.locked && !reconnecting ? 'The table is locked: only the crown can change it' : '';
     this.topBar.setNameEditable(room.isCrown);
+    this.deps.guard?.refresh();
   }
 
   // ---- going online (12.2's short form) ----

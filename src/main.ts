@@ -65,6 +65,8 @@ import { OnlineUi, showWelcomeNote } from './ui/onlinePanel';
 import { RoomLayer } from './online/connect';
 import { parseHash } from './online/link';
 import { HiddenGate } from './online/hidden';
+import { allowedNow, Guard, mayMoveCards } from './online/guard';
+import type { Action } from '../shared/permissions';
 
 const root = document.getElementById('app')!;
 const top = h('div', { class: 'top-host' });
@@ -317,6 +319,8 @@ const badges = new Badges(app, {
         if (!inner && !id.includes(':') && Math.hypot(x - x0, y - y0) > 4) {
           // Dragging a badge lifts the whole pile, no modifier needed (spec 10.2).
           const uids = pileCards(id);
+          // In a room: Move, and the owner of a stand the pile lies on (ONLINE.md 6.4).
+          if (!mayMoveCards(uids)) return;
           store.setSelection(uids);
           inner = drag.begin(uids, 'rigid', x0, y0);
         }
@@ -1038,9 +1042,34 @@ const roomLayer = new RoomLayer(app, { drag, dice, diceLayer, autosave });
 // layer is reached through RoomControl (the Sync fork's RoomLayer).
 // The hidden gate (ONLINE.md 7.3): in a room, cards this browser may not see draw as backs and read as unknown.
 const hiddenGate = new HiddenGate(app);
+// Rank gating (ONLINE.md 6.4): keys, buttons and the start of drags refuse, with a toast,
+// what this player may not do. Offline everything is allowed.
+const guard = new Guard(app);
+keyboard.guard = guard.key;
+guard.wrapMouse(mouse);
+// Naming a pile and its filter need Move (6.2).
+const openPileEditor = pileEditor.open.bind(pileEditor);
+pileEditor.open = (...args: Parameters<typeof openPileEditor>) => {
+  if (allowedNow('named')) openPileEditor(...args);
+};
+// Buttons by what they do: the HUD's commands, the top bar's files, the Spawn panel's spawns.
+const gateByText = (host: Element, rules: [string | RegExp, Action][]) => {
+  for (const b of host.querySelectorAll('button')) {
+    const text = b.textContent?.trim() ?? '';
+    const rule = rules.find(([t]) => (typeof t === 'string' ? text === t : t.test(text)));
+    if (rule) guard.gate(b, rule[1]);
+  }
+};
+const hudButtons = bottom.querySelector('.hud-buttons');
+if (hudButtons) gateByText(hudButtons, [[/Export/, 'download'], [/^(?!.*Split)/, 'move']]);
+guard.gate(pointBtn, 'move');
+gateByText(topBar.actions, [['New', 'replace'], ['Open…', 'replace'], ['Save', 'download'], ['Export', 'download']]);
+gateByText(left, [['Spawn', 'addCards'], ['Spawn cube', 'addCards'], ['Spawn basics', 'addTokens'], ['Choose basics…', 'basics'], ['Spawn playmat', 'matAdd']]);
+for (const chip of left.querySelectorAll('.basic-chip')) guard.gate(chip as HTMLElement, 'addTokens');
 const onlineUi = new OnlineUi(app, topBar, {
   control: roomLayer,
   hidden: hiddenGate,
+  guard,
   saveCopy: () => saveFile(),
   ownTable: async () => {
     autosave.paused = false;

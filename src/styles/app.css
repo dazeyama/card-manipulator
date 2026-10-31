@@ -384,3 +384,5 @@ button.linkish { border: none; background: none; padding: 0; color: var(--accent
 .remote-cursor-tag { position: absolute; left: 12px; top: 14px; padding: 1px 7px; border-radius: 9px; background: var(--player, #e63946); color: #fff; font-size: 11px; font-weight: 650; white-space: nowrap; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); }
 .remote-cursor.light .remote-cursor-tag { color: #222; }
 .remote-cursor.edge .remote-cursor-arrow { opacity: 0.6; }
+/* A button this player's rank may not use in a room (6.4): greyed, its title says what is needed. */
+.guarded, .btn.guarded:hover, .chip.guarded:hover { opacity: 0.45; cursor: not-allowed; }
