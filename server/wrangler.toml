@@ -21,3 +21,6 @@ new_sqlite_classes = ["Room", "Lobby"]
 
 [vars]
 SITE_ORIGIN = "https://dazeyama.github.io"
+# The creation and join limits of ONLINE.md 10.4. server/.dev.vars sets "off"
+# for local development, so one machine's many test joins never trip them (O99).
+RATE_LIMITS = "on"

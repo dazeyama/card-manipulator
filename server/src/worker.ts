@@ -2,9 +2,10 @@
 // WebSocket upgrade forwarded to the room's Durable Object, CORS for the
 // site and localhost. No static files: GitHub Pages serves the site.
 //
-// Routes (9.3): GET /api/version; POST /api/rooms; GET /api/rooms/:code;
-// GET /api/rooms/:code/ws (the socket). The public list, reports and the
-// admin routes come in Phase O3.
+// Routes (9.3): GET /api/version; GET and POST /api/rooms (the public list,
+// a new room); GET /api/rooms/:code; GET /api/rooms/:code/ws (the socket);
+// POST /api/rooms/:code/report; and, with the x-admin-key header,
+// GET /api/admin/rooms and POST /api/admin/rooms/:code/delist, /relist, /close.
 
 import { PROTOCOL, playerIdOf, type CreateRoomBody, type CreateRoomReply, type VersionReply } from '../../shared/protocol';
 import { isCode, newCode } from '../../shared/roomCode';
@@ -21,6 +22,62 @@ export interface Env {
   SITE_ORIGIN: string;
   /** The owner's admin key (O15): a secret, server/.dev.vars locally. */
   ADMIN_KEY: string;
+  /** "off" turns the creation and join limits off: server/.dev.vars, for local development (O99). */
+  RATE_LIMITS?: string;
+}
+
+function lobby(env: Env) {
+  return env.LOBBY.getByName('lobby');
+}
+
+/** The caller's ip as Cloudflare sees it; empty locally. */
+function ipOf(req: Request): string {
+  return req.headers.get('CF-Connecting-IP') ?? '';
+}
+
+/** The admin key, compared in constant time (10.1). False when no key is set on the Worker. */
+async function isAdmin(req: Request, env: Env): Promise<boolean> {
+  const given = req.headers.get('x-admin-key');
+  if (!given || !env.ADMIN_KEY) return false;
+  const enc = new TextEncoder();
+  const [a, b] = await Promise.all([crypto.subtle.digest('SHA-256', enc.encode(given)), crypto.subtle.digest('SHA-256', enc.encode(env.ADMIN_KEY))]);
+  const x = new Uint8Array(a), y = new Uint8Array(b);
+  let diff = 0;
+  for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
+  return diff === 0;
+}
+
+/** A token from a JSON body, or null. */
+async function tokenOf(req: Request): Promise<string | null> {
+  try {
+    const body = (await req.json()) as { token?: unknown };
+    return typeof body.token === 'string' && body.token.length >= 16 && body.token.length <= 128 ? body.token : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The admin routes (12.8): every room with its reports; delist, relist, close. */
+async function admin(req: Request, env: Env, path: string): Promise<Response> {
+  if (!(await isAdmin(req, env))) return json({ error: 'key' }, 401);
+  if (req.method === 'GET' && path === '/api/admin/rooms') return json({ rooms: await lobby(env).adminList() });
+  const m = /^\/api\/admin\/rooms\/([^/]+)\/(delist|relist|close)$/.exec(path);
+  if (!m || req.method !== 'POST' || !isCode(m[1])) return json({ error: 'not found' }, 404);
+  const [, code, action] = m;
+  if (action === 'delist') await lobby(env).delist(code);
+  else if (action === 'relist') await lobby(env).relist(code);
+  else return json({ ok: await env.ROOM.getByName(code).adminClose() });
+  return json({ ok: true });
+}
+
+/** POST /api/rooms/:code/report: three distinct reporters delist a room until the admin looks (O15). */
+async function report(req: Request, env: Env, code: string): Promise<Response> {
+  const token = await tokenOf(req);
+  if (!token) return json({ error: 'bad token' }, 400);
+  const result = await lobby(env).report(code, await playerIdOf(token));
+  if (result === 'rate') return json({ error: 'rate' }, 429);
+  if (result === 'closed') return json({ error: 'closed' }, 404);
+  return json({ ok: true });
 }
 
 /** The site, and any localhost port for development. */
@@ -58,6 +115,8 @@ async function createRoom(req: Request, env: Env): Promise<Response> {
   if (typeof body.token !== 'string' || body.token.length < 16 || body.token.length > 128) return json({ error: 'bad token' }, 400);
   const tag = body.tag === 'play' ? 'play' : 'cube';
   const maker = await playerIdOf(body.token);
+  // 5 an hour per ip and per identity (10.4).
+  if (!(await lobby(env).allowCreate(ipOf(req), maker))) return json({ error: 'rate' }, 429);
   // A collision among 887 million codes is rare; try a few.
   for (let i = 0; i < 8; i++) {
     const code = newCode();
@@ -81,6 +140,14 @@ export default {
       return withCors(json(body), req, env);
     }
     if (req.method === 'POST' && path === '/api/rooms') return withCors(await createRoom(req, env), req, env);
+    if (req.method === 'GET' && path === '/api/rooms') return withCors(json({ rooms: await lobby(env).publicList() }), req, env);
+    if (path.startsWith('/api/admin/')) return withCors(await admin(req, env, path), req, env);
+
+    const reported = /^\/api\/rooms\/([^/]+)\/report$/.exec(path);
+    if (reported && req.method === 'POST') {
+      if (!isCode(reported[1])) return withCors(json({ error: 'not a room code' }, 404), req, env);
+      return withCors(await report(req, env, reported[1]), req, env);
+    }
 
     const room = /^\/api\/rooms\/([^/]+)(\/ws)?$/.exec(path);
     if (room && req.method === 'GET') {

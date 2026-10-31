@@ -8,6 +8,7 @@ import {
   CHAT_LINES, MAX_PLAYERS, NICKNAME_MAX, PLAYER_COLOURS, ROOM_NAME_MAX, base64url, defaultRoomSettings,
   type ChatLine, type Player, type PublicSettings, type RoomInfo, type RoomSettings, type Tag,
 } from '../../shared/protocol';
+import { clean } from '../../shared/words';
 
 /** A player's place in the room, kept while they are away until the room closes (O19). */
 export interface Seat {
@@ -115,16 +116,16 @@ export function colourFree(meta: Meta, colour: string, forId: string): boolean {
   return PLAYER_COLOURS.includes(colour) && !meta.seats.some((s) => s.id !== forId && s.colour === colour);
 }
 
-/** A nickname as the room shows it: spaces collapsed, 1 to 20 characters, "Player N" when empty. */
+/** A nickname as the room shows it: spaces collapsed, 1 to 20 characters, "Player N" when empty or blocked (10.4). */
 export function cleanNickname(raw: unknown, seatNumber: number): string {
   const s = typeof raw === 'string' ? raw.replace(/\s+/g, ' ').trim().slice(0, NICKNAME_MAX).trim() : '';
-  return s || `Player ${seatNumber}`;
+  return clean(s, '') || `Player ${seatNumber}`;
 }
 
-/** A room name: 1 to 60 characters, "Table CODE" when empty. */
+/** A room name: 1 to 60 characters, "Table CODE" when empty or blocked (10.4). */
 export function cleanRoomName(raw: unknown, code: string): string {
   const s = typeof raw === 'string' ? raw.replace(/\s+/g, ' ').trim().slice(0, ROOM_NAME_MAX).trim() : '';
-  return s || `Table ${code}`;
+  return clean(s, '') || `Table ${code}`;
 }
 
 export function isRank(x: unknown): x is Rank {

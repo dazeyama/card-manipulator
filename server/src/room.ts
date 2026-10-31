@@ -152,6 +152,13 @@ export class Room extends DurableObject<Env> {
     return roomInfo(this.meta);
   }
 
+  /** The admin page's Close (12.8): ends the room for everyone. False if it was not open. */
+  async adminClose(): Promise<boolean> {
+    if (!this.meta) return false;
+    await this.closeRoom('closed');
+    return true;
+  }
+
   // ---- sockets ----
 
   async fetch(req: Request): Promise<Response> {
@@ -274,6 +281,9 @@ export class Room extends DurableObject<Env> {
       }
       if (!this.meta) return this.bye(ws, 'closed');
     }
+    // Joins: 30 an hour per ip, counted in the Lobby (10.4); a seat coming back is not a join.
+    if (!existing && ip && !(await this.env.LOBBY.getByName('lobby').allowJoin(ip))) return this.bye(ws, 'rate');
+    if (!this.meta) return this.bye(ws, 'closed');
     this.reconcile(ws);
     const others = meta.seats.filter((s) => s.connected && s.id !== id).length;
     if (others >= MAX_PLAYERS) return this.bye(ws, 'full');

@@ -98,5 +98,8 @@ describe('room meta', () => {
     expect(cleanNickname('x'.repeat(40), 1).length).toBe(20);
     expect(cleanRoomName('', '7KQ2MX')).toBe('Table 7KQ2MX');
     expect(cleanRoomName('y'.repeat(80), '7KQ2MX').length).toBe(60);
+    // The word filter (10.4).
+    expect(cleanNickname('Sh1t lord', 4)).toBe('Player 4');
+    expect(cleanRoomName('nazi cube', '7KQ2MX')).toBe('Table 7KQ2MX');
   });
 });
