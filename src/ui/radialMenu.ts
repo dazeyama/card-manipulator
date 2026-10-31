@@ -200,9 +200,9 @@ export class RadialMenu {
       el('path', { d: segment(g.innerFrom, g.inner, a0, a1) }, grp);
       const rm = (g.innerFrom + g.inner) / 2;
       const x = Math.sin(mid) * rm, y = -Math.cos(mid) * rm;
-      el('text', { x, y: y - 16 * s, 'font-size': 18 * s }, grp, w.icon);
-      el('text', { x, y: y + 5 * s, 'font-size': 13 * s, class: 'radial-label' }, grp, w.label);
-      el('text', { x, y: y + 20 * s, 'font-size': 10.5 * s, class: 'radial-key' }, grp, w.items[0].key);
+      el('text', { x, y: y - 13 * s, 'font-size': 15 * s }, grp, w.icon);
+      el('text', { x, y: y + 4 * s, 'font-size': 11.5 * s, class: 'radial-label' }, grp, w.label);
+      el('text', { x, y: y + 16.5 * s, 'font-size': 9 * s, class: 'radial-key' }, grp, w.items[0].key);
       if (w.items.length > 1 && ok) {
         const rd = g.inner - 7 * s;
         el('circle', { cx: Math.sin(mid) * rd, cy: -Math.cos(mid) * rd, r: 2.4 * s, class: 'radial-dot' }, grp);
@@ -220,15 +220,15 @@ export class RadialMenu {
         const rm = (g.outerFrom + g.outer) / 2;
         const x = Math.sin(mid) * rm, y = -Math.cos(mid) * rm;
         const ls = lines(item.label);
-        const top = y - (ls.length === 2 ? 13 : 7) * s;
-        ls.forEach((l, k) => el('text', { x, y: top + k * 13 * s, 'font-size': 11.5 * s, class: 'radial-label' }, grp, l));
-        el('text', { x, y: top + ls.length * 13 * s + 2 * s, 'font-size': 10 * s, class: 'radial-key' }, grp, item.key);
+        const top = y - (ls.length === 2 ? 11 : 6) * s;
+        ls.forEach((l, k) => el('text', { x, y: top + k * 11.5 * s, 'font-size': 10.5 * s, class: 'radial-label' }, grp, l));
+        el('text', { x, y: top + ls.length * 11.5 * s + 1.5 * s, 'font-size': 9 * s, class: 'radial-key' }, grp, item.key);
       });
     }
     el('circle', { cx: 0, cy: 0, r: g.hole - 4 * s, class: 'radial-hole' }, ring);
     const [l1, l2] = o.mode === 'hold' ? ['let go', 'to cancel'] : ['Esc', 'closes'];
-    el('text', { x: 0, y: -7 * s, 'font-size': 10.5 * s, class: 'radial-hint' }, ring, l1);
-    el('text', { x: 0, y: 8 * s, 'font-size': 10.5 * s, class: 'radial-hint' }, ring, l2);
+    el('text', { x: 0, y: -6 * s, 'font-size': 9.5 * s, class: 'radial-hint' }, ring, l1);
+    el('text', { x: 0, y: 7 * s, 'font-size': 9.5 * s, class: 'radial-hint' }, ring, l2);
     this.svg.replaceChildren(ring);
   }
 }
