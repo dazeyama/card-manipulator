@@ -10,10 +10,11 @@ The unattended build of `ONLINE.md` (decision 288): one hub session and three ar
 |---|---|
 | **Phases gated** | **all four**: O1 (tag `online-1`), O2 (`online-2`), O3 (`online-3`), O4 (`online-4`) |
 | **BROKEN items** | none |
-| **Tests** | 425 passing in 46 files at gate O4 (409 at O1, 239 at the seed) |
+| **Tests** | **445 passing** in 47 files after the final review (425 at gate O4, 409 at O1, 239 at the seed) |
+| **Final review** | two passes over the whole diff, eight agents then six: **26 findings confirmed** (7 high) and fixed, then **8 left after the fixes**, also fixed; every one in `reports/final-review.md` with its scenario, trace, fix and status. The high ones: other players' hands could be gathered face up by the crown's keys, a refused landing left a card hanging in the air, a non-crown undo of a Delete wiped those cards' identities, a big snapshot part could close the crown's socket, a joiner who inherited the crown lost their own table. Decisions O106 to O108. |
 | **Found in the gates and fixed** | remote cursors vanished on a resting mouse (O1); a spill wrote no chat line, the stand button never greyed, an overtaken undo said "Nothing to undo" (O2); quiet rooms fell out of the public list (O105) and a big spawn closed the crown's socket (O104) (O3) |
 | **Run it** | `npm run dev` (vite 5173 + a local room server on 8787), or `start.bat`. Tab A: Go online. Tab B: the room link with `?player=B` before the `#` (dev only, O90), so one browser is two players. |
-| **Room server** | **deployed** after gate O1 and again after gate O3 (version `b64692cf`, with the O3 fixes): `https://card-manipulator-rooms.daisyamanita.workers.dev` (free plan, Durable Objects on SQLite, checked live: create, hello, welcome, ping, close). `.env.production` points the site at it. The admin key is a Worker secret and sits in `server/.admin-key` (git-ignored) for `#/admin`. |
+| **Room server** | **deployed** after gates O1 and O3 and finally after the review fixes (version `f1b43df6`, checked live: a password room listed with its lock, a wrong key refused, the right one in, closed and delisted): `https://card-manipulator-rooms.daisyamanita.workers.dev` (free plan, Durable Objects on SQLite, checked live: create, hello, welcome, ping, close). `.env.production` points the site at it. The admin key is a Worker secret and sits in `server/.admin-key` (git-ignored) for `#/admin`. |
 | **For you to do** | before your first push with server code: the GitHub secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (ONLINE.md 3.5), or `worker.yml` fails (the site deploy is separate and unaffected, O92); edit the word list in `shared/words.ts` (O79) |
 | **Ports in the run** | hub 5177 + 8787 (O95: your own `start.bat` server holds 5173), Server 5174 + 8788, Sync 5175 + 8789, Rules & UI 5176 + 8790 |
 
@@ -77,6 +78,14 @@ The unattended build of `ONLINE.md` (decision 288): one hub session and three ar
 - **Not judged:** the feel under `__latency(300)` (the pane was hidden, so no frames to watch); a real quota refusal from Cloudflare.
 - **Screenshots:** `reports/screenshots/online-4/` (the Quota page). **Commit and tag:** `43e1401` "Phase O4 gate", tag `online-4`.
 - **Agent decisions in O4:** O101. **BROKEN:** none.
+
+### Final review (O86)
+
+After gate O4, one review of the whole run (`git diff 1693465..HEAD`, about 11,000 lines) against ONLINE.md, for correctness and conformance only, as a workflow: four area reviewers (server, shared core, sync, rules and UI), each finding then checked by a skeptic per area who kept only what it could trace through the code. **26 confirmed, 1 rejected.** The forks fixed theirs and the hub fixed #7. A second, smaller workflow then checked every fix against its finding and the fix diff for new bugs: **22 closed, 8 left** (3 introduced by the server's own fixes, 4 not fully closed, 1 path missed), all fixed in a second round (O107 decided by the hub: a cap breach by the crown resyncs it by reconnecting; O108 the server's wake path once its storage is refused). The hub read the second round's server diff itself rather than run a third pass.
+
+- **Checked in two tabs after the fixes:** #21 (the crown's Ctrl + A, S left Bea's hand on her stand; a deal onto another's stand was refused), #5/#11 (a landing refused under Lock table rolled back and released the hold, nothing left hanging), #6 (Bea deleted a card and undid it: it came back with its identity, nothing became hidden), #8 (Bea at Everything could not take Ann's stand: "Only its owner can touch that stand").
+- **Checked by tests and the forks' scripts only:** the rest, notably #7 (5,000 heavy cards split under the part limit), #13/#22 (a joiner-crown keeps their own table; one browser's tabs share one autosave, so a gate can't tell the tables apart), the server's quota and hibernation paths (a temporary local hack refused writes; a real quota refusal is untested).
+- Full list: `reports/final-review.md`. Final state: typecheck clean, **445 tests**, build OK, the Worker redeployed (`f1b43df6`) and checked live.
 
 ### Done entries by area
 
