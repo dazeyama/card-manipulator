@@ -154,7 +154,7 @@ export class Authority {
         for (const o of op.ops) this.take(o, by);
         return;
       case 'grab':
-        // Adds to the hand (O99): cards and dice picked up together come as two grabs.
+        // Adds to the hand (O100): cards and dice picked up together come as two grabs.
         for (const u of [...op.uids, ...(op.dice ?? [])]) this.heldBy.set(u, by);
         return;
       case 'release':

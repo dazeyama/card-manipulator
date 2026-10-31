@@ -160,7 +160,7 @@ export class Presence implements PresenceView {
       return;
     }
     if (op.t !== 'grab') return;
-    // A grab adds to the hand (O99); the holder's landing, release or leaving ends it.
+    // A grab adds to the hand (O100); the holder's landing, release or leaving ends it.
     for (const uid of [...op.uids, ...(op.dice ?? [])]) {
       this.holders.set(uid, by);
       this.take(uid, by);
