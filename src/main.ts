@@ -3,7 +3,7 @@
 import './styles/app.css';
 import { App } from './app';
 import { MouseInput, type CustomGesture } from './input/mouse';
-import { isTyping, KeyboardInput } from './input/keyboard';
+import { KeyboardInput } from './input/keyboard';
 import { scryfall } from './scryfall/client';
 import { SpawnPanel } from './ui/spawnPanel';
 import { TopBar } from './ui/topBar';
@@ -82,7 +82,7 @@ installFit();
 
 const app = new App(stageHost);
 const mouse = new MouseInput(app);
-const keyboard = new KeyboardInput(app, mouse);
+const keyboard = new KeyboardInput(app);
 const topBar = new TopBar(app, top);
 const spawnPanel = new SpawnPanel(app, left);
 const hud = new Hud(app, bottom);
@@ -286,14 +286,6 @@ const startDealing = (): boolean => {
 mouse.hooks.rightWhileHolding = startDealing;
 window.addEventListener('mouseup', (e) => {
   if (e.button === 2) stopDealing();
-});
-// Space does the same while cards are held, as it is the other pan control beside right-drag (decision 181).
-window.addEventListener('keydown', (e) => {
-  if (e.key !== ' ' || e.repeat || isTyping()) return;
-  if (startDealing()) e.preventDefault();
-});
-window.addEventListener('keyup', (e) => {
-  if (e.key === ' ') stopDealing();
 });
 window.addEventListener('blur', stopDealing);
 // Middle-click while holding cards flips them in the hand, as F does (decision 179).

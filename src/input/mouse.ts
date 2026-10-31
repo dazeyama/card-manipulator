@@ -56,7 +56,6 @@ export interface MouseHooks {
 
 export class MouseInput {
   private gesture: Gesture = { kind: 'none' };
-  spaceDown = false;
   readonly hooks: MouseHooks = {};
   hovered: string | null = null;
   private readonly marqueeEl: HTMLDivElement;
@@ -163,8 +162,8 @@ export class MouseInput {
       }
       this.lastRight = { x, y, at: now };
     }
-    // Right-drag pans (decision 88), as does Space + left-drag.
-    if (e.button === 2 || (e.button === 0 && this.spaceDown)) {
+    // Right-drag pans (decision 88). Space is unbound (decision 296).
+    if (e.button === 2) {
       const grab = this.app.rig.screenToPlane(x, y, 0);
       if (grab) this.gesture = { kind: 'pan', grab, button: e.button };
       e.preventDefault();

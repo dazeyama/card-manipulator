@@ -646,7 +646,7 @@ export class DragController {
   }
 
   /**
-   * Dealing (decisions 180, 186): right-click or Space while holding cards. The
+   * Dealing (decisions 180, 186): right-click while holding cards. The
    * bottom card of the hand drops onto whatever is under the cursor, falling
    * messily, or squared in Tidy mode (Ctrl); from a face-down hand, the top card
    * is dealt instead, as from a deck. The last card ends the drag, as letting go does.

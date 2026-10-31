@@ -2,7 +2,6 @@
 // field has focus.
 
 import type { App } from '../app';
-import type { MouseInput } from './mouse';
 
 export type KeyAction = (e: KeyboardEvent) => void;
 
@@ -33,7 +32,7 @@ export class KeyboardInput {
   /** Keys whose press ran a hotkey and are still down, with when it last ran. */
   private readonly down = new Map<string, number>();
 
-  constructor(private readonly app: App, mouse: MouseInput) {
+  constructor(private readonly app: App) {
     // A held hotkey's repeats are taken first, before anything else sees them, so they
     // neither run it again nor type into a box the hotkey just opened (decision 183).
     window.addEventListener('keydown', (e) => {
@@ -50,19 +49,13 @@ export class KeyboardInput {
     window.addEventListener('keyup', (e) => this.down.delete(e.code));
     window.addEventListener('blur', () => this.down.clear());
     window.addEventListener('keydown', (e) => {
-      if (e.key === ' ' && !isTyping()) {
-        mouse.spaceDown = true;
-        e.preventDefault();
-      }
       if (e.key === 'Alt') e.preventDefault();
       this.handle(e);
     });
     window.addEventListener('keyup', (e) => {
-      if (e.key === ' ') mouse.spaceDown = false;
       // Releasing Alt would focus the browser menu bar on Windows (decision 29).
       if (e.key === 'Alt') e.preventDefault();
     });
-    window.addEventListener('blur', () => (mouse.spaceDown = false));
     this.bind('home', () => this.app.rig.reset());
     this.bind('v', () => this.app.rig.cycle());
   }

@@ -294,7 +294,7 @@ export class Cursors {
   private pick(): State {
     const { shift, alt, ctrl } = this;
     const gesture = this.mouse.gestureKind;
-    if (gesture === 'pan' || (this.mouse.spaceDown && !this.drag.dragging)) return 'pan';
+    if (gesture === 'pan') return 'pan';
     if (gesture === 'orbit') return 'orbit';
     // Dragging a playmat: the fist, linked when it carries its cards (decision 144).
     const mats = this.app.mats;

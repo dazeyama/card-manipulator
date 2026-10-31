@@ -355,7 +355,7 @@ Owner's decision (2026-10-27): **light UI on a pale table** (decision 39).
 
 - A perspective camera tilted toward the table. Default pitch 55° from horizontal, looking at the origin.
 - **Limited orbit** (owner, 2026-10-27): pitch between 25° and 89°, yaw ±60° from the default (decision 25). The camera can lean in to see the side of a pile but never goes below the table or around behind it.
-- **Pan**: right-drag, or hold Space and left-drag (decision 88). Pan is in table coordinates so the ground stays under the cursor.
+- **Pan**: right-drag (decision 88; Space no longer pans, decision 296). Pan is in table coordinates so the ground stays under the cursor.
 - **Zoom**: mouse wheel, toward the cursor, between a whole-table view (about 3,000 mm wide) and a single-card view (about 150 mm wide).
 - **Orbit**: middle-drag on empty table (decision 88). Middle-click without dragging on a card flips it (Section 10.5), so orbit begins only after the cursor has moved more than 4 px with the button down, and only if the press was not on a card.
 - **View presets** (owner, 2026-10-27, decision 86): a **View** button in the top bar, and the `V` key, cycle the camera through four angles: Tilted (55°), Top-down (89°), Low (30°) and Corner (45°, turned 35° to the front-left). Cycling keeps where the camera looks and how far out it is; only the angle swings, smoothly, in about half a second. The current preset is remembered in the browser.
@@ -757,7 +757,7 @@ Personality: **snappy and light** (decision 42). Quick follow, short settles, ve
 | Alt + left-drag | Move the selection in formation | — | — |
 | Middle-click | Flip it (and the selection if it is selected) | Flip the pile | — |
 | Middle-drag | — | — | Orbit camera |
-| Right-drag, Space + left-drag | Pan | Pan | Pan |
+| Right-drag | Pan | Pan | Pan |
 | Left-drag on a playmat (no card under it) | — | — | Move the mat; with Alt, carry the cards on it (Section 10.9) |
 | Double right-click | Straighten the view to the current preset angle, staying put | Straighten view | Straighten view |
 | Wheel | Zoom toward cursor | Zoom | Zoom |
@@ -816,7 +816,7 @@ The cursor shows what the mouse will do, and what a held key changes (owner, 202
 | ... with 📐 | Holding cards with Ctrl held | Tidy mode while held: they land squared at a quarter turn |
 | Glove holding up one card | Dragging a single card (with 📐 while Ctrl is held) | As the fist, for one card (decision 164) |
 | Gesture gloves | For half a second after an action (Shuffle: until the cards settle) | Shuffle (two hands riffling, drawn at 72 px so its hands sit closer to the others' size), Tidy (flat hand on a squared stack), Flip (card tipping over under an arc arrow, also on a middle-click flip), Rotate (card turning under a clockwise arrow), Fan (hand of cards), Draw (thumb dealing off the deck, on the click that deals), Remove (a flick, with ❌) (decision 164) |
-| Open glove with ↔️ | Space held, or a right-drag | Pan |
+| Open glove with ↔️ | A right-drag | Pan |
 | Gloved fist with 🔄 | Middle-drag | Orbit |
 | Pointing glove with 1️⃣–9️⃣ | After pressing a number over a pile | Click the table to deal that many cards there as a hand |
 | Open glove | Over a playmat where no card is | Drag moves the mat; with 🔗 while Alt is held, its cards ride along |
@@ -1213,6 +1213,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 293 | Owner (2026-10-31): in a room, **your cursors are your player colour**, and **other players see each other's real cursor gloves** (open hand, fist, holding one, pointing, the gesture gloves) **in their colour, larger** than the plain arrow, and **without any emoji badge**. **(agent)** One module (`src/ui/cursorArt.ts`) loads, tints and scales the glove art for both: tinting multiplies the glove by the colour, so its white takes the colour and the black outline and shading stay (a white player's gloves stay white; offline they are white as before); emoji are drawn after the tint, in their own colours, and only on your own cursor. Your cursors redraw when you join, leave or change colour. The room stream carries the glove's name (`cs`, a few bytes, only with the cursor's position); each browser draws other players' gloves at its own Cursor size (decision 289) with the name tag, the plain arrow until the picture is ready or from an older browser. |
 | 294 | Owner (2026-10-31): a card **another player flips** turned over in place, a quicker spin with no lift, and clipped through the cards round it; it should play **the full flip** you see when you flip one yourself. **(agent)** The flip (rise in a 24 mm arc, a full turn over 350 ms, a cascade through several cards) is one function, `animateFlips` in commands.ts, used by your own F and middle-click and by the room: a card that comes in from the room turned over where it lies gets it; one turned over and moved lands lifted on the same arc. Checked in two tabs: the other tab's card rose to 24 mm above its stack and took 350 ms. |
 | 295 | Owner (2026-10-31): the **welcome table** is replaced by a newer save of the owner's, remade once more. **(agent)** Copied in as decision 196's was: 450 cards, every one with its card data and EDHREC rank, Elo for 440, one playmat with its life total hidden (decision 290); its name set back to Welcome table (the save was Untitled table). |
+| 296 | Owner (2026-10-31): **Space is unbound** from every action, to be bound to something new next. It no longer pans with a left-drag (decision 88) nor deals while cards are held (decision 181); right-drag still pans and right-click still deals. The open glove and the pan hints now show only during a right-drag. |
 
 ## Appendix B: Open items
 

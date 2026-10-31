@@ -549,7 +549,7 @@ export class Commands {
   }
 
   /**
-   * Cards dealt onto a slope by right-click or Space (decision 249): everything
+   * Cards dealt onto a slope by right-click (decision 249): everything
    * on the stand is laid again as one hand the slope's width, the dealt cards
    * last, on the right and on top, their faces as they were.
    */

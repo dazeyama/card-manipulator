@@ -19,7 +19,7 @@ const HINTS: Record<string, Hint[]> = {
     ['📐', 'Ctrl lands tidy', 'ctrl'],
     ['🔃', 'R turns'],
     ['🃏', 'F or middle-click flips'],
-    ['👇', 'Right-click or Space deals one, hold to keep dealing'],
+    ['👇', 'Right-click deals one, hold to keep dealing'],
     ['🪟', 'X spreads'],
     ['⎋', 'Esc puts back'],
   ],
@@ -133,7 +133,7 @@ export class ContextHints {
     if (this.app.spreading) return 'spread';
     if (this.app.placing) return 'place';
     const gesture = this.mouse.gestureKind;
-    if (gesture === 'pan' || (this.mouse.spaceDown && !this.drag.dragging)) return 'pan';
+    if (gesture === 'pan') return 'pan';
     if (gesture === 'orbit') return 'orbit';
     if (this.app.mats?.dragging) return 'matDrag';
     if (this.drag.dragging) return this.drag.heldMode === 'formation' ? 'formation' : 'holding';
