@@ -11,11 +11,18 @@ export class TopBar {
   readonly el: HTMLElement;
   /** Buttons and toggles added by later features go here, right-aligned. */
   readonly actions: HTMLElement;
+  /** The table's name. In a room only the crown edits it; others see it as text (ONLINE.md 12.1). */
+  readonly nameInput: HTMLInputElement;
+  /** Rooms (ONLINE.md 12.1): the Go online / Online button and the avatar row, just right of the table name. */
+  readonly roomSlot: HTMLElement;
+  /** A thin line under the bar while a room's table arrives ("Joining: 2,000 of 4,300 cards", 4.4). */
+  readonly progress: HTMLElement;
   private readonly status: HTMLElement;
   private readonly viewButton: HTMLButtonElement;
 
   constructor(private readonly app: App, host: HTMLElement) {
     const name = h('input', { class: 'table-name', 'aria-label': 'Table name', spellcheck: 'false' });
+    this.nameInput = name;
     name.value = app.store.name;
     name.addEventListener('change', () => app.store.setName(name.value));
     name.addEventListener('keydown', (e) => {
@@ -24,7 +31,10 @@ export class TopBar {
     app.store.events.on('name', () => (name.value = app.store.name));
     this.status = h('span', { class: 'status muted' });
     this.actions = h('div', { class: 'actions' });
-    this.el = h('header', { class: 'topbar' }, h('span', { class: 'brand' }, 'Card Manipulator'), name, this.status, this.actions);
+    this.roomSlot = h('div', { class: 'room-slot' });
+    this.progress = h('div', { class: 'join-progress' });
+    this.progress.hidden = true;
+    this.el = h('header', { class: 'topbar' }, h('span', { class: 'brand' }, 'Card Manipulator'), name, this.roomSlot, this.status, this.actions, this.progress);
     host.append(this.el);
     setInterval(() => this.refreshStatus(), 500);
 
@@ -85,6 +95,13 @@ export class TopBar {
     });
     mirror.addEventListener('click', () => app.rig.setMirrored(!app.rig.mirrored));
     this.actions.append(mirror);
+  }
+
+  /** Let the table's name be edited, or show it as text (a room's non-crown players, ONLINE.md 12.1). */
+  setNameEditable(on: boolean): void {
+    this.nameInput.readOnly = !on;
+    this.nameInput.classList.toggle('readonly', !on);
+    this.nameInput.title = on ? '' : 'Only the crown can rename the table';
   }
 
   /** Graphics mode (decision 152): a button beside the camera angle that switches High and Low. */

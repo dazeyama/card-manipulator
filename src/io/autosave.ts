@@ -13,6 +13,12 @@ const DEBOUNCE_MS = 1000;
 export class Autosave {
   private timer = 0;
   private restoring = false;
+  /**
+   * Nothing is saved while set (rooms, O72): a page opened on a room link,
+   * until its own table is back, and a joiner while in a room, so the room's
+   * table never overwrites this browser's own.
+   */
+  paused = false;
   /** Duration of the last save, for the performance report. */
   lastMs = 0;
 
@@ -38,7 +44,7 @@ export class Autosave {
   }
 
   schedule(): void {
-    if (this.restoring) return;
+    if (this.restoring || this.paused) return;
     clearTimeout(this.timer);
     this.timer = window.setTimeout(() => {
       this.timer = 0;
@@ -49,6 +55,7 @@ export class Autosave {
   }
 
   async save(): Promise<void> {
+    if (this.paused) return;
     const t0 = performance.now();
     const doc = toDoc(this.app, false);
     await kvSet(KEY, doc);

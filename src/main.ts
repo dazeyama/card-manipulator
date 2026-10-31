@@ -59,6 +59,9 @@ import { ACCENT } from './app';
 import { loadDoc, toDoc, validateDoc } from './io/saveFile';
 import { downloadText, pickFile, slug } from './io/download';
 import type { TableDoc } from './state/types';
+// Rooms: Rules & UI.
+import { OnlineUi, showWelcomeNote, standInControl } from './ui/onlinePanel';
+import { parseHash } from './online/link';
 
 const root = document.getElementById('app')!;
 const top = h('div', { class: 'top-host' });
@@ -1021,10 +1024,32 @@ scryfall.onStatus((s) => {
   }
 });
 
-app.start();
-void autosave.restore().then((had) => {
-  if (!had) void loadWelcome();
+// --- Rooms: Rules & UI ---
+// The Online button, avatars and panel, and the room flows (ONLINE.md 12). The room
+// layer is reached through RoomControl: a FakeSession stand-in until the Sync fork's lands.
+const onlineUi = new OnlineUi(app, topBar, {
+  control: standInControl(app),
+  saveCopy: () => saveFile(),
+  ownTable: async () => {
+    autosave.paused = false;
+    await autosave.restore();
+  },
 });
+// A room link opens the join prompt instead of this browser's table, and skips the welcome table (4.2, 4.4).
+// Nothing is autosaved until this browser's own table is back, so the empty page can't overwrite it.
+const route = parseHash(location.hash);
+if (route?.kind === 'room') autosave.paused = true;
+// --- end Rooms: Rules & UI ---
+
+app.start();
+if (route?.kind === 'room') {
+  onlineUi.needOwnTable = true;
+  void onlineUi.join(route);
+} else {
+  void autosave.restore().then((had) => {
+    if (!had) void loadWelcome();
+  });
+}
 
 /** A first visit, with no table saved in this browser, opens a table with cards on it to play with (decision 153). */
 async function loadWelcome(): Promise<void> {
@@ -1035,6 +1060,8 @@ async function loadWelcome(): Promise<void> {
     // Something may have been spawned while it loaded: leave that alone.
     if (validateDoc(doc) || store.cards.size || store.mats.size) return;
     await loadDoc(app, doc as TableDoc);
+    // Rooms: the first-visit welcome note, with Join a table (ONLINE.md 12.6).
+    showWelcomeNote(app, onlineUi);
   } catch {
     // No welcome table: start empty.
   }
@@ -1046,7 +1073,7 @@ physics
   .then(() => (app.physics = physics))
   .catch((err) => console.warn('Physics failed to load; drops land without it', err));
 
-export const ui = { app, mouse, keyboard, topBar, spawnPanel, hud, commands, undo, drag, badges, tray, autosave, pileSync, physics, outlines, pileEditor, inspect, exporter, saveFile, openFile, newTable, hires, markers };
+export const ui = { app, mouse, keyboard, topBar, spawnPanel, hud, commands, undo, drag, badges, tray, autosave, pileSync, physics, outlines, pileEditor, inspect, exporter, saveFile, openFile, newTable, hires, markers, onlineUi };
 
 if (import.meta.env.DEV) {
   // The phase gate reads this to confirm the page logged no errors since it loaded.
