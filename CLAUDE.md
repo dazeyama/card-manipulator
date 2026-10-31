@@ -7,6 +7,7 @@ A browser scratchpad for moving hundreds to thousands of Magic cards around a 3D
 1. Read **design_spec.md** whole before changing anything. It is the single source of truth. Sections 1–17 describe the product, Section 18 the build phases, Appendix A every decision.
 2. If **MORNING_REPORT.md** exists, read its summary to see which phases are done and what is marked BROKEN.
 3. Check `git log --oneline` to see the last finished phase.
+4. For anything about rooms (online play, `src/online/`, `shared/`, `server/`), read **ONLINE.md**: the self-contained design with its own decision log (O1 onward, decision 288).
 
 ## Running it
 
@@ -49,6 +50,7 @@ Regenerate the test lists (Scryfall, through the app's own client): `node --expe
 - `src/io/` decklist parsing, export (decklist, CSV), save files, autosave.
 - `src/dev/` dev-only tooling, never in the production build: `__shot(name)` saves a screenshot to `reports/screenshots/` (through `devtools/shotPlugin.ts`), `__spawnFile('cube.txt', opts)`, `await __regression()` runs every phase's checklist, `__errors` lists page errors since load.
 - `test-data/` lists for manual and automated testing; `cube.txt` is the owner's.
+- `shared/`, `server/` and `src/online/` (not yet built) are rooms: see ONLINE.md Section 3.4.
 
 ## Gotchas
 

@@ -124,7 +124,7 @@ Feature parity to match or beat: paste a list and get cards; drag cards into col
 
 ### 4.1 Summary
 
-A single-page static web app. No server. The browser talks to Scryfall directly for card data and images, keeps a local cache of both in IndexedDB and the Cache API, renders the table with WebGL through Three.js, and runs a physics step for cards that are moving. The table autosaves to IndexedDB and can be saved to and loaded from a JSON file.
+A single-page static web app. No server. (Rooms, the online design in `ONLINE.md`, add a small room server for tables that go online; offline, the app stays as described here. Decision 288.) The browser talks to Scryfall directly for card data and images, keeps a local cache of both in IndexedDB and the Cache API, renders the table with WebGL through Three.js, and runs a physics step for cards that are moving. The table autosaves to IndexedDB and can be saved to and loaded from a JSON file.
 
 ```
  ┌─────────────────────────────────────────────────────────────────┐
@@ -898,7 +898,7 @@ Performance pass against Section 17 with `stress-2000.txt`. Badge decluttering. 
 - Drawn snap zones and lanes.
 - Collapsing duplicates into one card with a count.
 - CSV import from the owner's other tools.
-- Shareable saved tables (URL or hosted).
+- Shareable saved tables (URL or hosted): designed as rooms in `ONLINE.md` (decision 288), not yet built.
 - Touch, tablet and phone.
 - Deploying to GitHub Pages, and a GitHub remote.
 - Sound effects.
@@ -1203,6 +1203,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 285 | Owner (2026-10-30): the small stand's plate says **Scry** by default, and its ✏️ button can still change it to **other short words that fit**. **(agent)** A new small stand always reads Scry, whatever the name field holds (that field is for the big stand's player name). Its ✏️ asks for a short word for the plate and takes at most 10 letters, enough for Surveil, Library or Look at, so the word stays readable on the short plate. Big stands are unchanged. |
 | 286 | Owner (2026-10-30): **Ctrl + click** builds a **mixed selection of cards and dice**, besides the box. **(agent)** Ctrl + click on a die adds it to (or takes it from) the selection and keeps the selected cards; Ctrl + click on a card does the same and keeps the selected dice; Ctrl + drag of an unselected die adds it and carries the cards along (decision 274). A plain click on either still selects only that, and dragging an unselected card still picks up just it, even with Ctrl held. |
 | 287 | Owner (2026-10-30): the stand's **name plate** and the **dice faces** follow the graphics mode's **anisotropic filtering** (decision 152's presets: 8 in Low, 16 in High), as the cards, playmats and wood already did, instead of a fixed 8. Changing the mode updates them at once. |
+| 288 | Owner (2026-10-30): the next feature is **rooms**: up to eight players on one table, like MIRO shares a board, for cube work and simulated live play; tables are offline by default and go online in one click; shared by link, with a public table browser and password rooms; a rank ladder set by the room's crown, which can be passed. Its design is **`ONLINE.md`**, written today from a long round of the owner's answers, self-contained, with its own decision log (**O1 onward**); no code changes yet. This spec keeps winning for everything that is not about rooms. |
 
 ## Appendix B: Open items
 
