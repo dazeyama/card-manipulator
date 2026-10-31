@@ -8,11 +8,12 @@ The unattended build of `ONLINE.md` (decision 288): one hub session and three ar
 
 | | |
 |---|---|
-| **Phases gated** | O1 (tag `online-1`), O2 (tag `online-2`) |
+| **Phases gated** | **all four**: O1 (tag `online-1`), O2 (`online-2`), O3 (`online-3`), O4 (`online-4`) |
 | **BROKEN items** | none |
-| **Tests** | 409 passing in 45 files at gate O1 (239 at the seed) |
+| **Tests** | 425 passing in 46 files at gate O4 (409 at O1, 239 at the seed) |
+| **Found in the gates and fixed** | remote cursors vanished on a resting mouse (O1); a spill wrote no chat line, the stand button never greyed, an overtaken undo said "Nothing to undo" (O2); quiet rooms fell out of the public list (O105) and a big spawn closed the crown's socket (O104) (O3) |
 | **Run it** | `npm run dev` (vite 5173 + a local room server on 8787), or `start.bat`. Tab A: Go online. Tab B: the room link with `?player=B` before the `#` (dev only, O90), so one browser is two players. |
-| **Room server** | **deployed** after gate O1: `https://card-manipulator-rooms.daisyamanita.workers.dev` (free plan, Durable Objects on SQLite, checked live: create, hello, welcome, ping, close). `.env.production` points the site at it. The admin key is a Worker secret and sits in `server/.admin-key` (git-ignored) for `#/admin`. |
+| **Room server** | **deployed** after gate O1 and again after gate O3 (version `b64692cf`, with the O3 fixes): `https://card-manipulator-rooms.daisyamanita.workers.dev` (free plan, Durable Objects on SQLite, checked live: create, hello, welcome, ping, close). `.env.production` points the site at it. The admin key is a Worker secret and sits in `server/.admin-key` (git-ignored) for `#/admin`. |
 | **For you to do** | before your first push with server code: the GitHub secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (ONLINE.md 3.5), or `worker.yml` fails (the site deploy is separate and unaffected, O92); edit the word list in `shared/words.ts` (O79) |
 | **Ports in the run** | hub 5177 + 8787 (O95: your own `start.bat` server holds 5173), Server 5174 + 8788, Sync 5175 + 8789, Rules & UI 5176 + 8790 |
 
@@ -52,13 +53,30 @@ The unattended build of `ONLINE.md` (decision 288): one hub session and three ar
 - **Agent decisions in O2:** O98, O102, O103.
 - **BROKEN:** none. **Found, sent back after the gate:** (1) the Card stand button is not shown disabled while you own a full stand (its click is refused correctly); (2) a spill writes no "Ann spilled Bea's stand" grey line (the UI sends a plain mat remove, not `mat {spill}`); (3) an undo refused because someone else moved those cards says "Nothing to undo" instead of "Someone else has moved those since" (12.4).
 
-### Phase O3: the public browser
+### Phase O3: the public browser ✅
 
-(written at the gate)
+**Built.** *Server:* the Lobby's public list (`GET /api/rooms`), visibility, the password hash and invite key on hello, the tag, reports (three distinct reporters delist), the admin routes and key, creation, join and report rate limits, the word filter on room and player names (`shared/words.ts`, 42 entries, yours to edit). *Sync:* the invite key in hello and gap handling (in since O1). *Rules & UI:* the table browser (chips, Join, Report), the password in the join prompt, Copy invite link, the admin page `#/admin`, Join a table on the welcome note.
 
-### Phase O4: polish
+**Gate results** (2026-10-30; forks idle and committed):
+- `npm run typecheck` clean; `npm test` **425 passed** in 46 files; `npm run build` OK.
+- **Walk** of ONLINE.md 16's O3 list (tabs A crown, C and D joiners, E admin): A set its room to Public + password with tag Play and a third tab's 🗂 Tables showed the row "Welcome table 🔒, hosted by Ann · 453 cards · up 1 min, Play, 1/8"; Join asked for the password, a wrong one gave "Wrong password", the right one joined; A's Copy invite link (`#/room/CODE?key=…`) opened straight in, asking only for a nickname, and the key left the address bar; Unlisted took the row off at once (and cleared the password); a blocked room name listed as "Table TTCBEX"; `#/admin` with the key listed the room (code, name, crown, cards, tag, players, visibility, reports, age) and Close ("Close Welcome table (JSBUTG) for everyone in it?") gave both players "The room has closed."
+- **Two blockers found and fixed in the gate** (the walk paused, then ran again from the start):
+  1. *Quiet rooms fell out of the lists:* a public room open with two players vanished from the public and admin lists after a minute or two. Cause (Server): the Lobby kept its rows in memory, and an idle Lobby is evicted within seconds. Fix: rows in SQLite, a heartbeat at creation, the alarm re-armed first (`18a5003`, **O105**). Re-checked: listed in all 14 checks over 412 s, the last four minutes untouched, while the room hibernated and woke.
+  2. *A big op closed the crown's socket:* a crown's spawn of 453 cards was an 80 KB `add`, past the 64 KB message limit, and the server answered `bye size`, so spawning a cube in a room would throw the crown out. Fix: `op` and `confirm` may be up to 1 MiB (hub, `df014da`, **O104**); the outbox sends an add, remove or move of more than 1,000 cards in parts (Sync, `da5c7c2`); a stream carries at most 400 poses and 1,000 selected uids (Sync, `0e599ad`). Re-checked: a 1,500-card spawn by the crown (two confirmed parts), a curve of all 1,953 cards (two ops, positions identical in both tabs) and a joiner holding all 1,953 cards (largest stream 30 KB), no goodbye, both still connected.
+- Consoles clean. **Screenshots:** `reports/screenshots/online-3/` (the Tables row, the admin page).
+- **Commit and tag:** `03aa3dc` "Phase O3 gate", tag `online-3`. **Worker redeployed** after it (`b64692cf`) and checked live: a public room listed, then gone on close.
+- **Agent decisions in O3:** O99, O104, O105. **BROKEN:** none. **Small things noticed:** the admin key dialog doesn't submit on Enter (click Open); a page reached by changing only the room link's hash doesn't reload, so a kicked tab needs a reload to rejoin (the kicked page says to open the link again, which does).
 
-(written at the gate)
+### Phase O4: polish ✅
+
+**Built.** *Server:* the quota answers (429 `{error:'quota'}` on every route, `bye quota`), a room that can't write its storage carrying on from memory, the hibernation wake path exercised, seat and ban caps, limits reviewed (O101). *Sync:* `__latency(ms)` and `__bots(n)`, interpolation tests, the 30 s snapshot skipped when nothing changed, an overtaken undo saying "Someone else has moved those since". *Rules & UI:* the help panel's Online group, the Quota page, "This room is open in another tab", the password cleared when leaving Public + password, blocked names refused inline, the Card stand button greying at once, and the doc text applied by the hub to `CLAUDE.md` and `design_spec.md`.
+
+**Gate results** (same code as gate O3):
+- The Quota page ("Rooms are resting. The room server is over its free daily limit. Rooms are back after midnight UTC.") from a refused room creation; the help panel's Online group (🌐 Go online, 👑 Crown, 🪪 Ranks, 🂠 Hidden, M); the other-tab page with Use it here; "That name is not allowed" in the join prompt; the spill's grey line and the crown's "opened the room" line (checked by the Server fork's scripts and seen in chat).
+- **Performance:** see the Performance section below.
+- **Not judged:** the feel under `__latency(300)` (the pane was hidden, so no frames to watch); a real quota refusal from Cloudflare.
+- **Screenshots:** `reports/screenshots/online-4/` (the Quota page). **Commit and tag:** `43e1401` "Phase O4 gate", tag `online-4`.
+- **Agent decisions in O4:** O101. **BROKEN:** none.
 
 ### Done entries by area
 
@@ -118,9 +136,34 @@ Run `npm run dev` (or `start.bat`). Tab A at `http://localhost:5173/`; tab B at 
 - [ ] Kick B: B sees the kicked screen and can rejoin; Ban B: B cannot.
 - [ ] The 📺 Cast window in a room draws backs for what that browser may not see (not opened in the gate: it is a popup).
 
+**Phase O3, the public browser**
+- [ ] Set the room to Public + password in A, Tag Play: the **Tables** list in a third tab shows the row with 🔒, players, crown, card count and age; Join asks for the password; the wrong one says so; the right one joins; Copy invite link from A pasted in a fresh tab joins without asking.
+- [ ] Unlisted: the row disappears (at once now; the design allows a minute). A public room stays listed while nobody touches it.
+- [ ] A blocklisted room name shows as "Table CODE" in the list (try one from `shared/words.ts`, which you may want to edit first).
+- [ ] `#/admin` with the key (in `server/.admin-key` for the live server, `dev-admin-key` locally) lists the room; Close ends it for everyone.
+- [ ] As the crown, spawn your 1,008-card cube in a room: the room stays open and the other tab gets every card.
+
+**Phase O4, polish**
+- [ ] The 2,000-card stress table with `__bots(7)` (in a room of one) stays at the Section 17 frame budget, in a visible window.
+- [ ] `__latency(300)` in one tab: your own drags still feel instant; the other tab shows them 100 to 400 ms behind without jitter.
+- [ ] The help panel (?) has an Online group.
+- [ ] Open the same room twice as the same player: the older tab says "This room is open in another tab".
+
+**Before you push** (the site deploys on every push to `main`; the Worker is already live):
+- [ ] Add the repository secrets `CLOUDFLARE_API_TOKEN` (an "Edit Cloudflare Workers" token) and `CLOUDFLARE_ACCOUNT_ID` (`7fb0a46b582f8988cbfe4b8ed7a28b99`, from `wrangler whoami`), or `worker.yml` fails on the push (the site deploy is separate and unaffected, O92).
+- [ ] Look over the word list in `shared/words.ts` (O79).
+
 ### Performance
 
-(the `__bots(7)` pass against spec Section 17, Phase O4)
+Against spec Section 17 (2,000 cards, frame time under 8 ms on your RTX 4070 Ti at 1080p). The built-in browser's pane was hidden overnight, so frames were timed by hand: each one the app's full frame (motion, hooks, layer update, render) followed by `gl.finish()`, on this machine.
+
+| Table | Remote load | Median | 95th percentile |
+|---|---|---|---|
+| 1,953 cards, a room of two | none | 0.3 ms | 1.0 ms |
+| 1,953 cards, a room of eight | 6 bots streaming cursors, selections and a carried card | 0.3 ms | 0.9 ms |
+| 2,000 cards (Sync fork's pass) | 7 bots, 70 to 140 remote-held cards | 0.2 to 0.35 ms | under 0.4 ms per part |
+
+Six bots, not seven, in the gate, because the room already held two players (8 seats). No measurable cost from presence. Still yours to judge: the feel of others' drags under real latency, and `__latency(300)` in a visible window.
 
 ---
 
