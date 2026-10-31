@@ -1,0 +1,41 @@
+# Deploy the room server (ONLINE.md 3.5, O92) on every push to main that
+# touches it: the Worker in server/, the shared code it bundles, and the plain
+# table types shared/ reads from src/state. A workflow of its own, so a missing
+# Cloudflare secret or a failed deploy never holds up the site's Pages deploy;
+# the protocol version check covers the minutes the two differ.
+#
+# Needs two repository secrets: CLOUDFLARE_API_TOKEN (an "Edit Cloudflare
+# Workers" token) and CLOUDFLARE_ACCOUNT_ID. ADMIN_KEY is set once on the
+# Worker itself (wrangler secret put ADMIN_KEY), not here.
+name: Deploy the room server
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - 'shared/**'
+      - 'src/state/**'
+      - '.github/workflows/worker.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npx wrangler deploy --config server/wrangler.toml
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
