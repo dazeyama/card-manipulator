@@ -73,6 +73,9 @@ describe('protocol', () => {
     expect(isClientMsg({ t: 'hello', v: 1 })).toBe(true);
     expect(isClientMsg({ t: 'welcome' })).toBe(false);
     expect(isClientMsg({ t: 'propose' })).toBe(false);
+    // A pile search (decision 310): asked for by a player, told to everyone by the server.
+    expect(isClientMsg({ t: 'search', uids: [] })).toBe(true);
+    expect(isServerMsg({ t: 'searching', player: 'p', uids: [] })).toBe(true);
     expect(isClientMsg(null)).toBe(false);
     expect(isClientMsg('hello')).toBe(false);
     expect(isServerMsg({ t: 'propose' })).toBe(true);

@@ -32,6 +32,7 @@ import { installStandSnap } from './standSnap';
 import { LifeCounters } from './ui/lifeCounter';
 import { TokenMenu } from './ui/tokenMenu';
 import { TokenSearch } from './ui/tokenSearch';
+import { DeckSearch } from './ui/deckSearch';
 import { DiceColours } from './ui/diceColours';
 import { maxValue, valueRange } from './state/dice';
 import { Dice } from './dice';
@@ -606,6 +607,34 @@ keyboard.bind('p', () => {
 });
 app.onFrame(() => pointBtn.classList.toggle('on', !!app.placing));
 hud.addBesideSearch(pointBtn);
+// L: search a face-up pile without spreading it; L L: a face-down one, a deck (decision 310), so a
+// single press never looks at hidden cards by mistake. A click on a card takes it out as P does.
+const deckSearch = new DeckSearch(app, {
+  inspect: (uid) => inspect.hover(uid ?? mouse.hovered),
+  point: (uids) => togglePointer(uids),
+  shuffle: (uids) => commands.shuffle(uids),
+});
+let lastL = 0;
+let lTimer = 0;
+keyboard.bind('l', () => {
+  if (drag.dragging) return;
+  const now = performance.now();
+  const twice = now - lastL < DOUBLE_TAP_MS;
+  lastL = twice ? 0 : now;
+  clearTimeout(lTimer);
+  const pile = hoveredPile();
+  if (!pile.length) return void toast('Rest the cursor on a pile, or select one, then press L', 'warn');
+  const r = app.canvas.getBoundingClientRect();
+  const at = { x: r.left + app.pointer.x, y: r.top + app.pointer.y };
+  const faceDown = pile.some((u) => !store.cards.get(u)?.faceUp);
+  if (twice) {
+    // In a room, looking through hidden cards needs Move, as moving them would.
+    if (faceDown && app.online && !allowedNow('move')) return;
+    deckSearch.start(pile, true, at);
+  } else if (!faceDown) deckSearch.start(pile, false, at);
+  // A face-down pile waits for the second L, and says so if it doesn't come.
+  else lTimer = window.setTimeout(() => toast('Face-down pile: press L twice to search it', 'info', 1800), DOUBLE_TAP_MS);
+});
 /** A card stand's slope under a screen point, and the spot on it (the slope unrolled), or null (decision 221). */
 const slopeUnder = (sx: number, sy: number): { m: Mat; at: { x: number; y: number } } | null => {
   const r = app.rig.rayFrom(sx, sy);

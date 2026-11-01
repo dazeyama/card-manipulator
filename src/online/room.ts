@@ -21,10 +21,14 @@ export interface RoomEvents {
   connection: void;
   /** A chat line, mine, another player's or a system line. */
   chat: ChatLine;
+  /** Someone started or ended a search (L L, decision 310): the cards before and after. */
+  searches: string[];
 }
 
 export class RoomState {
   readonly events = new Emitter<RoomEvents>();
+  /** Who is searching which cards (L L, decision 310): they glow in that player's colour, and mine I may see. */
+  readonly searches = new Map<string, Set<string>>();
   /** The six-character room code. */
   readonly code: string;
   /** My player id. */
@@ -129,6 +133,13 @@ export class RoomState {
           this.events.emit('players', undefined);
         }
         return true;
+      case 'searching': {
+        const before = [...(this.searches.get(msg.player) ?? [])];
+        if (msg.uids.length) this.searches.set(msg.player, new Set(msg.uids));
+        else this.searches.delete(msg.player);
+        this.events.emit('searches', [...before, ...msg.uids]);
+        return true;
+      }
       case 'chat':
         this.chat.push(msg.line);
         if (this.chat.length > CHAT_LINES) this.chat.splice(0, this.chat.length - CHAT_LINES);

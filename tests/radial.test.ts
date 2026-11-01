@@ -30,7 +30,7 @@ describe('radial menu contents', () => {
 
   it('gives every item an icon and a title for the bottom bar', () => {
     const items = RADIAL_MENU.flatMap((w) => w.items);
-    expect(items).toHaveLength(22);
+    expect(items).toHaveLength(24);
     for (const i of items) {
       expect(i.icon, i.label).not.toBe('');
       expect(i.title, i.label).not.toBe('');
@@ -50,9 +50,9 @@ describe('radial menu contents', () => {
     expect(tokens.anywhere).toBe(true);
   });
 
-  it('draws 1, 7 or N cards', () => {
+  it('draws 1, 7 or N cards, or searches the pile with L or L L (decision 310)', () => {
     const draw = RADIAL_MENU.find((w) => w.label === 'Draw')!;
-    expect(draw.items.map((i) => i.presses.join(' '))).toEqual(['1', '7', '0']);
+    expect(draw.items.map((i) => i.presses.join(' '))).toEqual(['1', '7', '0', 'l', 'l l']);
   });
 });
 
@@ -109,9 +109,9 @@ describe('pick', () => {
     // 270° is Draw's wedge by angle, but Sort's outer ring reaches it.
     const fromSort = pick(RADIAL_MENU, ...at(225, 80), g);
     expect(labelOf(285, 150, fromSort)).toBe('Elo');
-    // Coming from Draw, the same spot is Draw's own ring: 7 cards, from 254° to 286°.
+    // Coming from Draw, the same spot is Draw's own ring: N cards, from 254° to 286°.
     const fromDraw = pick(RADIAL_MENU, ...at(270, 80), g);
-    expect(labelOf(285, 150, fromDraw)).toBe('7 cards');
+    expect(labelOf(285, 150, fromDraw)).toBe('N cards');
   });
 
   it('falls back to the wedge itself where there is no ring', () => {

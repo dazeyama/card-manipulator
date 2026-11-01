@@ -60,6 +60,9 @@ export const RADIAL_MENU: RadialWedge[] = [
     { label: '1 card', key: '1', presses: ['1'], icon: '1️⃣', title: 'Draw 1 card: then click where it goes' },
     { label: '7 cards', key: '7', presses: ['7'], icon: '7️⃣', title: 'Draw 7 cards: then click where the hand goes' },
     { label: 'N cards', key: '0', presses: ['0'], icon: '🔢', title: 'Draw any number: type how many, then click' },
+    // Search a pile without spreading it; face down needs the double tap (decision 310).
+    { label: 'Search', key: 'L', presses: ['l'], icon: '🔍', title: 'Search a face-up pile without spreading it' },
+    { label: 'Search face down', key: 'L L', presses: ['l', 'l'], icon: '🕵️', title: 'Search a face-down pile, a deck, without spreading it; in a room only you see it' },
   ] },
   // Point (decisions 189, 195): click where the cards go, as a stack; P again switches to face down,
   // like a pack of draft cards to pass (decisions 226, 228). It replaced Undo here (decision 305).

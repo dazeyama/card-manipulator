@@ -21,6 +21,8 @@ export const MAX_PLAYERS = 8;
 export const MAX_CARDS = 5000;
 /** One message, in bytes of UTF-8. */
 export const MAX_MESSAGE_BYTES = 64 * 1024;
+/** The most cards one search may look through (decision 310): a big deck, with room to spare. */
+export const MAX_SEARCH = 250;
 /** One snapshot part, in bytes of UTF-8. */
 export const MAX_SNAPSHOT_PART_BYTES = 256 * 1024;
 /**
@@ -230,6 +232,11 @@ export type ClientMsg =
   | { t: 'colour'; colour: string }
   /** After a gap in seq. */
   | { t: 'needSnapshot' }
+  /**
+   * **(decision 310)** L L: let me look through these face-down cards (a pile) while I search it.
+   * Move rank; at most MAX_SEARCH cards. `uids: []` ends my search.
+   */
+  | { t: 'search'; uids: string[] }
   | { t: 'ping' };
 
 export type ServerMsg =
@@ -254,14 +261,16 @@ export type ServerMsg =
   /** **(agent, O93)** To the crown: send a fresh snapshot (after the server woke from hibernation). */
   | { t: 'needSnapshot' }
   | { t: 'settings'; settings: PublicSettings }
+  /** **(decision 310)** To everyone: a player is searching these cards (they glow in their colour); `uids: []`, done. */
+  | { t: 'searching'; player: string; uids: string[] }
   | { t: 'bye'; reason: ByeReason }
   | { t: 'pong' };
 
 export type ClientMsgType = ClientMsg['t'];
 export type ServerMsgType = ServerMsg['t'];
 
-const CLIENT_TYPES = new Set<string>(['hello', 'op', 'confirm', 'refuse', 'snapshot', 'stream', 'chat', 'settings', 'rank', 'kick', 'ban', 'pass', 'close', 'colour', 'needSnapshot', 'ping']);
-const SERVER_TYPES = new Set<string>(['welcome', 'snapshot', 'op', 'propose', 'reveal', 'forget', 'refused', 'stream', 'players', 'chat', 'crown', 'youAreCrown', 'needSnapshot', 'settings', 'bye', 'pong']);
+const CLIENT_TYPES = new Set<string>(['hello', 'op', 'confirm', 'refuse', 'snapshot', 'stream', 'chat', 'settings', 'rank', 'kick', 'ban', 'pass', 'close', 'colour', 'needSnapshot', 'search', 'ping']);
+const SERVER_TYPES = new Set<string>(['welcome', 'snapshot', 'op', 'propose', 'reveal', 'forget', 'refused', 'stream', 'players', 'chat', 'crown', 'youAreCrown', 'needSnapshot', 'settings', 'searching', 'bye', 'pong']);
 
 /** A light shape check: an object whose `t` is a client message type. The server checks each field it reads. */
 export function isClientMsg(x: unknown): x is ClientMsg {

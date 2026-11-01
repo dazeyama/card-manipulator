@@ -13,12 +13,12 @@ import { DurableObject } from 'cloudflare:workers';
 import { applyOp } from '../../shared/apply';
 import type { ConfirmedOp, Op } from '../../shared/ops';
 import {
-  PROTOCOL, byteLength, isClientMsg, joinSnapshot, maxBytes, playerIdOf, splitSnapshot,
+  MAX_SEARCH, PROTOCOL, byteLength, isClientMsg, joinSnapshot, maxBytes, playerIdOf, splitSnapshot,
   type ByeReason, type ClientMsg, type RoomInfo, type RoomSettings, type ServerMsg, type SnapshotPart, type Tag,
 } from '../../shared/protocol';
-import { grantableRanks, mayManage, type Rank } from '../../shared/permissions';
+import { grantableRanks, mayManage, refusal, type Rank } from '../../shared/permissions';
 import { SlidingWindow } from '../../shared/rateLimit';
-import { affectedCards, carriesIdentities, redactOp, redactTable, viewOf, visibilityDiff, type TableView } from '../../shared/redact';
+import { affectedCards, canSee, carriesIdentities, redactOp, redactTable, viewOf, visibilityDiff, type TableView } from '../../shared/redact';
 import type { TableState } from '../../shared/table';
 import {
   CHAT_RATE, CHAT_TEXT_MAX, CLOSE_BYE, CLOSE_REPLACED, CLOSE_RESYNC, HEARTBEAT_MS, MAX_CARDS, MAX_PLAYERS,
@@ -105,6 +105,12 @@ export class Room extends DurableObject<Env> {
   /** Players welcomed before the mirror existed: they get the table when the crown's first snapshot lands. */
   private readonly awaiting = new Set<string>();
   private readonly chatRate = new SlidingWindow(CHAT_RATE.limit, CHAT_RATE.windowMs);
+  /**
+   * Who is searching which face-down cards (L L, decision 310): shown to that
+   * player alone while it lasts. In memory only: a hibernation ends every search,
+   * and the searcher's browser forgets the cards itself when it closes the search.
+   */
+  private readonly searches = new Map<string, Set<string>>();
   private readonly streamRate = new SlidingWindow(STREAMS_PER_SECOND, 1000);
   /** Wrong passwords per ip (10.4); over the limit, `bye rate` until the window empties. Stored, so hibernation does not reset it (O106). */
   private readonly passwordRate: StoredWindow;
@@ -232,6 +238,8 @@ export class Room extends DurableObject<Env> {
         return this.colour(seat, msg.colour);
       case 'needSnapshot':
         return this.sendTable(ws, id);
+      case 'search':
+        return this.search(ws, seat, isCrown, msg.uids);
       case 'close':
         if (isCrown) await this.closeRoom('closed');
         return;
@@ -483,6 +491,7 @@ export class Room extends DurableObject<Env> {
       return;
     }
     this.markDirty();
+    this.endSearch(id, null);
     if (!resync) this.say(say.left(seat));
     if (meta.crown === id) {
       const next = electCrown(meta.seats);
@@ -600,6 +609,41 @@ export class Room extends DurableObject<Env> {
       if (d.reveal.length) this.send(s.ws, { t: 'reveal', cards: d.reveal });
       if (d.forget.length) this.send(s.ws, { t: 'forget', uids: d.forget });
     }
+  }
+
+  /**
+   * L L (decision 310): a player looks through face-down cards, a pile, while
+   * they search it. Move rank, as moving them would need; the cards they may not
+   * already know are revealed to them alone, everyone is told in chat, and the
+   * cards glow in their colour on every table. `uids: []` ends it.
+   */
+  private search(ws: WebSocket, seat: { id: string; nickname: string; rank: Rank }, isCrown: boolean, raw: unknown): void {
+    const meta = this.meta;
+    if (!meta || !this.mirror || !Array.isArray(raw)) return;
+    this.endSearch(seat.id, ws);
+    if (!raw.length) return;
+    if (refusal(isCrown ? 'crown' : seat.rank, 'move', { locked: meta.settings.locked }) !== null) return;
+    const view = viewOf(this.mirror);
+    const uids = [...new Set(raw.filter((u): u is string => typeof u === 'string'))].slice(0, MAX_SEARCH).filter((u) => view.cards.has(u));
+    if (!uids.length) return;
+    const hidden = uids.map((u) => view.cards.get(u)!).filter((c) => !canSee(c, view.mats, seat.id));
+    this.searches.set(seat.id, new Set(hidden.map((c) => c.uid)));
+    if (hidden.length && !isCrown) this.send(ws, { t: 'reveal', cards: hidden.map((c) => ({ uid: c.uid, scryfallId: c.scryfallId, finish: c.finish })) });
+    this.broadcast({ t: 'searching', player: seat.id, uids });
+    this.say(`${seat.nickname} is searching a pile of ${uids.length}`);
+  }
+
+  /** A player's search is over: they forget what they may no longer know, and everyone hears. */
+  private endSearch(player: string, ws: WebSocket | null): void {
+    const cards = this.searches.get(player);
+    if (!cards) return;
+    this.searches.delete(player);
+    const view = this.mirror ? viewOf(this.mirror) : null;
+    const forget = view ? [...cards].filter((u) => { const c = view.cards.get(u); return c && !canSee(c, view.mats, player); }) : [];
+    if (ws && forget.length && player !== this.meta?.crown) this.send(ws, { t: 'forget', uids: forget });
+    this.broadcast({ t: 'searching', player, uids: [] });
+    const name = this.meta ? seatOf(this.meta, player)?.nickname : undefined;
+    if (name) this.say(`${name} finished searching`);
   }
 
   /** "Ann spilled Bea's stand" (5.5), for each stand an op spills. */

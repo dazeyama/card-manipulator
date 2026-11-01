@@ -34,6 +34,13 @@ describe('who may know a card (ONLINE.md 7.1)', () => {
     expect(visibleTo({ scryfallId: HIDDEN, faceUp: true }, mats, 'me')).toBe(false);
     expect(visibleTo({ scryfallId: HIDDEN, faceUp: true, stand: 's1' }, mats, 'me')).toBe(false);
   });
+
+  it('shows the cards of my own search, face down too, and only mine (decision 310)', () => {
+    const mine = new Set(['c1']);
+    expect(visibleTo({ uid: 'c1', scryfallId: 'x', faceUp: false }, mats, 'me', mine)).toBe(true);
+    expect(visibleTo({ uid: 'c2', scryfallId: 'x', faceUp: false }, mats, 'me', mine)).toBe(false);
+    expect(visibleTo({ uid: 'c1', scryfallId: HIDDEN, faceUp: false }, mats, 'me', mine)).toBe(false);
+  });
 });
 
 describe('hidden cards after a sorted layout (7.3)', () => {

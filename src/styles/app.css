@@ -310,6 +310,20 @@ label.inline { display: inline-flex; flex-direction: row; align-items: center; g
 .token-row:hover { background: var(--accent-soft); border-color: var(--accent); }
 .token-menu { position: fixed; z-index: 45; width: 290px; max-height: 360px; display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18); }
 .token-menu[hidden] { display: none; }
+/* Searching a pile (decision 310): rows, or the cards' pictures in a grid. */
+.token-menu.deck-search { width: 370px; max-height: 470px; }
+.deck-head { justify-content: space-between; }
+.deck-ticks { gap: 14px; margin-top: 4px; font-size: 12px; }
+.deck-ticks label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.deck-ticks label[hidden] { display: none; }
+.deck-list { display: flex; flex-direction: column; gap: 1px; margin-top: 4px; min-height: 0; overflow: auto; }
+.deck-row { justify-content: space-between; }
+.deck-name { font-weight: 600; }
+.deck-type { color: var(--text-2); font-size: 11px; }
+.deck-list.pictures { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.deck-pic { padding: 0; border: 2px solid transparent; border-radius: 5px; background: none; cursor: var(--cursor-point, pointer); aspect-ratio: 488 / 680; overflow: hidden; font-size: 10px; }
+.deck-pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.deck-pic:hover { border-color: var(--accent); }
 /* A die's colour menu (decision 278). */
 .die-colours { position: fixed; z-index: 45; display: flex; flex-direction: column; gap: 5px; padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18); }
 .die-colours[hidden] { display: none; }

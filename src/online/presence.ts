@@ -71,6 +71,8 @@ export class Presence implements PresenceView {
     this.held.clear();
     sync.app.onFrame((now) => this.frame(now));
     window.addEventListener(CURSOR_SIZE_EVENT, this.resize);
+    // A pile being searched glows in the searcher's colour (L L, decision 310).
+    sync.online.room.events.on('searches', () => this.retint());
   }
 
   /** The viewer's Cursor size changed: every remote glove is drawn again at it. */
@@ -272,6 +274,7 @@ export class Presence implements PresenceView {
     const { app, deps, online } = this.sync;
     const want = new Map<string, string>();
     if (!this.stopped) {
+      for (const [id, uids] of online.room.searches) for (const u of uids) want.set(u, id);
       for (const [id, uids] of this.selections) for (const u of uids) want.set(u, id);
       for (const [u, id] of this.holders) want.set(u, id);
       for (const [u, f] of this.flying) want.set(u, f.by);

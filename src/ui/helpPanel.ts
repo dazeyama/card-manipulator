@@ -44,6 +44,7 @@ const GROUPS: [string, Line[]][] = [
     ['🏷️', 'N', 'name a pile'],
     ['🗑️', 'Delete', 'remove to the tray'],
     ['🔎', 'Ctrl + F or /', 'search the table'],
+    ['🔍', 'L', 'search a face-up pile without spreading it: filter with the query language, tick Pictures to see them, rest on one to see it in Inspect, click one to take it out as P does · L L searches a face-down pile, a deck; in a room only you see it, and everyone is told · it shuffles the pile when you are done unless you untick Shuffle when done'],
     ['👆', 'P', 'or the finger button by the search box: then click the table to move the selection (or the pile under the cursor) there as a stack · P again switches to face down, like a pack, and back · Esc cancels'],
     ['🪙', 'T T', 'over a card: the tokens it makes, from Scryfall; click one to spawn it beside the card · over empty table: search for a token, set how many, and pick one to spawn it there'],
     ['🪞', 'M', 'mirror mode: sit at the far side of the table; cards you move from there turn to face you'],

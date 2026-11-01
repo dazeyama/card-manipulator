@@ -117,6 +117,10 @@ export class FakeSession implements Session {
         this.receive({ t: 'bye', reason: 'closed' });
         this.close();
         break;
+      case 'search':
+        // The crown knows every card: only the glow and the chat line (decision 310).
+        this.receive({ t: 'searching', player: this.me, uids: msg.uids });
+        break;
       case 'ping':
         this.receive({ t: 'pong' });
         break;
