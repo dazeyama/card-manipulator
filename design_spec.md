@@ -444,7 +444,7 @@ A bar along the bottom of the screen, always visible:
 
 The RTS "refine my squad" control. Type a query and press Enter. The selection shrinks to the cards that match (owner, 2026-10-27). Non-matching cards are deselected; nothing moves.
 
-- Ctrl + F or `/` focuses the box (`/` over a stack cuts it instead, decision 314).
+- Ctrl + F focuses the box (`/` no longer does, decision 319).
 - The box shows a live count as you type: "128 → 34 match". Enter commits. Esc returns focus to the table with the selection unchanged.
 - With nothing selected, the box runs a **table search** instead (Section 9.6). The placeholder says which mode it is in.
 - Refinements chain: refine, then refine again, until the squad is what you want.
@@ -768,7 +768,8 @@ Personality: **snappy and light** (decision 42). Quick follow, short settles, ve
 |---|---|
 | Esc | Clear selection, cancel drag, close panel field |
 | Ctrl + A | Select all |
-| Ctrl + F, `/` | Focus the filter box. `/` over a stack, or with one whole stack selected, **cuts** it instead: 40 to 60 % off the top, set down beside it (decision 314) |
+| Ctrl + F | Focus the filter box |
+| `/` | Over a stack, or with one whole stack selected, **cut** it: 40 to 60 % off the top, set down beside it (decision 314); `/` again on either half completes the cut (decision 315). Nothing elsewhere (decision 319) |
 | Enter (in filter box) | Apply refine or table search |
 | S | Stack the selection, or the pile under the cursor when nothing is selected. While dragging: gather the held cards into a stack in the hand. S twice quickly: shuffle, the stack's cards in a random order |
 | X | Spread the selection; with nothing selected, spread or restack the pile under the cursor (like a double-click). While dragging: spread the held cards in a grid around the cursor |
@@ -1238,6 +1239,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 316 | Owner (2026-11-01): **cutting a tidy stack lands tidy.** A squared-up stack (every card on the bottom card's spot and turn) cuts into a squared-up half beside it, at the stack's own turn, and completing the cut squares it up again, Tidy mode or not. A loose stack still cuts into loose halves, unless Tidy mode is on. |
 | 317 | Owner (2026-11-01): a messy stack's cut lands **slightly further away**, so the two loose halves read as two stacks. The lifted half of a loose cut goes 40 mm past a card's width instead of 15; a tidy cut (or any cut in Tidy mode) keeps 15. |
 | 318 | Owner (2026-11-01): face-down packs dealt with **0** (Face down ticked, or Shift + 0) land **slightly further apart** when messy, so they don't touch: 35 mm between loose packs instead of 10; neat packs in Tidy mode keep 10. |
+| 319 | Owner (2026-11-01): `/` sometimes focused the search box, but it shouldn't: **treat it like any other hotkey**. `/` now only cuts (decisions 314, 315) and does nothing when there is no stack to cut; Ctrl + F alone focuses the search box. **(agent)** In a room `/` is gated like the other card keys (Move, with the toast), and the `?` panel gives it its own line. |
 
 ## Appendix B: Open items
 

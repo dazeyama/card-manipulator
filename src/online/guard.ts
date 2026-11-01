@@ -150,7 +150,9 @@ export function keyAction(name: string): Action | null {
   if (name === 'shift+t') return null;
   // Stack, spread, tidy, curve and colours, ranks, fan, turn or roll, flip, place, draw or set a die.
   if (/^(shift\+)?[sxtcehrfp0-9]$/.test(name)) return 'move';
-  // Looking (Esc, Ctrl + A, Ctrl + F, /, V, Home, Z, ?) and personal keys (M, Shift + T) need nothing.
+  // Cutting a stack (decision 314).
+  if (name === '/') return 'move';
+  // Looking (Esc, Ctrl + A, Ctrl + F, V, Home, Z, ?) and personal keys (M, Shift + T) need nothing.
   return null;
 }
 

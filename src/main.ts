@@ -388,12 +388,11 @@ keyboard.bind('escape', () => {
   if (!mouse.cancel()) store.clearSelection();
 });
 keyboard.bind('ctrl+f', () => hud.focus());
-// / over a stack, or with one stack selected, cuts it (decision 314); anywhere else it is the search box, as before.
+// / over a stack, or with one stack selected, cuts it (decision 314); like any other hotkey it does
+// nothing elsewhere, and no longer opens the search box (decision 319: Ctrl + F does).
 keyboard.bind('/', () => {
   const stack = cutTarget();
-  if (!stack) return hud.focus();
-  if (drag.dragging || (app.online && !allowedNow('move'))) return;
-  commands.cut(stack);
+  if (stack && !drag.dragging) commands.cut(stack);
 });
 /** The stack / would cut: the pile under the cursor, or the selection if it is one whole pile; two cards or more. */
 function cutTarget(): string[] | null {
