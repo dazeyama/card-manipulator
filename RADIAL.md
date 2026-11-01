@@ -2,7 +2,7 @@
 
 **Built.** `src/input/radial.ts` (tested in `tests/radial.test.ts`) and `src/ui/radialMenu.ts`; decision 298 lists where the build departs from the notes below.
 
-A ring of the main card actions that opens on **Space** (Space was unbound for it, decision 296). Agreed with the owner in an interactive Q&A. Mockup: `reports/mockups/radial-menu.png` (source `radial-menu.svg`).
+A ring of the main card actions that opens on **Space** (Space was unbound for it, decision 296). Agreed with the owner in an interactive Q&A. The mockup it was planned from was removed in the repo cleanup (decision 310).
 
 ## How it works
 

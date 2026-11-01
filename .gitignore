@@ -7,3 +7,12 @@ dist/
 .wrangler/
 server/.dev.vars
 server/.admin-key
+
+# Dev screenshots and reports (__shot writes here); never committed.
+reports/
+# Working files of the finished overnight and rooms runs: kept locally, not in git.
+MORNING_REPORT.md
+OVERNIGHT_PROMPT.md
+ONLINE_PROMPT.md
+.env.hub
+.env.*-fork
