@@ -13,7 +13,7 @@ import { Hud } from './ui/hud';
 import { selectAll, toggle } from './state/selection';
 import { installPileSync } from './state/pileSync';
 import { RestSync } from './physics/restSync';
-import { Commands, DOUBLE_TAP_MS } from './commands';
+import { Commands, DOUBLE_TAP_MS, standOf } from './commands';
 import { DragController } from './physics/feel';
 import { Badges } from './render/badges';
 import { RemovedTray } from './ui/tray';
@@ -946,14 +946,35 @@ keyboard.bind('backspace', removeSelection);
 const splitRow = hud.tickRow('🐉', 'Split creatures', 'Curves and the rank view (E) put creatures and non-creatures in separate bands', () => store.updateSettings({ curveSplit: !store.settings.curveSplit }));
 /** The bar's buttons that change the table, greyed by rank in a room. */
 const hudMoves: HTMLElement[] = [];
+/** Rows whose name depends on whether the selection lies on a stand (H H, decision 307). */
+const standRows: { row: HTMLButtonElement; item: RadialItem }[] = [];
 for (const w of RADIAL_MENU) {
   const actions = w.items.map((item) => ({ ...item, run: () => runKeys(item, { x: app.pointer.x, y: app.pointer.y }, null) }));
   if (actions.length === 1) hudMoves.push(hud.addAction(actions[0]));
   else {
     const g = hud.addGroup(w.label, actions, w.label === 'Sort' ? [splitRow] : [], w.icon);
     hudMoves.push(g.main, ...g.rows);
+    w.items.forEach((item, i) => item.onStand && standRows.push({ row: g.rows[i], item }));
   }
 }
+/** The cards H would fan, without changing the selection: the pile under `hovered` unless it is selected, else the selection. */
+const handTargets = (hovered: string | null): string[] => {
+  if (hovered && !store.selection.has(hovered)) return store.pileOf(hovered)?.cardUids.slice() ?? [hovered];
+  return [...store.selection];
+};
+const handOnStand = (hovered: string | null): boolean => !!standOf(app, handTargets(hovered));
+// The bar acts on the selection, so its H H row says Wide hand or Usual size by where the selection lies.
+const syncStandRows = () => {
+  const on = handOnStand(null);
+  for (const { row, item } of standRows) {
+    const say = on && item.onStand ? item.onStand : item;
+    row.querySelector('.hud-menu-label')!.textContent = say.label;
+    row.title = say.title;
+  }
+};
+store.events.on('selection', syncStandRows);
+store.events.on('piles', syncStandRows);
+syncStandRows();
 const syncSplit = () => {
   splitRow.classList.toggle('on', store.settings.curveSplit);
   splitRow.setAttribute('aria-checked', String(store.settings.curveSplit));
@@ -1050,6 +1071,7 @@ new RadialMenu(app, {
   canOpen: () => !drag.dragging && !mats.dragging,
   hovered: () => mouse.hovered,
   hasCards: () => store.selection.size > 0 || !!mouse.hovered,
+  onStand: handOnStand,
   allowed: (press) => keyboard.allowed(press),
   run: runKeys,
 });

@@ -7,7 +7,15 @@
  * shuffle). The bottom bar shows every item too (decision 302), with its own
  * icon and `title`, what it does, on hover.
  */
-export type RadialItem = { label: string; key: string; presses: string[]; icon: string; title: string };
+export type RadialItem = {
+  label: string;
+  key: string;
+  presses: string[];
+  icon: string;
+  title: string;
+  /** Said instead when the cards it would act on lie on a stand (H H, decision 307). */
+  onStand?: { label: string; title: string };
+};
 
 /** One wedge of the inner ring. Its first item is what letting go on it does; with more, they are its outer ring. */
 export type RadialWedge = { label: string; icon: string; cards: boolean; items: RadialItem[] };
@@ -33,7 +41,8 @@ export const RADIAL_MENU: RadialWedge[] = [
   ] },
   { label: 'Hand', icon: '🎴', cards: true, items: [
     { label: 'Fan as hand', key: 'H', presses: ['h'], icon: '🎴', title: 'Fan like a hand of cards; again stacks it back up' },
-    { label: 'Other size', key: 'H H', presses: ['h', 'h'], icon: '↔️', title: 'Fan the other size: on the table as wide as a stand, on a stand the usual size' },
+    // H H is the other size (decisions 272, 303): wide on the table, the usual size on a stand.
+    { label: 'Wide hand', key: 'H H', presses: ['h', 'h'], icon: '↔️', title: 'Fan as wide as a stand', onStand: { label: 'Usual size', title: 'Fan at the usual size, not the slope’s width' } },
   ] },
   { label: 'Sort', icon: '📊', cards: true, items: [
     { label: 'Curve', key: 'C', presses: ['c'], icon: '📊', title: 'Curve out by mana value; again stacks it back up' },

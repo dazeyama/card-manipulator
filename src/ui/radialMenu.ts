@@ -16,6 +16,8 @@ export type RadialHooks = {
   hovered: () => string | null;
   /** Is there a selection or a pile under the cursor for the card wedges to act on? */
   hasCards: () => boolean;
+  /** Do the cards the menu would act on, over `hovered`, lie on a stand? Names H H (decision 307). */
+  onStand: (hovered: string | null) => boolean;
   /** May this key press run here (rank, in a room)? Asked without a toast. */
   allowed: (press: string) => boolean;
   /** Do an item, as its keys pressed at `at` (canvas pixels) over `hovered`. */
@@ -28,6 +30,7 @@ type Open = {
   y: number;
   hovered: string | null;
   cards: boolean;
+  onStand: boolean;
   openedAt: number;
   g: RadialGeometry;
   s: number;
@@ -125,11 +128,13 @@ export class RadialMenu {
 
   private show(): void {
     const s = Math.min(1.3, Math.max(0.8, CURSOR_PX[cursorSizeNow()] / 36));
+    const hovered = this.hooks.hovered();
     this.open = {
       x: this.app.pointer.x,
       y: this.app.pointer.y,
-      hovered: this.hooks.hovered(),
+      hovered,
       cards: this.hooks.hasCards(),
+      onStand: this.hooks.onStand(hovered),
       openedAt: performance.now(),
       g: scaledGeometry(s),
       s,
@@ -219,7 +224,7 @@ export class RadialMenu {
         el('path', { d: segment(g.outerFrom, g.outer, a0, a1) }, grp);
         const rm = (g.outerFrom + g.outer) / 2;
         const x = Math.sin(mid) * rm, y = -Math.cos(mid) * rm;
-        const ls = lines(item.label);
+        const ls = lines(o.onStand && item.onStand ? item.onStand.label : item.label);
         const top = y - (ls.length === 2 ? 11 : 6) * s;
         ls.forEach((l, k) => el('text', { x, y: top + k * 11.5 * s, 'font-size': 10.5 * s, class: 'radial-label' }, grp, l));
         el('text', { x, y: top + ls.length * 11.5 * s + 1.5 * s, 'font-size': 9 * s, class: 'radial-key' }, grp, item.key);

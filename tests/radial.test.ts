@@ -37,6 +37,12 @@ describe('radial menu contents', () => {
     }
   });
 
+  it('names H H by where it acts: wide on the table, usual size on a stand', () => {
+    const hh = RADIAL_MENU.flatMap((w) => w.items).find((i) => i.key === 'H H')!;
+    expect(hh.label).toBe('Wide hand');
+    expect(hh.onStand?.label).toBe('Usual size');
+  });
+
   it('draws 1, 7 or N cards', () => {
     const draw = RADIAL_MENU.find((w) => w.label === 'Draw')!;
     expect(draw.items.map((i) => i.presses.join(' '))).toEqual(['1', '7', '0']);
@@ -89,7 +95,7 @@ describe('pick', () => {
     expect(labelOf(196, 600, fromSort)).toBe('Colour columns');
     expect(labelOf(225, 150, fromSort)).toBe('Curve per colour');
     // Straight out from Hand, the same angle is Hand's own ring.
-    expect(labelOf(196, 150, pick(RADIAL_MENU, ...at(180, 80), g))).toBe('Other size');
+    expect(labelOf(196, 150, pick(RADIAL_MENU, ...at(180, 80), g))).toBe('Wide hand');
   });
 
   it('keeps the wedge you came through while over its wider outer ring', () => {
