@@ -592,13 +592,18 @@ export class Commands {
     land(this.app, inSpace(m?.uid ?? null, () => pileAt(this.app, uids, { x: c.x, y: c.y, yaw: m?.yaw ?? this.app.facing })), { stagger: Math.min(3, 300 / uids.length), arc: 8 });
   }
 
+  /** The last cut (decision 315): / again on either half, both still whole, completes it. */
+  private lastCut: { top: string[]; bottom: string[]; at: Footprint; stand: string | null } | null = null;
+
   /**
    * / (decision 314): cut a stack. The top 40 to 60 % of it is lifted off and
    * set down as its own stack beside it, to the right as you look, square to it.
+   * / again on either half completes the cut (decision 315).
    */
   cut(cards: string[]): void {
     // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
     cards = touchable(cards);
+    if (this.completeCut(cards)) return;
     const uids = byHeight(this.app, cards);
     const n = cutCount(uids.length, Math.random());
     if (!n) return;
@@ -611,6 +616,29 @@ export class Commands {
     const f = this.app.facing;
     const at = m ? { x: c.x + step, y: c.y, yaw: m.yaw } : { x: c.x + step * Math.cos(f), y: c.y + step * Math.sin(f), yaw: f };
     land(this.app, inSpace(m?.uid ?? null, () => pileAt(this.app, top, at)), { stagger: Math.min(3, 300 / n), arc: 10 });
+    this.lastCut = { top, bottom: uids.slice(0, uids.length - n), at: { x: c.x, y: c.y, yaw: m?.yaw ?? f }, stand: m?.uid ?? null };
+  }
+
+  /**
+   * Complete the last cut, as a dealer does (decision 315): the half that was
+   * underneath goes on top of the half lifted off, as one stack where the deck
+   * was. Only for exactly one of the two halves, with the other still a whole
+   * stack of its own; false otherwise, and / cuts afresh.
+   */
+  private completeCut(cards: string[]): boolean {
+    const cut = this.lastCut;
+    if (!cut) return false;
+    const set = new Set(cards);
+    const isHalf = (half: string[]) => half.length === set.size && half.every((u) => set.has(u));
+    if (!isHalf(cut.top) && !isHalf(cut.bottom)) return false;
+    const other = isHalf(cut.top) ? cut.bottom : cut.top;
+    const pile = this.app.store.pileOf(other[0]);
+    if (!pile || pile.cardUids.length !== other.length || !other.every((u) => pile.cardUids.includes(u))) return false;
+    this.lastCut = null;
+    const order = [...byHeight(this.app, cut.top), ...byHeight(this.app, cut.bottom)];
+    leaveSpreads(this.app, order);
+    land(this.app, inSpace(cut.stand, () => pileAt(this.app, order, cut.at)), { stagger: Math.min(3, 300 / order.length), arc: 10 });
+    return true;
   }
 
   /** X: spread the selection in a grid at its centroid. A selection that is exactly one stack spreads beside it instead. */
