@@ -84,7 +84,7 @@ describe('pick', () => {
     expect(labelOf(196, 600, fromSort)).toBe('Colour columns');
     expect(labelOf(225, 150, fromSort)).toBe('Curve per colour');
     // Straight out from Hand, the same angle is Hand's own ring.
-    expect(labelOf(196, 150, pick(RADIAL_MENU, ...at(180, 80), g))).toBe('Full size');
+    expect(labelOf(196, 150, pick(RADIAL_MENU, ...at(180, 80), g))).toBe('Other size');
   });
 
   it('keeps the wedge you came through while over its wider outer ring', () => {

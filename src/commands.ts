@@ -12,7 +12,7 @@ import { arcHand, fanLayout, HAND_ROW, handLayout } from './state/fan';
 const PILE_GAP = 10;
 import { rankLayout, type RankCard, type RankMode } from './state/rankLayout';
 import { colourLayout, type ColourCard } from './state/colourLayout';
-import { alignTo, fitOnStand, fromSlope, inFrontOf, isStand, SLOPE_LEN, slopePose, standW } from './state/stand';
+import { alignTo, fitOnStand, fromSlope, inFrontOf, isStand, SLOPE_LEN, slopePose, STAND_W, standW } from './state/stand';
 import type { Mat } from './state/types';
 import { hiddenRow, splitHidden } from './online/hidden';
 import { mayTouchStand, touchable } from './online/guard';
@@ -471,10 +471,12 @@ export class Commands {
   }
 
   /**
-   * Fan cards like a hand. On a stand, one arc the slope's width (decision 222),
-   * or with `small` (H H, decision 272) a hand of the usual size in the slope's middle.
+   * Fan cards like a hand. On a stand, one arc the slope's width (decision 222);
+   * on the table, a hand of the usual size. With `other` (H H) the other way
+   * round: on a stand the usual size in the slope's middle (decision 272), on
+   * the table one arc as wide as a stand (decision 303).
    */
-  fan(cards: string[], small = false): void {
+  fan(cards: string[], other = false): void {
     // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
     cards = touchable(cards);
     cards = [...new Set(cards)].filter((u) => this.app.store.cards.has(u));
@@ -484,8 +486,8 @@ export class Commands {
     const m = standOf(this.app, uids);
     const centre = centroid(this.app, uids);
     const layout = m
-      ? small ? smallSlopeHand(m, uids.length) : slopeHand(m, uids.length)
-      : alignTo(fanLayout(uids.length, centre), centre, this.app.facing);
+      ? other ? smallSlopeHand(m, uids.length) : slopeHand(m, uids.length)
+      : alignTo(other ? arcHand(uids.length, STAND_W, centre) : fanLayout(uids.length, centre), centre, this.app.facing);
     const landings = inSpace(m?.uid ?? null, () => placeSequential(this.app, uids, layout));
     land(this.app, landings, { stagger: Math.min(3, 300 / uids.length), arc: 6 });
     const spots = new Map(landings.map((l) => [l.uid, { x: l.x, y: l.y }]));

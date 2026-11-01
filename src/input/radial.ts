@@ -33,7 +33,7 @@ export const RADIAL_MENU: RadialWedge[] = [
   ] },
   { label: 'Hand', icon: '🎴', cards: true, items: [
     { label: 'Fan as hand', key: 'H', presses: ['h'], icon: '🎴', title: 'Fan like a hand of cards; again stacks it back up' },
-    { label: 'Full size', key: 'H H', presses: ['h', 'h'], icon: '🖼️', title: 'On a stand: the hand at its usual size, not the slope’s width' },
+    { label: 'Other size', key: 'H H', presses: ['h', 'h'], icon: '↔️', title: 'Fan the other size: on the table as wide as a stand, on a stand the usual size' },
   ] },
   { label: 'Sort', icon: '📊', cards: true, items: [
     { label: 'Curve', key: 'C', presses: ['c'], icon: '📊', title: 'Curve out by mana value; again stacks it back up' },
