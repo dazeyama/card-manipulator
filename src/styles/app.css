@@ -320,10 +320,18 @@ label.inline { display: inline-flex; flex-direction: row; align-items: center; g
 .deck-row { justify-content: space-between; }
 .deck-name { font-weight: 600; }
 .deck-type { color: var(--text-2); font-size: 11px; }
-.deck-list.pictures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
-.deck-pic { padding: 0; border: 2px solid transparent; border-radius: 5px; background: none; cursor: var(--cursor-point, pointer); aspect-ratio: 488 / 680; overflow: hidden; font-size: 10px; }
-.deck-pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.deck-pic:hover { border-color: var(--accent); }
+/*
+ * Pictures cascade in three columns as on the table (decision 312): each card shows its top
+ * 22 mm of 88 (the strip a 63 x 88 mm card leaves at 22 mm spacing), the next card in the
+ * column lying over the rest, for any number of cards; the last row shows whole, the spacer
+ * after it making room. The card under the cursor comes to the top.
+ */
+.deck-list.pictures { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: max-content; align-content: start; align-items: start; column-gap: 6px; row-gap: 0; padding-bottom: 2px; }
+.deck-list.pictures::after { content: ''; grid-column: 1 / -1; aspect-ratio: 189 / 66; }
+.deck-pic { position: relative; display: block; width: 100%; aspect-ratio: 63 / 22; padding: 0; border: 0; background: none; cursor: var(--cursor-point, pointer); overflow: visible; font-size: 10px; text-align: left; }
+.deck-pic img { position: absolute; left: 0; top: 0; width: 100%; aspect-ratio: 63 / 88; height: auto; object-fit: cover; display: block; border-radius: 4.5%/3.2%; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
+.deck-pic:hover { z-index: 2; }
+.deck-pic:hover img { outline: 2px solid var(--accent); outline-offset: -1px; }
 /* A die's colour menu (decision 278). */
 .die-colours { position: fixed; z-index: 45; display: flex; flex-direction: column; gap: 5px; padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18); }
 .die-colours[hidden] { display: none; }
