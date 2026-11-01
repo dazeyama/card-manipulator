@@ -392,7 +392,8 @@ keyboard.bind('ctrl+f', () => hud.focus());
 // nothing elsewhere, and no longer opens the search box (decision 319: Ctrl + F does).
 keyboard.bind('/', () => {
   const stack = cutTarget();
-  if (stack && !drag.dragging) commands.cut(stack);
+  // No hover preview on the deck until the cursor leaves it: a popped card would look left on top (decision 320).
+  if (stack && !drag.dragging) mouse.quietHover(commands.cut(stack));
 });
 /** The stack / would cut: the pile under the cursor, or the selection if it is one whole pile; two cards or more. */
 function cutTarget(): string[] | null {

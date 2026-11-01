@@ -314,8 +314,25 @@ export class MouseInput {
     if (uid === this.hovered) return;
     if (this.hovered) this.app.layer.setHovered(this.hovered, false);
     this.hovered = uid;
-    if (uid) this.app.layer.setHovered(uid, true, this.standLift(uid));
-    this.hooks.hover?.(uid);
+    // Off the quiet cards, the preview comes back (decision 320).
+    if (this.quiet && !(uid && this.quiet.has(uid))) this.quiet = null;
+    const shown = this.quiet ? null : uid;
+    if (shown) this.app.layer.setHovered(shown, true, this.standLift(shown));
+    this.hooks.hover?.(shown);
+  }
+
+  /** Cards whose hover preview (the pop, Inspect) is held off until the cursor leaves them (decision 320). */
+  private quiet: Set<string> | null = null;
+
+  /**
+   * Stop previewing these cards until the cursor moves off them (decision 320):
+   * after a cut the popped card would look left behind on top. The card stays
+   * hovered for the keys, so / again still finds the pile.
+   */
+  quietHover(uids: Iterable<string>): void {
+    this.quiet = new Set(uids);
+    if (this.hovered) this.app.layer.setHovered(this.hovered, false);
+    this.hooks.hover?.(null);
   }
 
   /** A card on a stand pops by its stacking on the slope (decision 223); undefined for a card on the table. */

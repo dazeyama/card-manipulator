@@ -1240,6 +1240,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 317 | Owner (2026-11-01): a messy stack's cut lands **slightly further away**, so the two loose halves read as two stacks. The lifted half of a loose cut goes 40 mm past a card's width instead of 15; a tidy cut (or any cut in Tidy mode) keeps 15. |
 | 318 | Owner (2026-11-01): face-down packs dealt with **0** (Face down ticked, or Shift + 0) land **slightly further apart** when messy, so they don't touch: 35 mm between loose packs instead of 10; neat packs in Tidy mode keep 10. |
 | 319 | Owner (2026-11-01): `/` sometimes focused the search box, but it shouldn't: **treat it like any other hotkey**. `/` now only cuts (decisions 314, 315) and does nothing when there is no stack to cut; Ctrl + F alone focuses the search box. **(agent)** In a room `/` is gated like the other card keys (Move, with the toast), and the `?` panel gives it its own line. |
+| 320 | Owner (2026-11-01): the hover preview's raised card made a cut deck look as if it left the same card on top of both stacks. After `/` (a cut, or completing one), the **hover preview stops** for the deck's cards, no pop and no Inspect, **until the cursor moves off them**. **(agent)** The card stays hovered for the keys, so `/` again still finds the pile; moving onto empty table or another card brings the preview back. |
 
 ## Appendix B: Open items
 

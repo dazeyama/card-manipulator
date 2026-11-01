@@ -610,13 +610,14 @@ export class Commands {
    * set down as its own stack beside it, to the right as you look, square to it.
    * / again on either half completes the cut (decision 315).
    */
-  cut(cards: string[]): void {
+  cut(cards: string[]): string[] {
     // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
     cards = touchable(cards);
-    if (this.completeCut(cards)) return;
+    const completed = this.completeCut(cards);
+    if (completed) return completed;
     const uids = byHeight(this.app, cards);
     const n = cutCount(uids.length, Math.random());
-    if (!n) return;
+    if (!n) return [];
     const top = uids.slice(uids.length - n);
     leaveSpreads(this.app, top);
     const c = centroid(this.app, uids);
@@ -639,6 +640,7 @@ export class Commands {
       spots.set(u, { x: card.x, y: card.y });
     }
     this.lastCut = { top, bottom, at: { x: c.x, y: c.y, yaw }, stand: m?.uid ?? null, tidy, spots };
+    return uids;
   }
 
   /**
@@ -646,22 +648,23 @@ export class Commands {
    * underneath goes on top of the half lifted off, as one stack where the deck
    * was. For / on either half while every card of both lies where the cut left
    * it; by the cards' own spots, not pile detection, which can see two loose
-   * halves close together as one pile. False otherwise, and / cuts afresh.
+   * halves close together as one pile. The cards of the deck, or null when
+   * there is no such cut, and / cuts afresh.
    */
-  private completeCut(cards: string[]): boolean {
+  private completeCut(cards: string[]): string[] | null {
     const cut = this.lastCut;
-    if (!cut || !cards.some((u) => cut.spots.has(u))) return false;
+    if (!cut || !cards.some((u) => cut.spots.has(u))) return null;
     const store = this.app.store;
     const untouched = [...cut.spots].every(([u, p]) => {
       const card = store.cards.get(u);
       return !!card && Math.hypot(card.x - p.x, card.y - p.y) < 2;
     });
     this.lastCut = null;
-    if (!untouched) return false;
+    if (!untouched) return null;
     const order = [...byHeight(this.app, cut.top), ...byHeight(this.app, cut.bottom)];
     leaveSpreads(this.app, order);
     land(this.app, inSpace(cut.stand, () => (cut.tidy ? stackAt : pileAt)(this.app, order, cut.at)), { stagger: Math.min(3, 300 / order.length), arc: 10 });
-    return true;
+    return order;
   }
 
   /** X: spread the selection in a grid at its centroid. A selection that is exactly one stack spreads beside it instead. */
