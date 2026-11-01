@@ -621,8 +621,9 @@ export class Commands {
     // A squared-up stack cuts into squared-up halves, at its own turn (decision 316).
     const tidy = isTidy(this.app, uids);
     const yaw = m ? m.yaw : tidy ? this.app.store.cards.get(uids[0])!.yaw : this.app.facing;
-    // A card's width and a gap along: across the slope on a stand, to your right on the table.
-    const step = CARD_W + 15;
+    // A card's width and a gap along: across the slope on a stand, to your right on the table;
+    // a wider gap for loose halves, whose cards stick out and turn (decision 317).
+    const step = CARD_W + (tidy || this.app.tidy ? 15 : 40);
     const f = this.app.facing;
     const at = m ? { x: c.x + step, y: c.y, yaw } : { x: c.x + step * Math.cos(f), y: c.y + step * Math.sin(f), yaw };
     const landings = inSpace(m?.uid ?? null, () => (tidy ? stackAt : pileAt)(this.app, top, at));
