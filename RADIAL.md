@@ -28,7 +28,7 @@ Clockwise from the top. Letting go on the inner wedge does the first item.
 
 | Wedge | Inner (main action) | Outer ring (variants) |
 |---|---|---|
-| Stack | Stack (S) | Shuffle (S S), Tidy (T) |
+| Stack | Stack (S) | Shuffle (S S), Tidy (T), Tokens (T T): the card's tokens, or over empty table a token search (decision 308) |
 | Flip | Flip (F) | Face all up (F F) |
 | Turn | Turn 90° (R) | Upright (R R) |
 | Spread | Spread (X) | Reverse spread (X X) |

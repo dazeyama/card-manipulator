@@ -30,7 +30,7 @@ describe('radial menu contents', () => {
 
   it('gives every item an icon and a title for the bottom bar', () => {
     const items = RADIAL_MENU.flatMap((w) => w.items);
-    expect(items).toHaveLength(21);
+    expect(items).toHaveLength(22);
     for (const i of items) {
       expect(i.icon, i.label).not.toBe('');
       expect(i.title, i.label).not.toBe('');
@@ -41,6 +41,13 @@ describe('radial menu contents', () => {
     const hh = RADIAL_MENU.flatMap((w) => w.items).find((i) => i.key === 'H H')!;
     expect(hh.label).toBe('Wide hand');
     expect(hh.onStand?.label).toBe('Usual size');
+  });
+
+  it('has Tokens in Stack’s ring, usable with no cards (decision 308)', () => {
+    const stack = RADIAL_MENU.find((w) => w.label === 'Stack')!;
+    const tokens = stack.items.find((i) => i.label === 'Tokens')!;
+    expect(tokens.presses).toEqual(['t', 't']);
+    expect(tokens.anywhere).toBe(true);
   });
 
   it('draws 1, 7 or N cards', () => {

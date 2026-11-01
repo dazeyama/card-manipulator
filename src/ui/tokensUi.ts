@@ -13,7 +13,7 @@ import { toast } from './toasts';
 const LIST_MAX = 100;
 
 /** "Goblin 1/1 · R · Token Creature — Goblin · TC21 12": enough to tell printings apart. */
-function label(r: CardRecord): string {
+export function tokenLabel(r: CardRecord): string {
   const pt = r.power !== undefined && r.toughness !== undefined ? ` ${r.power}/${r.toughness}` : '';
   const colours = r.colors.length ? r.colors.join('') : 'C';
   return `${r.name}${pt} · ${colours} · ${r.type_line} · ${r.set.toUpperCase()} ${r.collector_number}`;
@@ -34,7 +34,7 @@ export function buildTokens(app: App, options: () => SpawnOptions): HTMLElement 
   };
   const show = (found: CardRecord[]) => {
     const rows = found.slice(0, LIST_MAX).map((r) => {
-      const row = h('button', { class: 'token-row', title: 'Spawn this token' }, label(r));
+      const row = h('button', { class: 'token-row', title: 'Spawn this token' }, tokenLabel(r));
       if (r.image_small) {
         const img = h('img', { class: 'token-thumb', src: r.image_small, alt: '', loading: 'lazy' });
         row.prepend(img);

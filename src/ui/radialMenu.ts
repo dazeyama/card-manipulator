@@ -167,7 +167,7 @@ export class RadialMenu {
 
   /** May this wedge, or this item of it, be done here? */
   private enabled(w: RadialWedge, item: RadialItem): boolean {
-    return (!w.cards || this.open!.cards) && item.presses.every((p) => this.hooks.allowed(p));
+    return (!w.cards || item.anywhere || this.open!.cards) && item.presses.every((p) => this.hooks.allowed(p));
   }
 
   /** Do what the pointer is over, if anything, and close. */
@@ -200,6 +200,8 @@ export class RadialMenu {
     RADIAL_MENU.forEach((w, i) => {
       const on = i === o.pick.wedge;
       const ok = this.enabled(w, w.items[0]);
+      // A ring can hold an item that works without cards (Tokens) under a wedge that is greyed.
+      const hasRing = w.items.length > 1 && w.items.some((item) => this.enabled(w, item));
       const grp = el('g', { class: `radial-wedge${on && ok ? ' on' : ''}${ok ? '' : ' off'}` }, ring);
       const a0 = (i - 0.5) * step + gap, a1 = (i + 0.5) * step - gap, mid = i * step;
       el('path', { d: segment(g.innerFrom, g.inner, a0, a1) }, grp);
@@ -208,14 +210,14 @@ export class RadialMenu {
       el('text', { x, y: y - 13 * s, 'font-size': 15 * s }, grp, w.icon);
       el('text', { x, y: y + 4 * s, 'font-size': 11.5 * s, class: 'radial-label' }, grp, w.label);
       el('text', { x, y: y + 16.5 * s, 'font-size': 9 * s, class: 'radial-key' }, grp, w.items[0].key);
-      if (w.items.length > 1 && ok) {
+      if (hasRing) {
         const rd = g.inner - 7 * s;
         el('circle', { cx: Math.sin(mid) * rd, cy: -Math.cos(mid) * rd, r: 2.4 * s, class: 'radial-dot' }, grp);
       }
     });
     // The outer ring of the wedge the pointer is on, when it has one and can be used.
     const w = o.pick.wedge >= 0 ? RADIAL_MENU[o.pick.wedge] : null;
-    if (w && w.items.length > 1 && this.enabled(w, w.items[0])) {
+    if (w && w.items.length > 1 && w.items.some((item) => this.enabled(w, item))) {
       const n = w.items.length, span = itemSpan(n), start = outerStart(o.pick.wedge, count, n);
       w.items.forEach((item, j) => {
         const ok = this.enabled(w, item);

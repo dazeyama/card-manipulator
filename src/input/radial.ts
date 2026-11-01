@@ -15,6 +15,8 @@ export type RadialItem = {
   title: string;
   /** Said instead when the cards it would act on lie on a stand (H H, decision 307). */
   onStand?: { label: string; title: string };
+  /** Works with no cards to act on, though its wedge needs them (Tokens over empty table, decision 308). */
+  anywhere?: boolean;
 };
 
 /** One wedge of the inner ring. Its first item is what letting go on it does; with more, they are its outer ring. */
@@ -26,6 +28,8 @@ export const RADIAL_MENU: RadialWedge[] = [
     { label: 'Stack', key: 'S', presses: ['s'], icon: '📚', title: 'Gather into one stack; neat in Tidy mode' },
     { label: 'Shuffle', key: 'S S', presses: ['s', 's'], icon: '🔀', title: 'Stack and shuffle' },
     { label: 'Tidy', key: 'T', presses: ['t'], icon: '🧹', title: 'Square up each pile' },
+    // Over a card, the tokens it makes (decision 264); over empty table, a token search there (decision 308).
+    { label: 'Tokens', key: 'T T', presses: ['t', 't'], icon: '🪙', title: 'Over a card: the tokens it makes. Elsewhere: search for a token to spawn there', anywhere: true },
   ] },
   { label: 'Flip', icon: '🃏', cards: true, items: [
     { label: 'Flip', key: 'F', presses: ['f'], icon: '🃏', title: 'Flip over' },

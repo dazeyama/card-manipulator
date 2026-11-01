@@ -31,6 +31,7 @@ import { buildStandSection } from './ui/standTab';
 import { installStandSnap } from './standSnap';
 import { LifeCounters } from './ui/lifeCounter';
 import { TokenMenu } from './ui/tokenMenu';
+import { TokenSearch } from './ui/tokenSearch';
 import { DiceColours } from './ui/diceColours';
 import { maxValue, valueRange } from './state/dice';
 import { Dice } from './dice';
@@ -445,16 +446,20 @@ keyboard.bind('x', () => {
   if (card?.spreadOf && store.spreads.has(card.spreadOf)) return commands.restack(card.spreadOf);
   startSpread(hoveredPile());
 });
-// T T over a card: the tokens it makes, from its Scryfall data (decision 264).
+// T T over a card: the tokens it makes, from its Scryfall data (decision 264); over empty
+// table, a small token search there, spawning at that spot (decision 308).
 const tokenMenu = new TokenMenu(app, () => spawnPanel.options());
+const tokenSearch = new TokenSearch(app, () => spawnPanel.options());
 let lastT = 0;
 keyboard.bind('t', () => {
   const now = performance.now();
   const twice = now - lastT < DOUBLE_TAP_MS;
   lastT = twice ? 0 : now;
-  if (twice && !drag.dragging && mouse.hovered) {
+  if (twice && !drag.dragging) {
     const r = app.canvas.getBoundingClientRect();
-    void tokenMenu.open(mouse.hovered, { x: r.left + app.pointer.x, y: r.top + app.pointer.y });
+    const at = { x: r.left + app.pointer.x, y: r.top + app.pointer.y };
+    if (mouse.hovered) void tokenMenu.open(mouse.hovered, at);
+    else tokenSearch.open(at, app.tablePointUnderCursor());
     return;
   }
   if (drag.dragging || hoveredPile().length) app.showGesture('tidy');
