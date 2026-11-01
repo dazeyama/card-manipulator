@@ -139,6 +139,20 @@ export class ContextHints {
     return this.app.mats?.movable ? 'mat' : 'table';
   }
 
+  /** Is the card under the cursor lying on a stand's slope? */
+  private onStand(): boolean {
+    const uid = this.mouse.hovered;
+    return !!uid && !!this.app.store.cards.get(uid)?.stand;
+  }
+
+  /** The card hints, with H H's size after H: wide on the table, the usual size on a stand (decision 306). */
+  private cardHints(): Hint[] {
+    const hints = [...HINTS.card];
+    const i = hints.findIndex((h) => h[1] === 'H: fan');
+    hints.splice(i + 1, 0, ['↔️', this.onStand() ? 'H H: usual size' : 'H H: wide']);
+    return hints;
+  }
+
   private update(): void {
     const context = this.context();
     const lit = (key?: Key) => !!key && this.keys[key];
@@ -158,8 +172,10 @@ export class ContextHints {
         ? [['👉', `Click: reverse spread ${spreadCount}`], ['🔲', 'Drag: fit to box'], ['🪟', 'X: plain'], ['⎋', 'Esc: cancel']]
       : context === 'spread'
         ? [['👆', `Click: spread ${spreadCount}`], ['🔲', 'Drag: fit to box'], ['🪟', 'X: reverse'], ['⎋', 'Esc: cancel']]
-        : HINTS[context];
-    const signature = context + (this.app.drawing?.faceDown ? 'f' : '') + (this.app.spreading?.reverse ? 'r' : '') + (this.app.placing?.faceDown ? 'd' : '') + n + spreadCount + placeCount + hints.map((hint) => (lit(hint[2]) ? '1' : '0')).join('');
+        : context === 'card'
+          ? this.cardHints()
+          : HINTS[context];
+    const signature = context + (context === 'card' && this.onStand() ? 's' : '') +(this.app.drawing?.faceDown ? 'f' : '') + (this.app.spreading?.reverse ? 'r' : '') + (this.app.placing?.faceDown ? 'd' : '') + n + spreadCount + placeCount + hints.map((hint) => (lit(hint[2]) ? '1' : '0')).join('');
     if (signature === this.shown) return;
     this.shown = signature;
     this.el.replaceChildren(
