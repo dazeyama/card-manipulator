@@ -3,7 +3,7 @@
 
 import type { App } from './app';
 import { CARD_H, CARD_T, CARD_W, type Card } from './state/types';
-import { cutCount, gridLayout, layOrder, looseStackLayout, nextQuarterClockwise, overlaps, shuffled, snapYaw, spreadLayout, uprightYaw, type Footprint, type Placed } from './state/piles';
+import { cutCount, gridLayout, layOrder, looseStackLayout, nextQuarterClockwise, overlaps, sameYaw, shuffled, snapYaw, spreadLayout, uprightYaw, type Footprint, type Placed } from './state/piles';
 import type { Spread } from './state/store';
 import { colourGroup, curveLayout, type CurveCard } from './state/curve';
 import { arcHand, fanLayout, HAND_ROW, handLayout } from './state/fan';
@@ -199,6 +199,13 @@ export function stackAt(app: App, uids: string[], at: Footprint, exclude = new S
 export function pileAt(app: App, uids: string[], at: Footprint, exclude = new Set(uids)): Landing[] {
   if (app.tidy) return stackAt(app, uids, { ...at, yaw: snapYaw(at.yaw) }, exclude);
   return placeSequential(app, uids, looseStackLayout(uids.length, at), exclude);
+}
+
+/** Is this stack squared up (decision 316): every card on the bottom card's spot, at its turn? */
+function isTidy(app: App, uids: string[]): boolean {
+  const cards = uids.map((u) => app.store.cards.get(u)).filter((c): c is Card => !!c);
+  const b = cards[0];
+  return !!b && cards.every((c) => Math.hypot(c.x - b.x, c.y - b.y) < 0.5 && sameYaw(c.yaw, b.yaw));
 }
 
 /** Selected cards ordered bottom to top. */
@@ -593,7 +600,7 @@ export class Commands {
   }
 
   /** The last cut (decision 315): / again on either half, both still whole, completes it. */
-  private lastCut: { top: string[]; bottom: string[]; at: Footprint; stand: string | null } | null = null;
+  private lastCut: { top: string[]; bottom: string[]; at: Footprint; stand: string | null; tidy: boolean } | null = null;
 
   /**
    * / (decision 314): cut a stack. The top 40 to 60 % of it is lifted off and
@@ -611,12 +618,15 @@ export class Commands {
     leaveSpreads(this.app, top);
     const c = centroid(this.app, uids);
     const m = standOf(this.app, uids);
+    // A squared-up stack cuts into squared-up halves, at its own turn (decision 316).
+    const tidy = isTidy(this.app, uids);
+    const yaw = m ? m.yaw : tidy ? this.app.store.cards.get(uids[0])!.yaw : this.app.facing;
     // A card's width and a gap along: across the slope on a stand, to your right on the table.
     const step = CARD_W + 15;
     const f = this.app.facing;
-    const at = m ? { x: c.x + step, y: c.y, yaw: m.yaw } : { x: c.x + step * Math.cos(f), y: c.y + step * Math.sin(f), yaw: f };
-    land(this.app, inSpace(m?.uid ?? null, () => pileAt(this.app, top, at)), { stagger: Math.min(3, 300 / n), arc: 10 });
-    this.lastCut = { top, bottom: uids.slice(0, uids.length - n), at: { x: c.x, y: c.y, yaw: m?.yaw ?? f }, stand: m?.uid ?? null };
+    const at = m ? { x: c.x + step, y: c.y, yaw } : { x: c.x + step * Math.cos(f), y: c.y + step * Math.sin(f), yaw };
+    land(this.app, inSpace(m?.uid ?? null, () => (tidy ? stackAt : pileAt)(this.app, top, at)), { stagger: Math.min(3, 300 / n), arc: 10 });
+    this.lastCut = { top, bottom: uids.slice(0, uids.length - n), at: { x: c.x, y: c.y, yaw }, stand: m?.uid ?? null, tidy };
   }
 
   /**
@@ -637,7 +647,7 @@ export class Commands {
     this.lastCut = null;
     const order = [...byHeight(this.app, cut.top), ...byHeight(this.app, cut.bottom)];
     leaveSpreads(this.app, order);
-    land(this.app, inSpace(cut.stand, () => pileAt(this.app, order, cut.at)), { stagger: Math.min(3, 300 / order.length), arc: 10 });
+    land(this.app, inSpace(cut.stand, () => (cut.tidy ? stackAt : pileAt)(this.app, order, cut.at)), { stagger: Math.min(3, 300 / order.length), arc: 10 });
     return true;
   }
 
