@@ -10,6 +10,8 @@ import { arcHand, fanLayout, HAND_ROW, handLayout } from './state/fan';
 
 /** The gap between the face-down piles 0 deals (decision 236), mm. */
 const PILE_GAP = 10;
+/** The same between loose (messy) packs, whose cards stick out and turn (decision 318), mm. */
+const LOOSE_PILE_GAP = 35;
 import { rankLayout, type RankCard, type RankMode } from './state/rankLayout';
 import { colourLayout, type ColourCard } from './state/colourLayout';
 import { alignTo, fitOnStand, fromSlope, inFrontOf, isStand, SLOPE_LEN, slopePose, STAND_W, standW } from './state/stand';
@@ -545,7 +547,8 @@ export class Commands {
     const packs: string[][] = [];
     for (let i = 0; i < top.length; i += HAND_ROW) packs.push(top.slice(i, i + HAND_ROW));
     // One spot per pile, close together, upright to a stand if on one.
-    const spots = alignTo(gridLayout(packs.length, at, PILE_GAP), at, stand?.yaw ?? this.app.facing);
+    // Loose packs stick out and turn, so they get more room, never touching (decision 318).
+    const spots = alignTo(gridLayout(packs.length, at, this.app.tidy ? PILE_GAP : LOOSE_PILE_GAP), at, stand?.yaw ?? this.app.facing);
     const exclude = new Set(top);
     const landings = inSpace(stand?.uid ?? null, () => packs.flatMap((pack, i) => pileAt(this.app, pack, spots[i], exclude)));
     for (const l of landings) l.faceUp = false;
