@@ -444,7 +444,7 @@ A bar along the bottom of the screen, always visible:
 
 The RTS "refine my squad" control. Type a query and press Enter. The selection shrinks to the cards that match (owner, 2026-10-27). Non-matching cards are deselected; nothing moves.
 
-- Ctrl + F or `/` focuses the box.
+- Ctrl + F or `/` focuses the box (`/` over a stack cuts it instead, decision 314).
 - The box shows a live count as you type: "128 → 34 match". Enter commits. Esc returns focus to the table with the selection unchanged.
 - With nothing selected, the box runs a **table search** instead (Section 9.6). The placeholder says which mode it is in.
 - Refinements chain: refine, then refine again, until the squad is what you want.
@@ -768,7 +768,7 @@ Personality: **snappy and light** (decision 42). Quick follow, short settles, ve
 |---|---|
 | Esc | Clear selection, cancel drag, close panel field |
 | Ctrl + A | Select all |
-| Ctrl + F, `/` | Focus the filter box |
+| Ctrl + F, `/` | Focus the filter box. `/` over a stack, or with one whole stack selected, **cuts** it instead: 40 to 60 % off the top, set down beside it (decision 314) |
 | Enter (in filter box) | Apply refine or table search |
 | S | Stack the selection, or the pile under the cursor when nothing is selected. While dragging: gather the held cards into a stack in the hand. S twice quickly: shuffle, the stack's cards in a random order |
 | X | Spread the selection; with nothing selected, spread or restack the pile under the cursor (like a double-click). While dragging: spread the held cards in a grid around the cursor |
@@ -1233,6 +1233,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 311 | Owner (2026-11-01): the search box's **Pictures** should be larger: **3 columns** instead of 4. Each picture is now about 118 px wide in the 370 px box. |
 | 312 | Owner (2026-11-01): the search box's Pictures were squeezed together; they should have the table's **22 mm spacing**, always, at any number of cards. The pictures now **cascade** in their 3 columns as the curve view does on the table: each card shows its top 22 mm of 88 and the next card in the column lies over the rest, the last row whole; the list scrolls for big piles instead of squeezing them. **(agent)** Cards go row by row, top card first (left to right, then down); the card under the cursor rises to the top, outlined, so it can be seen whole beside Inspect. |
 | 313 | Owner (2026-11-01): when a pile search closes with **Shuffle when done**, the **shuffle cursor** shows briefly, as for S S: the shuffling hands until the pile settles (decision 165). |
+| 314 | Owner (2026-11-01): **/ on a stack cuts the deck**: it splits into two stacks, randomly uneven but close to half, **40 to 60 %**. The top part (`cutCount` in `src/state/piles.ts`, tested) is lifted off and set down as its own stack beside the rest, one card width and 15 mm along, to the right as you look (across the slope on a stand), square to it. **(agent)** (1) `/` still focuses the search box when not over a stack, so the old shortcut keeps working; with nothing under the cursor it cuts the selection only if that is one whole stack; (2) at least one card stays on each side, and a single card is not cut; (3) Cut (✂️, /) joins the radial's **Stack** ring after Tidy, and so the bottom bar (decision 309); (4) in a room it needs Move. |
 
 ## Appendix B: Open items
 

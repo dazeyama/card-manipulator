@@ -30,7 +30,7 @@ describe('radial menu contents', () => {
 
   it('gives every item an icon and a title for the bottom bar', () => {
     const items = RADIAL_MENU.flatMap((w) => w.items);
-    expect(items).toHaveLength(24);
+    expect(items).toHaveLength(25);
     for (const i of items) {
       expect(i.icon, i.label).not.toBe('');
       expect(i.title, i.label).not.toBe('');

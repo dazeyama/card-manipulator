@@ -29,6 +29,8 @@ export const RADIAL_MENU: RadialWedge[] = [
     { label: 'Shuffle', key: 'S S', presses: ['s', 's'], icon: '🔀', title: 'Stack and shuffle' },
     { label: 'Tidy', key: 'T', presses: ['t'], icon: '🧹', title: 'Square up each pile' },
     // Over a card, the tokens it makes (decision 264); over empty table, a token search there (decision 308).
+    // Lift 40 to 60 % off the top and set it down beside (decision 314).
+    { label: 'Cut', key: '/', presses: ['/'], icon: '✂️', title: 'Cut the stack: about half (40 to 60 %) set down beside it' },
     { label: 'Tokens', key: 'T T', presses: ['t', 't'], icon: '🪙', title: 'Over a card: the tokens it makes. Elsewhere: search for a token to spawn there', anywhere: true },
   ] },
   { label: 'Flip', icon: '🃏', cards: true, items: [

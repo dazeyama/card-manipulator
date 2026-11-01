@@ -432,6 +432,16 @@ export function shuffled<T>(items: T[], random: () => number = Math.random): T[]
   return out;
 }
 
+/**
+ * How many cards a cut lifts off the top of a stack of `count` (decision 314):
+ * 40 to 60 % of it, uneven at random but close to half, and always at least
+ * one card left on each side. `r` is a random number in [0, 1).
+ */
+export function cutCount(count: number, r: number): number {
+  if (count < 2) return 0;
+  return Math.min(count - 1, Math.max(1, Math.round(count * (0.4 + 0.2 * r))));
+}
+
 /** Yaw snapped to the nearest quarter turn (tidy cards are 0 or +-90 degrees, spec 6.1). */
 export function snapYaw(yaw: number): number {
   return Math.round(yaw / (Math.PI / 2)) * (Math.PI / 2);

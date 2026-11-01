@@ -388,7 +388,22 @@ keyboard.bind('escape', () => {
   if (!mouse.cancel()) store.clearSelection();
 });
 keyboard.bind('ctrl+f', () => hud.focus());
-keyboard.bind('/', () => hud.focus());
+// / over a stack, or with one stack selected, cuts it (decision 314); anywhere else it is the search box, as before.
+keyboard.bind('/', () => {
+  const stack = cutTarget();
+  if (!stack) return hud.focus();
+  if (drag.dragging || (app.online && !allowedNow('move'))) return;
+  commands.cut(stack);
+});
+/** The stack / would cut: the pile under the cursor, or the selection if it is one whole pile; two cards or more. */
+function cutTarget(): string[] | null {
+  const hovered = mouse.hovered;
+  const first = hovered ?? (store.selection.size ? [...store.selection][0] : null);
+  const pile = first ? store.pileOf(first) : undefined;
+  if (!pile || pile.cardUids.length < 2) return null;
+  if (!hovered && (store.selection.size !== pile.cardUids.length || !pile.cardUids.every((u) => store.selection.has(u)))) return null;
+  return pile.cardUids.slice();
+}
 // With nothing selected, the keys act on what is under the cursor (decisions 102, 103):
 // F and R on that card, S, X and T on the whole pile it is in.
 /**

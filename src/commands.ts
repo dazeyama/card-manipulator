@@ -3,7 +3,7 @@
 
 import type { App } from './app';
 import { CARD_H, CARD_T, CARD_W, type Card } from './state/types';
-import { gridLayout, layOrder, looseStackLayout, nextQuarterClockwise, overlaps, shuffled, snapYaw, spreadLayout, uprightYaw, type Footprint, type Placed } from './state/piles';
+import { cutCount, gridLayout, layOrder, looseStackLayout, nextQuarterClockwise, overlaps, shuffled, snapYaw, spreadLayout, uprightYaw, type Footprint, type Placed } from './state/piles';
 import type { Spread } from './state/store';
 import { colourGroup, curveLayout, type CurveCard } from './state/curve';
 import { arcHand, fanLayout, HAND_ROW, handLayout } from './state/fan';
@@ -590,6 +590,27 @@ export class Commands {
     // In a room the crown then re-keys any hidden cards among them (ONLINE.md 7.2).
     this.app.store.markShuffle();
     land(this.app, inSpace(m?.uid ?? null, () => pileAt(this.app, uids, { x: c.x, y: c.y, yaw: m?.yaw ?? this.app.facing })), { stagger: Math.min(3, 300 / uids.length), arc: 8 });
+  }
+
+  /**
+   * / (decision 314): cut a stack. The top 40 to 60 % of it is lifted off and
+   * set down as its own stack beside it, to the right as you look, square to it.
+   */
+  cut(cards: string[]): void {
+    // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
+    cards = touchable(cards);
+    const uids = byHeight(this.app, cards);
+    const n = cutCount(uids.length, Math.random());
+    if (!n) return;
+    const top = uids.slice(uids.length - n);
+    leaveSpreads(this.app, top);
+    const c = centroid(this.app, uids);
+    const m = standOf(this.app, uids);
+    // A card's width and a gap along: across the slope on a stand, to your right on the table.
+    const step = CARD_W + 15;
+    const f = this.app.facing;
+    const at = m ? { x: c.x + step, y: c.y, yaw: m.yaw } : { x: c.x + step * Math.cos(f), y: c.y + step * Math.sin(f), yaw: f };
+    land(this.app, inSpace(m?.uid ?? null, () => pileAt(this.app, top, at)), { stagger: Math.min(3, 300 / n), arc: 10 });
   }
 
   /** X: spread the selection in a grid at its centroid. A selection that is exactly one stack spreads beside it instead. */

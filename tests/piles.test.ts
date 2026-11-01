@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextQuarterClockwise, shuffled, uprightYaw, visibleShare } from '../src/state/piles';
+import { cutCount, nextQuarterClockwise, shuffled, uprightYaw, visibleShare } from '../src/state/piles';
 import { gridLayout, LOOSE_OFFSET, LOOSE_TURN, looseStackLayout, messyLayout, overlaps, rng, spreadLayout, stackLayout, surfaceTop } from '../src/state/piles';
 import { CARD_T } from '../src/state/types';
 
@@ -250,5 +250,22 @@ describe('shuffled (decision 106)', () => {
     const firsts = [0, 0, 0, 0];
     for (let k = 0; k < 4000; k++) firsts[shuffled([0, 1, 2, 3], random)[0]]++;
     for (const n of firsts) expect(Math.abs(n - 1000)).toBeLessThan(120);
+  });
+});
+
+describe('cutting a stack (decision 314)', () => {
+  it('lifts 40 to 60 % off the top, close to half', () => {
+    expect(cutCount(100, 0)).toBe(40);
+    expect(cutCount(100, 0.5)).toBe(50);
+    expect(cutCount(100, 0.999)).toBe(60);
+    expect(cutCount(60, 0.25)).toBe(27);
+  });
+
+  it('always leaves a card on each side, and cuts nothing smaller than two', () => {
+    expect(cutCount(2, 0)).toBe(1);
+    expect(cutCount(2, 0.999)).toBe(1);
+    expect(cutCount(3, 0.999)).toBe(2);
+    expect(cutCount(1, 0.5)).toBe(0);
+    expect(cutCount(0, 0.5)).toBe(0);
   });
 });
