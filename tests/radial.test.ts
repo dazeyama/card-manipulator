@@ -11,21 +11,26 @@ const labelOf = (deg: number, r: number, prev = NO_PICK) => {
 
 describe('radial menu contents', () => {
   it('has the eight agreed wedges, clockwise from the top', () => {
-    expect(RADIAL_MENU.map((w) => w.label)).toEqual(['Stack', 'Flip', 'Turn', 'Spread', 'Hand', 'Sort', 'Draw', 'Undo']);
+    expect(RADIAL_MENU.map((w) => w.label)).toEqual(['Stack', 'Flip', 'Turn', 'Spread', 'Hand', 'Sort', 'Draw', 'Point']);
   });
 
-  it('starts every wedge with its main action and only Undo works without cards', () => {
-    expect(RADIAL_MENU.map((w) => w.items[0].presses.join(' '))).toEqual(['s', 'f', 'r', 'x', 'h', 'c', '1', 'ctrl+z']);
-    expect(RADIAL_MENU.filter((w) => !w.cards).map((w) => w.label)).toEqual(['Undo']);
+  it('starts every wedge with its main action, and every wedge needs cards', () => {
+    expect(RADIAL_MENU.map((w) => w.items[0].presses.join(' '))).toEqual(['s', 'f', 'r', 'x', 'h', 'c', '1', 'p']);
+    expect(RADIAL_MENU.filter((w) => !w.cards)).toEqual([]);
   });
 
-  it('gives only Undo no outer ring', () => {
-    expect(RADIAL_MENU.filter((w) => w.items.length < 2).map((w) => w.label)).toEqual(['Undo']);
+  it('gives every wedge an outer ring', () => {
+    expect(RADIAL_MENU.filter((w) => w.items.length < 2)).toEqual([]);
+  });
+
+  it('points, or passes a pack with P P (decision 305)', () => {
+    const point = RADIAL_MENU.find((w) => w.label === 'Point')!;
+    expect(point.items.map((i) => `${i.label}: ${i.presses.join(' ')}`)).toEqual(['Point: p', 'Pass pack: p p']);
   });
 
   it('gives every item an icon and a title for the bottom bar', () => {
     const items = RADIAL_MENU.flatMap((w) => w.items);
-    expect(items).toHaveLength(20);
+    expect(items).toHaveLength(21);
     for (const i of items) {
       expect(i.icon, i.label).not.toBe('');
       expect(i.title, i.label).not.toBe('');
@@ -74,7 +79,7 @@ describe('pick', () => {
     expect(labelOf(0, 80)).toBe('Stack');
     expect(labelOf(90, 80)).toBe('Turn 90°');
     expect(labelOf(225, 80)).toBe('Curve');
-    expect(labelOf(315, 80)).toBe('Undo');
+    expect(labelOf(315, 80)).toBe('Point');
   });
 
   it('picks an outer item past the inner ring, and overshoot still counts', () => {
@@ -97,7 +102,9 @@ describe('pick', () => {
   });
 
   it('falls back to the wedge itself where there is no ring', () => {
-    expect(labelOf(315, 170)).toBe('Undo');
+    const menu = [RADIAL_MENU[0], { ...RADIAL_MENU[7], items: RADIAL_MENU[7].items.slice(0, 1) }];
+    // Two wedges: the second is centred straight down, with one item and so no ring.
+    expect(itemOf(menu, pick(menu, ...at(180, 170), g))?.label).toBe('Point');
   });
 
   it('scales with the cursor size', () => {

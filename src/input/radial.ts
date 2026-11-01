@@ -48,8 +48,12 @@ export const RADIAL_MENU: RadialWedge[] = [
     { label: '7 cards', key: '7', presses: ['7'], icon: '7️⃣', title: 'Draw 7 cards: then click where the hand goes' },
     { label: 'N cards', key: '0', presses: ['0'], icon: '🔢', title: 'Draw any number: type how many, then click' },
   ] },
-  // One-step undo: Ctrl + Z again is the redo, so a Redo item would do the same (decision 298).
-  { label: 'Undo', icon: '↩️', cards: false, items: [{ label: 'Undo', key: 'Ctrl Z', presses: ['ctrl+z'], icon: '↩️', title: 'Undo the last change; again redoes it' }] },
+  // Point (decisions 189, 195): click where the cards go, as a stack; P again switches to face down,
+  // like a pack of draft cards to pass (decisions 226, 228). It replaced Undo here (decision 305).
+  { label: 'Point', icon: '👉', cards: true, items: [
+    { label: 'Point', key: 'P', presses: ['p'], icon: '👉', title: 'Move as a stack: then click the table where it goes' },
+    { label: 'Pass pack', key: 'P P', presses: ['p', 'p'], icon: '📦', title: 'Move face down, like a pack to pass: then click where it goes' },
+  ] },
 ];
 
 /** Radii in CSS pixels at medium cursor size: the hole in the middle, the inner ring, the outer ring. */

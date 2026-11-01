@@ -20,7 +20,7 @@ Actions that need a second click behave just like their keys: **Spread** arms th
 
 In a room, route each action through the same key names so `keyboard.guard` applies rank gating; wedges the player's rank can't use are dimmed.
 
-**Empty table, nothing selected:** the menu still opens, but every card wedge is dimmed; only Undo works.
+**Empty table, nothing selected:** the menu still opens, but every wedge is dimmed (decision 305: Undo, the one wedge that worked without cards, became Point).
 
 ## The wedges
 
@@ -35,7 +35,7 @@ Clockwise from the top. Letting go on the inner wedge does the first item.
 | Hand | Fan as hand (H) | Other size (H H): as wide as a stand on the table, the usual size on a stand (decision 303) |
 | Sort | Curve (C) | Colour columns (C C), Curve per colour (Shift C), EDHREC (E), Elo (E E) |
 | Draw | 1 card (1) | 7 cards (7), N cards (0): how many, with a Face down tick (decision 300) |
-| Undo | Undo (Ctrl Z) | Redo (Ctrl Z again) |
+| Point | Point (P): click where the cards go, as a stack | Pass pack (P P): face down, like a draft pack (decision 305) |
 
 Deliberately left off: pile tools (tokens, name, copy, delete, frame), dice, camera, search, save.
 
