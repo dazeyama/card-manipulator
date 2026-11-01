@@ -612,7 +612,11 @@ hud.addBesideSearch(pointBtn);
 const deckSearch = new DeckSearch(app, {
   inspect: (uid) => inspect.hover(uid ?? mouse.hovered),
   point: (uids) => togglePointer(uids),
-  shuffle: (uids) => commands.shuffle(uids),
+  // The shuffling hands, as S S shows them, until the cards settle (decision 313).
+  shuffle: (uids) => {
+    app.showGesture('shuffle', uids);
+    commands.shuffle(uids);
+  },
 });
 let lastL = 0;
 let lTimer = 0;
