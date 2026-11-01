@@ -29,7 +29,7 @@ export const RADIAL_MENU: RadialWedge[] = [
   ] },
   { label: 'Spread', icon: '🪟', cards: true, items: [
     { label: 'Spread', key: 'X', presses: ['x'], icon: '🪟', title: 'Spread out: then click the table, or drag a box to fit it inside' },
-    { label: 'Reverse', key: 'X X', presses: ['x', 'x'], icon: '🔁', title: 'Spread in reverse order: then click the table, or drag a box' },
+    { label: 'Reverse spread', key: 'X X', presses: ['x', 'x'], icon: '🔁', title: 'Spread in reverse order: then click the table, or drag a box' },
   ] },
   { label: 'Hand', icon: '🎴', cards: true, items: [
     { label: 'Fan as hand', key: 'H', presses: ['h'], icon: '🎴', title: 'Fan like a hand of cards; again stacks it back up' },
