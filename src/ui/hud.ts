@@ -135,8 +135,8 @@ export class Hud {
    * button does the first, and ▴ beside it opens all of them upward, with
    * `extras` (tick rows) under a line.
    */
-  addGroup(name: string, actions: HudAction[], extras: HTMLElement[] = []): { main: HTMLButtonElement; rows: HTMLButtonElement[] } {
-    const main = this.iconButton(actions[0]);
+  addGroup(name: string, actions: HudAction[], extras: HTMLElement[] = [], icon = actions[0].icon): { main: HTMLButtonElement; rows: HTMLButtonElement[] } {
+    const main = this.iconButton({ ...actions[0], icon });
     main.title += ` · ${name}: the rest under ▴`;
     const more = h('button', { class: 'btn small hud-more', title: `${name}: ${actions.map((a) => a.label).join(', ')}`, 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, '▴');
     const menu = h('div', { class: 'hud-menu', role: 'menu' }, h('div', { class: 'hud-menu-title' }, name));

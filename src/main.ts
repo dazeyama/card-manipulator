@@ -44,6 +44,7 @@ import { buildPlaymatTab } from './ui/playmatTab';
 import { ContextHints } from './ui/hints';
 import { HelpPanel } from './ui/helpPanel';
 import { RadialMenu } from './ui/radialMenu';
+import { RADIAL_MENU, type RadialItem } from './input/radial';
 import { buildQueryTab } from './ui/queryTab';
 import { HiRes } from './render/hires';
 import { installFit } from './ui/fit';
@@ -936,31 +937,22 @@ const removeSelection = () => {
 keyboard.bind('delete', removeSelection);
 keyboard.bind('backspace', removeSelection);
 
-// The bar's commands (decision 301): icon buttons with their key in the corner, and two groups
-// laid out as on the radial menu, each a button for its first command and ▴ for the rest.
-const arrange = hud.addGroup('Arrange', [
-  { icon: '📚', key: 'S', label: 'Stack', title: 'Gather the selection into one stack (S); neat in Tidy mode', run: () => commands.stack() },
-  { icon: '🧹', key: 'T', label: 'Tidy', title: 'Square up each pile the selection touches (T)', run: () => commands.tidy() },
-  { icon: '🪟', key: 'X', label: 'Spread', title: 'Spread the selection (X): then click the table to spread it there, or drag a box to fit it inside', run: () => startSpread([...store.selection]) },
-  { icon: '🎴', key: 'H', label: 'Fan', title: 'Fan the selection like a hand of cards, or stack a fan back up (H)', run: () => commands.toggleFan([...store.selection]) },
-]);
-const flipBtn = hud.addAction({ icon: '🃏', key: 'F', label: 'Flip', title: 'Flip the selection over (F)', run: () => commands.flip() });
+// The bar's commands (decisions 301, 302): every item of the radial menu, in its groups, so the two
+// can't drift apart. A wedge with more than one item is a button for its first and ▴ for all of
+// them; each runs its keys, as the radial does, on the selection (never on a pile under the cursor,
+// which is the bar). Icon buttons show their key in the corner.
 // Split creatures: curves put creatures and non-creatures in separate bands (decision 107), a tick in the Sort menu.
 const splitRow = hud.tickRow('🐉', 'Split creatures', 'Curves and the rank view (E) put creatures and non-creatures in separate bands', () => store.updateSettings({ curveSplit: !store.settings.curveSplit }));
-const sort = hud.addGroup('Sort', [
-  { icon: '📊', key: 'C', label: 'Curve', title: 'Curve the selection out by mana value, or stack it back up if it already is (C)', run: () => commands.toggleCurve([...store.selection], false) },
-  // The colour view (decision 217).
-  { icon: '🎨', key: 'C C', label: 'Colour columns', title: 'A column per colour, W U B R G, colourless, multicolour, lands (C C); C on it stacks it back up', run: () => {
-    const sel = [...store.selection];
-    const sorted = commands.curvedGroup(sel);
-    if (sorted) commands.toggleCurve(sel, false);
-    else commands.colourSort(sel);
-  } },
-  { icon: '🌈', key: 'Shift C', label: 'Curve per colour', title: 'Curve everything out in a row per colour, in the middle of the view (Shift + C)', run: () => curveAll() },
-  // The rank views (decision 198): EDHREC, again on a sorted view stacks it back up; CubeCobra Elo.
-  { icon: '🏆', key: 'E', label: 'EDHREC', title: 'Columns by EDHREC rank (E); again on a sorted view stacks it back up', run: () => commands.toggleRank([...store.selection]) },
-  { icon: '📈', key: 'E E', label: 'Elo', title: 'Columns by CubeCobra Elo (E E)', run: () => commands.rankSort([...store.selection], 'elo') },
-], [splitRow]);
+/** The bar's buttons that change the table, greyed by rank in a room. */
+const hudMoves: HTMLElement[] = [];
+for (const w of RADIAL_MENU) {
+  const actions = w.items.map((item) => ({ ...item, run: () => runKeys(item, { x: app.pointer.x, y: app.pointer.y }, null) }));
+  if (actions.length === 1) hudMoves.push(hud.addAction(actions[0]));
+  else {
+    const g = hud.addGroup(w.label, actions, w.label === 'Sort' ? [splitRow] : [], w.icon);
+    hudMoves.push(g.main, ...g.rows);
+  }
+}
 const syncSplit = () => {
   splitRow.classList.toggle('on', store.settings.curveSplit);
   splitRow.setAttribute('aria-checked', String(store.settings.curveSplit));
@@ -969,8 +961,6 @@ store.events.on('settings', syncSplit);
 syncSplit();
 const exportBtn = hud.addAction({ icon: '📤', key: 'Ctrl E', label: 'Export', title: 'Export the selection as a decklist or CSV (Ctrl + E)', run: () => exportSelection() });
 exportBtn.classList.add('export-trigger');
-/** The bar's buttons that move cards, greyed by rank in a room. */
-const hudMoves: HTMLElement[] = [arrange.main, ...arrange.rows, flipBtn, sort.main, ...sort.rows];
 function exportSelection(): void {
   const r = exportBtn.getBoundingClientRect();
   exporter.open([...store.selection], 'selection', { x: r.left + r.width / 2 - 120, y: r.top - 360 });
@@ -1060,20 +1050,22 @@ new RadialMenu(app, {
   hovered: () => mouse.hovered,
   hasCards: () => store.selection.size > 0 || !!mouse.hovered,
   allowed: (press) => keyboard.allowed(press),
-  run: (item, at, hovered) => {
-    const was = { hovered: mouse.hovered, x: app.pointer.x, y: app.pointer.y };
-    mouse.hovered = hovered;
-    app.pointer.x = at.x;
-    app.pointer.y = at.y;
-    try {
-      for (const press of item.presses) keyboard.press(press);
-    } finally {
-      mouse.hovered = was.hovered;
-      app.pointer.x = was.x;
-      app.pointer.y = was.y;
-    }
-  },
+  run: runKeys,
 });
+/** Do a radial item: its keys, pressed at `at` (canvas pixels) over `hovered`, which are put back after. */
+function runKeys(item: RadialItem, at: { x: number; y: number }, hovered: string | null): void {
+  const was = { hovered: mouse.hovered, x: app.pointer.x, y: app.pointer.y };
+  mouse.hovered = hovered;
+  app.pointer.x = at.x;
+  app.pointer.y = at.y;
+  try {
+    for (const press of item.presses) keyboard.press(press);
+  } finally {
+    mouse.hovered = was.hovered;
+    app.pointer.x = was.x;
+    app.pointer.y = was.y;
+  }
+}
 // Naming a pile and its filter need Move (6.2).
 const openPileEditor = pileEditor.open.bind(pileEditor);
 pileEditor.open = (...args: Parameters<typeof openPileEditor>) => {

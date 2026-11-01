@@ -23,6 +23,15 @@ describe('radial menu contents', () => {
     expect(RADIAL_MENU.filter((w) => w.items.length < 2).map((w) => w.label)).toEqual(['Undo']);
   });
 
+  it('gives every item an icon and a title for the bottom bar', () => {
+    const items = RADIAL_MENU.flatMap((w) => w.items);
+    expect(items).toHaveLength(20);
+    for (const i of items) {
+      expect(i.icon, i.label).not.toBe('');
+      expect(i.title, i.label).not.toBe('');
+    }
+  });
+
   it('draws 1, 7 or N cards', () => {
     const draw = RADIAL_MENU.find((w) => w.label === 'Draw')!;
     expect(draw.items.map((i) => i.presses.join(' '))).toEqual(['1', '7', '0']);

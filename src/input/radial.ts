@@ -2,8 +2,12 @@
 // wedge or outer-ring item a point is over. Pure, so it is tested; the overlay
 // that draws it and the Space key live in src/ui/radialMenu.ts.
 
-/** One thing the menu can do: the key presses it stands for, in order (S S is a shuffle). */
-export type RadialItem = { label: string; key: string; presses: string[] };
+/**
+ * One thing the menu can do: the key presses it stands for, in order (S S is a
+ * shuffle). The bottom bar shows every item too (decision 302), with its own
+ * icon and `title`, what it does, on hover.
+ */
+export type RadialItem = { label: string; key: string; presses: string[]; icon: string; title: string };
 
 /** One wedge of the inner ring. Its first item is what letting go on it does; with more, they are its outer ring. */
 export type RadialWedge = { label: string; icon: string; cards: boolean; items: RadialItem[] };
@@ -11,41 +15,41 @@ export type RadialWedge = { label: string; icon: string; cards: boolean; items: 
 /** Clockwise from the top. `cards`: needs a selection or a pile under the cursor. */
 export const RADIAL_MENU: RadialWedge[] = [
   { label: 'Stack', icon: '📚', cards: true, items: [
-    { label: 'Stack', key: 'S', presses: ['s'] },
-    { label: 'Shuffle', key: 'S S', presses: ['s', 's'] },
-    { label: 'Tidy', key: 'T', presses: ['t'] },
+    { label: 'Stack', key: 'S', presses: ['s'], icon: '📚', title: 'Gather into one stack; neat in Tidy mode' },
+    { label: 'Shuffle', key: 'S S', presses: ['s', 's'], icon: '🔀', title: 'Stack and shuffle' },
+    { label: 'Tidy', key: 'T', presses: ['t'], icon: '🧹', title: 'Square up each pile' },
   ] },
   { label: 'Flip', icon: '🃏', cards: true, items: [
-    { label: 'Flip', key: 'F', presses: ['f'] },
-    { label: 'Face all up', key: 'F F', presses: ['f', 'f'] },
+    { label: 'Flip', key: 'F', presses: ['f'], icon: '🃏', title: 'Flip over' },
+    { label: 'Face all up', key: 'F F', presses: ['f', 'f'], icon: '👁️', title: 'Turn every card face up' },
   ] },
   { label: 'Turn', icon: '🔃', cards: true, items: [
-    { label: 'Turn 90°', key: 'R', presses: ['r'] },
-    { label: 'Upright', key: 'R R', presses: ['r', 'r'] },
+    { label: 'Turn 90°', key: 'R', presses: ['r'], icon: '🔃', title: 'Turn 90°, to tap' },
+    { label: 'Upright', key: 'R R', presses: ['r', 'r'], icon: '⬆️', title: 'Stand upright again' },
   ] },
   { label: 'Spread', icon: '🪟', cards: true, items: [
-    { label: 'Spread', key: 'X', presses: ['x'] },
-    { label: 'Reverse', key: 'X X', presses: ['x', 'x'] },
+    { label: 'Spread', key: 'X', presses: ['x'], icon: '🪟', title: 'Spread out: then click the table, or drag a box to fit it inside' },
+    { label: 'Reverse', key: 'X X', presses: ['x', 'x'], icon: '🔁', title: 'Spread in reverse order: then click the table, or drag a box' },
   ] },
   { label: 'Hand', icon: '🎴', cards: true, items: [
-    { label: 'Fan as hand', key: 'H', presses: ['h'] },
-    { label: 'Full size', key: 'H H', presses: ['h', 'h'] },
+    { label: 'Fan as hand', key: 'H', presses: ['h'], icon: '🎴', title: 'Fan like a hand of cards; again stacks it back up' },
+    { label: 'Full size', key: 'H H', presses: ['h', 'h'], icon: '🖼️', title: 'On a stand: the hand at its usual size, not the slope’s width' },
   ] },
   { label: 'Sort', icon: '📊', cards: true, items: [
-    { label: 'Curve', key: 'C', presses: ['c'] },
-    { label: 'Colour columns', key: 'C C', presses: ['c', 'c'] },
-    { label: 'Curve per colour', key: 'Shift C', presses: ['shift+c'] },
-    { label: 'EDHREC', key: 'E', presses: ['e'] },
-    { label: 'Elo', key: 'E E', presses: ['e', 'e'] },
+    { label: 'Curve', key: 'C', presses: ['c'], icon: '📊', title: 'Curve out by mana value; again stacks it back up' },
+    { label: 'Colour columns', key: 'C C', presses: ['c', 'c'], icon: '🎨', title: 'A column per colour, W U B R G, colourless, multicolour, lands' },
+    { label: 'Curve per colour', key: 'Shift C', presses: ['shift+c'], icon: '🌈', title: 'Curve everything out in a row per colour, in the middle of the view' },
+    { label: 'EDHREC', key: 'E', presses: ['e'], icon: '🏆', title: 'Columns by EDHREC rank; again stacks it back up' },
+    { label: 'Elo', key: 'E E', presses: ['e', 'e'], icon: '📈', title: 'Columns by CubeCobra Elo' },
   ] },
   // A count, then click where the hand goes, as the keys do; N asks how many (decision 300).
   { label: 'Draw', icon: '🖐️', cards: true, items: [
-    { label: '1 card', key: '1', presses: ['1'] },
-    { label: '7 cards', key: '7', presses: ['7'] },
-    { label: 'N cards', key: '0', presses: ['0'] },
+    { label: '1 card', key: '1', presses: ['1'], icon: '1️⃣', title: 'Draw 1 card: then click where it goes' },
+    { label: '7 cards', key: '7', presses: ['7'], icon: '7️⃣', title: 'Draw 7 cards: then click where the hand goes' },
+    { label: 'N cards', key: '0', presses: ['0'], icon: '🔢', title: 'Draw any number: type how many, then click' },
   ] },
   // One-step undo: Ctrl + Z again is the redo, so a Redo item would do the same (decision 298).
-  { label: 'Undo', icon: '↩️', cards: false, items: [{ label: 'Undo', key: 'Ctrl Z', presses: ['ctrl+z'] }] },
+  { label: 'Undo', icon: '↩️', cards: false, items: [{ label: 'Undo', key: 'Ctrl Z', presses: ['ctrl+z'], icon: '↩️', title: 'Undo the last change; again redoes it' }] },
 ];
 
 /** Radii in CSS pixels at medium cursor size: the hole in the middle, the inner ring, the outer ring. */
