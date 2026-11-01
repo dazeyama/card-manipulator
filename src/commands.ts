@@ -600,7 +600,7 @@ export class Commands {
   }
 
   /** The last cut (decision 315): / again on either half, both still whole, completes it. */
-  private lastCut: { top: string[]; bottom: string[]; at: Footprint; stand: string | null; tidy: boolean } | null = null;
+  private lastCut: { top: string[]; bottom: string[]; at: Footprint; stand: string | null; tidy: boolean; spots: Map<string, { x: number; y: number }> } | null = null;
 
   /**
    * / (decision 314): cut a stack. The top 40 to 60 % of it is lifted off and
@@ -625,26 +625,35 @@ export class Commands {
     const step = CARD_W + 15;
     const f = this.app.facing;
     const at = m ? { x: c.x + step, y: c.y, yaw } : { x: c.x + step * Math.cos(f), y: c.y + step * Math.sin(f), yaw };
-    land(this.app, inSpace(m?.uid ?? null, () => (tidy ? stackAt : pileAt)(this.app, top, at)), { stagger: Math.min(3, 300 / n), arc: 10 });
-    this.lastCut = { top, bottom: uids.slice(0, uids.length - n), at: { x: c.x, y: c.y, yaw }, stand: m?.uid ?? null, tidy };
+    const landings = inSpace(m?.uid ?? null, () => (tidy ? stackAt : pileAt)(this.app, top, at));
+    land(this.app, landings, { stagger: Math.min(3, 300 / n), arc: 10 });
+    const bottom = uids.slice(0, uids.length - n);
+    // Where every card of both halves lies after the cut, to know them still untouched.
+    const spots = new Map(landings.map((l) => [l.uid, { x: l.x, y: l.y }]));
+    for (const u of bottom) {
+      const card = this.app.store.cards.get(u)!;
+      spots.set(u, { x: card.x, y: card.y });
+    }
+    this.lastCut = { top, bottom, at: { x: c.x, y: c.y, yaw }, stand: m?.uid ?? null, tidy, spots };
   }
 
   /**
    * Complete the last cut, as a dealer does (decision 315): the half that was
    * underneath goes on top of the half lifted off, as one stack where the deck
-   * was. Only for exactly one of the two halves, with the other still a whole
-   * stack of its own; false otherwise, and / cuts afresh.
+   * was. For / on either half while every card of both lies where the cut left
+   * it; by the cards' own spots, not pile detection, which can see two loose
+   * halves close together as one pile. False otherwise, and / cuts afresh.
    */
   private completeCut(cards: string[]): boolean {
     const cut = this.lastCut;
-    if (!cut) return false;
-    const set = new Set(cards);
-    const isHalf = (half: string[]) => half.length === set.size && half.every((u) => set.has(u));
-    if (!isHalf(cut.top) && !isHalf(cut.bottom)) return false;
-    const other = isHalf(cut.top) ? cut.bottom : cut.top;
-    const pile = this.app.store.pileOf(other[0]);
-    if (!pile || pile.cardUids.length !== other.length || !other.every((u) => pile.cardUids.includes(u))) return false;
+    if (!cut || !cards.some((u) => cut.spots.has(u))) return false;
+    const store = this.app.store;
+    const untouched = [...cut.spots].every(([u, p]) => {
+      const card = store.cards.get(u);
+      return !!card && Math.hypot(card.x - p.x, card.y - p.y) < 2;
+    });
     this.lastCut = null;
+    if (!untouched) return false;
     const order = [...byHeight(this.app, cut.top), ...byHeight(this.app, cut.bottom)];
     leaveSpreads(this.app, order);
     land(this.app, inSpace(cut.stand, () => (cut.tidy ? stackAt : pileAt)(this.app, order, cut.at)), { stagger: Math.min(3, 300 / order.length), arc: 10 });
