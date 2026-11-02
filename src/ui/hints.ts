@@ -20,7 +20,7 @@ const HINTS: Record<string, Hint[]> = {
     ['📐', 'Ctrl: tidy', 'ctrl'],
     ['🔃', 'R: turn'],
     ['🃏', 'F: flip'],
-    ['👇', 'Right-click: deal'],
+    ['👇', 'Right-click / Space: deal'],
     ['🪟', 'X: spread'],
     ['⎋', 'Esc: put back'],
   ],

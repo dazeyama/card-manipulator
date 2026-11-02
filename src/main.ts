@@ -325,6 +325,18 @@ mouse.hooks.rightWhileHolding = startDealing;
 window.addEventListener('mouseup', (e) => {
   if (e.button === 2) stopDealing();
 });
+// Space while holding cards deals them the same way (decision 181, back since decision 357):
+// the radial menu never opens while cards are held, so Space is free then.
+window.addEventListener('keydown', (e) => {
+  if (e.key !== ' ' || !drag.dragging) return;
+  if (e.target instanceof HTMLElement && e.target.closest('input, textarea, select, [contenteditable]')) return;
+  // Never a press on a focused button, nor a scroll.
+  e.preventDefault();
+  if (!e.repeat) startDealing();
+}, true);
+window.addEventListener('keyup', (e) => {
+  if (e.key === ' ') stopDealing();
+});
 window.addEventListener('blur', stopDealing);
 // Middle-click while holding cards flips them in the hand, as F does (decision 179).
 mouse.hooks.middleWhileHolding = () => {
