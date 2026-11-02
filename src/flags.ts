@@ -268,7 +268,8 @@ export class Flags {
   placeAt(at: { x: number; y: number }, near: { x: number; y: number }): void {
     this.app.flagging = false;
     const store = this.app.store;
-    const spot = clearOf(at, store.flags.values());
+    // The click is where the pole goes (decision 353): the circle's center lies the pole's offset away.
+    const spot = clearOf({ x: at.x - this.mastAt.x, y: at.y - this.mastAt.y }, store.flags.values());
     const f: Flag = { uid: newUid('g'), name: nextName(store.flags.values()), filter: null, colour: nextColour(store.flags.values()), x: spot.x, y: spot.y };
     store.setFlags([f]);
     store.clearSelection();
