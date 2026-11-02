@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { rng } from '../src/state/piles';
 import { messyLayout, overlaps } from '../src/state/piles';
-import { bottomAt, capRest, laidFlat, MAX_SLOPE, POP_MIN, popLift, REST_SLACK, restOn, restSlope, slopesOf, tiltFor, type Resting } from '../src/state/rest';
+import { bottomAt, capRest, laidFlat, MAX_SLOPE, POP_MIN, popLift, REST_SLACK, restCapped, restOn, restSlope, slopesOf, tiltFor, type Resting } from '../src/state/rest';
 import { CARD_H, CARD_T, CARD_W } from '../src/state/types';
 
 const flat = (x: number, y: number, z: number, yaw = 0): Resting => ({ x, y, z, yaw, tiltX: 0, tiltY: 0 });
@@ -176,15 +176,23 @@ describe('deep messy piles (decision 194)', () => {
     const placed = messyLayout(450, { x: 0, y: 0, yaw: 0 }, 0, random);
     const resting: Resting[] = [];
     let top = 0;
+    let sunk = 0;
     placed.forEach((c, k) => {
       const supports: Resting[] = [];
       for (let j = k - 1; j >= 0 && supports.length < 20; j--) if (overlaps(resting[j], c)) supports.push(resting[j]);
-      const r = capRest(restOn(c, supports), c.z);
+      const r = restCapped(c, supports, c.z);
+      // No card under it shows through it (decision 355): its bottom clears every support at its center.
+      for (const s of supports) {
+        const dx = c.x - s.x, dy = c.y - s.y, cs = Math.cos(s.yaw), sn = Math.sin(s.yaw);
+        const ls = dx * cs + dy * sn, lt = -dx * sn + dy * cs;
+        if (Math.abs(ls) < 31.5 && Math.abs(lt) < 44 && r.z - CARD_T / 2 < bottomAt(s, ls, lt) + CARD_T - 0.01) sunk++;
+      }
       resting.push({ x: c.x, y: c.y, yaw: c.yaw, ...r });
       top = Math.max(top, r.z);
     });
-    // 450 cards are 135 mm of card; the pile may sit a couple of millimeters proud, no more.
-    expect(top).toBeLessThan(placed[449].z + REST_SLACK + 0.01);
+    // 450 cards are 135 mm of card; the pile may sit a little proud, but never a tower (about a meter before decision 194).
+    expect(top).toBeLessThan(placed[449].z + 20);
+    expect(sunk).toBe(0);
   });
 
   it('leaves an ordinary rest alone', () => {

@@ -35,8 +35,12 @@ export interface Rest {
   yaw?: number;
 }
 
-/** A resting card may sit at most this far above its stacked height, mm (decision 194)... */
-export const REST_SLACK = 2;
+/**
+ * A resting card may sit at most this far above its stacked height, mm
+ * (decision 194)... 6 since decision 355: at 2, a curve laid partly over other
+ * cards was held down into the tilted card under it, which then showed through.
+ */
+export const REST_SLACK = 6;
 
 /**
  * ...because in a deep messy pile each card's tilt lifts the next a little more,
@@ -249,6 +253,22 @@ export function restOn(at: { x: number; y: number; yaw: number }, supports: Rest
   let c = -Infinity;
   for (const p of pts) c = Math.max(c, p.z - gs * p.s - gt * p.t);
   return { z: c + CARD_T / 2, ...tiltFor(gs, gt) };
+}
+
+/**
+ * A card's rest in a pile, kept from growing a tower (decisions 194, 355): its
+ * rest on what is under it, unless that sits more than REST_SLACK above its
+ * stacked height; then it lies flat on the highest point under it. Lying flat
+ * passes no tilt on to the cards above, and it is tilt piling up card after
+ * card that grows a tower; lying on the highest point means no card under it
+ * ever shows through it (pushing it down to the cap did, decision 355).
+ */
+export function restCapped(at: { x: number; y: number; yaw: number }, supports: Resting[], stackedZ: number): Rest {
+  const rest = restOn(at, supports);
+  if (rest.z <= stackedZ + REST_SLACK) return rest;
+  let top = 0;
+  for (const p of contacts(at, supports)) top = Math.max(top, p.z);
+  return { z: top + CARD_T / 2, tiltX: 0, tiltY: 0 };
 }
 
 /** Height of a resting card's bottom face at a point in its own frame (for tests and checks). */
