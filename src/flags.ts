@@ -152,10 +152,13 @@ export class Flags {
     this.buttons = document.createElement('div');
     this.buttons.className = 'flag-buttons';
     this.buttons.hidden = true;
-    // Under the buttons, the flag's filter while it is hovered (decision 332).
+    // Over the buttons, the flag's filter while it is hovered (decision 332), clear of the cloth below.
     this.filterTag = document.createElement('div');
     this.filterTag.className = 'flag-filter';
-    this.buttons.append(edit, out, this.lockButton, this.filterTag);
+    const row = document.createElement('div');
+    row.className = 'flag-button-row';
+    row.append(edit, out, this.lockButton);
+    this.buttons.append(this.filterTag, row);
     app.overlay.append(this.buttons);
 
     app.onFrame(() => this.frame());
@@ -589,15 +592,20 @@ export class Flags {
     this.buttons.hidden = !show;
     if (show) {
       const s = app.rig.worldToScreen(f.x, f.y, POLE_H);
-      this.buttons.style.transform = `translate(${Math.round(s.x + 8)}px, ${Math.round(s.y - 44)}px)`;
+      // Their bottom edge just above the pole's top, so they never cover the cloth.
+      this.buttons.style.transform = `translate(${Math.round(s.x + 8)}px, ${Math.round(s.y - 10)}px) translateY(-100%)`;
       this.lockButton.textContent = f.locked ? '🔒' : '🔓';
       this.lockButton.classList.toggle('on', !!f.locked);
       this.lockButton.title = f.locked ? 'Unlock: let the flag be moved and taken away' : 'Lock the flag in place';
       this.filterTag.hidden = !f.filter;
-      if (f.filter && this.filterTag.textContent !== f.filter) {
-        const pill = document.createElement('span');
-        pill.textContent = f.filter;
-        this.filterTag.replaceChildren(pill);
+      if (f.filter && this.filterTag.dataset.filter !== f.filter) {
+        this.filterTag.dataset.filter = f.filter;
+        const label = document.createElement('span');
+        label.className = 'flag-filter-label';
+        label.textContent = 'Filter';
+        const query = document.createElement('code');
+        query.textContent = f.filter;
+        this.filterTag.replaceChildren(label, query);
       }
     }
   }
