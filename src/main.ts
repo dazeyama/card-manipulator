@@ -288,6 +288,7 @@ mouse.hooks.matPress = (x, y, mods) => {
 mouse.hooks.emptyClick = (x, y) => {
   // A click on the table drops the dice selection too (decision 255).
   dice.select([]);
+  flags.select(null);
   mats.clicked(mats.matAt(x, y));
 };
 // Middle-click flips the card, or the whole selection if the card is in it (spec 10.5).
@@ -936,8 +937,12 @@ keyboard.bind('r', (e) => {
 // Selected dice are framed as if each were a card (decision 277).
 keyboard.bind('z', () => {
   const picked = [...dice.selected].map((u) => store.dice.get(u)).filter((d) => !!d);
-  const box = !store.selection.size && !picked.length && mats.selected ? mats.box(mats.selected) : null;
+  const nothing = !store.selection.size && !picked.length;
+  const box = nothing && mats.selected ? mats.box(mats.selected) : null;
+  // Or the flag last placed or moved, its whole circle (decision 334).
+  const zone = nothing && !box && flags.selected ? flags.box(flags.selected) : null;
   if (box) app.rig.frame(box.minX, box.minY, box.maxX, box.maxY, box.top);
+  else if (zone) app.rig.frame(zone.minX, zone.minY, zone.maxX, zone.maxY, 0);
   else commands.frame(picked);
 });
 // F twice quickly faces every card up, so a mixed stack is fronted (decision 105). Like R, F

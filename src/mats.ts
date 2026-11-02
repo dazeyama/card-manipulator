@@ -313,6 +313,8 @@ export class Mats {
   /** Make a mat the selected one, or none (decision 214). A locked mat can't be. */
   select(uid: string | null): void {
     if (uid && this.app.store.mats.get(uid)?.locked) uid = null;
+    // One selected object at a time: a mat takes it from a flag (decision 334).
+    if (uid) this.app.flags?.select(null);
     if (this.selected === uid) return;
     this.selected = uid;
     // Puts the rim in the right place among the mats.

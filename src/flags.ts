@@ -12,7 +12,7 @@
 // store's `flag` op (ONLINE.md O114).
 
 import * as THREE from 'three';
-import type { App } from './app';
+import { ACCENT, type App } from './app';
 import { land, placeSequential } from './commands';
 import type { CustomGesture, Mods } from './input/mouse';
 import { allowedNow } from './online/guard';
@@ -91,6 +91,14 @@ export class Flags {
   private carrying = false;
   /** The unlocked flag whose pole or cloth is under the mouse: a press there picks it up (the open glove). */
   grabbable: string | null = null;
+  /**
+   * The flag last placed or moved (decision 334), as for playmats (decision 214):
+   * a blue rim round its zone, and Z frames it, until cards are selected, the
+   * table is clicked, a playmat is moved, or it is locked or taken away.
+   */
+  selected: string | null = null;
+  /** The selected flag's rim, a band just outside its circle in the selection colour. */
+  private readonly rim = new THREE.Mesh(new THREE.RingGeometry(FLAG_REACH, FLAG_REACH + 6, 128), new THREE.MeshBasicMaterial({ color: ACCENT, depthTest: false, depthWrite: false }));
 
   /** A flag is in hand: the cursor shows the fist (decision 330). */
   get holding(): { carrying: boolean } | null {
@@ -105,6 +113,14 @@ export class Flags {
 
   constructor(private readonly app: App, private readonly deps: FlagDeps) {
     app.view.scene.add(this.group);
+    this.rim.visible = false;
+    this.rim.renderOrder = ZONE_ORDER + 0.02;
+    this.rim.position.z = 0.2;
+    this.group.add(this.rim);
+    // Choosing cards takes the selection away from the flag, as from a playmat.
+    app.store.events.on('selection', () => {
+      if (app.store.selection.size) this.select(null);
+    });
     this.editor = new FlagEditor(app, {
       saved: (f) => this.keepOut(f.uid),
       remove: (uid) => this.remove(uid),
@@ -171,6 +187,19 @@ export class Flags {
     this.sync();
   }
 
+  /** Make a flag the selected one, or none (decision 334). A locked flag can't be; selecting one unselects the playmat. */
+  select(uid: string | null): void {
+    if (uid && this.app.store.flags.get(uid)?.locked) uid = null;
+    this.selected = uid;
+    if (uid) this.app.mats?.select(null);
+  }
+
+  /** The table-space box round a flag's circle, for Z (decision 334). */
+  box(uid: string): { minX: number; minY: number; maxX: number; maxY: number } | null {
+    const f = this.app.store.flags.get(uid);
+    return f ? { minX: f.x - FLAG_REACH, minY: f.y - FLAG_REACH, maxX: f.x + FLAG_REACH, maxY: f.y + FLAG_REACH } : null;
+  }
+
   /** B: arm placing a flag, or put it down again. */
   arm(): void {
     if (this.app.flagging) {
@@ -191,6 +220,8 @@ export class Flags {
     const spot = clearOf(at, store.flags.values());
     const f: Flag = { uid: newUid('g'), name: nextName(store.flags.values()), filter: null, colour: nextColour(store.flags.values()), x: spot.x, y: spot.y };
     store.setFlags([f]);
+    store.clearSelection();
+    this.select(f.uid);
     this.editor.show(f.uid, near, true);
   }
 
@@ -206,6 +237,7 @@ export class Flags {
     if (!this.app.store.flags.has(uid)) return;
     this.app.store.setFlags([], [uid]);
     if (this.hovered === uid) this.hovered = null;
+    if (this.selected === uid) this.select(null);
   }
 
   /** The flag whose pole or cloth is under a screen point (canvas pixels), or null. */
@@ -342,6 +374,9 @@ export class Flags {
           }
         }
         store.setFlags([{ ...f, x: spot.x, y: spot.y }]);
+        // The flag just moved is the selected object (decision 334).
+        store.clearSelection();
+        this.select(uid);
         // Set down on cards: the ones that don't match go out past the edge.
         this.keepOut(uid);
       },
@@ -566,6 +601,13 @@ export class Flags {
         const f = flagOfCard(flags, c);
         if (f) this.counts.set(f.uid, (this.counts.get(f.uid) ?? 0) + 1);
       }
+    }
+    const sel = this.selected ? store.flags.get(this.selected) : undefined;
+    if (this.selected && (!sel || sel.locked)) this.selected = null;
+    this.rim.visible = !!sel && !sel.locked;
+    if (sel) {
+      const at = this.dragging?.uid === sel.uid ? this.dragging : sel;
+      this.rim.position.set(at.x, at.y, 0.2);
     }
     const cam = app.rig.camera.position;
     for (const f of store.flags.values()) {
