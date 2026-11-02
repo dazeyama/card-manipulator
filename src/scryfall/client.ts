@@ -1,19 +1,31 @@
 // The one serialized Scryfall queue (spec 5.2), ported from the PUG Pricing
 // Tool's transport: one request at a time, general calls 100 ms apart,
-// searches 550 ms after the previous search's answer. A 429 pauses the whole
-// queue for as long as Scryfall asks and raises a visible banner.
+// searches 550 ms after the previous search's answer. Scryfall's limit of two
+// a second covers /cards/collection, /cards/named and /cards/random as well
+// as /cards/search, so those go at the search pace (decision 358). A 429
+// pauses the whole queue for as long as Scryfall asks and raises a visible
+// banner.
 
 export const API = 'https://api.scryfall.com';
 const GENERAL_GAP_MS = 100;
 const SEARCH_GAP_MS = 550;
 const ANSWER_MS = 10_000;
 const TRIES = 5;
+/** The endpoints Scryfall limits to two a second, paced as searches (decision 358). */
+const PACED = /^https:\/\/api\.scryfall\.com\/cards\/(search|named|random|collection)(?:[/?]|$)/;
+/**
+ * A browser can't read Scryfall's 429: it carries no CORS header, so fetch
+ * fails as if there were no answer. A second failure in a row is taken for
+ * one, and the queue waits out Scryfall's 30-second lockout (decision 358).
+ */
+const FIRST_RETRY_MS = 1500;
+const LOCKOUT_MS = 31_000;
 
 export type RequestKind = 'general' | 'search';
 
 export class UnavailableError extends Error {
   constructor(url: string, readonly limited = false) {
-    super(limited ? 'Scryfall is asking for fewer requests' : `No response from ${new URL(url).host}`);
+    super(limited ? 'Scryfall is asking for fewer requests; try again in a minute' : `No response from ${new URL(url).host}`);
     this.name = 'UnavailableError';
   }
 }
@@ -63,7 +75,8 @@ export class ScryfallClient {
   request(url: string, opts: { kind?: RequestKind; init?: RequestInit; signal?: AbortSignal } = {}): Promise<Response> {
     if (opts.signal?.aborted) return Promise.reject(new DOMException('Aborted', 'AbortError'));
     return new Promise((resolve, reject) => {
-      this.queue.push({ url, kind: opts.kind ?? 'general', init: opts.init, signal: opts.signal, resolve, reject });
+      const kind = opts.kind ?? (PACED.test(url) ? 'search' : 'general');
+      this.queue.push({ url, kind, init: opts.init, signal: opts.signal, resolve, reject });
       this.emit();
       void this.pump();
     });
@@ -130,7 +143,16 @@ export class ScryfallClient {
         res = await this.fetchFn(job.url, { ...job.init, headers, signal: ctrl.signal });
       } catch {
         if (job.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-        await sleep(400 * (attempt + 1));
+        // Offline: no point waiting.
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) break;
+        if (attempt === 0) {
+          await sleep(FIRST_RETRY_MS);
+        } else {
+          // Again: most likely a 429 the browser hid from us. Wait out the lockout, banner up.
+          limited = true;
+          this.pausedUntil = Date.now() + LOCKOUT_MS;
+          this.emit();
+        }
         continue;
       } finally {
         clearTimeout(clock);

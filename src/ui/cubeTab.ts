@@ -41,7 +41,11 @@ export function buildCubeTab(app: App, options: () => SpawnOptions): HTMLElement
       const missing = ids.filter((i) => !records.has(i));
       if (missing.length) {
         status.textContent = `${cube.name}: getting card data for ${missing.length.toLocaleString()} cards…`;
-        for (const r of await fetchByIds(missing)) records.set(r.id, r);
+        // Two requests a second at most (decision 358): a big cube takes a while, so count it up.
+        const got = await fetchByIds(missing, (done, total) => {
+          status.textContent = `${cube.name}: getting card data, ${done.toLocaleString()} of ${total.toLocaleString()} cards…`;
+        });
+        for (const r of got) records.set(r.id, r);
       }
       // Elo by oracle id, so every printing of a card shares it.
       const elo: [string, number][] = [];

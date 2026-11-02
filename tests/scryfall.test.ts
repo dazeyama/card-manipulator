@@ -127,6 +127,32 @@ describe('ScryfallClient queue (spec 5.2)', () => {
     expect(starts[3][1] - starts[2][1]).toBeGreaterThanOrEqual(545);
   });
 
+  it('paces /cards/collection, /cards/named and /cards/random as searches: Scryfall allows two a second (decision 358)', async () => {
+    const starts: number[] = [];
+    const fake = (async () => {
+      starts.push(Date.now());
+      return new Response('{"data":[]}', { status: 200 });
+    }) as unknown as typeof fetch;
+    const c = new ScryfallClient(fake);
+    await Promise.all([c.postJson('/cards/collection', { identifiers: [] }), c.postJson('/cards/collection', { identifiers: [] }), c.getJson('/cards/named?exact=Opt')]);
+    expect(starts[1] - starts[0]).toBeGreaterThanOrEqual(545);
+    expect(starts[2] - starts[1]).toBeGreaterThanOrEqual(545);
+  });
+
+  it('tries again after a moment when fetch fails outright', async () => {
+    let n = 0;
+    const fake = (async () => {
+      n++;
+      if (n === 1) throw new TypeError('Failed to fetch');
+      return new Response('{"ok":1}', { status: 200 });
+    }) as unknown as typeof fetch;
+    const c = new ScryfallClient(fake);
+    const t0 = Date.now();
+    expect(await c.getJson('/x')).toEqual({ ok: 1 });
+    expect(Date.now() - t0).toBeGreaterThanOrEqual(1400);
+    expect(n).toBe(2);
+  });
+
   it('waits out a 429 for as long as Scryfall asks', async () => {
     let n = 0;
     const fake = (async () => {

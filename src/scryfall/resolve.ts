@@ -121,11 +121,12 @@ export async function resolveEntries(entries: DeckEntry[], onProgress?: (done: n
 }
 
 /** Fetch records by Scryfall id (save files missing their cardData, spec 6.3). */
-export async function fetchByIds(ids: string[]): Promise<CardRecord[]> {
+export async function fetchByIds(ids: string[], onProgress?: (done: number, total: number) => void): Promise<CardRecord[]> {
   const out: CardRecord[] = [];
   for (let start = 0; start < ids.length; start += BATCH) {
     const res = await scryfall.postJson<{ data: ScryfallCard[] }>('/cards/collection', { identifiers: ids.slice(start, start + BATCH).map((id) => ({ id })) });
     out.push(...res.data.map((c) => trimCard(c)));
+    onProgress?.(Math.min(ids.length, start + BATCH), ids.length);
   }
   await putRecords(out);
   return out;
