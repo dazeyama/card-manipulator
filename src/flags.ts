@@ -26,6 +26,12 @@ import { FlagEditor } from './ui/flagEditor';
 /** The pole: how tall, and how thick (mm). */
 const POLE_H = 170;
 const POLE_R = 2.5;
+/**
+ * The pole stands at the top of its zone, on the circle's far edge from the
+ * default view (decision 333), leaving the middle clear for cards; the flag's
+ * x and y stay the zone's centre.
+ */
+const MAST_Y = FLAG_REACH;
 /** The cloth's height on the table, mm; its width follows the text. */
 const CLOTH_H = 46;
 /** The cloth's texture: this many pixels tall, so the text stays sharp up close. */
@@ -436,7 +442,7 @@ export class Flags {
     const f = this.app.store.flags.get(uid);
     const r = this.app.canvas.getBoundingClientRect();
     if (!f) return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-    const s = this.app.rig.worldToScreen(f.x, f.y, POLE_H);
+    const s = this.app.rig.worldToScreen(f.x, f.y + MAST_Y, POLE_H);
     return { x: r.left + s.x, y: r.top + s.y };
   }
 
@@ -509,7 +515,11 @@ export class Flags {
     const shadowTurner = new THREE.Group();
     shadowTurner.position.z = turner.position.z;
     shadowTurner.add(shadow);
-    root.add(zone, ring, pole, base, grip, turner, shadowTurner);
+    // Pole, cloth and shadow stand together at the top of the zone.
+    const mast = new THREE.Group();
+    mast.position.y = MAST_Y;
+    mast.add(pole, base, grip, turner, shadowTurner);
+    root.add(zone, ring, mast);
     return { root, zone, ring, turner, cloth, grip, shadow, shadowTurner, text: '', colour: '', width: 0 };
   }
 
@@ -567,7 +577,7 @@ export class Flags {
       d.root.position.set(at.x, at.y, 0);
       // The cloth faces the camera: turned about the pole, and tilted back as far as the camera looks down.
       const dx = cam.x - at.x;
-      const dy = cam.y - at.y;
+      const dy = cam.y - (at.y + MAST_Y);
       d.turner.rotation.z = Math.atan2(dx, -dy);
       d.shadowTurner.rotation.z = d.turner.rotation.z;
       d.turner.rotation.x = -Math.atan2(cam.z - d.turner.position.z, Math.hypot(dx, dy));
@@ -591,7 +601,7 @@ export class Flags {
     const show = !!f && !this.dragging && !app.flagging;
     this.buttons.hidden = !show;
     if (show) {
-      const s = app.rig.worldToScreen(f.x, f.y, POLE_H);
+      const s = app.rig.worldToScreen(f.x, f.y + MAST_Y, POLE_H);
       // Their bottom edge just above the pole's top, so they never cover the cloth.
       this.buttons.style.transform = `translate(${Math.round(s.x + 8)}px, ${Math.round(s.y - 10)}px) translateY(-100%)`;
       this.lockButton.textContent = f.locked ? '🔒' : '🔓';
