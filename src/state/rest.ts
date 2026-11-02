@@ -61,15 +61,15 @@ interface Drawn {
 
 /** A hovered card always pops up at least this far, mm... */
 export const POP_MIN = 2;
-/** ...and clears the cards lying on it by this much, mm, up to POP_MAX (decision 174). */
+/** ...and clears the cards lying on it by this much, mm (decision 174), however many there are (decision 347). */
 const POP_CLEAR = 0.6;
-const POP_MAX = 40;
 const HALF_DIAG = Math.hypot(CARD_W, CARD_H) / 2;
 
 /**
  * How far to lift a hovered card so it shows whole (decision 174): above every
  * card overlapping it that lies higher, allowing for tilts, and never less
- * than POP_MIN.
+ * than POP_MIN. No limit (decision 347): however tall the stack and however far
+ * down the hovered card, it becomes the top preview card.
  */
 export function popLift(me: Drawn, others: Iterable<Drawn>): number {
   const slant = (d: Drawn) => (Math.abs(Math.sin(d.tiltX)) + Math.abs(Math.sin(d.tiltY))) * HALF_DIAG;
@@ -79,7 +79,7 @@ export function popLift(me: Drawn, others: Iterable<Drawn>): number {
     if (o.z <= me.z || !overlaps(o, me)) continue;
     lift = Math.max(lift, o.z + CARD_T / 2 + slant(o) - myBottom + POP_CLEAR);
   }
-  return Math.min(POP_MAX, lift);
+  return lift;
 }
 
 /** True while a card is still where an X spread laid it, so it lies flat (decision 160). */

@@ -137,6 +137,14 @@ describe('the hover pop (decision 174)', () => {
     expect(me.z - CARD_T / 2 + lift).toBeGreaterThan(above[9].z + CARD_T / 2);
   });
 
+  it('lifts the bottom card of a very tall stack above its top, with no limit (decision 347)', () => {
+    const me = card(CARD_T / 2);
+    const above = Array.from({ length: 400 }, (_, i) => card(CARD_T / 2 + (i + 1) * CARD_T));
+    const lift = popLift(me, above);
+    expect(lift).toBeGreaterThan(400 * CARD_T);
+    expect(me.z - CARD_T / 2 + lift).toBeGreaterThan(above[399].z + CARD_T / 2);
+  });
+
   it('allows for a tilted card above', () => {
     const me = card(CARD_T / 2);
     const flat = popLift(me, [card(CARD_T * 1.5, 20)]);
