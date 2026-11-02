@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CARRY_S, flickDirection, inMotion, MOVING_SPEED, planeBase, stopWhereTheyAre, sweepCount, SWEEP_ALL_MS, SWEEP_MESSY_ALL_MS, SWEEP_MESSY_MORE_MS, SWEEP_MORE_MS } from '../src/physics/feel';
+import { CARRY_S, FLICK_SPEED, flickDirection, inMotion, MOVING_SPEED, planeBase, stopWhereTheyAre, sweepCount, SWEEP_ALL_MS, SWEEP_MESSY_ALL_MS, SWEEP_MESSY_MORE_MS, SWEEP_MORE_MS } from '../src/physics/feel';
 
 describe('flickDirection (spec 10.5)', () => {
   it('fires on a fast move that reverses sharply, tossing the way it was going', () => {
@@ -12,6 +12,11 @@ describe('flickDirection (spec 10.5)', () => {
     expect(flickDirection({ x: 1000, y: 0 }, { x: -800, y: 0 }, 2300)).toBeNull();
     expect(flickDirection({ x: 3000, y: 0 }, { x: 2000, y: 1500 }, 2300)).toBeNull();
     expect(flickDirection({ x: 3000, y: 0 }, { x: -50, y: 0 }, 2300)).toBeNull();
+  });
+  it('fires on a quick shake at the Normal speed, turning back just past square (decision 345)', () => {
+    expect(flickDirection({ x: 1400, y: 0 }, { x: -10, y: 600 }, FLICK_SPEED.normal)).not.toBeNull();
+    expect(flickDirection({ x: 1300, y: 0 }, { x: -800, y: 0 }, FLICK_SPEED.normal)).toBeNull();
+    expect(flickDirection({ x: 900, y: 0 }, { x: -800, y: 0 }, FLICK_SPEED.sensitive)).not.toBeNull();
   });
   it('respects the setting: Sensitive fires sooner, Off never', () => {
     expect(flickDirection({ x: 1600, y: 0 }, { x: -800, y: 0 }, 1400)).not.toBeNull();

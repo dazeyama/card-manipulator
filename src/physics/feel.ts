@@ -162,7 +162,8 @@ interface Dwell {
 }
 
 /** Flick thresholds in screen pixels per second (spec 10.5: Off / Normal / Sensitive). */
-export const FLICK_SPEED = { off: Infinity, normal: 1600, sensitive: 1000 };
+// A little more sensitive since decision 345 (from 1600 and 1000); the same flick flips cards and rolls dice.
+export const FLICK_SPEED = { off: Infinity, normal: 1350, sensitive: 850 };
 
 export class DragController {
   private held: Held[] = [];
@@ -1269,8 +1270,8 @@ export function flickDirection(prev: { x: number; y: number }, v: { x: number; y
   const speed = Math.hypot(v.x, v.y);
   if (prevSpeed < threshold || speed < 150) return null;
   const cos = (prev.x * v.x + prev.y * v.y) / (prevSpeed * speed);
-  // The move must turn back by more than about 95°.
-  if (cos > -0.1) return null;
+  // The move must turn back by more than 90° (95° before decision 345).
+  if (cos > 0) return null;
   return { x: prev.x / prevSpeed, y: prev.y / prevSpeed };
 }
 
