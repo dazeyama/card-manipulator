@@ -289,6 +289,8 @@ mouse.hooks.emptyClick = (x, y) => {
   // A click on the table drops the dice selection too (decision 255).
   dice.select([]);
   flags.select(null);
+  // A double-click on a flag's bare zone selects its cards (decision 335), before a mat under it would.
+  if (flags.clicked(x, y)) return void mats.clicked(null);
   mats.clicked(mats.matAt(x, y));
 };
 // Middle-click flips the card, or the whole selection if the card is in it (spec 10.5).

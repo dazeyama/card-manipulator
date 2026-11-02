@@ -32,6 +32,8 @@ const POLE_R = 2.5;
  * x and y stay the zone's centre.
  */
 const MAST_Y = FLAG_REACH;
+/** Two clicks on a flag's bare zone within this long select its cards (decision 335). */
+const DOUBLE_CLICK_MS = 350;
 /** The cloth's height on the table, mm; its width follows the text. */
 const CLOTH_H = 46;
 /** The cloth's texture: this many pixels tall, so the text stays sharp up close. */
@@ -198,6 +200,26 @@ export class Flags {
   box(uid: string): { minX: number; minY: number; maxX: number; maxY: number } | null {
     const f = this.app.store.flags.get(uid);
     return f ? { minX: f.x - FLAG_REACH, minY: f.y - FLAG_REACH, maxX: f.x + FLAG_REACH, maxY: f.y + FLAG_REACH } : null;
+  }
+
+  private lastClick = { uid: '', at: 0 };
+
+  /**
+   * A click on bare table (canvas pixels). Two on the same flag's zone within
+   * 0.35 s select every card in it, as a double-click on a playmat does
+   * (decisions 233, 335); a locked flag too. True when they did.
+   */
+  clicked(sx: number, sy: number): boolean {
+    const store = this.app.store;
+    const t = this.app.rig.screenToPlane(sx, sy, 0);
+    const uid = t ? flagOfCard(store.flags.values(), t)?.uid ?? '' : '';
+    const now = performance.now();
+    const twice = !!uid && uid === this.lastClick.uid && now - this.lastClick.at < DOUBLE_CLICK_MS;
+    this.lastClick = { uid: twice ? '' : uid, at: now };
+    const f = twice ? store.flags.get(uid) : undefined;
+    if (!f) return false;
+    store.setSelection(this.members(f).map((c) => c.uid));
+    return true;
   }
 
   /** B: arm placing a flag, or put it down again. */
