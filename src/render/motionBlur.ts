@@ -242,10 +242,18 @@ export class MotionBlur {
         depthWrite: m.depthWrite,
         side: m.side,
       });
-      // Each object its own last-frame matrix; one never drawn before, or following the camera, counts as still.
+      // Each object its own last-frame matrix; one never drawn before counts as still. Two kinds of
+      // object move with the camera (decision 344):
+      // - `noBlur`, the table: it slides to stay under the camera, but stands for the fixed table top,
+      //   so it is always measured where it is now (still, unless the camera's swing blurs);
+      // - `followsCamera`, a flag's pole and cloth: they turn and slide round to face the camera, so on
+      //   screen they hardly move. Measured against the camera alone they count as still; when the
+      //   swing blurs the camera, their real last-frame place is used, which nearly cancels it.
       const uniforms = mm.uniforms;
       mm.onBeforeRender = (_r, _s, _c, _g, object) => {
-        const prev = object.userData.noBlur ? undefined : this.prev.get(object);
+        const d = object.userData;
+        const swing = this.cameraUniforms.uCameraBlur.value > 0.5;
+        const prev = d.noBlur || (d.followsCamera && !swing) ? undefined : this.prev.get(object);
         uniforms.uPrev.value.copy(prev ?? object.matrixWorld);
         mm!.uniformsNeedUpdate = true;
       };
