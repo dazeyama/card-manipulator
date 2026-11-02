@@ -36,8 +36,10 @@ const POLE_R = 2.5;
 const MAST_R = FLAG_REACH;
 /** How quickly the pole slides round to the top, per second (most of the way in about a third of a second). */
 const MAST_EASE = 9;
-/** The hover buttons stay this long after the mouse leaves the flag, so it can reach them (decision 337). */
-const BUTTON_GRACE_MS = 700;
+/** The hover buttons stay this long after the mouse leaves the flag and the way up to them (decisions 337, 339). */
+const BUTTON_GRACE_MS = 1200;
+/** Slack round the way from the pole up to the buttons, screen pixels. */
+const CORRIDOR_PX = 28;
 /** Two clicks on a flag's bare zone within this long select its cards (decision 335). */
 const DOUBLE_CLICK_MS = 350;
 /** The cloth's height on the table, mm; its width follows the text. */
@@ -628,6 +630,28 @@ export class Flags {
     d.text = text;
   }
 
+  /**
+   * Whether a screen point (canvas pixels) is on the way to a flag's buttons:
+   * inside its zone on the table, cards or not, or in the strip from the pole's
+   * foot up past its top to the buttons.
+   */
+  private onTheWay(uid: string, sx: number, sy: number): boolean {
+    const f = this.app.store.flags.get(uid);
+    if (!f) return false;
+    const rig = this.app.rig;
+    const t = rig.screenToPlane(sx, sy, 0);
+    if (t && Math.hypot(t.x - f.x, t.y - f.y) <= FLAG_REACH) return true;
+    const foot = rig.worldToScreen(f.x + this.mastAt.x, f.y + this.mastAt.y, 0);
+    const top = rig.worldToScreen(f.x + this.mastAt.x, f.y + this.mastAt.y, POLE_H);
+    const canvas = this.app.canvas.getBoundingClientRect();
+    const b = this.buttons.getBoundingClientRect();
+    const left = Math.min(foot.x, top.x, b.left - canvas.left) - CORRIDOR_PX;
+    const right = Math.max(foot.x, top.x, b.right - canvas.left) + CORRIDOR_PX;
+    const upper = Math.min(top.y, b.top - canvas.top) - CORRIDOR_PX;
+    const lower = Math.max(foot.y, top.y) + CORRIDOR_PX;
+    return sx >= left && sx <= right && sy >= upper && sy <= lower;
+  }
+
   /** Every frame; `dt` is the seconds since the last one. */
   private frame(dt: number): void {
     const app = this.app;
@@ -687,11 +711,12 @@ export class Flags {
       }
       this.hovered = hovered;
     }
-    // The buttons wait a moment after the mouse leaves the flag: from the zone to the buttons over
-    // the pole is a short trip off the flag. On them they stay, as long as the mouse does.
+    // The buttons stay while the mouse is on its way to them (decision 339): anywhere in the flag's
+    // zone, over cards too, or between the pole and the buttons; and a moment more after that.
+    // On them they stay, as long as the mouse does. (Delete still takes only the flag hovered now.)
     const now = performance.now();
-    if (this.buttons.matches(':hover')) this.lastHoverAt = now;
-    else if (this.hovered) {
+    if (this.buttons.matches(':hover') || (this.buttonsFor && p.inside && this.onTheWay(this.buttonsFor, p.x, p.y))) this.lastHoverAt = now;
+    if (this.hovered && !this.buttons.matches(':hover')) {
       this.buttonsFor = this.hovered;
       this.lastHoverAt = now;
     } else if (now - this.lastHoverAt > BUTTON_GRACE_MS) this.buttonsFor = null;
