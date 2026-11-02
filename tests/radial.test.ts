@@ -65,7 +65,7 @@ describe('angles and wedges', () => {
     expect(angleOf(-10, 0)).toBeCloseTo((3 * Math.PI) / 2);
   });
 
-  it('centres wedge 0 on straight up, including just left of it', () => {
+  it('centers wedge 0 on straight up, including just left of it', () => {
     const deg = (d: number) => (d * Math.PI) / 180;
     expect(wedgeAt(deg(0), 8)).toBe(0);
     expect(wedgeAt(deg(350), 8)).toBe(0);
@@ -75,7 +75,7 @@ describe('angles and wedges', () => {
   });
 
   it('wraps the outer ring of the top wedge across straight up', () => {
-    // Stack's three items span 96°, centred on 0°: from 312° round to 48°.
+    // Stack's three items span 96°, centered on 0°: from 312° round to 48°.
     const deg = (d: number) => (d * Math.PI) / 180;
     expect(itemAt(deg(320), 0, 8, 3)).toBe(0);
     expect(itemAt(deg(0), 0, 8, 3)).toBe(1);
@@ -97,11 +97,11 @@ describe('pick', () => {
   });
 
   it('picks an outer item past the inner ring, and overshoot still counts', () => {
-    // Sort is centred on 225°; its five items span 160°, the second from 177° to 209°.
+    // Sort is centered on 225°; its five items span 160°, the second from 177° to 209°.
     const fromSort = pick(RADIAL_MENU, ...at(225, 80), g);
-    expect(labelOf(196, 150, fromSort)).toBe('Colour columns');
-    expect(labelOf(196, 600, fromSort)).toBe('Colour columns');
-    expect(labelOf(225, 150, fromSort)).toBe('Curve per colour');
+    expect(labelOf(196, 150, fromSort)).toBe('Color columns');
+    expect(labelOf(196, 600, fromSort)).toBe('Color columns');
+    expect(labelOf(225, 150, fromSort)).toBe('Curve per color');
     // Straight out from Hand, the same angle is Hand's own ring.
     expect(labelOf(196, 150, pick(RADIAL_MENU, ...at(180, 80), g))).toBe('Wide hand');
   });
@@ -117,7 +117,7 @@ describe('pick', () => {
 
   it('falls back to the wedge itself where there is no ring', () => {
     const menu = [RADIAL_MENU[0], { ...RADIAL_MENU[7], items: RADIAL_MENU[7].items.slice(0, 1) }];
-    // Two wedges: the second is centred straight down, with one item and so no ring.
+    // Two wedges: the second is centered straight down, with one item and so no ring.
     expect(itemOf(menu, pick(menu, ...at(180, 170), g))?.label).toBe('Point');
   });
 

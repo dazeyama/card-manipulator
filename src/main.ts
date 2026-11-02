@@ -198,7 +198,7 @@ mouse.hooks.wheelObject = (x, y, up, shift) => {
   dice.step(dice.targets(), (up ? 1 : -1) * (shift ? 5 : 1));
   return true;
 };
-// C over a die (or with only dice selected) opens its colour menu (decision 278).
+// C over a die (or with only dice selected) opens its color menu (decision 278).
 const diceColours = new DiceColours(dice);
 const colourTargets = (): string[] => (dice.hovered || (!store.selection.size && !mouse.hovered) ? dice.targets() : []);
 // A life counter on every playmat (decision 239).
@@ -472,7 +472,7 @@ keyboard.bind('s', () => {
   else commands.stack(hoveredPile());
 });
 // X (decision 159): the pointing glove; the next click spreads the selection (or the hovered
-// pile) centred there, or a dragged box spreads it to fit inside the box. X on a spread
+// pile) centered there, or a dragged box spreads it to fit inside the box. X on a spread
 // restacks it at once. Once armed, each X switches to the reverse spread, rows laid right to
 // left so the mana costs show, and back, even while the box is being drawn (decisions 215, 216).
 // Esc cancels.
@@ -514,8 +514,8 @@ keyboard.bind('t', () => {
   else commands.tidy(hoveredPile());
 });
 // C: curve out the selection or the hovered pile by mana value; Shift + C: everything
-// (or the selection), sorted into a row per colour (decision 107). C C: the same cards in a
-// column per colour, W U B R G C M L (decision 217), as E E follows E.
+// (or the selection), sorted into a row per color (decision 107). C C: the same cards in a
+// column per color, W U B R G C M L (decision 217), as E E follows E.
 let lastC = 0;
 let cTargets: string[] = [];
 keyboard.bind('c', () => {
@@ -722,7 +722,7 @@ app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
     else commands.dealHand(draw.source, draw.count, at, slope?.m ?? null);
   }
 }, true);
-// Spreading (decision 159): a click spreads the cards centred there; a drag draws a box they fit inside.
+// Spreading (decision 159): a click spreads the cards centered there; a drag draws a box they fit inside.
 const spreadBox = h('div', { class: 'marquee' });
 spreadBox.hidden = true;
 app.overlay.append(spreadBox);
@@ -823,7 +823,7 @@ function slopeBox(m: Mat, x0: number, y0: number, x1: number, y1: number): { min
 
 /**
  * The part of the table inside a box drawn on screen: the biggest table-aligned
- * rectangle about the box's centre whose corners all land inside it, since a
+ * rectangle about the box's center whose corners all land inside it, since a
  * tilted camera turns the screen box into a trapezoid on the table.
  */
 function tableBox(x0: number, y0: number, x1: number, y1: number): { minX: number; minY: number; maxX: number; maxY: number } | null {
@@ -1042,7 +1042,7 @@ keyboard.bind('backspace', removeSelection);
 // which is the bar). Icon buttons show their key in the corner.
 // Split creatures: curves put creatures and non-creatures in separate bands (decision 107), a tick in the Sort menu.
 const splitRow = hud.tickRow('🐉', 'Split creatures', 'Curves and the rank view (E) put creatures and non-creatures in separate bands', () => store.updateSettings({ curveSplit: !store.settings.curveSplit }));
-/** The bar's buttons that change the table, greyed by rank in a room. */
+/** The bar's buttons that change the table, grayed by rank in a room. */
 const hudMoves: HTMLElement[] = [];
 /** Rows whose name depends on whether the selection lies on a stand (H H, decision 307). */
 const standRows: { row: HTMLButtonElement; item: RadialItem }[] = [];
@@ -1193,7 +1193,7 @@ pileEditor.open = (...args: Parameters<typeof openPileEditor>) => {
   if (allowedNow('named')) openPileEditor(...args);
 };
 // Buttons by what they do: the HUD's commands, the top bar's files, the Spawn panel's spawns.
-// Save and export buttons are hidden, not greyed, while Downloads is off (4.3).
+// Save and export buttons are hidden, not grayed, while Downloads is off (4.3).
 const gateByText = (host: Element, rules: [string | RegExp, Action][]) => {
   for (const b of host.querySelectorAll('button')) {
     const text = b.textContent?.trim() ?? '';

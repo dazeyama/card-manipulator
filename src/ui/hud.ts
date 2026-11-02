@@ -1,4 +1,4 @@
-// The selection HUD along the bottom (spec 9.2): count, colour pips, mana
+// The selection HUD along the bottom (spec 9.2): count, color pips, mana
 // value histogram, the filter box (refine / table search), quick chips and
 // the command buttons.
 
@@ -13,8 +13,8 @@ const CHIPS: { label: string; term: string; title?: string; cls?: string }[] = [
   { label: 'B', term: 'c:b', cls: 'pip-b' },
   { label: 'R', term: 'c:r', cls: 'pip-r' },
   { label: 'G', term: 'c:g', cls: 'pip-g' },
-  { label: 'C', term: 'c:c', title: 'Colourless', cls: 'pip-c' },
-  { label: 'M', term: 'c:m', title: 'Multicolour', cls: 'pip-m' },
+  { label: 'C', term: 'c:c', title: 'Colorless', cls: 'pip-c' },
+  { label: 'M', term: 'c:m', title: 'Multicolor', cls: 'pip-m' },
   { label: 'Creature', term: 't:creature' },
   { label: 'Instant/Sorcery', term: '(t:instant or t:sorcery)' },
   { label: 'Artifact', term: 't:artifact' },
@@ -52,7 +52,7 @@ export class Hud {
 
   constructor(private readonly app: App, host: HTMLElement) {
     this.countEl = h('div', { class: 'hud-count' });
-    this.pipsEl = h('div', { class: 'hud-pips', title: 'Colours in the selection' });
+    this.pipsEl = h('div', { class: 'hud-pips', title: 'Colors in the selection' });
     this.histEl = h('div', { class: 'hud-hist', title: 'Mana value of the selection (lands left out): 0 to 7+' });
     this.input = h('input', { class: 'filter', spellcheck: 'false', autocomplete: 'off', 'aria-label': 'Filter' });
     this.liveEl = h('div', { class: 'filter-live' });

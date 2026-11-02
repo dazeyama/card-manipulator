@@ -109,7 +109,7 @@ export function validateDoc(doc: unknown): string | null {
 
 /**
  * Replace the table with a document. Card records come from the file, then
- * the local cache, then Scryfall; cards show as grey placeholders until
+ * the local cache, then Scryfall; cards show as gray placeholders until
  * their record arrives (spec 6.3).
  */
 export async function loadDoc(app: App, doc: TableDoc): Promise<void> {

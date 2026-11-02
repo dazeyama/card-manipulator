@@ -1,5 +1,5 @@
 // Who this browser is in a room (ONLINE.md 5.1, O17): a random token, a
-// nickname and a colour, kept in localStorage. The token goes only in hello;
+// nickname and a color, kept in localStorage. The token goes only in hello;
 // the room knows the player id, a hash of it (shared/protocol.ts playerIdOf).
 // Clearing site data makes a new person.
 //

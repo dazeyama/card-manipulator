@@ -24,7 +24,7 @@ export interface DeckEntry {
 
 export interface ParseResult {
   entries: DeckEntry[];
-  /** Lines recognised as headers or comments. */
+  /** Lines recognized as headers or comments. */
   skipped: number;
   /** Total cards (sum of counts). */
   cards: number;

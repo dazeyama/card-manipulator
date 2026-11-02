@@ -11,7 +11,7 @@ describe('fan layout (decision 141)', () => {
     }
   });
 
-  it('arches: the middle card sits at the centre, upright, and the ends are lower', () => {
+  it('arches: the middle card sits at the center, upright, and the ends are lower', () => {
     const fan = fanLayout(7, { x: 100, y: 50 });
     expect(fan[3].x).toBeCloseTo(100, 9);
     expect(fan[3].y).toBeCloseTo(50, 9);
@@ -26,7 +26,7 @@ describe('fan layout (decision 141)', () => {
     for (const c of fan) expect(Math.hypot(c.x, c.y + FAN_RADIUS)).toBeCloseTo(FAN_RADIUS, 9);
   });
 
-  it('overlaps neighbours like a hand, without piling them on one spot', () => {
+  it('overlaps neighbors like a hand, without piling them on one spot', () => {
     const fan = fanLayout(10, { x: 0, y: 0 });
     for (let i = 1; i < fan.length; i++) {
       expect(overlaps(fan[i], fan[i - 1])).toBe(true);
@@ -46,7 +46,7 @@ describe('big hands drawn with 0, in packs of 15 (decisions 162, 205)', () => {
     expect(handLayout(15, { x: 0, y: 0 })).toEqual(fanLayout(15, { x: 0, y: 0 }));
   });
 
-  it('deals 90 cards as six fans of 15, one under the next, centred', () => {
+  it('deals 90 cards as six fans of 15, one under the next, centered', () => {
     const spots = handLayout(90, { x: 50, y: 0 });
     expect(spots).toHaveLength(90);
     const rows = [0, 1, 2, 3, 4, 5].map((r) => spots.slice(r * 15, r * 15 + 15));

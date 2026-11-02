@@ -10,12 +10,12 @@ import { defaultRoomSettings, type ChatLine, type Player, type PublicSettings, t
 export type Connection = 'connecting' | 'open' | 'reconnecting' | 'closed';
 
 export interface RoomEvents {
-  /** The player list changed: a join, leave, rank, colour, side or crown change. */
+  /** The player list changed: a join, leave, rank, color, side or crown change. */
   players: void;
   settings: void;
   /** The crown moved to another player (or to me). */
   crown: void;
-  /** My own rank or colour changed. */
+  /** My own rank or color changed. */
   me: void;
   /** The socket opened, dropped or closed for good. */
   connection: void;
@@ -27,7 +27,7 @@ export interface RoomEvents {
 
 export class RoomState {
   readonly events = new Emitter<RoomEvents>();
-  /** Who is searching which cards (L L, decision 310): they glow in that player's colour, and mine I may see. */
+  /** Who is searching which cards (L L, decision 310): they glow in that player's color, and mine I may see. */
   readonly searches = new Map<string, Set<string>>();
   /** The six-character room code. */
   readonly code: string;

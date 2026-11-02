@@ -5,8 +5,8 @@
 // table is a static ground. When every loose card sleeps, or after a short
 // time limit, the cards are snapped flat and handed back to the model.
 //
-// The simulation runs in metres (Rapier's tuning assumes them); the model is
-// in millimetres.
+// The simulation runs in meters (Rapier's tuning assumes them); the model is
+// in millimeters.
 
 import type RAPIER_NS from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
@@ -26,7 +26,7 @@ let RAPIER: typeof RAPIER_NS;
 const MM = 0.001;
 /** The physics card is 2 mm thick while the drawn card stays 0.3 mm (spec 15.3). */
 const BODY_HALF_T = 1;
-/** Offset from the body centre to the drawn card's centre, along the card's own z. */
+/** Offset from the body center to the drawn card's center, along the card's own z. */
 const VISUAL_OFFSET = BODY_HALF_T - CARD_T / 2;
 const STEP = 1 / 120;
 /** Settle must finish fast (spec 15.5); a drop is cut off after this. */

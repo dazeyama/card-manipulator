@@ -5,7 +5,7 @@
 export const BASIC_NAMES = ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'] as const;
 export type BasicName = (typeof BASIC_NAMES)[number];
 
-/** The pip colour class for each basic's chip, as on the HUD. */
+/** The pip color class for each basic's chip, as on the HUD. */
 export const BASIC_PIP: Record<BasicName, string> = { Plains: 'pip-w', Island: 'pip-u', Swamp: 'pip-b', Mountain: 'pip-r', Forest: 'pip-g' };
 
 /** One basic's printing. `name` can be the snow-covered one, such as "Snow-Covered Island". */

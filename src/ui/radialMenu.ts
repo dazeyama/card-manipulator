@@ -25,7 +25,7 @@ export type RadialHooks = {
 };
 
 type Open = {
-  /** Where it opened, in canvas pixels: the centre, and where the action happens. */
+  /** Where it opened, in canvas pixels: the center, and where the action happens. */
   x: number;
   y: number;
   hovered: string | null;
@@ -200,7 +200,7 @@ export class RadialMenu {
     RADIAL_MENU.forEach((w, i) => {
       const on = i === o.pick.wedge;
       const ok = this.enabled(w, w.items[0]);
-      // A ring can hold an item that works without cards (Tokens) under a wedge that is greyed.
+      // A ring can hold an item that works without cards (Tokens) under a wedge that is grayed.
       const hasRing = w.items.length > 1 && w.items.some((item) => this.enabled(w, item));
       const grp = el('g', { class: `radial-wedge${on && ok ? ' on' : ''}${ok ? '' : ' off'}` }, ring);
       const a0 = (i - 0.5) * step + gap, a1 = (i + 0.5) * step - gap, mid = i * step;

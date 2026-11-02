@@ -257,7 +257,7 @@ export class Dice {
 
   /**
    * D: a new die at the cursor, on whatever is there: a white six-sided die
-   * showing 1, or (D D, decision 278) a d20 of a dark colour at random, showing 20,
+   * showing 1, or (D D, decision 278) a d20 of a dark color at random, showing 20,
    * the right way up (decision 279).
    */
   spawn(at: { x: number; y: number }, kind?: DieKind): string {
@@ -292,7 +292,7 @@ export class Dice {
       }));
   }
 
-  /** C's colour menu (decision 278): give dice a colour. */
+  /** C's color menu (decision 278): give dice a color. */
   paint(uids: string[], color: string): void {
     const dice = this.app.store.dice;
     this.app.store.setDice(uids.map((u) => dice.get(u)).filter((d): d is Die => !!d).map((d) => ({ ...d, color })));

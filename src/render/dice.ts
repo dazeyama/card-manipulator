@@ -1,8 +1,8 @@
 // How dice look (decision 255): a chunky white rounded cube with bold black
 // pips and the stand's cartoon outline along its edges (blue when selected),
 // casting and catching shadows. A d20 is an icosahedron with a bold number on
-// each face, and any die can take a colour (decision 278), its pips or numbers
-// white when the colour is dark. Each die is drawn where the store has it,
+// each face, and any die can take a color (decision 278), its pips or numbers
+// white when the color is dark. Each die is drawn where the store has it,
 // unless something is carrying it (a drag or a roll), which sets its pose.
 
 import * as THREE from 'three';
@@ -24,7 +24,7 @@ const PIPS: Record<number, [number, number][]> = {
   6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]],
 };
 
-/** The ink on a die of this colour: near black, or near white on a dark die. */
+/** The ink on a die of this color: near black, or near white on a dark die. */
 function inkOn(color: string): string {
   return isDark(color) ? '#f4f1ea' : '#111';
 }
@@ -117,7 +117,7 @@ function d20Body(): THREE.BufferGeometry {
 
 /**
  * A number no d20 face has (decision 279): drawn on a thin triangle laid over
- * the face it rests on, in the die's colour, so the face shows that number.
+ * the face it rests on, in the die's color, so the face shows that number.
  */
 function numberTexture(value: number, color: string): THREE.CanvasTexture {
   const n = 256;
@@ -154,7 +154,7 @@ interface Drawn {
   group: THREE.Group;
   body: THREE.Mesh;
   edges: LineSegments2;
-  /** Its kind and colour as drawn, to notice a change. */
+  /** Its kind and color as drawn, to notice a change. */
   look: string;
   /** A d20's number that no face has, laid over the face it rests on, and what it shows (decision 279). */
   decal?: THREE.Mesh;
@@ -165,7 +165,7 @@ export class DiceLayer {
   private readonly group = new THREE.Group();
   private readonly geometry = new RoundedBoxGeometry(DIE_SIZE, DIE_SIZE, DIE_SIZE, 3, DIE_SIZE * 0.14);
   private readonly d20Geometry = d20Body();
-  /** Materials for each kind and colour, made when first needed. */
+  /** Materials for each kind and color, made when first needed. */
   private readonly materials = new Map<string, THREE.Material | THREE.Material[]>();
   private readonly edgeGeometry = new LineSegmentsGeometry().fromEdgesGeometry(new THREE.EdgesGeometry(new THREE.BoxGeometry(DIE_SIZE * 0.985, DIE_SIZE * 0.985, DIE_SIZE * 0.985)));
   private readonly d20Edges = new LineSegmentsGeometry().fromEdgesGeometry(new THREE.EdgesGeometry(d20Geometry(D20_RADIUS * 0.995)));
@@ -173,7 +173,7 @@ export class DiceLayer {
   private readonly blue = outlineMaterial(ACCENT, 5);
   private readonly drawn = new Map<string, Drawn>();
   private selected = new Set<string>();
-  /** Another player's colour on dice they select or hold (ONLINE.md 5.4). */
+  /** Another player's color on dice they select or hold (ONLINE.md 5.4). */
   private readonly tints = new Map<string, string>();
   private readonly tinted = new Map<string, ReturnType<typeof outlineMaterial>>();
   /** Dice whose pose something else is setting (a drag or a roll). */
@@ -212,7 +212,7 @@ export class DiceLayer {
       const look = `${die.kind ?? 'd6'}:${die.color ?? DIE_WHITE}`;
       let d = this.drawn.get(die.uid);
       if (d && d.look !== look) {
-        // Another colour, or another kind of die: drawn afresh.
+        // Another color, or another kind of die: drawn afresh.
         this.group.remove(d.group);
         d = undefined;
       }
@@ -284,7 +284,7 @@ export class DiceLayer {
     for (const [uid, d] of this.drawn) d.edges.material = this.outlineFor(uid);
   }
 
-  /** Outline a die in another player's colour (`#rrggbb`), or not (null). Your own selection stays blue. */
+  /** Outline a die in another player's color (`#rrggbb`), or not (null). Your own selection stays blue. */
   setTint(uid: string, color: string | null): void {
     if ((this.tints.get(uid) ?? null) === color) return;
     if (color) this.tints.set(uid, color);

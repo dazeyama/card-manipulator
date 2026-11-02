@@ -1,4 +1,4 @@
-// A room's meta (ONLINE.md 10.2): who is seated, their ranks and colours, who
+// A room's meta (ONLINE.md 10.2): who is seated, their ranks and colors, who
 // is crown and maker, the settings, bans and the chat log. The Room object
 // keeps one in memory and in storage; everything here is pure so tests can
 // run it without the Workers runtime.
@@ -97,7 +97,7 @@ export function electCrown(seats: Seat[], exclude?: string): string | null {
 }
 
 /**
- * The colour a player gets (O18): the one asked for if it is one of the eight
+ * The color a player gets (O18): the one asked for if it is one of the eight
  * and no other seat holds it; else the first free one; else (more than eight
  * seats, some away) the first no connected player holds.
  */
@@ -111,7 +111,7 @@ export function pickColour(meta: Meta, wanted: string, forId: string): string {
   return PLAYER_COLOURS.find((c) => !live.has(c)) ?? PLAYER_COLOURS[0];
 }
 
-/** May this colour be swapped to (5.2): one of the eight, held by no other seat. */
+/** May this color be swapped to (5.2): one of the eight, held by no other seat. */
 export function colourFree(meta: Meta, colour: string, forId: string): boolean {
   return PLAYER_COLOURS.includes(colour) && !meta.seats.some((s) => s.id !== forId && s.colour === colour);
 }
@@ -231,7 +231,7 @@ export function addChat(meta: Meta, line: ChatLine): void {
   if (meta.chat.length > CHAT_LINES) meta.chat.splice(0, meta.chat.length - CHAT_LINES);
 }
 
-/** The grey system lines of 5.5. */
+/** The gray system lines of 5.5. */
 export const say = {
   joined: (s: Seat) => `${s.nickname} joined as ${RANK_LABEL[s.rank]}`,
   /** The maker's first hello: they are the crown, not a rank. */

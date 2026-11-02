@@ -28,7 +28,7 @@ export function confirmDialog(message: string, ok = 'OK'): Promise<boolean> {
   });
 }
 
-/** A small modal asking for one line of text (a card stand's name plate, decision 220). Resolves with it, or null if cancelled. */
+/** A small modal asking for one line of text (a card stand's name plate, decision 220). Resolves with it, or null if canceled. */
 export function textDialog(message: string, opts: { value: string; ok?: string; maxLength?: number }): Promise<string | null> {
   return new Promise((resolve) => {
     const input = h('input', { class: 'grow', value: opts.value, maxlength: String(opts.maxLength ?? 60), spellcheck: 'false', 'aria-label': message });
@@ -60,7 +60,7 @@ export function textDialog(message: string, opts: { value: string; ok?: string; 
  * A small modal asking for a whole number from `min` to `max` (0 to draw
  * any number of cards, decision 162), with an optional checkbox (Face down?,
  * decision 236). Resolves with the number and the box's tick, or null if
- * cancelled. Out-of-range numbers are brought into range.
+ * canceled. Out-of-range numbers are brought into range.
  */
 export function numberDialog(message: string, opts: { min: number; max: number; value: number; ok?: string; check?: { label: string; checked: boolean } }): Promise<{ value: number; checked: boolean } | null> {
   return new Promise((resolve) => {

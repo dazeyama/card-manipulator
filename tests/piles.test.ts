@@ -51,7 +51,7 @@ describe('layouts', () => {
     for (let i = 0; i < s.length; i++) for (let j = i + 1; j < s.length; j++) expect(Math.hypot(s[i].x - s[j].x, s[i].y - s[j].y)).toBeGreaterThan(60);
   });
 
-  it('centres a grid on a point', () => {
+  it('centers a grid on a point', () => {
     const g = gridLayout(12, { x: 100, y: 50 });
     const cx = g.reduce((n, p) => n + p.x, 0) / g.length;
     expect(Math.abs(cx - 100)).toBeLessThan(70);

@@ -52,8 +52,8 @@ export const RADIAL_MENU: RadialWedge[] = [
   ] },
   { label: 'Sort', icon: '📊', cards: true, items: [
     { label: 'Curve', key: 'C', presses: ['c'], icon: '📊', title: 'Curve out by mana value; again stacks it back up' },
-    { label: 'Colour columns', key: 'C C', presses: ['c', 'c'], icon: '🎨', title: 'A column per colour, W U B R G, colourless, multicolour, lands' },
-    { label: 'Curve per colour', key: 'Shift C', presses: ['shift+c'], icon: '🌈', title: 'Curve everything out in a row per colour, in the middle of the view' },
+    { label: 'Color columns', key: 'C C', presses: ['c', 'c'], icon: '🎨', title: 'A column per color, W U B R G, colorless, multicolor, lands' },
+    { label: 'Curve per color', key: 'Shift C', presses: ['shift+c'], icon: '🌈', title: 'Curve everything out in a row per color, in the middle of the view' },
     { label: 'EDHREC', key: 'E', presses: ['e'], icon: '🏆', title: 'Columns by EDHREC rank; again stacks it back up' },
     { label: 'Elo', key: 'E E', presses: ['e', 'e'], icon: '📈', title: 'Columns by CubeCobra Elo' },
   ] },
@@ -94,7 +94,7 @@ export function angleOf(dx: number, dy: number): number {
   return a < 0 ? a + TAU : a;
 }
 
-/** Which of `count` wedges an angle falls in; wedge 0 is centred straight up. */
+/** Which of `count` wedges an angle falls in; wedge 0 is centered straight up. */
 export function wedgeAt(angle: number, count: number): number {
   const step = TAU / count;
   return Math.floor((((angle + step / 2) % TAU) + TAU) % TAU / step) % count;
@@ -105,7 +105,7 @@ export function itemSpan(n: number): number {
   return Math.min(0.56, 2.9 / n);
 }
 
-/** Where wedge `w`'s outer ring of `n` items starts, as an angle; it is centred on the wedge. */
+/** Where wedge `w`'s outer ring of `n` items starts, as an angle; it is centered on the wedge. */
 export function outerStart(w: number, count: number, n: number): number {
   return w * (TAU / count) - (itemSpan(n) * n) / 2;
 }
@@ -123,7 +123,7 @@ export type RadialPick = { wedge: number; item: number };
 export const NO_PICK: RadialPick = { wedge: -1, item: -1 };
 
 /**
- * What an offset from the centre points at. Inside the hole: nothing. On the
+ * What an offset from the center points at. Inside the hole: nothing. On the
  * inner ring: the wedge by angle. Past it: the outer item under the pointer,
  * keeping the wedge you came through while you stay over its outer ring (that
  * ring is wider than the wedge), and with no ring, the wedge itself. There is

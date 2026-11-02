@@ -47,7 +47,7 @@ describe('room meta', () => {
     expect(p.map((x) => [x.id, x.isCrown, x.isMaker])).toEqual([['a', false, true], ['b', true, false]]);
   });
 
-  it('answers the join prompt: connected count, crown name, taken colours; closed rooms are not open', () => {
+  it('answers the join prompt: connected count, crown name, taken colors; closed rooms are not open', () => {
     const m = newMeta('7KQ2MX', 'a', 'T', 'play', 0);
     m.seats.push(seat('a', 'everything', 1, true, PLAYER_COLOURS[0]), seat('b', 'move', 2, false, PLAYER_COLOURS[3]));
     m.crown = 'a';
@@ -57,20 +57,20 @@ describe('room meta', () => {
     expect(roomInfo(null).open).toBe(false);
   });
 
-  it('gives the colour asked for when free, else the first free one', () => {
+  it('gives the color asked for when free, else the first free one', () => {
     const m = newMeta('7KQ2MX', 'a', 'T', 'cube', 0);
     m.seats.push(seat('a', 'move', 1, true, PLAYER_COLOURS[0]), seat('b', 'move', 2, false, PLAYER_COLOURS[1]));
     expect(pickColour(m, PLAYER_COLOURS[4], 'c')).toBe(PLAYER_COLOURS[4]);
     // Held by an away seat still counts (O19).
     expect(pickColour(m, PLAYER_COLOURS[1], 'c')).toBe(PLAYER_COLOURS[2]);
     expect(pickColour(m, '#123456', 'c')).toBe(PLAYER_COLOURS[2]);
-    // Your own colour is yours.
+    // Your own color is yours.
     expect(pickColour(m, PLAYER_COLOURS[0], 'a')).toBe(PLAYER_COLOURS[0]);
     expect(colourFree(m, PLAYER_COLOURS[1], 'a')).toBe(false);
     expect(colourFree(m, PLAYER_COLOURS[5], 'a')).toBe(true);
   });
 
-  it('with every colour held, picks one no connected player has', () => {
+  it('with every color held, picks one no connected player has', () => {
     const m = newMeta('7KQ2MX', 'a', 'T', 'cube', 0);
     PLAYER_COLOURS.forEach((c, i) => m.seats.push(seat(`p${i}`, 'move', i, i !== 6, c)));
     expect(pickColour(m, PLAYER_COLOURS[0], 'new')).toBe(PLAYER_COLOURS[6]);

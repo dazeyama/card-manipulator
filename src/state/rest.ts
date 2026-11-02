@@ -1,7 +1,7 @@
 // How a card comes to rest on the cards under it (decisions 99, 100). Cards
 // keep their flat model height for ordering and pile detection; this works out
 // the drawn pose they really rest in: as low as they can go as rigid cards,
-// supported under their centre, tilted where they lie across an edge. Pure
+// supported under their center, tilted where they lie across an edge. Pure
 // geometry, so it is tested without a browser.
 
 import { overlaps } from './piles';
@@ -13,18 +13,18 @@ const HH = CARD_H / 2;
 /** No resting card leans steeper than this (about 39 degrees). */
 export const MAX_SLOPE = 0.8;
 
-/** A card already resting: its centre, turn and the tilt of its drawn pose. */
+/** A card already resting: its center, turn and the tilt of its drawn pose. */
 export interface Resting {
   x: number;
   y: number;
   yaw: number;
-  /** Height of the drawn card's centre. */
+  /** Height of the drawn card's center. */
   z: number;
   tiltX: number;
   tiltY: number;
 }
 
-/** Where a card rests: its drawn centre height and tilt (the pose's tiltX, tiltY). */
+/** Where a card rests: its drawn center height and tilt (the pose's tiltX, tiltY). */
 export interface Rest {
   z: number;
   tiltX: number;
@@ -212,8 +212,8 @@ function upperHull(pts: { u: number; z: number }[]): { u: number; z: number }[] 
 
 /**
  * The slope a card settles at along one of its sides, from the highest points
- * under it: a rigid card rests on the edge of their hull under its centre,
- * which is as low as its centre can go (decision 100). It never droops toward
+ * under it: a rigid card rests on the edge of their hull under its center,
+ * which is as low as its center can go (decision 100). It never droops toward
  * a lower side: that lifts its other end into the air, and cards landing on
  * those raised ends built towers.
  */

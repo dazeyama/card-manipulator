@@ -103,7 +103,7 @@ export function land(app: App, landings: Landing[], opts: { stagger?: number; du
  * The flip (spec 10.5): each card rises in an arc and turns over to the face
  * its model now has, in a quick cascade top card first. Used for your own
  * flips and, in a room, for others' (decision 294), so a card turning over
- * never cuts through its neighbours. `cards` are already turned in the model.
+ * never cuts through its neighbors. `cards` are already turned in the model.
  */
 export function animateFlips(app: App, cards: Card[], shortest = false): void {
   const sorted = [...cards].sort((a, b) => b.z - a.z);
@@ -242,8 +242,8 @@ function smallSlopeHand(m: Mat, count: number): Placed[] {
 }
 
 /**
- * A big table layout (curve, rank, colour) of cards that were on a card stand
- * goes on the table directly in front of that stand, centred, like any shape
+ * A big table layout (curve, rank, color) of cards that were on a card stand
+ * goes on the table directly in front of that stand, centered, like any shape
  * too big for its slope (decision 225); other layouts stay where they are.
  */
 function offStand(app: App, uids: string[], spots: Placed[]): Placed[] {
@@ -321,8 +321,8 @@ export class Commands {
 
   /**
    * C: curve the cards out by mana value, a column each, lands in a row
-   * underneath by colour identity (decision 149); Shift + C also sorts them
-   * into a row per colour (decision 107).
+   * underneath by color identity (decision 149); Shift + C also sorts them
+   * into a row per color (decision 107).
    */
   curve(cards: string[], byColour: boolean, centre?: { x: number; y: number }): void {
     // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
@@ -341,7 +341,7 @@ export class Commands {
       return { uid, name: r?.name ?? '', mv: r?.cmc ?? 0, land: isLand, creature: /\bCreature\b/.test(type), group: colourGroup(colours, isLand), identity: r?.color_identity ?? [] };
     });
     leaveSpreads(this.app, cards);
-    // Centred where the cards are, or at `centre` (Shift + C: the middle of the view, decision 191).
+    // Centered where the cards are, or at `center` (Shift + C: the middle of the view, decision 191).
     const middle = centre ?? centroid(this.app, cards);
     const layout = curveLayout(info, middle, { byColour, split: store.settings.curveSplit });
     const uids = [...layout.map((p) => p.uid), ...hidden];
@@ -351,7 +351,7 @@ export class Commands {
     const spots = alignTo([...laid, ...hiddenRow(laid, hidden.length, middle)], middle, this.app.facing);
     const landings = facingDown(placeSequential(this.app, uids, centre ? spots : offStand(this.app, uids, spots)), hidden);
     land(this.app, landings, { stagger: Math.min(2, 400 / uids.length), arc: 10 });
-    // Remember the curve (one per colour row), so C on it stacks it back up.
+    // Remember the curve (one per color row), so C on it stacks it back up.
     const groupOf = new Map(info.map((c) => [c.uid, byColour ? c.group : 'all']));
     const groups = new Map<string, Map<string, { x: number; y: number }>>();
     for (const l of landings) {
@@ -389,7 +389,7 @@ export class Commands {
 
   /**
    * E: lay the cards out in columns by EDHREC rank; E E by CubeCobra Elo
-   * (decision 198), cascading like a curve, centred where they are.
+   * (decision 198), cascading like a curve, centered where they are.
    */
   rankSort(cards: string[], mode: RankMode): void {
     // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
@@ -418,8 +418,8 @@ export class Commands {
   }
 
   /**
-   * C C (decision 217): a cascading column per colour, W U B R G, colourless,
-   * multicolour, lands, centred where the cards are. Remembered as a curve, so
+   * C C (decision 217): a cascading column per color, W U B R G, colorless,
+   * multicolor, lands, centered where the cards are. Remembered as a curve, so
    * C on it stacks it back up.
    */
   colourSort(cards: string[]): void {

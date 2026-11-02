@@ -1,5 +1,5 @@
-// Flags (decision 327): a named, coloured zone on the table, a pole at the
-// centre of a circle 35 cm in radius, that sorts cards by where they lie. A card on the table whose centre is inside a flag's circle is the
+// Flags (decision 327): a named, colored zone on the table, a pole at the
+// center of a circle 35 cm in radius, that sorts cards by where they lie. A card on the table whose center is inside a flag's circle is the
 // flag's; zones never overlap, so a card is never two flags'. A flag lives
 // without cards. Pure: geometry only, tested without a browser.
 
@@ -12,7 +12,7 @@ export interface Flag {
   filter: string | null;
   /** The cloth and the zone's tint, `#rrggbb`. */
   colour: string;
-  /** The pole: the zone's centre. */
+  /** The pole: the zone's center. */
   x: number;
   y: number;
   /** Locked in place: not dragged or removed until unlocked. */
@@ -25,10 +25,10 @@ export const FLAG_REACH = 350;
 /** Shift-dragging a flag pulls in cards from this far from the pole (decision 329). */
 export const FLAG_PULL = 440;
 
-/** The colours a flag may be. */
+/** The colors a flag may be. */
 export const FLAG_COLOURS = ['#e63946', '#f4a261', '#e9c46a', '#2a9d8f', '#4895ef', '#7b2cbf', '#ff6fb5', '#6b7280'];
 
-/** Where a turned-away card's centre lands past the edge: half a card's diagonal and a gap out. */
+/** Where a turned-away card's center lands past the edge: half a card's diagonal and a gap out. */
 const OUTSIDE = Math.hypot(CARD_W, CARD_H) / 2 + 12;
 
 /** The flag whose zone holds a table point, or null. */
@@ -45,7 +45,7 @@ export function flagAt(flags: Iterable<Flag>, x: number, y: number): Flag | null
   return best;
 }
 
-/** The flag a card belongs to: one on the table (not a card stand) with its centre in the zone. */
+/** The flag a card belongs to: one on the table (not a card stand) with its center in the zone. */
 export function flagOfCard(flags: Iterable<Flag>, card: { x: number; y: number; stand?: string }): Flag | null {
   return card.stand ? null : flagAt(flags, card.x, card.y);
 }
@@ -104,7 +104,7 @@ export function outsideSpot(flag: Flag, card: { x: number; y: number }, others: 
   return { x: flag.x + Math.cos(a) * r, y: flag.y + Math.sin(a) * r };
 }
 
-/** The next colour for a new flag: the first no flag has, or round again. */
+/** The next color for a new flag: the first no flag has, or round again. */
 export function nextColour(flags: Iterable<Flag>): string {
   const used = new Set([...flags].map((f) => f.colour));
   return FLAG_COLOURS.find((c) => !used.has(c)) ?? FLAG_COLOURS[used.size % FLAG_COLOURS.length];

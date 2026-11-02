@@ -78,7 +78,7 @@ function compileTerm(field: string, op: Op, raw: string): Predicate {
     case 'color':
     case 'identity': {
       const q = parseColors(value)!;
-      // Scryfall: c: means "at least these colours", id: means "within this identity".
+      // Scryfall: c: means "at least these colors", id: means "within this identity".
       const effOp: Op = op === ':' ? (field === 'color' ? '>=' : '<=') : op;
       return (c) => {
         if (!c.record) return false;

@@ -1,7 +1,7 @@
-// Colour view (decision 217): C C lays cards out in a cascading column per
-// colour, in WUBRG order, then colourless, multicolour and lands (W U B R G C
+// Color view (decision 217): C C lays cards out in a cascading column per
+// color, in WUBRG order, then colorless, multicolor and lands (W U B R G C
 // M L), like the curve and rank views. A card's column comes from its own
-// colours (its mana cost), and lands always go in L. Each column runs cheapest
+// colors (its mana cost), and lands always go in L. Each column runs cheapest
 // first, then by name; Split creatures puts creatures and non-creatures in
 // separate bands. Pure geometry, tested without a browser.
 
@@ -15,11 +15,11 @@ export interface ColourCard {
   mv: number;
   land: boolean;
   creature: boolean;
-  /** The card's own colours, from its mana cost (the front face of a double-faced card). */
+  /** The card's own colors, from its mana cost (the front face of a double-faced card). */
   colours: string[];
 }
 
-/** The columns, left to right: W U B R G, colourless, multicolour, lands. */
+/** The columns, left to right: W U B R G, colorless, multicolor, lands. */
 export const COLOUR_COLUMNS: ColourGroup[] = ['W', 'U', 'B', 'R', 'G', 'colourless', 'multi', 'land'];
 
 const COLUMN_GAP = 8;
@@ -37,7 +37,7 @@ function cheaper(a: ColourCard, b: ColourCard): number {
 }
 
 /**
- * Lay cards out in colour columns centred on `centre`, only the columns some
+ * Lay cards out in color columns centered on `center`, only the columns some
  * card uses. Returns where each card goes, in the order to place them (each
  * column's top card first, so the next lies over it and leaves its title bar
  * showing).

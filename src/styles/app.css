@@ -1,4 +1,4 @@
-/* Light UI on a pale table (spec 7.1a, decision 39). Colours live here once. */
+/* Light UI on a pale table (spec 7.1a, decision 39). Colors live here once. */
 :root {
   --table: #e7e4df;
   --panel: #ffffff;
@@ -225,7 +225,7 @@ code { font-family: var(--mono); font-size: 0.95em; background: rgba(0, 0, 0, 0.
 /* Each in its own corner of the mat, placed by mats.ts (decision 238). */
 .mat-buttons > .mat-mirror-btn { position: absolute; left: 0; top: 0; white-space: nowrap; }
 .mat-buttons[hidden] { display: none; }
-/* A flag's hover buttons over its cloth, and its box's colours (decision 327). */
+/* A flag's hover buttons over its cloth, and its box's colors (decision 327). */
 .flag-buttons { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; pointer-events: none; z-index: 4; }
 .flag-button-row { display: flex; gap: 4px; }
 .flag-filter { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; background: rgba(255, 255, 255, 0.96); border: 1px solid rgba(0, 0, 0, 0.15); border-radius: 8px; padding: 4px 9px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2); }
@@ -354,7 +354,7 @@ label.inline { display: inline-flex; flex-direction: row; align-items: center; g
 .deck-pic img { position: absolute; left: 0; top: 0; width: 100%; aspect-ratio: 63 / 88; height: auto; object-fit: cover; display: block; border-radius: 4.5%/3.2%; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
 .deck-pic:hover { z-index: 2; }
 .deck-pic:hover img { outline: 2px solid var(--accent); outline-offset: -1px; }
-/* A die's colour menu (decision 278). */
+/* A die's color menu (decision 278). */
 .die-colours { position: fixed; z-index: 45; display: flex; flex-direction: column; gap: 5px; padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18); }
 .die-colours[hidden] { display: none; }
 .die-swatches { display: flex; gap: 5px; }
@@ -463,13 +463,13 @@ button.linkish { border: none; background: none; padding: 0; color: var(--accent
 .welcome-note { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 4; width: 420px; background: rgba(255, 255, 255, 0.96); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 9px 12px 10px; }
 .welcome-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; }
 .welcome-note p { margin: 4px 0 0; }
-/* Another player's cursor on the felt (5.4): an arrow in their colour with a name tag. Drawn by presence.ts, which sets --player and the transform. */
+/* Another player's cursor on the felt (5.4): an arrow in their color with a name tag. Drawn by presence.ts, which sets --player and the transform. */
 .remote-cursor { position: absolute; left: 0; top: 0; z-index: 5; pointer-events: none; will-change: transform; }
 .remote-cursor-arrow { width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 18px solid var(--player, #e63946); transform: rotate(-28deg); transform-origin: 50% 0; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45)); }
 .remote-cursor-tag { position: absolute; left: 12px; top: 14px; padding: 1px 7px; border-radius: 9px; background: var(--player, #e63946); color: #fff; font-size: 11px; font-weight: 650; white-space: nowrap; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); }
 .remote-cursor.light .remote-cursor-tag { color: #222; }
 .remote-cursor.edge .remote-cursor-arrow { opacity: 0.6; }
-/* A button this player's rank may not use in a room (6.4): greyed, its title says what is needed. */
+/* A button this player's rank may not use in a room (6.4): grayed, its title says what is needed. */
 .guarded, .btn.guarded:hover, .chip.guarded:hover { opacity: 0.45; cursor: not-allowed; }
 /* The crown's controls in the Online panel (12.2): rank pickers, the player menu, Settings. */
 .rank-picker { font-size: 12px; padding: 1px 4px; }

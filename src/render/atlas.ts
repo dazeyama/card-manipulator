@@ -3,7 +3,7 @@
 // The pages are layers of one 2D array texture, so every card draws from the
 // same sampler and a card's front and back may live on different pages. Each
 // layer is 4096 x 4096 and holds 513 cells of 150 x 208: Scryfall's 146 x 204
-// `small` image plus a 2 px gutter filled with edge colour to limit mipmap
+// `small` image plus a 2 px gutter filled with edge color to limit mipmap
 // bleeding. Slot 0 of layer 0 is the Magic card back.
 
 import * as THREE from 'three';
@@ -98,7 +98,7 @@ export class Atlas {
   draw(slot: Slot, source: CanvasImageSource): void {
     const ctx = this.scratchCtx;
     ctx.clearRect(0, 0, CELL_W, CELL_H);
-    // Stretch once to fill the gutter with edge colour, then draw the real image.
+    // Stretch once to fill the gutter with edge color, then draw the real image.
     ctx.drawImage(source, 0, 0, CELL_W, CELL_H);
     ctx.drawImage(source, GUTTER, GUTTER, IMG_W, IMG_H);
     const src = new THREE.Texture(this.scratch);
@@ -177,7 +177,7 @@ export class Atlas {
   }
 }
 
-/** A plain grey card with text, used until a card's image arrives (spec 8.2). */
+/** A plain gray card with text, used until a card's image arrives (spec 8.2). */
 export function drawPlaceholder(text: string, sub = ''): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = IMG_W;

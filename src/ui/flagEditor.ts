@@ -1,4 +1,4 @@
-// A flag's box (decision 327): its name, its filter and its colour. It opens
+// A flag's box (decision 327): its name, its filter and its color. It opens
 // when a flag is placed, from the flag's ✏️, or a click on its cloth. Saving a
 // filter turns away the cards in the zone that don't match it.
 
@@ -36,7 +36,7 @@ export class FlagEditor {
       h('label', {}, h('span', {}, 'Name'), this.name),
       h('label', {}, h('span', {}, 'Filter'), this.filter),
       this.error,
-      h('div', { class: 'flag-colour-row' }, h('span', {}, 'Colour'), this.swatches),
+      h('div', { class: 'flag-colour-row' }, h('span', {}, 'Color'), this.swatches),
       h('div', { class: 'row' }, save, remove, h('span', { class: 'grow' }), cancel),
     );
     document.body.append(this.el);
@@ -101,7 +101,7 @@ export class FlagEditor {
 
   private drawSwatches(): void {
     this.swatches.replaceChildren(...FLAG_COLOURS.map((c) => {
-      const b = h('button', { class: 'flag-swatch' + (c === this.colour ? ' on' : ''), title: c, 'aria-label': `Colour ${c}` });
+      const b = h('button', { class: 'flag-swatch' + (c === this.colour ? ' on' : ''), title: c, 'aria-label': `Color ${c}` });
       b.style.background = c;
       b.addEventListener('click', () => {
         this.colour = c;

@@ -58,7 +58,7 @@ export interface ScreenRect {
   y1: number;
 }
 
-/** Every card whose centre projects inside the screen rectangle (spec 9.1). */
+/** Every card whose center projects inside the screen rectangle (spec 9.1). */
 export function marqueeCards(rig: CameraRig, layer: CardLayer, rect: ScreenRect): string[] {
   const minX = Math.min(rect.x0, rect.x1), maxX = Math.max(rect.x0, rect.x1);
   const minY = Math.min(rect.y0, rect.y1), maxY = Math.max(rect.y0, rect.y1);

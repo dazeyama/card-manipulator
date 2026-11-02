@@ -24,7 +24,7 @@ function weights(t: number): [number, number, number, number] {
 
 /**
  * Resize RGBA pixels to `scale` times the size with Catmull-Rom, one direction
- * at a time. Edge pixels repeat past the border. Alpha is resized like colour.
+ * at a time. Edge pixels repeat past the border. Alpha is resized like color.
  */
 export function upscale(src: Uint8ClampedArray, w: number, h: number, scale: number): Uint8ClampedArray {
   const W = Math.round(w * scale);
@@ -66,7 +66,7 @@ export function upscale(src: Uint8ClampedArray, w: number, h: number, scale: num
 
 /**
  * Contrast-adaptive sharpening (FidelityFX CAS, the plus-shaped form): each
- * colour channel is pushed away from its four neighbours, by less where they
+ * color channel is pushed away from its four neighbors, by less where they
  * already span a wide range or sit near black or white. Alpha is kept.
  */
 export function sharpen(src: Uint8ClampedArray, w: number, h: number, sharpness = SHARPNESS): Uint8ClampedArray {

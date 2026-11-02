@@ -1,5 +1,5 @@
 // The room's chat (ONLINE.md 5.5, O35): a strip in the Online panel with the
-// last 100 lines, each name in its player's colour, system lines in grey.
+// last 100 lines, each name in its player's color, system lines in gray.
 // Plain text up to 300 characters; Enter sends. Nothing is kept past the
 // room's life. Keys don't reach the table while the field has focus.
 
@@ -76,7 +76,7 @@ export class ChatStrip {
   }
 }
 
-/** A player colour as name text: the white swatch reads as grey on the white panel. */
+/** A player color as name text: the white swatch reads as gray on the white panel. */
 export function textColour(colour: string | undefined): string {
   if (!colour) return 'var(--text)';
   return colour.toLowerCase() === '#f1f5f9' ? '#8a8f98' : colour;

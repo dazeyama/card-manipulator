@@ -120,7 +120,7 @@ export class MouseInput {
     return this.gesture.kind === 'marquee' ? this.gesture.mode : null;
   }
 
-  /** Esc: cancel a drag or marquee in progress. Returns true if something was cancelled. */
+  /** Esc: cancel a drag or marquee in progress. Returns true if something was canceled. */
   cancel(): boolean {
     const g = this.gesture;
     if (g.kind === 'custom') g.cancel();

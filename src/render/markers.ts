@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import type { App } from '../app';
 
-/** Show the dots once the view is wider than this many millimetres. */
+/** Show the dots once the view is wider than this many millimeters. */
 const FAR_WIDTH = 1500;
 
 export class SelectionMarkers {

@@ -154,7 +154,7 @@ export function drawPlate(text: string, width = STAND_W): THREE.CanvasTexture {
   return tex;
 }
 
-/** A stand to put on the table: the wedge and its plate, centred on its footprint, on the table. */
+/** A stand to put on the table: the wedge and its plate, centered on its footprint, on the table. */
 export function standGroup(plate: THREE.MeshLambertMaterial, width = STAND_W): THREE.Group {
   let shape = wedges.get(width);
   if (!shape) {
@@ -172,7 +172,7 @@ export function standGroup(plate: THREE.MeshLambertMaterial, width = STAND_W): T
   wedge.castShadow = true;
   wedge.receiveShadow = true;
   const edges = new LineSegments2(shape.edges, edgeMaterial);
-  // Half a millimetre up, so the lines round its foot, where it meets the table, aren't hidden by the table (decision 232).
+  // Half a millimeter up, so the lines round its foot, where it meets the table, aren't hidden by the table (decision 232).
   edges.position.z = 0.5;
   const geo = new THREE.PlaneGeometry(plateW(width), PLATE_H);
   // Turned to face the back: readable from across the table, right way up (decision 220).

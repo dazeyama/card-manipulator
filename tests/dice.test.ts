@@ -22,7 +22,7 @@ describe('dice (decision 255)', () => {
     for (const n of [2, 4, 5, 9]) {
       const spots = gatherOffsets(n);
       expect(spots).toHaveLength(n);
-      // Centred, and no two touching.
+      // Centered, and no two touching.
       expect(spots.reduce((s, p) => s + p.x, 0) / n).toBeCloseTo(0, 6);
       for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
         expect(Math.max(Math.abs(spots[i].x - spots[j].x), Math.abs(spots[i].y - spots[j].y))).toBeGreaterThanOrEqual(DIE_SIZE);

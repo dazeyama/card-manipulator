@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { sharpen, sharpenArt, upscale } from '../src/render/sharpen';
 
-/** A w x h RGBA image from one grey value per pixel (alpha 255). */
+/** A w x h RGBA image from one gray value per pixel (alpha 255). */
 function grey(w: number, h: number, value: (x: number, y: number) => number): Uint8ClampedArray {
   const px = new Uint8ClampedArray(w * h * 4);
   for (let y = 0; y < h; y++) {
@@ -17,7 +17,7 @@ function grey(w: number, h: number, value: (x: number, y: number) => number): Ui
 const at = (px: Uint8ClampedArray, w: number, x: number, y: number) => px[(y * w + x) * 4];
 
 describe('playmat art sharpening (decision 323)', () => {
-  it('doubles the size and leaves a flat colour flat', () => {
+  it('doubles the size and leaves a flat color flat', () => {
     const out = sharpenArt(grey(5, 3, () => 120), 5, 3);
     expect([out.w, out.h, out.data.length]).toEqual([10, 6, 10 * 6 * 4]);
     expect([...out.data].every((v, i) => (i % 4 === 3 ? v === 255 : Math.abs(v - 120) <= 1))).toBe(true);

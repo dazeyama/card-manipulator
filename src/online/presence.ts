@@ -1,7 +1,7 @@
 // The other players at the table (ONLINE.md 5.4, 8.3, 8.4): their cursors on
 // the felt, the cards and dice in their hands and in flight drawn live from
 // their streams, 100 ms behind, and their selections and holds glowing in
-// their colour. Nothing here changes the store: holds come from confirmed
+// their color. Nothing here changes the store: holds come from confirmed
 // `grab` ops and end with the holder's landing op, which eases the drawn pose
 // to where the store now has the card.
 
@@ -36,10 +36,10 @@ interface Cursor {
   /** The plain arrow, shown until the first glove picture is ready. */
   svg: SVGSVGElement;
   arrow: SVGPathElement;
-  /** The player's glove, in their colour (decision 293). */
+  /** The player's glove, in their color (decision 293). */
   img: HTMLImageElement;
   glove: Glove;
-  /** The glove, colour and size the picture was last asked for. */
+  /** The glove, color and size the picture was last asked for. */
   key: string;
   x: number;
   y: number;
@@ -60,7 +60,7 @@ export class Presence implements PresenceView {
   private readonly cursors = new Map<string, Cursor>();
   /** Each player's selection, as last streamed. */
   private readonly selections = new Map<string, string[]>();
-  /** What glows in whose colour now. */
+  /** What glows in whose color now. */
   private readonly tints = new Map<string, string>();
   private readonly q = new THREE.Quaternion();
   private readonly e = new THREE.Euler(0, 0, 0, 'ZXY');
@@ -71,7 +71,7 @@ export class Presence implements PresenceView {
     this.held.clear();
     sync.app.onFrame((now) => this.frame(now));
     window.addEventListener(CURSOR_SIZE_EVENT, this.resize);
-    // A pile being searched glows in the searcher's colour (L L, decision 310).
+    // A pile being searched glows in the searcher's color (L L, decision 310).
     sync.online.room.events.on('searches', () => this.retint());
   }
 
@@ -260,7 +260,7 @@ export class Presence implements PresenceView {
         c.arrow.setAttribute('fill', p.colour);
         c.tag.style.background = p.colour;
         c.tag.textContent = p.nickname;
-        // A new colour: the glove again, in it.
+        // A new color: the glove again, in it.
         this.picture(c);
       }
     }
@@ -269,7 +269,7 @@ export class Presence implements PresenceView {
 
   // ---- drawing ----
 
-  /** Glow every held and selected card or die in its player's colour; the rest plain. */
+  /** Glow every held and selected card or die in its player's color; the rest plain. */
   private retint(): void {
     const { app, deps, online } = this.sync;
     const want = new Map<string, string>();
@@ -353,7 +353,7 @@ export class Presence implements PresenceView {
   }
 
   /**
-   * Draw a remote cursor as its player's glove (decision 293): their colour, the
+   * Draw a remote cursor as its player's glove (decision 293): their color, the
    * viewer's Cursor size, no emoji, its click point on the table point. Until
    * the first picture is ready the plain arrow shows; after that a new glove
    * replaces the last one only once it is ready.

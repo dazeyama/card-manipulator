@@ -1,6 +1,6 @@
 // The empty-table cursors (decisions 123, 168): a classic pointy arrow,
 // hand-drawn at the gloves' 48 px size and in their style, with a heavy black
-// outline, a white body and soft grey shading on its right side. The plain one
+// outline, a white body and soft gray shading on its right side. The plain one
 // carries a dashed marquee box; the ones for adding to and taking from the
 // selection carry a bold plus or minus sign, drawn the same way, instead, and
 // the one for Alt a numbers keycap (decision 169).
@@ -14,7 +14,7 @@ const ARROW = 'M5 5 V35.6 L12.5 28.5 L17.9 40.7 L23 38.3 L17.6 26.4 H27.8 Z';
 const MARQUEE = `<rect x="23.5" y="29" width="19" height="14" rx="2" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-dasharray="4.2 3.4"/>
   <rect x="23.5" y="29" width="19" height="14" rx="2" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="4.2 3.4"/>`;
 
-/** A sign in the bottom right corner, centred on (37, 37): a white shape with the arrow's outline. */
+/** A sign in the bottom right corner, centered on (37, 37): a white shape with the arrow's outline. */
 const C = 37, ARM = 8, HALF = 3.2;
 const PLUS = `M${C - HALF} ${C - ARM} H${C + HALF} V${C - HALF} H${C + ARM} V${C + HALF} H${C + HALF} V${C + ARM} H${C - HALF} V${C + HALF} H${C - ARM} V${C - HALF} H${C - HALF} Z`;
 const MINUS = `M${C - ARM} ${C - HALF} H${C + ARM} V${C + HALF} H${C - ARM} Z`;

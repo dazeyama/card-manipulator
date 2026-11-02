@@ -1,7 +1,7 @@
 // Dice (decision 255): 20 mm six-sided dice that sit on the table among the
 // cards, saved with it. A die is its spot, its turn about the vertical, and
 // the number on top; when rolled, physics tumbles it and the face that ends
-// up on top is its number. Twenty-sided dice and colours since decision 278.
+// up on top is its number. Twenty-sided dice and colors since decision 278.
 // Pure, tested without a browser.
 
 import * as THREE from 'three';
@@ -18,7 +18,7 @@ export interface Die {
   uid: string;
   x: number;
   y: number;
-  /** Height of its centre, mm: half its size above whatever it rests on. */
+  /** Height of its center, mm: half its size above whatever it rests on. */
   z: number;
   /** Its turn about the vertical, radians. */
   yaw: number;
@@ -28,18 +28,18 @@ export interface Die {
   side?: 0 | 1;
   /** A twenty-sided die (decision 278); unset, six-sided. */
   kind?: DieKind;
-  /** Its colour, `#rrggbb` (decision 278); unset, white. */
+  /** Its color, `#rrggbb` (decision 278); unset, white. */
   color?: string;
 }
 
-/** White, the six-sided dice's colour unless chosen. */
+/** White, the six-sided dice's color unless chosen. */
 export const DIE_WHITE = '#fbfbf8';
 
-/** The colours to choose from (decision 278): bright ones, then the dark ones a new d20 takes one of at random. */
+/** The colors to choose from (decision 278): bright ones, then the dark ones a new d20 takes one of at random. */
 export const DIE_COLOURS = ['#fbfbf8', '#e0443e', '#f08c2e', '#f2cf3a', '#4cae4f', '#3d7fd9', '#8a5cc7', '#e86aa6', '#1d1d1f'];
 export const DARK_COLOURS = ['#7a1f24', '#1f3a6e', '#1f5a34', '#4a2a6e', '#1d5a5e', '#5a3a1e', '#2c2c30'];
 
-/** Light or dark, for the colour of the pips and numbers on it: black on light, white on dark. */
+/** Light or dark, for the color of the pips and numbers on it: black on light, white on dark. */
 export function isDark(color: string): boolean {
   const n = parseInt(color.slice(1), 16);
   const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
@@ -123,7 +123,7 @@ export const GATHER_GAP = 1.5;
 
 /**
  * Where `count` gathered dice sit about the cursor (decision 256): a tight,
- * nearly square block, rows of up to ceil(sqrt(count)), centred, first die at
+ * nearly square block, rows of up to ceil(sqrt(count)), centered, first die at
  * the top left, as cards gather into one stack.
  */
 export function gatherOffsets(count: number, size = DIE_SIZE): { x: number; y: number }[] {
@@ -133,7 +133,7 @@ export function gatherOffsets(count: number, size = DIE_SIZE): { x: number; y: n
   const out: { x: number; y: number }[] = [];
   for (let i = 0; i < count; i++) {
     const r = Math.floor(i / cols), c = i % cols;
-    // The last row centred on its own when it is short.
+    // The last row centered on its own when it is short.
     const inRow = r === rows - 1 ? count - r * cols : cols;
     out.push({ x: (c - (inRow - 1) / 2) * step, y: ((rows - 1) / 2 - r) * step });
   }

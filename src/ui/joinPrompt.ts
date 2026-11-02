@@ -1,8 +1,8 @@
 // The join prompt (ONLINE.md 12.3, O64): a modal over the empty table asking
 // for a nickname (prefilled from this browser's identity), one of the eight
-// colours (taken ones greyed with their holder's initial) and the password
+// colors (taken ones grayed with their holder's initial) and the password
 // when the room has one and the link didn't carry it. Join or Not now; errors
-// show inline. Also the colour picker the Go online form shares, and the box
+// show inline. Also the color picker the Go online form shares, and the box
 // for pasting a room link or code (the welcome note's Join a table).
 
 import { NICKNAME_MAX, PASSWORD_MAX, PLAYER_COLOURS, type RoomInfo } from '../../shared/protocol';
@@ -10,7 +10,7 @@ import { codeFromText, type RoomRoute } from '../online/link';
 import { isBlocked } from '../../shared/words';
 import { h } from './dom';
 
-/** The eight swatches, the taken ones greyed with their holder's initial. */
+/** The eight swatches, the taken ones grayed with their holder's initial. */
 export class ColourPicker {
   readonly el: HTMLElement;
   value: string;
@@ -20,10 +20,10 @@ export class ColourPicker {
     const takenBy = new Map(taken.map((t) => [t.colour.toLowerCase(), t.initial]));
     const free = PLAYER_COLOURS.filter((c) => !takenBy.has(c.toLowerCase()));
     this.value = free.find((c) => c.toLowerCase() === preferred.toLowerCase()) ?? free[0] ?? PLAYER_COLOURS[0];
-    this.el = h('div', { class: 'colour-picker', role: 'radiogroup', 'aria-label': 'Your colour' });
+    this.el = h('div', { class: 'colour-picker', role: 'radiogroup', 'aria-label': 'Your color' });
     for (const c of PLAYER_COLOURS) {
       const initial = takenBy.get(c.toLowerCase());
-      const b = h('button', { class: 'swatch big', type: 'button', role: 'radio', title: initial ? `Taken by ${initial}…` : 'Take this colour' }, initial ?? '');
+      const b = h('button', { class: 'swatch big', type: 'button', role: 'radio', title: initial ? `Taken by ${initial}…` : 'Take this color' }, initial ?? '');
       b.style.background = c;
       if (initial) {
         b.disabled = true;
@@ -79,7 +79,7 @@ export function joinPrompt(opts: JoinPromptOptions): Promise<JoinAnswer | null> 
     const box = h('div', { class: 'modal join-prompt' },
       title, sub,
       h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Nickname'), nick),
-      h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Colour'), colours.el),
+      h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Color'), colours.el),
       ...(opts.needPassword ? [h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Password'), pass)] : []),
       error,
       h('div', { class: 'row end' }, notNow, join),

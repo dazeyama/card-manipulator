@@ -191,7 +191,7 @@ export class App {
     requestAnimationFrame(tick);
   }
 
-  /** Table point under the last cursor position (or the view centre). */
+  /** Table point under the last cursor position (or the view center). */
   tablePointUnderCursor(): THREE.Vector3 {
     if (this.pointer.inside) {
       const p = this.rig.screenToPlane(this.pointer.x, this.pointer.y, 0);
@@ -201,7 +201,7 @@ export class App {
   }
 }
 
-/** Height of a card's centre when it is `level` cards up from the table. */
+/** Height of a card's center when it is `level` cards up from the table. */
 /** Where a card's drawn pose rests: tilted on what is under it, or flat at its model height. */
 export function restPose(app: App, card: Card): Rest {
   return app.rest?.restOf(card.uid) ?? { z: card.z, tiltX: 0, tiltY: 0 };

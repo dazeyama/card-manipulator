@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BLOCKED, WHOLE_WORDS, clean, isBlocked, normalise, words } from '../shared/words';
 
 describe('the name filter', () => {
-  it('normalises case, accents, look-alike digits and punctuation', () => {
+  it('normalizes case, accents, look-alike digits and punctuation', () => {
     expect(normalise('Hé11o, W0rld!')).toBe('heiioworld');
     expect(normalise('5h1t-7est 4 @ $')).toBe('shittestaas');
     expect(normalise('  Vintage cube pass 3 ')).toBe('vintagecubepasse');

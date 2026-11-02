@@ -70,7 +70,7 @@ export function pilesTouched(store: Store, uids: Iterable<string>): number {
 
 export interface SelectionSummary {
   count: number;
-  /** W U B R G and C (colourless) counts. */
+  /** W U B R G and C (colorless) counts. */
   pips: Record<'W' | 'U' | 'B' | 'R' | 'G' | 'C', number>;
   /** Mana value histogram: 0, 1, … 6, 7+. */
   mv: number[];

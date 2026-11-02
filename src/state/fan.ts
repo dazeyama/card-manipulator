@@ -10,12 +10,12 @@ import type { Placed } from './piles';
 export const FAN_STEP = 0.15;
 /** ...unless the whole fan would turn further than this (about 126 degrees), when the step shrinks. */
 export const FAN_MAX_SPREAD = 2.2;
-/** Distance from the pivot to each card's centre, mm. */
+/** Distance from the pivot to each card's center, mm. */
 export const FAN_RADIUS = CARD_H * 1.8;
 
 /**
  * Where each of `count` cards goes, bottom card first, in a fan whose middle
- * card sits at `centre`, upright on the table.
+ * card sits at `center`, upright on the table.
  */
 export function fanLayout(count: number, centre: { x: number; y: number }): Placed[] {
   if (count < 1) return [];
@@ -45,8 +45,8 @@ export const ARC_MAX = 1.2;
  * A hand fanned in one arc exactly `width` wide, edge to edge, for any number
  * of cards (decision 222): as a fan (bottom card left, each a step further
  * round), the radius chosen so the outer cards' outer corners just reach the
- * width. Few cards make a wide, gentle arc; many, a rounder one. Centred on
- * `centre`, by its bounds.
+ * width. Few cards make a wide, gentle arc; many, a rounder one. Centered on
+ * `center`, by its bounds.
  */
 export function arcHand(count: number, width: number, centre: { x: number; y: number }): Placed[] {
   if (count < 1) return [];
@@ -58,7 +58,7 @@ export function arcHand(count: number, width: number, centre: { x: number; y: nu
     const a = -half + (2 * half * i) / (count - 1);
     out.push({ x: radius * Math.sin(a), y: radius * Math.cos(a), yaw: -a, z: CARD_T / 2 + i * CARD_T });
   }
-  // Centre it by its cards' extent.
+  // Center it by its cards' extent.
   const ext = (p: Placed) => Math.abs(Math.sin(p.yaw)) * (CARD_W / 2) + Math.abs(Math.cos(p.yaw)) * (CARD_H / 2);
   const lo = Math.min(...out.map((p) => p.y - ext(p))), hi = Math.max(...out.map((p) => p.y + ext(p)));
   const dy = centre.y - (lo + hi) / 2;
@@ -73,7 +73,7 @@ export const HAND_ROW_STEP = CARD_H * 1.9;
 /**
  * A drawn hand (decisions 143, 162, 205): one fan of up to HAND_ROW cards, or
  * for more, packs of HAND_ROW with whatever is left over in a last, smaller
- * fan (27 cards: 15 then 12), one under the next, all centred on `centre`.
+ * fan (27 cards: 15 then 12), one under the next, all centered on `center`.
  * Bottom card first, the first fan at the top of the table.
  */
 export function handLayout(count: number, centre: { x: number; y: number }): Placed[] {

@@ -66,7 +66,7 @@ export class HiRes {
     app.onFrame((now) => this.update(now));
   }
 
-  /** On-screen height of a card at the view's centre, in pixels. */
+  /** On-screen height of a card at the view's center, in pixels. */
   private cardPixels(): number {
     const rig = this.app.rig;
     const fov = (rig.camera.fov * Math.PI) / 180;
@@ -100,7 +100,7 @@ export class HiRes {
     }
   }
 
-  /** Choose which cards get a big image: the hovered one, then those nearest the centre of the view. */
+  /** Choose which cards get a big image: the hovered one, then those nearest the center of the view. */
   private pick(): void {
     const app = this.app;
     const rig = app.rig;

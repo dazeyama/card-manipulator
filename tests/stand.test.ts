@@ -43,7 +43,7 @@ describe('the slope as a second table (decision 221)', () => {
     const pose = slopePose(s, { x: 0, y: SLOPE_START + 60, z: CARD_T / 2, yaw: 0 });
     expect(pose.tiltX).toBeCloseTo(SLOPE, 6);
     expect(pose.tiltY).toBeCloseTo(0, 6);
-    // The card's underside is on the slope's surface under its centre.
+    // The card's underside is on the slope's surface under its center.
     const under = pose.z - (CARD_T / 2) / Math.cos(SLOPE);
     const { b } = standLocal(s, pose.x, pose.y);
     expect(under).toBeCloseTo(profileHeight(0, b), 3);
@@ -96,7 +96,7 @@ describe('the slope as a second table (decision 221)', () => {
       expect(right - left).toBeCloseTo(STAND_W, 3);
       expect(fitOnStand(s, fromSlope(s, hand))).not.toBeNull();
     }
-    // A wide grid doesn't fit: it goes in front of the stand, centred, clear of it.
+    // A wide grid doesn't fit: it goes in front of the stand, centered, clear of it.
     const big = Array.from({ length: 12 }, (_, i) => ({ x: (i - 5.5) * 70, y: SLOPE_START + 80, yaw: 0 }));
     expect(fitOnStand(s, big)).toBeNull();
     const front = inFrontOf(s, big);

@@ -9,7 +9,7 @@ const PITCH_MIN = 25;
 const PITCH_MAX = 89;
 const YAW_LIMIT = 60;
 const FOV = 35;
-/** Visible table width limits at the target, millimetres (spec 7.2). */
+/** Visible table width limits at the target, millimeters (spec 7.2). */
 const MIN_WIDTH = 150;
 const MAX_WIDTH = 3600;
 export const DEFAULT_DISTANCE = 1400;
@@ -126,7 +126,7 @@ export class CameraRig {
     this.changed = true;
   }
 
-  /** Screen pixel (relative to the canvas) to normalised device coordinates. */
+  /** Screen pixel (relative to the canvas) to normalized device coordinates. */
   toNdc(sx: number, sy: number, out = this.ndc): THREE.Vector2 {
     return out.set((sx / this.width) * 2 - 1, -(sy / this.height) * 2 + 1);
   }
@@ -188,7 +188,7 @@ export class CameraRig {
     this.update();
   }
 
-  /** Back to the table's centre at the default zoom, looking from the current preset's angle. */
+  /** Back to the table's center at the default zoom, looking from the current preset's angle. */
   reset(smooth = true): void {
     const p = VIEW_PRESETS[this.preset];
     const to = { x: 0, y: 0, distance: DEFAULT_DISTANCE, pitch: p.pitch, yaw: p.yaw };
@@ -266,7 +266,7 @@ export class CameraRig {
   /**
    * Move the camera to fit a table-space box (spec 7.2, Z). The box is fitted
    * as the tilted camera actually sees it (decision 212): as close as keeps all
-   * its corners on screen with a small margin, and centred in the view, so a
+   * its corners on screen with a small margin, and centered in the view, so a
    * big group fills the screen, then backed off one wheel notch (decision 213).
    * Never closer than one card's framing, which stays as it was.
    */
@@ -319,7 +319,7 @@ export class CameraRig {
       this.update();
     };
     this.target.set((minX + maxX) / 2, (minY + maxY) / 2, 0);
-    // The near side of a tilted box looks bigger, so its centre is not the view's: nudge and fit again.
+    // The near side of a tilted box looks bigger, so its center is not the view's: nudge and fit again.
     for (let pass = 0; pass < 3; pass++) {
       fit();
       if (pass === 2) break;
@@ -340,7 +340,7 @@ export class CameraRig {
     this.framed = { from: still ? f.from : before, at: this.view(), box };
   }
 
-  /** Visible table width in millimetres at the target. */
+  /** Visible table width in millimeters at the target. */
   visibleWidth(): number {
     return 2 * this.distance * Math.tan((FOV * DEG) / 2) * this.camera.aspect;
   }

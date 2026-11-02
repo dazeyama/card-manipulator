@@ -5,7 +5,7 @@
 // the way P does (click where it goes; P again for face down), and when that
 // is done, or the box is closed, the pile is shuffled if "Shuffle when done"
 // is ticked. In a room a face-down pile is shown to the searcher alone, while
-// everyone is told in chat and sees it glow in the searcher's colour.
+// everyone is told in chat and sees it glow in the searcher's color.
 
 import type { App } from '../app';
 import { compileQuery } from '../query/evaluate';
@@ -37,7 +37,7 @@ export class DeckSearch {
   private pile: string[] = [];
   /** A room search asked for (face-down cards shown to me alone). */
   private roomSearch = false;
-  /** The card taken out, while P places it; the search ends when it lands or is cancelled. */
+  /** The card taken out, while P places it; the search ends when it lands or is canceled. */
   private taking: string | null = null;
   private waitTimer = 0;
   private placeTimer = 0;
@@ -206,7 +206,7 @@ export class DeckSearch {
     return el;
   }
 
-  /** Take a card out as P does; the search ends once it has been placed or P is cancelled. */
+  /** Take a card out as P does; the search ends once it has been placed or P is canceled. */
   private take(uid: string): void {
     this.taking = uid;
     this.el.hidden = true;

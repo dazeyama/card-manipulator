@@ -1,7 +1,7 @@
 // Rank gating in the browser (ONLINE.md 6.4, the first of three layers): keys
 // that would change the table show a toast ("Move or higher needed", "The
 // table is locked", "Only Sam can touch that stand") and do nothing; buttons
-// are greyed with a title saying what is needed and refuse clicks; the mouse
+// are grayed with a title saying what is needed and refuse clicks; the mouse
 // grammar refuses to begin a drag of what you may not move, while a plain
 // click still selects. Honest clients never send an op they may not. The
 // crown's judge (authority.ts) and the server are the other two layers.
@@ -150,7 +150,7 @@ export function keyAction(name: string): Action | null {
   if (name === 'b') return 'flag';
   // Shift + T is your own Tidy mode, a personal setting (O44).
   if (name === 'shift+t') return null;
-  // Stack, spread, tidy, curve and colours, ranks, fan, turn or roll, flip, place, draw or set a die.
+  // Stack, spread, tidy, curve and colors, ranks, fan, turn or roll, flip, place, draw or set a die.
   if (/^(shift\+)?[sxtcehrfp0-9]$/.test(name)) return 'move';
   // Cutting a stack (decision 314).
   if (name === '/') return 'move';
@@ -173,7 +173,7 @@ export class Guard {
     return !action || allowedNow(action);
   };
 
-  /** The same, without the toast (KeyboardInput.allowed): greys the radial menu's wedges. */
+  /** The same, without the toast (KeyboardInput.allowed): grays the radial menu's wedges. */
   keyQuiet = (name: string): boolean => {
     if (!this.owner.online) return true;
     const action = keyAction(name);
@@ -200,7 +200,7 @@ export class Guard {
   }
 
   /**
-   * Grey a button by rank: its title says what is needed, and clicks are refused
+   * Gray a button by rank: its title says what is needed, and clicks are refused
    * with the toast. With `hide` it is hidden instead (Downloads off hides the save and
    * export buttons, 4.3).
    */

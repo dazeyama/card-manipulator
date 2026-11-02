@@ -615,7 +615,7 @@ export class Room extends DurableObject<Env> {
    * L L (decision 310): a player looks through face-down cards, a pile, while
    * they search it. Move rank, as moving them would need; the cards they may not
    * already know are revealed to them alone, everyone is told in chat, and the
-   * cards glow in their colour on every table. `uids: []` ends it.
+   * cards glow in their color on every table. `uids: []` ends it.
    */
   private search(ws: WebSocket, seat: { id: string; nickname: string; rank: Rank }, isCrown: boolean, raw: unknown): void {
     const meta = this.meta;
@@ -767,7 +767,7 @@ export class Room extends DurableObject<Env> {
     this.queueHeartbeat();
   }
 
-  // ---- streams, chat, colour ----
+  // ---- streams, chat, color ----
 
   /** Fan a player's stream out to everyone else, with who sent it (8.3). Never stored. */
   private stream(seat: Seat, msg: StreamIn): void {
@@ -807,7 +807,7 @@ export class Room extends DurableObject<Env> {
     this.say(clean, seat.id);
   }
 
-  /** Swap your own colour to a free one (5.2). */
+  /** Swap your own color to a free one (5.2). */
   private colour(seat: Seat, colour: unknown): void {
     const meta = this.meta!;
     if (typeof colour !== 'string' || !colourFree(meta, colour, seat.id) || seat.colour === colour) return;
@@ -860,7 +860,7 @@ export class Room extends DurableObject<Env> {
 
   /**
    * Kick drops a player, who may come back by the link; Ban also blocks their
-   * identity for the room's life (4.6, O49). Their seat stays, greyed, and so
+   * identity for the room's life (4.6, O49). Their seat stays, grayed, and so
    * does their stand. The crown cannot be kicked or banned; the crown kicks
    * anyone else, a co-host only players below Everything (O111).
    */
@@ -901,7 +901,7 @@ export class Room extends DurableObject<Env> {
     this.queueHeartbeat();
   }
 
-  /** A chat line from a player, or a grey system line (no `from`). */
+  /** A chat line from a player, or a gray system line (no `from`). */
   private say(text: string, from?: string): void {
     const meta = this.meta;
     if (!meta) return;

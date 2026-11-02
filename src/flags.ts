@@ -1,13 +1,13 @@
 // Flags on the table (decision 327): a pole with a cloth naming the flag and
 // counting its cards, standing in a tinted circle, its zone. A card whose
-// centre lies in the zone is the flag's, wherever in it the card lies; zones
+// center lies in the zone is the flag's, wherever in it the card lies; zones
 // never overlap. A flag with a filter turns away cards that don't match it,
 // out past the edge with a shake and a notice: cards this browser's user
 // puts down there, and the cards a flag lands on when placed or moved.
 //
 // B arms placing (the next click sets a flag down, and its box opens). Drag
 // the pole or the cloth to move the flag alone; its hover buttons are ✏️
-// (name, filter, colour), ⤓ (export its cards) and 🔒; Delete over a flag
+// (name, filter, color), ⤓ (export its cards) and 🔒; Delete over a flag
 // takes it away, leaving its cards. Rooms hear of every change through the
 // store's `flag` op (ONLINE.md O114).
 
@@ -29,7 +29,7 @@ const POLE_R = 2.5;
 /**
  * The pole stands at the top of its zone, on the circle's edge furthest from
  * the camera (decision 333), leaving the middle clear for cards; the flag's x
- * and y stay the zone's centre. It follows the way the camera faces, so it is
+ * and y stay the zone's center. It follows the way the camera faces, so it is
  * still at the top after mirror mode crosses the table, sliding round the
  * circle to get there (decision 336).
  */
@@ -107,7 +107,7 @@ export class Flags {
    * table is clicked, a playmat is moved, or it is locked or taken away.
    */
   selected: string | null = null;
-  /** The selected flag's rim, a band just outside its circle in the selection colour. */
+  /** The selected flag's rim, a band just outside its circle in the selection color. */
   private readonly rim = new THREE.Mesh(new THREE.RingGeometry(FLAG_REACH, FLAG_REACH + 6, 128), new THREE.MeshBasicMaterial({ color: ACCENT, depthTest: false, depthWrite: false }));
 
   /** A flag is in hand: the cursor shows the fist (decision 330). */
@@ -157,7 +157,7 @@ export class Flags {
     store.events.on('removed', () => (this.countsDirty = true));
     store.events.on('records', () => (this.countsDirty = true));
 
-    // Hover buttons over the cloth: ✏️ name, filter and colour; ⤓ export; 🔒 lock.
+    // Hover buttons over the cloth: ✏️ name, filter and color; ⤓ export; 🔒 lock.
     const button = (text: string, title: string, run: (uid: string, el: HTMLElement) => void) => {
       const b = document.createElement('button');
       b.className = 'mat-mirror-btn';
@@ -169,7 +169,7 @@ export class Flags {
       });
       return b;
     };
-    const edit = button('✏️', 'Name, filter and colour', (uid, el) => {
+    const edit = button('✏️', 'Name, filter and color', (uid, el) => {
       if (allowedNow('flag')) this.edit(uid, el);
     });
     const out = button('⤓', 'Export this flag’s cards as a decklist', (uid, el) => {
@@ -216,7 +216,7 @@ export class Flags {
   private lastHoverAt = 0;
   /** Where round the circle the poles stand: an angle on the table, +y (the default view's top) at π/2. */
   private mastAngle = Math.PI / 2;
-  /** The pole's offset from the zone's centre, for that angle. */
+  /** The pole's offset from the zone's center, for that angle. */
   private mastAt = { x: 0, y: MAST_R };
   private readonly look = new THREE.Vector3();
 
@@ -596,7 +596,7 @@ export class Flags {
     return { root, mast, zone, ring, turner, cloth, grip, shadow, shadowTurner, text: '', colour: '', width: 0 };
   }
 
-  /** Paint a cloth's text: the name and the count, on the flag's colour. */
+  /** Paint a cloth's text: the name and the count, on the flag's color. */
   private paint(d: Drawn, text: string, colour: string): void {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d')!;
@@ -608,7 +608,7 @@ export class Flags {
     ctx.font = font;
     ctx.fillStyle = colour;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // Dark text on the light colours, white on the rest.
+    // Dark text on the light colors, white on the rest.
     const rgb = new THREE.Color(colour);
     ctx.fillStyle = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b > 0.62 ? '#1d1d1f' : '#ffffff';
     ctx.textBaseline = 'middle';

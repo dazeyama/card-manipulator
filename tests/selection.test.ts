@@ -73,7 +73,7 @@ describe('select all and toggle', () => {
 });
 
 describe('summarize (HUD)', () => {
-  it('counts colour pips, colourless and a mana value histogram without lands', () => {
+  it('counts color pips, colorless and a mana value histogram without lands', () => {
     const s = table();
     selectAll(s);
     const sum = summarize(s);

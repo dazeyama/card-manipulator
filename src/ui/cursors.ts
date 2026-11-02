@@ -120,7 +120,7 @@ function drawEmoji(g: CanvasRenderingContext2D, emoji: string, size: number): vo
   g.fillText(emoji, size - EMOJI_RIGHT - m.actualBoundingBoxRight, size - EMOJI_BOTTOM - m.actualBoundingBoxDescent);
 }
 
-/** An emoji in the bottom right corner of its own canvas, tinted a colour (the X spread's 🪟, decision 216). */
+/** An emoji in the bottom right corner of its own canvas, tinted a color (the X spread's 🪟, decision 216). */
 function tintedEmoji(emoji: string, tint: string): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = c.height = SIZE;
@@ -155,7 +155,7 @@ function compose(img: HTMLImageElement, hand: Hand, emoji: string, fallback: str
   c.width = c.height = SIZE;
   const g = c.getContext('2d')!;
   g.drawImage(img, 0, 0, SIZE, SIZE);
-  // In a room, your colour (decision 293); the emoji keeps its own.
+  // In a room, your color (decision 293); the emoji keeps its own.
   if (colour) tint(c, colour);
   if (emoji) drawEmoji(g, emoji, SIZE);
   // The gesture gloves hold their click point in the middle, like the open hand and the fist.
@@ -204,10 +204,10 @@ export class Cursors {
 
   /** Counts builds, so a slower earlier one never overwrites a later size. */
   private builds = 0;
-  /** The room colour the cursors were last drawn in ('' offline: white). */
+  /** The room color the cursors were last drawn in ('' offline: white). */
   private builtColour = '';
 
-  /** Your colour in a room, or '' offline (decision 293). */
+  /** Your color in a room, or '' offline (decision 293). */
   private colourNow(): string {
     const room = this.app.online?.room;
     return room?.player(room.me)?.colour ?? '';
@@ -350,7 +350,7 @@ export class Cursors {
   }
 
   private update(): void {
-    // Joined, left, or swapped colour: draw them again (decision 293).
+    // Joined, left, or swapped color: draw them again (decision 293).
     if (this.colourNow() !== this.builtColour) void this.build();
     const draw = this.app.drawing;
     const state = this.pick();
@@ -359,7 +359,7 @@ export class Cursors {
     const age = g ? performance.now() - g.at : Infinity;
     const settling = !!g?.settle && age < GESTURE_MAX_MS && g.settle.some((u) => this.app.motion.isAnimating(u));
     const gesture = g && (age < GESTURE_MS || settling) ? this.gestureCursors[g.name] : undefined;
-    // The glove alone, for the room's stream: others draw it in your colour (decision 293).
+    // The glove alone, for the room's stream: others draw it in your color (decision 293).
     const glove: Glove = gesture ? g!.name : draw || this.app.placing || this.app.flagging ? 'point' : this.app.spreading ? (this.app.spreading.reverse ? 'pointReverse' : 'point') : STATES[state][0];
     this.app.cursorGlove = glove;
     const next = gesture

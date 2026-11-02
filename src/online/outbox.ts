@@ -115,7 +115,7 @@ export class Outbox {
     this.send({ t: 'grab', uids, ...(dice.length ? { dice } : {}) }, null, { refused });
   }
 
-  /** The hand emptied without landing (Esc, a cancelled drag). */
+  /** The hand emptied without landing (Esc, a canceled drag). */
   release(uids: string[], dice: string[] = []): void {
     if (!uids.length && !dice.length) return;
     this.flush();

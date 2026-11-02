@@ -11,7 +11,7 @@ import { layOrder, type Placed } from '../state/piles';
 import { slopePoint } from '../state/stand';
 import { CARD_H, CARD_T, CARD_W, type Mat } from '../state/types';
 
-/** The laser's colours: a bright core, a softer glow around it, the fill and its scan lines. */
+/** The laser's colors: a bright core, a softer glow around it, the fill and its scan lines. */
 const BLUE = { core: 'rgba(70, 190, 255, 0.9)', glow: 'rgba(120, 215, 255, 0.85)', fill: 'rgba(120, 210, 255, 0.10)', scan: 'rgba(90, 200, 255, 0.16)' };
 /** A reverse spread's: a red-ish magenta (decision 215). */
 const MAGENTA = { core: 'rgba(235, 50, 160, 0.9)', glow: 'rgba(255, 110, 190, 0.85)', fill: 'rgba(255, 100, 180, 0.10)', scan: 'rgba(240, 70, 160, 0.16)' };

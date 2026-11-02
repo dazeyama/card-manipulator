@@ -8,7 +8,7 @@ import { toast } from './toasts';
 export class PileEditor {
   private readonly el: HTMLDivElement;
   private pileId: string | null = null;
-  /** A bin made by N that is removed again if the editor is cancelled. */
+  /** A bin made by N that is removed again if the editor is canceled. */
   private fresh = false;
   private readonly name: HTMLInputElement;
   private readonly filter: HTMLInputElement;

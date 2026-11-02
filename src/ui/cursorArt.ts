@@ -1,5 +1,5 @@
 // The cursor gloves as pictures (decision 293): every glove the custom
-// cursors use, loaded once, tinted a player's colour in a room, and scaled to
+// cursors use, loaded once, tinted a player's color in a room, and scaled to
 // the Cursor size. cursors.ts draws your own cursor from these; presence.ts
 // draws other players' cursors on the table from the same art, by the glove
 // name their stream carries (`cs`), without any emoji badge.
@@ -93,7 +93,7 @@ export function gloveCanvas(g: Glove, img: HTMLImageElement): HTMLCanvasElement 
 }
 
 /**
- * Colour a glove (decision 293): its white takes the colour, its black outline
+ * Color a glove (decision 293): its white takes the color, its black outline
  * and shading stay, so it is still the same cartoon glove. Only what is drawn
  * so far is tinted: draw any emoji after.
  */
@@ -125,7 +125,7 @@ export function scaleCursor(c: HTMLCanvasElement, hx: number, hy: number, px: nu
   return { canvas: out, hx: scaleHotspot(hx, c.width, side), hy: scaleHotspot(hy, c.width, side) };
 }
 
-/** Another player's cursor as a picture: the glove alone (no emoji), in their colour, at `px`. */
+/** Another player's cursor as a picture: the glove alone (no emoji), in their color, at `px`. */
 export interface GlovePicture {
   url: string;
   /** Its click point, px from its top left. */
@@ -136,7 +136,7 @@ export interface GlovePicture {
 
 const pictures = new Map<string, Promise<GlovePicture>>();
 
-/** A glove in a colour at a size, made once and kept. */
+/** A glove in a color at a size, made once and kept. */
 export function glovePicture(g: Glove, colour: string, px: number): Promise<GlovePicture> {
   const key = `${g}|${colour}|${px}`;
   let p = pictures.get(key);

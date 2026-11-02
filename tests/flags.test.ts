@@ -4,7 +4,7 @@ import { clearOf, FLAG_COLOURS, FLAG_REACH, flagAt, flagOfCard, membersOf, nextC
 const flag = (uid: string, x: number, y: number, extra: Partial<Flag> = {}): Flag => ({ uid, name: uid, filter: null, colour: '#e63946', x, y, ...extra });
 
 describe('flags (decision 327)', () => {
-  it('a card belongs to the flag whose zone holds its centre', () => {
+  it('a card belongs to the flag whose zone holds its center', () => {
     const flags = [flag('a', 0, 0), flag('b', 1000, 0)];
     expect(flagAt(flags, 340, 0)?.uid).toBe('a');
     expect(flagAt(flags, 0, 351)).toBeNull();
@@ -34,19 +34,19 @@ describe('flags (decision 327)', () => {
     for (const o of [{ x: 0, y: 0 }, { x: 700, y: 0 }]) expect(Math.hypot(q.x - o.x, q.y - o.y)).toBeGreaterThanOrEqual(FLAG_REACH * 2 - 0.1);
   });
 
-  it('turns a card away to just past the edge, straight out, and clear of a neighbour\'s zone', () => {
+  it('turns a card away to just past the edge, straight out, and clear of a neighbor\'s zone', () => {
     const a = flag('a', 0, 0);
     const out = outsideSpot(a, { x: 100, y: 0 }, [a]);
     expect(out.y).toBeCloseTo(0);
     expect(out.x).toBeGreaterThan(FLAG_REACH + 50);
     expect(flagAt([a], out.x, out.y)).toBeNull();
-    // A neighbour to the right: the card goes round instead of into it.
+    // A neighbor to the right: the card goes round instead of into it.
     const b = flag('b', FLAG_REACH * 2, 0);
     const round = outsideSpot(a, { x: 100, y: 0 }, [a, b]);
     expect(flagAt([a, b], round.x, round.y)).toBeNull();
   });
 
-  it('picks a fresh colour and name for each new flag', () => {
+  it('picks a fresh color and name for each new flag', () => {
     expect(nextColour([])).toBe(FLAG_COLOURS[0]);
     expect(nextColour([flag('a', 0, 0, { colour: FLAG_COLOURS[0] })])).toBe(FLAG_COLOURS[1]);
     expect(nextName([flag('x', 0, 0, { name: 'Flag 1' })])).toBe('Flag 2');

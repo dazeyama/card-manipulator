@@ -1,5 +1,5 @@
-// A die's colour (decision 278): C over a die, or with dice selected, opens a
-// small row of colour swatches beside the cursor; a click paints the dice and
+// A die's color (decision 278): C over a die, or with dice selected, opens a
+// small row of color swatches beside the cursor; a click paints the dice and
 // closes it. Esc or a click elsewhere closes it too.
 
 import type { Dice } from '../dice';

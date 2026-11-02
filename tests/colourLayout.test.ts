@@ -3,8 +3,8 @@ import { colourColumn, colourLayout, type ColourCard } from '../src/state/colour
 
 const card = (uid: string, colours: string[], mv = 1, extra: Partial<ColourCard> = {}): ColourCard => ({ uid, name: uid, mv, land: false, creature: false, colours, ...extra });
 
-describe('colour view, C C (decision 217)', () => {
-  it('puts each card in W U B R G, colourless, multicolour or lands', () => {
+describe('color view, C C (decision 217)', () => {
+  it('puts each card in W U B R G, colorless, multicolor or lands', () => {
     expect(colourColumn(card('a', ['W']))).toBe(0);
     expect(colourColumn(card('a', ['G']))).toBe(4);
     expect(colourColumn(card('a', []))).toBe(5);
@@ -18,7 +18,7 @@ describe('colour view, C C (decision 217)', () => {
     expect(x.get('white')!).toBeLessThan(x.get('red')!);
     expect(x.get('red')!).toBeLessThan(x.get('gold')!);
     expect(x.get('gold')!).toBeLessThan(x.get('land')!);
-    // Four columns, centred.
+    // Four columns, centered.
     expect((x.get('white')! + x.get('land')!) / 2).toBeCloseTo(0, 6);
   });
 

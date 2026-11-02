@@ -54,8 +54,8 @@ Two jobs, one room type:
 | **Maker** | The browser that created the room by going online. The maker always gets the crown back on return (O6). |
 | **Crown** | The player whose browser is the authority for the table (O2) and who owns the room: ranks, kicks, settings, closing. Exactly one at a time. |
 | **Rank** | One of View, Move, Tokens, Cards, Everything (O21), per player, set by the crown. The crown has no rank; it may do anything. |
-| **Player** | A connected browser with a nickname, a colour and a rank. Up to eight. |
-| **Identity** | A random secret token stored in the browser, with the nickname and colour; its hash is the player id the room knows (O17). |
+| **Player** | A connected browser with a nickname, a color and a rank. Up to eight. |
+| **Identity** | A random secret token stored in the browser, with the nickname and color; its hash is the player id the room knows (O17). |
 | **Side** | Near or far, as mirror mode has them (decision 267). Online, M crosses the table (O36). |
 | **Op** | One change to the table, in the shape of Section 8.2, proposed by a player and confirmed by the crown. |
 | **Stream** | Ten-times-a-second position data that is not table state: cursors, cards and dice in hands, flying objects. Relayed, never stored. |
@@ -154,20 +154,20 @@ card-manipulator/
 │   ├── words.ts                 the name filter (a short list the owner edits) and clean(name)
 │   └── rateLimit.ts             a pure sliding-window counter
 ├── src/online/                  the client's room layer
-│   ├── identity.ts              the token, nickname and colour in localStorage
+│   ├── identity.ts              the token, nickname and color in localStorage
 │   ├── session.ts               the WebSocket, hello, reconnect, version check, message dispatch
 │   ├── room.ts                  RoomState: meta, players, me, crown, rank, locked, downloads; events
 │   ├── outbox.ts                store changes → ops, optimistic apply, pending inverses, refusal rollback
 │   ├── inbox.ts                 confirmed ops, reveals, forgets and snapshots → the store
 │   ├── authority.ts             the crown's judge: checks and confirms or refuses; handover in and out
 │   ├── streams.ts               10 Hz batching out; interpolation buffers in
-│   ├── presence.ts              remote cursors (DOM), remote holds and flights (layer poses), colours
+│   ├── presence.ts              remote cursors (DOM), remote holds and flights (layer poses), colors
 │   ├── hidden.ts                app.online.canSee(card) and the HIDDEN sentinel for the client
 │   ├── link.ts                  #/room/CODE?key= parsing, Copy link, Copy invite link
 │   └── guard.ts                 rank gating for keys, buttons and mouse grammar; refusal toasts
 ├── src/ui/
 │   ├── onlinePanel.ts           the floating Online panel (Section 12.2)
-│   ├── joinPrompt.ts            nickname, colour, password (Section 12.3)
+│   ├── joinPrompt.ts            nickname, color, password (Section 12.3)
 │   ├── chatStrip.ts             the chat in the panel
 │   ├── tableBrowser.ts          the public list (Section 12.5)
 │   ├── playerRows.ts            the player list with rank pickers and the crown's menu
@@ -224,14 +224,14 @@ npm run build      # vite build (the server is not part of dist)
 - **Go offline** (O8) is the crown's, any time. Everyone else gets the **Room closed** screen (Section 12.7) with **Save a copy**; the crown's table stays exactly as it stands, offline.
 - **Closing on empty** (O61). When the last socket closes, the Room deletes its storage and tells the Lobby. A reload by the last player ends the room: the Online panel says so under the link ("The room lives while someone is in it"). Appendix B keeps a note on adding a short grace period if this proves annoying.
 - **Joining** (Section 4.4) never changes the joiner's own table (O9): their `autosave.v1` stays untouched; the room's table lives in the store while connected and their own comes back on leaving. **Save a copy** downloads the room's table as a table file (Section 7.5 says what a non-crown copy holds).
-- **Leaving:** the **Leave** button, closing the tab, or losing the connection for good. A player who leaves keeps their seat in the player list, greyed, until the room closes (O19): rank, colour, stand and crown claim all wait for the same browser.
+- **Leaving:** the **Leave** button, closing the tab, or losing the connection for good. A player who leaves keeps their seat in the player list, grayed, until the room closes (O19): rank, color, stand and crown claim all wait for the same browser.
 
 ### 4.2 Codes and links (O11, O12)
 
 - A room code is six characters from `23456789ABCDEFGHJKMNPQRSTUVWXYZ` (no 0, O, 1, I, L), 31⁶ ≈ 887 million codes, made on the server, retried on the rare collision. **(agent, O11)** The owner left the choice between a code and three words open; the code is shorter to type from a phone screen and fits the browser row.
 - **Link:** `https://dazeyama.github.io/card-manipulator/#/room/7KQ2MX`. The fragment never reaches any server.
 - **Invite link** (O12): `#/room/7KQ2MX?key=<password>` for password rooms; it opens straight in. The public browser never shows it. **Copy link** and **Copy invite link** are two buttons in the Online panel (the second only when a password is set).
-- Opening a link: if the page has no identity yet, the join prompt asks for a nickname and colour (Section 12.3). The welcome table is skipped for a visitor arriving by link; their own (empty) table is what they come back to on leaving.
+- Opening a link: if the page has no identity yet, the join prompt asks for a nickname and color (Section 12.3). The welcome table is skipped for a visitor arriving by link; their own (empty) table is what they come back to on leaving.
 - A link to a closed room shows **This room has closed** with **Back to my table**.
 
 ### 4.3 Visibility, password, tag (O10, O13)
@@ -245,38 +245,38 @@ npm run build      # vite build (the server is not part of dist)
 | Lock table | on/off (O51) | off | crown | a lock in everyone's top bar; every table op from non-crown players is refused with "The table is locked" |
 | Downloads | on/off (O50) | on | crown | off hides Save as file, Save a copy and the Export panel for everyone but the crown |
 
-Changing the name (the table name in the top bar), visibility, password, tag or newcomer rank is the crown's alone (O23). Other players see the values greyed. Lock table keeps ranks: unlocking restores everyone as they were.
+Changing the name (the table name in the top bar), visibility, password, tag or newcomer rank is the crown's alone (O23). Other players see the values grayed. Lock table keeps ranks: unlocking restores everyone as they were.
 
 ### 4.4 Joining
 
 1. The page parses `#/room/CODE` and `?key=`. A phone or tablet (a coarse pointer and a viewport under 1,280 px, the spec's width rule) gets the **desktop only** page naming the room (O53), fetched from `GET /api/rooms/CODE`.
 2. `GET /api/version`: if `PROTOCOL` differs, **Reload to update**.
 3. `GET /api/rooms/CODE` → `{name, players, max: 8, password: boolean, tag, open}`. Closed → the closed screen. Full → "The room is full (8 of 8)" with a Retry.
-4. The join prompt (Section 12.3): nickname (prefilled from the identity), a free colour, the password if needed and not in the link. Nickname and colour are remembered for next time (O17, O18).
+4. The join prompt (Section 12.3): nickname (prefilled from the identity), a free color, the password if needed and not in the link. Nickname and color are remembered for next time (O17, O18).
 5. The socket opens; `hello`; the server answers `welcome` (room meta, players, chat log, your rank, crown) then the `snapshot` parts, redacted for you. The table appears as parts arrive; a thin progress line under the top bar reads "Joining: 2,000 of 4,300 cards".
 6. The camera starts at the default offline view (O37) on the near side. **M** crosses to the far side (O36); nothing is seated automatically (O38). The Playmat tab is where you spawn your mat and your stand.
-7. The room says so in chat: a grey line "Dazey joined as Move".
+7. The room says so in chat: a gray line "Dazey joined as Move".
 
 ### 4.5 The crown
 
 - **One at a time.** The crown's browser runs `authority.ts`. The crown has no rank; everything is allowed.
 - **Passing by hand** (O20): in the player row's menu, **Pass crown**, then a confirm: "Pass the crown to Sam? You keep Everything." The old crown is set to Everything.
-- **Passing by itself** (O5, O62): when the crown's socket closes, the server names the new crown at once: the highest rank present, longest present among equals (join order), View included if that is all there is. It sends `youAreCrown` with the full, unredacted table from the mirror and any ops it was holding; the new crown's browser replaces its store with that table (its own redacted copy may lack identities) and starts judging. Everyone sees a grey chat line and a toast: "Sam is the crown now".
+- **Passing by itself** (O5, O62): when the crown's socket closes, the server names the new crown at once: the highest rank present, longest present among equals (join order), View included if that is all there is. It sends `youAreCrown` with the full, unredacted table from the mirror and any ops it was holding; the new crown's browser replaces its store with that table (its own redacted copy may lack identities) and starts judging. Everyone sees a gray chat line and a toast: "Sam is the crown now".
 - **The maker returns** (O6): the server remembers the maker's player id. When that identity reconnects, the crown passes back to them at once; the interim crown goes back to the rank they had before (kept in meta). This is the one automatic pass that can take the crown from a connected player.
 - **The crown alone in the room** keeps the crown while connected. If the crown is the last player and leaves, the room closes (O61).
 - **Handover details.** Ops that arrive at the server while no crown is connected are queued for up to five seconds and forwarded to the new crown; after that they are refused with `reason: 'noCrown'` and the senders roll back. Streams keep flowing. Holds by the departed crown are released (Section 8.4).
 
 ### 4.6 Kick and ban (O49)
 
-- **Kick** drops the player (`bye {reason: 'kicked'}`); their seat stays greyed; they may rejoin by the link.
+- **Kick** drops the player (`bye {reason: 'kicked'}`); their seat stays grayed; they may rejoin by the link.
 - **Ban** (a confirm) drops them and blocks their identity for the room's life. Their stand stays for the crown to spill (Section 6.3). A banned identity trying to join gets `bye {reason: 'banned'}`: "You were banned from this room."
 - Both are the crown's (O23). The crown cannot be kicked or banned; pass the crown first.
 
 ### 4.7 Reconnection (O19)
 
-- The client reconnects with backoff (1, 2, 4, 8 s, then every 10 s) and the same `hello`. The server recognises the player id, restores the seat, and sends a fresh `snapshot` (simpler than replaying ops; Section 8.6).
+- The client reconnects with backoff (1, 2, 4, 8 s, then every 10 s) and the same `hello`. The server recognizes the player id, restores the seat, and sends a fresh `snapshot` (simpler than replaying ops; Section 8.6).
 - While disconnected, the top bar shows "Reconnecting…", the table is read-only, and the player's held cards drop where they were (the crown releases a holder's holds 3 seconds after its socket closes, issuing a `move` on their behalf to the last streamed poses).
-- A player kept in the list but absent for the room's life is harmless; the list shows them greyed with "away".
+- A player kept in the list but absent for the room's life is harmless; the list shows them grayed with "away".
 
 ---
 
@@ -288,7 +288,7 @@ Changing the name (the table name in the top bar), visibility, password, tag or 
 
 **Two tabs in one browser (agent, O90):** every tab of an origin shares `localStorage`, so two tabs would be one player. A dev-only query `?player=<name>` namespaces the key (`online.identity.v1:<name>`); `__room()` and the phase gate's second tab use it. The production UI never adds it.
 
-### 5.2 Colours (O18)
+### 5.2 Colors (O18)
 
 A fixed set of eight, chosen to stay apart on the felt and in the cursor tags:
 
@@ -296,7 +296,7 @@ A fixed set of eight, chosen to stay apart on the felt and in the cursor tags:
 |---|---|---|---|---|---|---|---|
 | `#e63946` red | `#f4a261` orange | `#e9c46a` yellow | `#2a9d8f` teal | `#4895ef` blue | `#7b2cbf` violet | `#ff6fb5` pink | `#f1f5f9` white |
 
-The join prompt shows the free ones; the taken ones are greyed with the holder's initial. Your own swatch in the player panel swaps to another free colour. A player's colour tints their cursor tag, their selection glow on cards and dice (Section 5.4), the lift glow of what they hold, and their name in chat.
+The join prompt shows the free ones; the taken ones are grayed with the holder's initial. Your own swatch in the player panel swaps to another free color. A player's color tints their cursor tag, their selection glow on cards and dice (Section 5.4), the lift glow of what they hold, and their name in chat.
 
 ### 5.3 Sides (O36)
 
@@ -304,15 +304,15 @@ Two sides, as mirror mode has them. Everyone arrives on the near side and presse
 
 ### 5.4 Presence (O18, O33)
 
-- **Cursors: always shown, never hideable** (O18). A remote cursor is a small arrow in the player's colour with a name tag, a DOM element positioned every frame by projecting the player's table point (x, y, 0) through your camera, so it sits on the felt where their mouse is. Off-screen cursors are clamped to the edge with the tag pointing in.
-- **Held cards and dice float live.** While a player holds something, their stream carries each held uid's pose; your browser interpolates them 100 ms behind the stream and draws them lifted with a glow in that player's colour. They are not selectable or grabbable by you ("That card is in Sam's hand").
-- **Selections in colour.** A player's selection is sent at most twice a second as a uid list; those cards and dice glow in their colour rather than the accent blue. Your own stays blue. This needs a per-instance glow colour in `render/cards.ts` (an extra instanced attribute of three floats; the shader multiplies the glow by it) and in `render/dice.ts`.
+- **Cursors: always shown, never hideable** (O18). A remote cursor is a small arrow in the player's color with a name tag, a DOM element positioned every frame by projecting the player's table point (x, y, 0) through your camera, so it sits on the felt where their mouse is. Off-screen cursors are clamped to the edge with the tag pointing in.
+- **Held cards and dice float live.** While a player holds something, their stream carries each held uid's pose; your browser interpolates them 100 ms behind the stream and draws them lifted with a glow in that player's color. They are not selectable or grabbable by you ("That card is in Sam's hand").
+- **Selections in color.** A player's selection is sent at most twice a second as a uid list; those cards and dice glow in their color rather than the accent blue. Your own stays blue. This needs a per-instance glow color in `render/cards.ts` (an extra instanced attribute of three floats; the shader multiplies the glow by it) and in `render/dice.ts`.
 - **Tossed cards and rolled dice animate for everyone.** The thrower's stream carries flight poses until Rapier settles them; then the `move` or `dice` op lands them for good (Section 8.5).
 - **No camera footprints, no follow, no summon** (O33, O34).
 
 ### 5.5 Chat (O35)
 
-A strip in the Online panel: the last 100 lines, name in the player's colour, plain text up to 300 characters, Enter sends, nothing saved past the room's life. System lines in grey: joined (with rank), left, back, kicked, banned, crown passed, table locked and unlocked, room settings changed, "Sam spilled Pat's stand". The server keeps the 100 lines for joiners. Five messages per five seconds per player; more are dropped with a "Slow down" line only you see. **(agent)** Chat is not run through the name filter: it is private to the room and the crown can kick.
+A strip in the Online panel: the last 100 lines, name in the player's color, plain text up to 300 characters, Enter sends, nothing saved past the room's life. System lines in gray: joined (with rank), left, back, kicked, banned, crown passed, table locked and unlocked, room settings changed, "Sam spilled Pat's stand". The server keeps the 100 lines for joiners. Five messages per five seconds per player; more are dropped with a "Slow down" line only you see. **(agent)** Chat is not run through the name filter: it is private to the room and the crown can kick.
 
 ---
 
@@ -325,7 +325,7 @@ One rank per player, each including the ones below. The crown stands above the l
 | Rank | Adds | Meant for |
 |---|---|---|
 | **View** | Looking: camera, hover previews, inspect, table search and refine, selecting (a selection changes nothing and shows others what you mean), chat, Save a copy and exports when Downloads is on. | Watching a draft, a friend looking over a cube. |
-| **Move** | Touching anything that is not owned: drag, flip, turn, tap, stack, shuffle, spread, tidy, curve, rank and colour views, fan, hand, deal, draw, P move, X spreads, name a pile (N), named-pile filters; dice: move, roll, set number, colour; life totals; playmats: move, turn, lock, unlock; your own hand stand and small stands: spawn, move, rename the plate, remove; playmats: spawn, remove (O110); one-step undo of your own last action; Ctrl + C copy. | Playing a game. **The default for newcomers** (O22). |
+| **Move** | Touching anything that is not owned: drag, flip, turn, tap, stack, shuffle, spread, tidy, curve, rank and color views, fan, hand, deal, draw, P move, X spreads, name a pile (N), named-pile filters; dice: move, roll, set number, color; life totals; playmats: move, turn, lock, unlock; your own hand stand and small stands: spawn, move, rename the plate, remove; playmats: spawn, remove (O110); one-step undo of your own last action; Ctrl + C copy. | Playing a game. **The default for newcomers** (O22). |
 | **Tokens** | Spawning token cards (T T menu, the Tokens search), dice (D, D D), and the Card tab's basic land chips (O60); removing dice and token cards. | A player who may add game pieces but not the cube's cards. |
 | **Cards** | The Spawn panel: decklists, single cards, queries, the Cube tab, Ctrl + V paste; Delete and the Removed tray (restore, empty); removing any card. | Someone working on the cube with you. |
 | **Everything** | Stands: remove or **Spill** anyone's; claim an unowned stand regardless; the basics setting (which printings the chips spawn); nothing about the room or other players (O24). | A co-worker on the table. |
@@ -345,7 +345,7 @@ The table below is the contract `shared/permissions.ts` encodes as `needs(action
 | `move` that puts cards on, or takes cards off, a stand | Move, **and** the stand's owner only (Section 6.3) |
 | `grab` (hold) | Move; refused while another holds any of them |
 | `named` set/remove, `spread` set/remove | Move |
-| `dice` set (move, roll result, number, colour) | Move |
+| `dice` set (move, roll result, number, color) | Move |
 | `dice` set that adds a die, `dice` remove | Tokens |
 | `mat` set: life, lifeHidden, move, yaw, locked, name of a playmat | Move |
 | `mat` set: a stand of yours (spawn, move, name, owner release) | Move, one full stand per player (O27) |
@@ -371,7 +371,7 @@ Lock table (O51) puts every player below the crown at View for table ops while i
 - **One full-size stand per player at a time** (O27). The Card stand button is disabled with "You already have a hand stand" while you own one. **Small stands are unlimited** (Scry and the like), each owned by its spawner the same way.
 - **Unowned stands.** A stand loaded with a table file, or on the table when it went online beyond the crown's one, has no owner. **(agent)** Its cards are hidden from everyone, as a face-down pile would be; a **Claim** button on its plate (Move, if you have no full stand yet; Everything regardless) makes it yours; Everything may Spill it.
 - **Going online** (agent): the crown's browser stamps `owner = crown` on the full stand nearest its side and on every small stand without an owner; other full stands stay unowned.
-- **A player who left** (O31): their stand stays, backs shown, waiting for the same browser. **Spill** (Everything, and the crown) drops its cards face down in a messy pile in front of it and removes the stand; a grey chat line says who spilled whose.
+- **A player who left** (O31): their stand stays, backs shown, waiting for the same browser. **Spill** (Everything, and the crown) drops its cards face down in a messy pile in front of it and removes the stand; a gray chat line says who spilled whose.
 - **Release:** the owner's plate menu has **Release**, making the stand unowned (to hand it over). The crown's **Give to…** sets the owner directly.
 - **Offline** (O32): the whole offline table is one player. One full stand at a time offline too (the Card stand button disables), small stands unlimited, and no hiding: both views of a solo table see the stand's cards. The `owner` field is ignored offline.
 
@@ -421,7 +421,7 @@ export function canSee(card: CardSnap, mats: Map<string, Mat>, player: string): 
 
 The client has one gate, `app.online.canSee(card)`: true offline and for the crown's own view of what the crown may see; for others, true when the card's `scryfallId !== HIDDEN`. Every place that reads a card's identity goes through it or through a record lookup that returns `undefined` for `HIDDEN`:
 
-| Module | Behaviour for a hidden card |
+| Module | Behavior for a hidden card |
 |---|---|
 | `render/atlas.ts`, `app.slotsFor` | both faces draw the card back; no foil |
 | `render/hires.ts` (close-up `normal` images) | the back |
@@ -432,7 +432,7 @@ The client has one gate, `app.online.canSee(card)`: true offline and for the cro
 | `ui/tokenMenu.ts` (T T) | nothing |
 | `ui/tray.ts` (Removed) | "Hidden card" rows |
 | `ui/cubeTab.ts` | hidden cards are not matched to the cube |
-| `commands.ts` layouts that sort by identity (curve C, colour, E ranks) | hidden cards go to the end in a face-down row, unsorted |
+| `commands.ts` layouts that sort by identity (curve C, color, E ranks) | hidden cards go to the end in a face-down row, unsorted |
 | `state/piles.ts` detection | unaffected, positions only |
 | the Cast window (📺) | draws backs for hidden cards, like the main view (O39); otherwise unchanged online and offline |
 
@@ -452,12 +452,12 @@ No hiding offline (O32): a solo table and the mirror-mode camera see every card,
 
 ---
 
-## 8. Synchronisation
+## 8. Synchronization
 
 ### 8.1 The model
 
 - **State** is the table: `TableState` in `shared/table.ts`, the plain shape behind `Store` (cards, named piles, spreads, mats, dice, basics, name). Piles (detected) and the selection are not state: every browser recomputes piles from positions (`pileSync.redetect`), as today, and gets the same answer because positions are the same.
-- **Ops** change state (Section 8.2). A player's browser applies its own op to its store at once (O63) and sends it; the crown judges; the server stamps the confirmed op with `seq` and sends it to everyone; the sender recognises its own `id` and drops the pending record; everyone else applies it.
+- **Ops** change state (Section 8.2). A player's browser applies its own op to its store at once (O63) and sends it; the crown judges; the server stamps the confirmed op with `seq` and sends it to everyone; the sender recognizes its own `id` and drops the pending record; everyone else applies it.
 - **Refusal** goes to the sender only: it applies the inverse it kept (Section 8.6) and shows the reason as a toast.
 - **Streams** (Section 8.3) carry transient poses.
 - **Snapshots** replace the whole store on join, reconnect and handover.
@@ -542,7 +542,7 @@ The stream layer is one module with `send(batch)` and `onStream(fn)`: moving it 
 - The snapshot comes from the server's mirror in parts: `{t: 'snapshot', part, parts, name, basics, named, spreads, mats, dice}` first, then `{t: 'snapshot', part, parts, cards: CardSnap[]}` of 1,000 cards each. The store is replaced (`store.clear()` then adds) as parts arrive; `settled` fires once at the end so pile detection runs once.
 - **Cap: 5,000 cards** (O43), plus mats, dice and stands. The crown's judge refuses an `add` that would pass it ("The table is full: 5,000 cards"). The Spawn panel shows the remaining room when online. A table taken online over the cap goes online anyway with a warning ("5,230 cards: no more can be spawned until some are removed").
 - Snapshot size: a card is about 110 bytes of JSON; 5,000 cards ≈ 550 KB in six parts; mats, dice and named piles are small. Each part is well under the 1 MiB WebSocket message limit.
-- The server's mirror does not carry `cardData`; every browser resolves identities through its own Scryfall queue (O42), 75 ids per `/cards/collection` call as today, from the local IndexedDB cache first. A joiner to a 5,000-card room with a cold cache waits a couple of minutes for names and images, with grey placeholders meanwhile, as a loaded file does.
+- The server's mirror does not carry `cardData`; every browser resolves identities through its own Scryfall queue (O42), 75 ids per `/cards/collection` call as today, from the local IndexedDB cache first. A joiner to a 5,000-card room with a cold cache waits a couple of minutes for names and images, with gray placeholders meanwhile, as a loaded file does.
 
 ### 8.8 Chat, meta and the lobby
 
@@ -625,7 +625,7 @@ Routes above; CORS for the Pages origin and `localhost:5173`; `Upgrade: websocke
 
 ### 10.2 Room Durable Object (`room.ts`, `storage.ts`)
 
-**In memory while awake:** `meta` (settings, crown, maker, players with ranks and colours, bans, chat), `mirror: TableState`, `seq`, `queued: ClientMsg[]` (ops waiting for a crown), per-socket attachments (player id) through `serializeAttachment` so hibernation keeps them.
+**In memory while awake:** `meta` (settings, crown, maker, players with ranks and colors, bans, chat), `mirror: TableState`, `seq`, `queued: ClientMsg[]` (ops waiting for a crown), per-socket attachments (player id) through `serializeAttachment` so hibernation keeps them.
 
 **Persisted (SQLite):**
 
@@ -639,7 +639,7 @@ On waking without memory (after hibernation) the Room rebuilds `mirror` from `sn
 
 **Message handling (`webSocketMessage`):**
 
-- `hello`: version check → `bye version`; ban list → `bye banned`; 8 connected players and a new id → `bye full`; password → `bye password` after a 1-second delay, counted for the rate limit; name through `clean()` (Section 10.4); colour taken → the first free one. Known id: restore the seat (rank, colour). New id: rank = `settings.newcomers`. Then `welcome`, the redacted `snapshot` parts, `players` to everyone, a system chat line. If this id is the maker and someone else is crown, pass the crown back (O6).
+- `hello`: version check → `bye version`; ban list → `bye banned`; 8 connected players and a new id → `bye full`; password → `bye password` after a 1-second delay, counted for the rate limit; name through `clean()` (Section 10.4); color taken → the first free one. Known id: restore the seat (rank, color). New id: rank = `settings.newcomers`. Then `welcome`, the redacted `snapshot` parts, `players` to everyone, a system chat line. If this id is the maker and someone else is crown, pass the crown back (O6).
 - `op`: forward to the crown's socket (with `from`); no crown connected → queue up to 5 s then `refused noCrown`.
 - `confirm` (crown only): `seq++`, apply to `mirror` with `applyOp`, write `oplog`, compute visibility diffs per recipient (Section 7.2), send each player their redacted `{t:'op'}` plus `reveal`/`forget`, the crown an unredacted echo. Size cap enforced here too as a backstop (refuse with `cap` if the mirror would exceed 5,000 cards).
 - `refuse` (crown only): forward to `to`.
@@ -725,7 +725,7 @@ Spec 4.2 says everything that changes the table goes through `Store`. Online rel
 | `inbox.ts` | applies `op`, `reveal`, `forget`, `snapshot`; `replace` handling; `reuid` |
 | `authority.ts` | crown only: `judge(op, from)` → confirm or refuse; `heldBy`, `touchedSeq`, the one-stand check, the stand owner check, the cap; `reuid` after shuffles; `spill`; the periodic `snapshot` to the server; `becomeCrown(parts, queued)` and `resign()` |
 | `streams.ts` | `OutBatcher` (10 Hz, cursor, side, selection ≤ 2 Hz, holds, flights) and `InBuffers` (per uid 100 ms interpolation) |
-| `presence.ts` | remote cursors as DOM (`.remote-cursor` with a tag), remote holds and flights into `layer.pose`, remote selections into the per-instance glow colour, `held: Set<uid>` for picking and detection |
+| `presence.ts` | remote cursors as DOM (`.remote-cursor` with a tag), remote holds and flights into `layer.pose`, remote selections into the per-instance glow color, `held: Set<uid>` for picking and detection |
 | `hidden.ts` | `HIDDEN`, `canSee(card)`, the record lookup wrapper |
 | `link.ts` | `parseHash()`, `roomLink(code)`, `inviteLink(code, key)`, `copy()` |
 | `guard.ts` | `allowed(action)` with toasts; `disable(button, action)`; wraps the key map and the mouse grammar's drag start |
@@ -744,9 +744,9 @@ Spec 4.2 says everything that changes the table goes through `Store`. Online rel
 | `dice.ts` | the same for dice: `grab`, held streams, roll results in `dice set` |
 | `physics/world.ts` | marks bodies launched locally; `Physics.step` feeds `fly` poses to the batcher; remote flights do not get bodies |
 | `physics/restSync.ts`, `state/pileSync.ts` | skip `presence.held` uids |
-| `render/cards.ts`, `render/dice.ts` | per-instance glow colour attribute; a `tint` map from `presence` |
+| `render/cards.ts`, `render/dice.ts` | per-instance glow color attribute; a `tint` map from `presence` |
 | `render/picking.ts` | skips remote-held uids |
-| `render/hires.ts`, `ui/inspectPanel.ts`, `ui/hud.ts`, `ui/handCount.ts`, `ui/exportPanel.ts`, `io/exportDecklist.ts`, `io/exportCsv.ts`, `ui/tokenMenu.ts`, `ui/tray.ts`, `ui/cubeTab.ts`, `commands.ts` (C, E, colour layouts) | the hidden gate (Section 7.3) |
+| `render/hires.ts`, `ui/inspectPanel.ts`, `ui/hud.ts`, `ui/handCount.ts`, `ui/exportPanel.ts`, `io/exportDecklist.ts`, `io/exportCsv.ts`, `ui/tokenMenu.ts`, `ui/tray.ts`, `ui/cubeTab.ts`, `commands.ts` (C, E, color layouts) | the hidden gate (Section 7.3) |
 | `query/evaluate.ts` callers | hidden cards never match; the HUD line |
 | `io/saveFile.ts` | `hidden` cards out and in; `loadDoc` online = a `replace` op from the crown; `toDoc` for Save a copy |
 | `io/autosave.ts` | pauses while a non-crown player is in a room (their own table stays saved); the crown's autosave is unchanged |
@@ -768,23 +768,23 @@ Spec 4.2 says everything that changes the table goes through `Store`. Online rel
 ### 12.1 Top bar
 
 - Offline: a **Go online** button (🌐) at the right of the table name. Disabled with "No room server" when `VITE_ROOM_SERVER` is unset or `/api/version` fails.
-- Online: the button reads **Online** and is lit; beside it a row of up to eight **avatars**, coloured discs with the nickname's first letter, the crown's with 👑, greyed when away, yours outlined. A 🔒 after them while Lock table is on. Clicking the button or an avatar opens the Online panel. While reconnecting, the row shows "Reconnecting…" in amber.
+- Online: the button reads **Online** and is lit; beside it a row of up to eight **avatars**, colored discs with the nickname's first letter, the crown's with 👑, grayed when away, yours outlined. A 🔒 after them while Lock table is on. Clicking the button or an avatar opens the Online panel. While reconnecting, the row shows "Reconnecting…" in amber.
 - The table name stays editable for the crown only online; others see it as text.
 
 ### 12.2 The Online panel (O58)
 
 Floating, 380 px wide, docked to the right under the top bar, draggable by its header, closes with its ✕ or Esc. Sections, top to bottom:
 
-1. **Room.** Name and code: "Vintage cube pass 3 · 7KQ2MX". Buttons: **Copy link**, **Copy invite link** (only with a password), **Save a copy** (when Downloads is on), **Tables** (opens the browser, Section 12.5), and **Go offline** (crown; confirm: "Close the room for everyone? Your table stays as it is.") or **Leave** (others; confirm when you hold cards or own a stand with cards: "Leave the room? Your stand waits for you until the room closes."). Under the link, one grey line: "The room lives while someone is in it."
+1. **Room.** Name and code: "Vintage cube pass 3 · 7KQ2MX". Buttons: **Copy link**, **Copy invite link** (only with a password), **Save a copy** (when Downloads is on), **Tables** (opens the browser, Section 12.5), and **Go offline** (crown; confirm: "Close the room for everyone? Your table stays as it is.") or **Leave** (others; confirm when you hold cards or own a stand with cards: "Leave the room? Your stand waits for you until the room closes."). Under the link, one gray line: "The room lives while someone is in it."
 2. **Settings** (crown edits; others read): Visibility radio **Unlisted · Public · Public + password**, the password field; **Tag** Cube / Play; **Newcomers start as** picker; **Lock table** switch; **Downloads for everyone** switch.
-3. **Players.** One row per player: swatch (yours clickable: a popover of free colours), nickname, side arrow (↑ near, ↓ far), rank picker (crown; a label for others), 👑 on the crown, "away" when disconnected, and for the crown a ⋯ menu: **Pass crown**, **Kick**, **Ban**, **Give stand to…** when they own none and an unowned stand exists.
+3. **Players.** One row per player: swatch (yours clickable: a popover of free colors), nickname, side arrow (↑ near, ↓ far), rank picker (crown; a label for others), 👑 on the crown, "away" when disconnected, and for the crown a ⋯ menu: **Pass crown**, **Kick**, **Ban**, **Give stand to…** when they own none and an unowned stand exists.
 4. **Chat.** The strip (Section 5.5) and its field "Say something…".
 
 Before going online (offline), clicking **Go online** opens the same panel in a short form: the room name (the table's), the Tag, Visibility and password, and a **Go online** button; then it fills in.
 
 ### 12.3 The join prompt (O64)
 
-A modal over the empty table: title "Join *Vintage cube pass 3*", "3 of 8 players · hosted by Dazey". Fields: **Nickname** (prefilled), the eight **colour** swatches with taken ones greyed, **Password** when needed and not in the link. Buttons **Join** and **Not now** (goes to your own table). Errors inline: "Wrong password", "The room is full", "That name is not allowed" (the filter), and the states of 12.7.
+A modal over the empty table: title "Join *Vintage cube pass 3*", "3 of 8 players · hosted by Dazey". Fields: **Nickname** (prefilled), the eight **color** swatches with taken ones grayed, **Password** when needed and not in the link. Buttons **Join** and **Not now** (goes to your own table). Errors inline: "Wrong password", "The room is full", "That name is not allowed" (the filter), and the states of 12.7.
 
 ### 12.4 Toasts and refusals
 
@@ -837,7 +837,7 @@ Pure modules, vitest, all added in the phase that introduces them:
 | `apply.test.ts` | every op on a `TableState`; store-vs-pure equivalence; `reuid` renames everywhere; `spill` output |
 | `protocol.test.ts` | `PROTOCOL`, message guards (`isClientMsg`), size limits, snapshot part splitting and joining |
 | `roomCode.test.ts` | alphabet, length, `isCode` |
-| `words.test.ts` | the filter's normalisation and replacements |
+| `words.test.ts` | the filter's normalization and replacements |
 | `rateLimit.test.ts` | sliding windows |
 | `election.test.ts` | highest rank, earliest join among equals, maker reclaim, nobody left |
 | `outbox.test.ts` | inverses for each op kind; rollback skips uids touched since; undo preconditions |
@@ -869,21 +869,21 @@ When Cloudflare refuses for the day (HTTP 429 or a 1027 error page), the client 
 
 ## 16. Build phases (O54, O57)
 
-**How the run is organised** (one hub, three area forks sharing this folder, freezes at the gates, ports, git rules, the fork briefs): `ONLINE_PROMPT.md`, decisions O82 to O92.
+**How the run is organized** (one hub, three area forks sharing this folder, freezes at the gates, ports, git rules, the fork briefs): `ONLINE_PROMPT.md`, decisions O82 to O92.
 
 Each phase ends with the phase gate of spec Section 0.1 (typecheck, tests, build, a two-tab browser check with screenshots under `reports/screenshots/online-N/`, a local commit) and a morning report section: what was built, gate results, screenshots, commit, agent decisions (O-numbered), BROKEN items, and the owner's **Where to look** list. The built-in browser cannot hold modifier keys during drags (CLAUDE.md gotcha); where a check needs them, the report says the check was done with synthetic events.
 
 ### Phase O1: rooms by link
 
-**Build:** `shared/` (protocol, ops, table, apply, roomCode); `server/` (worker, Room with meta, mirror, op log, relay, streams, chat, handover, maker reclaim, close on empty; a minimal Lobby that only tracks heartbeats); the store choke point (11.1); `src/online/` identity, session, room, outbox, inbox, authority, streams, presence (cursors, holds, flights, selection colour), link; the Online button, panel (Room, Players without rank pickers, Chat), join prompt, the whole-page states, the welcome link; version check; phones page; reconnection; `concurrently` dev script; the workflow's worker job (not run: nothing is pushed). Everyone is Everything in this phase; no hiding yet.
+**Build:** `shared/` (protocol, ops, table, apply, roomCode); `server/` (worker, Room with meta, mirror, op log, relay, streams, chat, handover, maker reclaim, close on empty; a minimal Lobby that only tracks heartbeats); the store choke point (11.1); `src/online/` identity, session, room, outbox, inbox, authority, streams, presence (cursors, holds, flights, selection color), link; the Online button, panel (Room, Players without rank pickers, Chat), join prompt, the whole-page states, the welcome link; version check; phones page; reconnection; `concurrently` dev script; the workflow's worker job (not run: nothing is pushed). Everyone is Everything in this phase; no hiding yet.
 
 **Where to look:**
 - Tab A: a table with 200 cards, press **Go online**: the panel shows a code and **Copy link**; the top bar shows your avatar with a crown.
-- Tab B: open the link: the join prompt, pick a colour, Join: the same 200 cards appear, the camera at the default view; A's avatar row shows two players.
-- Drag a card in A: B sees it float in A's colour and land where A put it. Toss one: B sees the flight. Both drag the same card at once: the second gets "That card is in …'s hand".
+- Tab B: open the link: the join prompt, pick a color, Join: the same 200 cards appear, the camera at the default view; A's avatar row shows two players.
+- Drag a card in A: B sees it float in A's color and land where A put it. Toss one: B sees the flight. Both drag the same card at once: the second gets "That card is in …'s hand".
 - Move the mouse in A: B sees A's arrow and name tag on the felt where A points, following the camera.
-- Select ten cards in B: A sees them glow in B's colour; A's own selection stays blue.
-- Chat both ways; a grey line for the join.
+- Select ten cards in B: A sees them glow in B's color; A's own selection stays blue.
+- Chat both ways; a gray line for the join.
 - Close tab A: B gets "You are the crown now" within a second and can keep playing. Reopen the link in a new tab from A's browser: the crown comes back to A ("Dazey took the crown back"); B keeps its rank.
 - Press **Go offline** in A: B sees the Room closed screen with Save a copy; A's table is unchanged offline.
 - Close every tab: the link now shows "This room has closed".
@@ -959,8 +959,8 @@ Owner answers of 2026-10-30 are recorded as such; **(agent)** marks a choice mad
 | O15 | Owner: abuse controls: **rate limits per browser and ip, a word filter on room and player names, an admin key for the owner, and a Report button** (three reports delist until the owner looks). |
 | O16 | Owner: **eight connections per room, no spectators** beyond them; a full room's row reads Full. |
 | O17 | Owner: identity is **a nickname remembered per browser** with a secret token; no accounts. |
-| O18 | Owner: **cursors are always shown and can never be hidden**; each player's colour is picked **on join from the untaken colours of a fixed set of eight**, and can be swapped to another free one from their own row later. (Replaces the earlier auto-assignment answer.) |
-| O19 | Owner: a dropped player's **seat, rank, colour, stand and crown claim are kept until the room closes**; the same browser gets them back. Held cards drop. |
+| O18 | Owner: **cursors are always shown and can never be hidden**; each player's color is picked **on join from the untaken colors of a fixed set of eight**, and can be swapped to another free one from their own row later. (Replaces the earlier auto-assignment answer.) |
+| O19 | Owner: a dropped player's **seat, rank, color, stand and crown claim are kept until the room closes**; the same browser gets them back. Held cards drop. |
 | O20 | Owner: the crown is passed by **clicking a player and confirming**; the old crown keeps Everything. |
 | O21 | Owner: ranks are **a ladder: View, Move, Tokens, Cards, Everything**, one per player. |
 | O22 | Owner: the newcomer rank is **a room setting, Move by default**. |
@@ -974,7 +974,7 @@ Owner answers of 2026-10-30 are recorded as such; **(agent)** marks a choice mad
 | O30 | Owner: **no private peek** at face-down cards: flipping is public; take a card to your stand to look. |
 | O31 | Owner: a departed player's stand **stays, backs shown, waiting for them; the crown can Spill it** (cards face down in front, stand removed). |
 | O32 | Owner: the stand rules apply **offline too**, where **the whole offline table is one player**: one full stand at a time offline, small stands unlimited, no hiding offline. |
-| O33 | Owner: you see other players' **held cards and dice floating live, their selections outlined in their colour, and their tosses and rolls animated**; no camera footprints. |
+| O33 | Owner: you see other players' **held cards and dice floating live, their selections outlined in their color, and their tosses and rolls animated**; no camera footprints. |
 | O34 | Owner: **no follow, no summon.** |
 | O35 | Owner: **a small text chat**, a strip in the Online panel, last 100 lines, nothing saved. |
 | O36 | Owner: **two sides**; everyone starts on the near side and **presses M to cross**, like walking round a real table; players move between sides freely (no per-side cap). |
@@ -1005,7 +1005,7 @@ Owner answers of 2026-10-30 are recorded as such; **(agent)** marks a choice mad
 | O61 | Owner: an **empty room closes at once**; a new link every time the last tab closes. |
 | O62 | Owner: an automatic crown pass goes to **the highest rank present, longest-present among equals**; the maker reclaims on return. |
 | O63 | Owner: your own actions are **applied at once and rolled back if the crown refuses**, with a short message. |
-| O64 | Owner: the join prompt asks for **nickname, a free colour, and the password when needed**; everyone arrives on the near side. |
+| O64 | Owner: the join prompt asks for **nickname, a free color, and the password when needed**; everyone arrives on the near side. |
 | O65 | **(agent)** Unowned stands (loaded from a file, or beyond the crown's one when going online) hide their cards from everyone, as a face-down pile would; **Claim** on the plate (Move, if you own no full stand; Everything regardless) takes one; Everything may Spill it. Going online, the crown's browser claims the full stand nearest its side and every small stand without an owner. Reason: every stand needs an owner for O27 and O29 to mean anything, and claiming is the least automatic way to give one. |
 | O66 | **(agent)** A **shuffle of hidden cards gives them fresh uids** (`reuid`, crown only), and an honest browser **forgets** a card's identity when it becomes hidden. Reason: uids are stable, so without re-keying a browser could follow a card it once saw through a shuffle; forgetting on hide matches O30 (no peek) and costs nothing. |
 | O67 | **(agent)** A **Tokens player may remove token cards** (record layout `token`, `emblem`, `double_faced_token`) and dice, mirroring O25's "adding and taking away are one power". |
@@ -1017,7 +1017,7 @@ Owner answers of 2026-10-30 are recorded as such; **(agent)** marks a choice mad
 | O73 | **(agent)** The **default Tag** when going online is Play if the table has a playmat or stand, else Cube; the crown can change it. Reason: one less thing to set for the common case, and it is only a label. |
 | O74 | **(agent)** A **departed holder's cards drop three seconds after their socket closes**, by a `move` the crown issues to the last streamed poses. Reason: cards must never hang in the air; three seconds survives a blip. |
 | O75 | **(agent)** **Hidden cards in a saved copy** are written as `scryfallId: 'hidden'` with `hidden: true` in table format version 1 (optional field, as earlier additions), drawn as backs forever. Reason: no new format version for a field every old file simply lacks. |
-| O76 | **(agent)** The **colour set** of Section 5.2 (red, orange, yellow, teal, blue, violet, pink, white). Reason: far apart on green felt and in small tags; the accent blue stays the local selection's. Kept by the owner on review (2026-10-30). |
+| O76 | **(agent)** The **color set** of Section 5.2 (red, orange, yellow, teal, blue, violet, pink, white). Reason: far apart on green felt and in small tags; the accent blue stays the local selection's. Kept by the owner on review (2026-10-30). |
 | O77 | Owner (2026-10-30, preparing the run): the **Cloudflare account is made before the run**, walked through step by step; the run learns the `workers.dev` URL from `wrangler deploy`'s output and writes `.env.production` itself. |
 | O78 | Owner: **removing dice is Tokens**, as written (not Move). |
 | O79 | Owner: the **word filter list is the agent's short standard list** (about 40 entries) in `shared/words.ts`, the owner's to edit later. |
@@ -1035,15 +1035,15 @@ Owner answers of 2026-10-30 are recorded as such; **(agent)** marks a choice mad
 | O91 | **(agent)** **One vite and wrangler port pair per session** (hub 5173/8787, Server 5174/8788, Sync 5175/8789, Rules & UI 5176/8790), each wrangler with its own inspector port and `--persist-to` state folder, and a `.env.<mode>` per pair. Reason: four dev servers in one folder must not share ports or local Durable Object state. |
 | O92 | **(agent)** The Worker deploys from **its own GitHub workflow** (`worker.yml`, on pushes touching `server/**` or `shared/**`), not a job the Pages deploy waits on. Reason: a missing Cloudflare secret or a failed deploy must never take the site down with it; the protocol version check covers a short mismatch. Replaces Section 3.5's first draft. |
 | O93 | **(agent, hub, 2026-10-30, seed)** The contracts as seeded add four things to Sections 8.2 and 9: a **`batch` op** (several ops judged, confirmed, applied and refused as one: an undo swap, a spill's `move` + `mat remove`, any action that writes the store more than once); the undo precondition as **`pre`** on the `op` envelope (uid → last seq seen); a **`propose`** server message carrying another player's op to the crown (with `from`), distinct from a confirmed `op` (with `seq`); and **`needSnapshot`** from the server to the crown after a hibernation wake. **`CardMove`** also carries `stand`, `side`, `pileId`, `spreadOf` and `laidAt` (null clears), since landings set them and every browser must agree; `Mat.owner` and `TableDoc.cards[].hidden` are in `types.ts`. `TableState` is plain arrays; snapshot part 0 carries everything but the cards plus `count`. Reason: each was implied by the design (8.6's set of undo ops, 4.5's queued proposals, 10.2's wake, 11.1's routed writes) but had no shape; fixing them before the forks start keeps three areas compiling against one contract. |
-| O94 | **(agent, hub, seed)** **`@cloudflare/workers-types`** as a dev dependency for `server/tsconfig.json` (decision 35), beside wrangler 4.156 and concurrently 10. Shared numbers both sides check (8 players, 5,000 cards, message sizes, 1,000 cards a part, name and chat lengths, the eight colours) and `playerIdOf(token)` live in `shared/protocol.ts`; the server's own rates stay in `server/src/limits.ts`. |
+| O94 | **(agent, hub, seed)** **`@cloudflare/workers-types`** as a dev dependency for `server/tsconfig.json` (decision 35), beside wrangler 4.156 and concurrently 10. Shared numbers both sides check (8 players, 5,000 cards, message sizes, 1,000 cards a part, name and chat lengths, the eight colors) and `playerIdOf(token)` live in `shared/protocol.ts`; the server's own rates stay in `server/src/limits.ts`. |
 | O95 | **(agent, hub, seed)** The hub's vite runs on **5177**, not 5173: the owner's own `start.bat` dev server (started 2026-10-29 from Explorer) holds 5173, and the run does not stop the owner's processes. Wrangler stays on 8787. `npm run dev` and `start.bat` are unchanged (5173 + 8787). Replaces O91's hub port. |
-| O96 | **(agent, Rules & UI, 2026-10-30)** Phase O1's UI choices: (1) there is no welcome *screen* (decision 153 is only the welcome table), so 12.6's line goes in a small **first-visit welcome note** over the welcome table, "Playing with friends? Join a table or press 🌐 Go online once your table is ready."; until Phase O3 its **Join a table** opens a box for pasting a room link or code (`codeFromText`), then the table browser. (2) **Esc closes the Online panel** only while the focus or the mouse is in it, so Esc on the table keeps cancelling drags and clearing the selection. (3) A page opened on a room link **pauses autosave from boot** (`Autosave.paused`) until its own table is back or the room takes over, since the camera settling would otherwise save the empty page over the browser's own table. (4) The Go online short form also asks **your nickname and colour** (the crown needs both); visibility and password join it in Phase O3. (5) Pages beyond 12.7 for joining: "The room server can't be reached" with Retry, and "The room is full (8 of 8)" with Retry (4.4). (6) Dev only, `?fakeroom` goes online and joins with `FakeSession` and no server, for building the UI. |
-| O97 | **(agent, Server, 2026-10-30)** The Room's behaviour where 10.2 leaves it open: (1) **few row writes** on the free plan: confirmed ops go to the op log in batches (one row per burst, 1 s after the last op), a snapshot rewrites only the parts that changed, meta saves are coalesced to one per turn, and the Lobby keeps its rows in memory (every room heartbeats each minute, so an evicted Lobby is whole again within one); (2) pings are answered by Cloudflare's **auto-response** without waking the object, for the exact text `{"t":"ping"}`; (3) a room's **first crown** (mirror empty) gets `needSnapshot` after its welcome, and joiners who arrive before that get the table when it lands; (4) **proposals are kept until the crown answers**: a hand-over (election, maker reclaim) re-sends every unanswered one to the new crown, so each op is judged once; a confirm from anyone but the crown is ignored, and the crown that loses it to the maker's reclaim gets the mirror's table (its own unconfirmed ops are gone); (5) the same identity on a second socket **closes the older with code 4001** (no reconnect); every `bye` is followed by close code 4000; (6) a crown's `confirm` of **`replace`** may be up to 1 MiB and is relayed to everyone as an ordinary op, keeping `seq` continuous; `table` and `replace` set the room's name; (7) the **cap's backstop** drops a confirm that would add cards past 5,000 and sends `refused cap` to its proposer; (8) the Room's **alarm** (every minute while it exists) closes a room left with no sockets, which covers a maker who never connects and sockets lost to a restart; (9) seats are **reconciled with the open sockets** on each hello and on waking, so after a restart the first player back is crown until the maker returns. Reason: each keeps the room correct through hand-overs, reloads and restarts at the lowest cost on the free plan. |
+| O96 | **(agent, Rules & UI, 2026-10-30)** Phase O1's UI choices: (1) there is no welcome *screen* (decision 153 is only the welcome table), so 12.6's line goes in a small **first-visit welcome note** over the welcome table, "Playing with friends? Join a table or press 🌐 Go online once your table is ready."; until Phase O3 its **Join a table** opens a box for pasting a room link or code (`codeFromText`), then the table browser. (2) **Esc closes the Online panel** only while the focus or the mouse is in it, so Esc on the table keeps canceling drags and clearing the selection. (3) A page opened on a room link **pauses autosave from boot** (`Autosave.paused`) until its own table is back or the room takes over, since the camera settling would otherwise save the empty page over the browser's own table. (4) The Go online short form also asks **your nickname and color** (the crown needs both); visibility and password join it in Phase O3. (5) Pages beyond 12.7 for joining: "The room server can't be reached" with Retry, and "The room is full (8 of 8)" with Retry (4.4). (6) Dev only, `?fakeroom` goes online and joins with `FakeSession` and no server, for building the UI. |
+| O97 | **(agent, Server, 2026-10-30)** The Room's behavior where 10.2 leaves it open: (1) **few row writes** on the free plan: confirmed ops go to the op log in batches (one row per burst, 1 s after the last op), a snapshot rewrites only the parts that changed, meta saves are coalesced to one per turn, and the Lobby keeps its rows in memory (every room heartbeats each minute, so an evicted Lobby is whole again within one); (2) pings are answered by Cloudflare's **auto-response** without waking the object, for the exact text `{"t":"ping"}`; (3) a room's **first crown** (mirror empty) gets `needSnapshot` after its welcome, and joiners who arrive before that get the table when it lands; (4) **proposals are kept until the crown answers**: a hand-over (election, maker reclaim) re-sends every unanswered one to the new crown, so each op is judged once; a confirm from anyone but the crown is ignored, and the crown that loses it to the maker's reclaim gets the mirror's table (its own unconfirmed ops are gone); (5) the same identity on a second socket **closes the older with code 4001** (no reconnect); every `bye` is followed by close code 4000; (6) a crown's `confirm` of **`replace`** may be up to 1 MiB and is relayed to everyone as an ordinary op, keeping `seq` continuous; `table` and `replace` set the room's name; (7) the **cap's backstop** drops a confirm that would add cards past 5,000 and sends `refused cap` to its proposer; (8) the Room's **alarm** (every minute while it exists) closes a room left with no sockets, which covers a maker who never connects and sockets lost to a restart; (9) seats are **reconciled with the open sockets** on each hello and on waking, so after a restart the first player back is crown until the maker returns. Reason: each keeps the room correct through hand-overs, reloads and restarts at the lowest cost on the free plan. |
 | O98 | **(agent, Server, 2026-10-30)** Phase O2 on the server: (1) the **password is checked on hello from O2** (with its one-second delay and 10 wrong tries per 10 minutes per ip, counted per room), but only for **newcomers**: a seat already admitted keeps its place when the crown sets or changes the password, so reconnects and kicked players returning are not locked out (Ban is the tool for keeping someone out); an empty password takes it off; (2) **redaction** runs per recipient only for ops that carry identities (`add`, `replace`, through batches) and **visibility diffs** only for ops that can change them (`move`, `mat`), over the cards they name plus every card on a stand they change, remove or spill; (3) a **kick or ban** writes "Sam was kicked/banned" and no "Sam left"; a ban of an away player just blocks them; (4) **Pass crown** sends the old crown the table redacted (its browser forgets what it may no longer see) and sets it to Everything (O20); (5) a confirmed **spill** writes "Ann spilled Bea's stand" from the mirror's owner before the op ("an unowned stand", "their own stand"); (6) **rank changes and renames write no chat line**; other settings write "Room settings changed", Lock table its own two lines. Reason: closest to 4.6, 7.2 and 12.4 at the lowest cost per op; the password needed no more than the hash O2 stores. |
 | O99 | **(agent, Server, 2026-10-30)** Phase O3 on the server: (1) the **creation and join limits are off in local development**: `server/.dev.vars` (git-ignored) sets `RATE_LIMITS=off`, `wrangler.toml` sets it on, so a gate's repeated Go online and joins from one machine never trip them; ip limits also skip requests with no `CF-Connecting-IP` (only local ones lack it); the limits are unit-tested (`tests/lobby.test.ts`); (2) a **join** is a new seat only (a seat coming back is not counted), checked in the Lobby so the 30 an hour is per ip across rooms; wrong passwords stay counted per room (O98); (3) the Lobby keeps **rows in memory, flags in SQLite** (reports, delisted), and forgets a room's flags when it closes or falls silent; (4) the **public list** is public and password rooms not delisted, most players first, then longest up; (5) a **report** needs an open room (404 otherwise) and counts against the reporter's 3 an hour; the admin's **Relist** clears its reports; the admin routes are `GET /api/admin/rooms` and `POST /api/admin/rooms/:code/delist`, `/relist`, `/close`, with a 401 for a wrong key, compared in constant time; (6) the **word list** (O79) matches anywhere in the name after stripping spaces, so it leaves out words common inside innocent names ("ass" in glass, "cock" in Cockatrice, "rape" in Grapeshot, "rapist" in therapist); a blocked room name becomes "Table CODE", a nickname "Player N". Reason: the gate and the owner's own testing must not lock themselves out, and the list must not refuse ordinary Magic table names. |
 | O100 | **(agent, Sync, 2026-10-30)** Phase O1's sync choices: (1) **one op per action**: every store write of one turn of the event loop goes out as one op, a `batch` when there are several, and nothing goes out while the room's table is still arriving; (2) a **grab adds to the holder's hand** rather than letting go of what they held (8.4 said a grab of something else ends a hold): cards and dice picked up together arrive as two grabs in one turn, and holds still end with the holder's `move`, `remove`, `dice`, `release` or leaving; (3) an own op the crown confirmed **after someone else's on the same cards is applied again**, so every browser ends in the crown's order; (4) a **joiner's table is emptied on joining** (its own stays in its autosave, which stays paused for the whole visit, also if the crown passes to it) and comes back from the autosave on Leave; the maker keeps its table on its first welcome, and any later welcome (a reconnect, a reclaim) takes the room's; the crown ignores a snapshot it did not ask for; (5) **derived writes run only in the browser whose change caused them**: the stand lift of decision 222 acts on local changes only, and pile detection's merges stay local everywhere; (6) streams carry a card's pose as `[x, y, z, yaw, roll + tiltY, tiltX]` (the renderer's ZXY angles, nothing lost) and a die's as the ZXY angles of its turn; a streamed selection is capped at 1,500 uids; (7) `loadDoc` replaces the table in one `replaceTable`, offline too, so Load file online is one `replace` op; (8) socket close codes 4000 and 4001 end the session with no reconnect (O97). Reason: each keeps every browser's table equal to the crown's at the lowest number of ops, and keeps a visitor's own table safe. |
 | O101 | **(agent, Server, 2026-10-30)** Phase O4 on the server: (1) **quota**: when the free plan refuses a Durable Object for the day, the Worker answers every route with 429 `{ error: 'quota' }`, and a socket upgrade with a socket that sends `bye quota` and closes (made by the Worker itself, so the client gets a clean signal); a Room whose storage writes are refused carries on from memory, unsaved, rather than failing the players in it; (2) the **wake path** asks the crown for a fresh table only when the mirror was rebuilt with ops replayed from the log past the last snapshot (the log is then compacted by the crown's answer); a room woken by its minute alarm with a snapshot-only mirror costs the crown nothing; exercised locally (workerd hibernates an idle room: woken at seq 3 with 3 ops replayed, then with 0); (3) **caps** so the meta stays far under its 128 KB: 32 seats (the longest-away seat with no stand, not the maker's or crown's, makes way for a new one; none can, `bye full`), 200 bans; (4) the **limits reviewed** against Section 15 and kept: 10 Hz streams with extras past 15 a second dropped; pings answered without waking the object; the minute alarm and Lobby heartbeat cost about 2,900 requests a day per open room (34 idle room-days of the free 100,000); SQLite writes stay in the low thousands a day for an active room (batched log, changed parts only, one meta save per turn); messages 64 KB, snapshot parts 256 KB, `replace` 1 MiB; 2,000 waiting proposals, 500 recent ops. A room with a moving cursor never hibernates, so Section 15's duration figure stands. Reason: a spent day must look like "Rooms are back after midnight UTC", not a broken page, and nothing in a long-lived public room may grow without bound. |
-| O102 | **(agent, Rules & UI, 2026-10-30)** Phase O2's UI choices: (1) **one hidden rule on every browser**: `visibleTo(card, mats, me)` of 7.1 plus the `HIDDEN` sentinel, read through `Store.canSee` and `recordOf` (undefined when hidden), on the crown and the others alike, so a card a player has just covered is hidden at once, before the server's `forget`. (2) **Basic lands count as game pieces** wherever they come from: `addAction`/`removeAction` in `permissions.ts` make a set of cards Tokens rank when every one is a token (O67) or a basic land (O60), so the guard and the judge need not know which button spawned them. (3) **Delete on a stand that isn't yours spills it** (cards face down in front) instead of dropping them where they lay, so no removal ever shows a hidden card; the owner deleting their own stand is unchanged. (4) Stand ownership is a **👤 button in the middle of the stand's lip** in a room (whose it is; Claim, Release, the crown's Give to…, Spill), since the plate faces away and the lip already holds 🔒 and ✏️. (5) Hidden cards after **C, C C and E** lie in a face-down row under the layout, 24 mm apart from its left edge. (6) **Going online clears earlier owners** before the crown claims (O65's "other full stands stay unowned"), and stands loaded from a file come in unowned. (7) The table is **read-only while reconnecting** (4.7): the guard refuses table actions with "Reconnecting… the table is read-only for now". (8) Refused buttons stay clickable for their own logic but are **greyed, titled with the reason, and refuse clicks**; Downloads off **hides** Save, Save a copy and Export instead (4.3). (9) A View player can still **click to select** cards and dice; only drags are refused. |
+| O102 | **(agent, Rules & UI, 2026-10-30)** Phase O2's UI choices: (1) **one hidden rule on every browser**: `visibleTo(card, mats, me)` of 7.1 plus the `HIDDEN` sentinel, read through `Store.canSee` and `recordOf` (undefined when hidden), on the crown and the others alike, so a card a player has just covered is hidden at once, before the server's `forget`. (2) **Basic lands count as game pieces** wherever they come from: `addAction`/`removeAction` in `permissions.ts` make a set of cards Tokens rank when every one is a token (O67) or a basic land (O60), so the guard and the judge need not know which button spawned them. (3) **Delete on a stand that isn't yours spills it** (cards face down in front) instead of dropping them where they lay, so no removal ever shows a hidden card; the owner deleting their own stand is unchanged. (4) Stand ownership is a **👤 button in the middle of the stand's lip** in a room (whose it is; Claim, Release, the crown's Give to…, Spill), since the plate faces away and the lip already holds 🔒 and ✏️. (5) Hidden cards after **C, C C and E** lie in a face-down row under the layout, 24 mm apart from its left edge. (6) **Going online clears earlier owners** before the crown claims (O65's "other full stands stay unowned"), and stands loaded from a file come in unowned. (7) The table is **read-only while reconnecting** (4.7): the guard refuses table actions with "Reconnecting… the table is read-only for now". (8) Refused buttons stay clickable for their own logic but are **grayed, titled with the reason, and refuse clicks**; Downloads off **hides** Save, Save a copy and Export instead (4.3). (9) A View player can still **click to select** cards and dice; only drags are refused. |
 | O103 | **(agent, Sync, 2026-10-30)** Phase O2's sync choices: (1) the crown **re-keys hidden cards after a shuffle by taking them off and putting them back under new uids in a random order** (a `remove` and an `add` in one batch, which the server redacts per player like any `add`), not by `reuid` pairs, since pairs tell every browser which old uid became which new one, the very link re-keying is meant to break (7.2, O66; `reuid` stays in the contract and in `applyOp`); only a shuffle that lands by layout is re-keyed (S S on the table, a shuffled hand let go at rest), not a shuffled hand tossed through physics; (2) a **batch that removes or spills a stand may take that stand's cards off it** in the same batch (the Spill button lays the pile out itself), the removal being judged as a removal; a bare `mat spill` from someone else is laid out by the crown; (3) the proposer of an op the crown **confirms differently** (a laid-out spill) applies the crown's version; (4) the crown **fetches card data before judging a Tokens player's add or remove** it cannot yet place as tokens or basics (O67), judging the proposals in order; (5) undo's swap goes out as **one op carrying the seq this browser last saw** of every card and die it touches (8.6). Reason: each holds the rules of 6 and 7 with no change to the server or the protocol. |
 | O104 | **(agent, hub, 2026-10-30, gate O3)** **`op` and `confirm` messages may be up to 1 MiB** (`MAX_OP_BYTES`, Cloudflare's own WebSocket ceiling); streams, chat and the rest stay at 64 KB, snapshot parts at 256 KB. Found in the gate: a crown's spawn of 453 cards was an 80 KB `add`, and the server closed the crown's socket with `bye size`, so spawning a cube in a room, or laying out every card, would throw the crown out. The **outbox splits** an add, remove or move of more than 1,000 cards into several ops, so no message comes near the ceiling (a 5,000-card add is about 900 KB). Replaces Section 9's 64 KB for ops and O97's replace-only exception. |
 | O105 | **(agent, Server, 2026-10-30, gate O3)** The **Lobby keeps its rows in SQLite**, replacing O97's rows-in-memory: an idle Lobby is evicted within seconds (seen locally), far sooner than the minute between heartbeats, so a quiet room fell out of the public and admin lists. A row is written when it changes and otherwise at most every 90 s (its last-seen time stays fresh enough for the 3-minute pruning, about 960 writes a day per open room); rate windows stay in memory. A new room heartbeats when it is **created**, so the admin list knows it at once, and the Room's minute alarm **sets the next alarm before** heartbeating. Checked: a public room listed in every check through 4 quiet minutes while the Room hibernated between alarms. |
@@ -1053,7 +1053,7 @@ Owner answers of 2026-10-30 are recorded as such; **(agent)** marks a choice mad
 | O109 | Owner (2026-10-30, after the run): a **LAN mode** so another machine on the network can join a room on the local dev server. **(agent)** `npm run dev:lan` (and `start-lan.bat`, which prints this PC's address) runs vite with `--host` and `wrangler dev --ip 0.0.0.0`; in dev, a page served to another machine finds the room server at its own host instead of `localhost` (`followPageHost` in `link.ts`, tested); the Worker's CORS also accepts private-network origins (10.x, 172.16–31.x, 192.168.x), harmless on the deployed server. Others open `http://<this PC's address>:5173/#/room/CODE`; Windows Firewall asks once to let Node through on private networks. Plain `http` to a LAN address is not a secure context, so the clipboard API is hidden there; Copy link falls back to the old copy command. Checked from this machine through `192.168.8.190`: the page served, the preflight and room creation allowed for the LAN origin, a socket welcomed. |
 | O110 | Owner (2026-10-31): **playmats are Move**, spawned and removed at the same rank as your own stand, since every player will have one. Playmats stay no one's (O52), so anyone at Move may also remove one, as at a real table. Everything keeps spilling and removing others' stands, claiming regardless and the basics setting. Replaces O24's playmats under Everything. |
 | O111 | Owner (2026-10-31): **Everything becomes a co-host**: besides full table access it may **kick, ban, change ranks and Give a stand to**, but only over players **below** Everything (never another Everything player, never the crown), and when it sets a rank it can give View, Move, Tokens or Cards, not Everything. Passing the crown, Go offline, and the room's listing (visibility, password, tag, newcomer rank) stay the crown's. Playmats stay Move (O110). **(agent)** The owner had no preference on the table powers: Everything also gets **Lock table**, which fits with kicking and banning as a way to calm a room; New table and Load file (they replace the crown's own table), renaming the table (it is the room's public name) and Downloads (the crown's privacy choice) stay the crown's. **Lock table now freezes everyone below Everything**, so the player who locks it is not locked out. The crown's ⋯ menu on a player row shows for Everything too, without Pass crown. The server accepts `rank`, `kick`, `ban` and `settings {locked}` from an Everything player's socket when the target is below Everything; the crown's judge accepts Give stand to from Everything for an unowned stand. Replaces O23's "the crown alone" for these, O24's "nothing about the room or players", and O51's freeze of everyone below the crown. |
-| O112 | Owner (2026-11-01): **searching a face-down pile** (L L, spec decision 310) loosens O30 for decks too big for a stand. A `search {uids}` message (Move rank, at most 250 cards) makes the server reveal those cards to that player alone; it broadcasts `searching {player, uids}` so every table glows the pile in the searcher's colour, and says in chat “Sam is searching a pile of 62” and “Sam finished searching”. `search {uids: []}` ends it, with `forget` for the cards still hidden from them; leaving ends it too. **(agent)** Searches are server memory only (a hibernation ends them; the searcher's browser hides the cards itself when its search ends); no protocol bump, the messages are additive; the client's gate (`visibleTo`) and the crown's both include the player's own search. |
+| O112 | Owner (2026-11-01): **searching a face-down pile** (L L, spec decision 310) loosens O30 for decks too big for a stand. A `search {uids}` message (Move rank, at most 250 cards) makes the server reveal those cards to that player alone; it broadcasts `searching {player, uids}` so every table glows the pile in the searcher's color, and says in chat “Sam is searching a pile of 62” and “Sam finished searching”. `search {uids: []}` ends it, with `forget` for the cards still hidden from them; leaving ends it too. **(agent)** Searches are server memory only (a hibernation ends them; the searcher's browser hides the cards itself when its search ends); no protocol bump, the messages are additive; the client's gate (`visibleTo`) and the crown's both include the player's own search. |
 | O113 | Owner (2026-11-01): **cube chips in rooms** (spec decision 321): everyone in a room sees which CubeCobra cubes are on the table. **(agent)** A new op `{t: 'cubes', set?, remove?}` keeps the table's cube list (id, name, size) in `TableState.cubes`, and snapshots carry it in part 0; each card's `cube` id travels in its `CardSnap`, as other card fields do, and is not redacted: it says which public cube a hidden card came from, never which card it is. The op needs Cards, like spawning the cube. The op and the snapshot field changed the protocol's shape, so `PROTOCOL` is 2: tabs left open across the deploy are told to reload. |
 | O114 | Owner (2026-11-01): **flags in rooms** (spec decision 327): everyone sees them. **(agent)** A new op `{t: 'flag', set?, remove?}` keeps `TableState.flags`, carried in snapshot part 0; placing, moving, editing, locking or taking away a flag needs **Move**, like a playmat, since flags are no one's. Turning a card away is an ordinary `move` by the browser that put it down. An empty named pile is deleted by the crown's browser alone (spec decision 328). The op and the snapshot field change the protocol's shape: `PROTOCOL` is 3. |
 

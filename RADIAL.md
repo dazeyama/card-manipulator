@@ -6,9 +6,9 @@ A ring of the main card actions that opens on **Space** (Space was unbound for i
 
 ## How it works
 
-- **Hold, flick, release.** Hold Space: the menu opens centred on the cursor. Move toward a wedge and let go to do it. Letting go in the dead centre cancels.
-- **Tap leaves it open.** A quick tap of Space (let go before leaving the centre) keeps it open: click a wedge to do it. Esc, Space again, or a click outside closes it.
-- **Two rings.** The inner ring holds 8 wedges; letting go on one does its main action. Pushing further out past the inner ring shows that wedge's **variants** in an outer ring, centred on it; letting go there does the variant. A small dot on a wedge's outer edge marks one that has variants.
+- **Hold, flick, release.** Hold Space: the menu opens centered on the cursor. Move toward a wedge and let go to do it. Letting go in the dead center cancels.
+- **Tap leaves it open.** A quick tap of Space (let go before leaving the center) keeps it open: click a wedge to do it. Esc, Space again, or a click outside closes it.
+- **Two rings.** The inner ring holds 8 wedges; letting go on one does its main action. Pushing further out past the inner ring shows that wedge's **variants** in an outer ring, centered on it; letting go there does the variant. A small dot on a wedge's outer edge marks one that has variants.
 - **Labels.** Each wedge shows the help panel's emoji, its name, and its key underneath (S, C C, Shift C...).
 - **Not while holding cards.** It doesn't open mid-drag (agent call).
 
@@ -33,7 +33,7 @@ Clockwise from the top. Letting go on the inner wedge does the first item.
 | Turn | Turn 90° (R) | Upright (R R) |
 | Spread | Spread (X) | Reverse spread (X X) |
 | Hand | Fan as hand (H) | H H: **Wide hand** on the table, **Usual size** on a stand, named by where the cards lie (decisions 303, 307) |
-| Sort | Curve (C) | Colour columns (C C), Curve per colour (Shift C), EDHREC (E), Elo (E E) |
+| Sort | Curve (C) | Color columns (C C), Curve per color (Shift C), EDHREC (E), Elo (E E) |
 | Draw | 1 card (1) | 7 cards (7), N cards (0): how many, with a Face down tick (decision 300); Search (L), Search face down (L L) (decision 310) |
 | Point | Point (P): click where the cards go, as a stack | Pass pack (P P): face down, like a draft pack (decision 305), Flag (B): click where a flag goes, cards or not (decision 327) |
 
@@ -44,7 +44,7 @@ Deliberately left off: pile tools (tokens, name, copy, delete, frame), dice, cam
 - Many variants are double taps inside one key handler (`lastS`, `lastC`... with `DOUBLE_TAP_MS` in `src/main.ts`). Don't fake two key presses. Pull each into a named function the key and the menu both call.
 - **Pure module** (`src/input/radial.ts` or similar), tested with vitest:
   - the menu definition;
-  - hit-testing from the angle and distance off the centre to a wedge and variant;
+  - hit-testing from the angle and distance off the center to a wedge and variant;
   - the tap-versus-flick rule.
 - **The overlay** is DOM/SVG in `src/ui/`, styled like the other panels: white wedges, `--line` borders, `--accent-soft` for the hovered wedge, solid `--accent` for the chosen variant. It scales with the cursor size setting and the UI fit.
 - **Space:** `keydown` (not a repeat, not typing) opens; `keyup` resolves; `blur` cancels. Call `preventDefault` so Space doesn't press focused buttons or scroll.

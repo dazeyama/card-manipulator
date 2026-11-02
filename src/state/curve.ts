@@ -1,12 +1,12 @@
 // Curve view (decision 107): cards laid out by mana value, the way deckbuilders
 // and cube lists show them. Each mana value is a column of cards cascading
 // down the table with every card's title bar showing. Optionally creatures and
-// non-creatures cascade in two bands. Sorted by colour, each colour group is
+// non-creatures cascade in two bands. Sorted by color, each color group is
 // its own block of columns, two blocks to a row: white and blue, black and
-// red, green and colourless. Multicolour cards then get a full row of their
-// own, a cascading column per colour identity (decision 150). Lands get their
+// red, green and colorless. Multicolor cards then get a full row of their
+// own, a cascading column per color identity (decision 150). Lands get their
 // own row underneath in the same columns: the ten guilds, then three or more
-// colours, then one colour and colourless together (decision 149). Pure
+// colors, then one color and colorless together (decision 149). Pure
 // geometry, tested without a browser.
 
 import { CARD_H, CARD_T, CARD_W } from './types';
@@ -14,11 +14,11 @@ import type { Placed } from './piles';
 
 /** How far each card in a cascade sits below the one before: enough to show its title bar and cost. */
 export const CASCADE_STEP = 22;
-/** Gap between columns, between the creature and non-creature bands, and between colour rows, mm. */
+/** Gap between columns, between the creature and non-creature bands, and between color rows, mm. */
 const COLUMN_GAP = 8;
 const BAND_GAP = 16;
 const ROW_GAP = 30;
-/** Gap between the two colour blocks side by side, mm. */
+/** Gap between the two color blocks side by side, mm. */
 const BLOCK_GAP = 60;
 /** Mana values 7 and up share the last column. */
 export const MAX_MV = 7;
@@ -31,17 +31,17 @@ export interface CurveCard {
   mv: number;
   land: boolean;
   creature: boolean;
-  /** Colour group, for sorting by colour: see COLOUR_GRID. */
+  /** Color group, for sorting by color: see COLOUR_GRID. */
   group: ColourGroup;
-  /** Colour identity (Scryfall's ci), which picks a land's column. */
+  /** Color identity (Scryfall's ci), which picks a land's column. */
   identity: string[];
 }
 
 export type ColourGroup = 'W' | 'U' | 'B' | 'R' | 'G' | 'multi' | 'colourless' | 'land';
 /**
- * Where each colour block goes when sorted by colour: two to a row, top to
- * bottom (decision 113). Multicolour and lands have rows of their own below,
- * by colour identity (decisions 149, 150).
+ * Where each color block goes when sorted by color: two to a row, top to
+ * bottom (decision 113). Multicolor and lands have rows of their own below,
+ * by color identity (decisions 149, 150).
  */
 export const COLOUR_GRID: ColourGroup[][] = [['W', 'U'], ['B', 'R'], ['G', 'colourless']];
 
@@ -49,8 +49,8 @@ export const COLOUR_GRID: ColourGroup[][] = [['W', 'U'], ['B', 'R'], ['G', 'colo
 export const GUILDS = ['WU', 'WB', 'UB', 'UR', 'BR', 'BG', 'RG', 'RW', 'GW', 'GU'];
 
 /**
- * A card's column in a colour identity row (decisions 149, 150): 0 to 9 for
- * the guilds, 10 for three or more colours, 11 for one colour or none.
+ * A card's column in a color identity row (decisions 149, 150): 0 to 9 for
+ * the guilds, 10 for three or more colors, 11 for one color or none.
  */
 export function landColumn(identity: string[]): number {
   if (identity.length >= 3) return GUILDS.length;
@@ -59,7 +59,7 @@ export function landColumn(identity: string[]): number {
   return i < 0 ? GUILDS.length + 1 : i;
 }
 
-/** A card's colour group from its colours and type: lands first, then by colour count. */
+/** A card's color group from its colors and type: lands first, then by color count. */
 export function colourGroup(colours: string[], land: boolean): ColourGroup {
   if (land) return 'land';
   if (colours.length > 1) return 'multi';
@@ -112,14 +112,14 @@ function block(
 
 const widthOf = (cols: number) => cols * CARD_W + (cols - 1) * COLUMN_GAP;
 
-/** Multicolour cards in a column: cheapest first, then by name. */
+/** Multicolor cards in a column: cheapest first, then by name. */
 const byCost = (a: CurveCard, b: CurveCard) => columnOf(a) - columnOf(b) || byName(a, b);
 
 /** The identity columns these cards use, in landColumn order. */
 const identityCols = (cards: CurveCard[]) => [...new Set(cards.map((c) => landColumn(c.identity)))].sort((a, b) => a - b);
 
 /**
- * A row by colour identity (decisions 149, 150): a cascading column per
+ * A row by color identity (decisions 149, 150): a cascading column per
  * identity in `cols`, by default those these cards use.
  */
 function identityRow(cards: CurveCard[], split: boolean, order: (a: CurveCard, b: CurveCard) => number, cols = identityCols(cards)): Block & { width: number } {
@@ -130,11 +130,11 @@ function identityRow(cards: CurveCard[], split: boolean, order: (a: CurveCard, b
 /**
  * Lay cards out as a curve. Returns where each card goes, in the order to
  * place them (each cascade top card first, so later cards lie over the one
- * above and leave its title bar showing). The whole layout is centred on
- * `centre`. `byColour` gives each colour group its own block, two to a row
+ * above and leave its title bar showing). The whole layout is centered on
+ * `center`. `byColour` gives each color group its own block, two to a row
  * (COLOUR_GRID), with the mana value columns lined up across blocks; `split`
  * puts creatures and non-creatures in separate bands. Lands always go in
- * their own row underneath, a column per colour identity.
+ * their own row underneath, a column per color identity.
  */
 export function curveLayout(cards: CurveCard[], centre: { x: number; y: number }, opts: { byColour: boolean; split: boolean }): { uid: string; at: Placed }[] {
   const placed: { uid: string; x: number; y: number }[] = [];
@@ -142,7 +142,7 @@ export function curveLayout(cards: CurveCard[], centre: { x: number; y: number }
   const lands = cards.filter((c) => c.land);
   const cols = [...new Set(spells.map(columnOf))].sort((a, b) => a - b);
   let width = 0, height = 0;
-  /** With Shift + C, the identity columns the multicolour and land rows share. */
+  /** With Shift + C, the identity columns the multicolor and land rows share. */
   let shared: number[] | null = null;
   // A full-width row under everything so far. With Shift + C it starts one
   // column in, under mana value 1, leaving the 0 column empty (decision 151).
@@ -159,7 +159,7 @@ export function curveLayout(cards: CurveCard[], centre: { x: number; y: number }
     width = widthOf(cols.length);
     height = b.height;
   } else if (spells.length) {
-    // Every colour block uses the same mana value columns, so they line up.
+    // Every color block uses the same mana value columns, so they line up.
     const blockWidth = Math.max(CARD_W, widthOf(cols.length));
     let top = 0;
     let used = 0;
@@ -180,18 +180,18 @@ export function curveLayout(cards: CurveCard[], centre: { x: number; y: number }
       width = used * blockWidth + (used - 1) * BLOCK_GAP;
       height = -top - ROW_GAP;
     }
-    // Multicolour: a row by colour identity, guilds first (decision 150). It shares its
+    // Multicolor: a row by color identity, guilds first (decision 150). It shares its
     // columns with the land row below, so each guild lines up; a guild with neither
-    // multicolour cards nor lands has no column (decision 161).
+    // multicolor cards nor lands has no column (decision 161).
     const multi = spells.filter((c) => c.group === 'multi');
     shared = identityCols([...multi, ...lands]);
     if (multi.length) addRow(identityRow(multi, opts.split, byCost, shared));
   }
 
-  // Lands: their own row underneath, by colour identity (decision 149).
+  // Lands: their own row underneath, by color identity (decision 149).
   if (lands.length) addRow(identityRow(lands, false, byName, shared ?? identityCols(lands)));
 
-  // Centre the whole layout on the spot.
+  // Center the whole layout on the spot.
   const ox = centre.x - width / 2, oy = centre.y + height / 2;
   return placed.map((p) => ({ uid: p.uid, at: { x: ox + p.x, y: oy + p.y, yaw: 0, z: CARD_T / 2 } }));
 }

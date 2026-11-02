@@ -110,13 +110,13 @@ export function rng(seed: number): () => number {
 }
 
 /** A messy pile: small random offsets and angles, each card above the last (spec 2). */
-/** A loose stack (decision 94): each card up to this far off the centre, in mm... */
+/** A loose stack (decision 94): each card up to this far off the center, in mm... */
 export const LOOSE_OFFSET = 9;
 /** ...and turned up to this much either way, in radians (about 8 degrees). */
 export const LOOSE_TURN = 0.14;
 
 /**
- * A hand-made stack: every card roughly on the same spot, a little off centre
+ * A hand-made stack: every card roughly on the same spot, a little off center
  * and a little turned, bottom card first. Tidy squares it up.
  */
 export function looseStackLayout(count: number, at: Footprint, baseTop = 0, random: () => number = Math.random): Placed[] {
@@ -165,7 +165,7 @@ export function spreadLayout(count: number, anchor: { x: number; y: number }, ga
   return out;
 }
 
-/** A grid centred on a point (the Spread command on a selection, spec 10.7). */
+/** A grid centered on a point (the Spread command on a selection, spec 10.7). */
 export function gridLayout(count: number, centre: { x: number; y: number }, gap = 6): Placed[] {
   const cols = Math.min(10, Math.max(1, Math.ceil(Math.sqrt(count * 1.4))));
   const rows = Math.ceil(count / cols);
@@ -203,9 +203,9 @@ export function layOrder(spots: Placed[], reverse: boolean): number[] {
 /**
  * A grid that fits inside a box on the table (decision 159), top card first,
  * left to right and rows top to bottom. With room to spare the cards keep the
- * usual gap, centred in the box; short of room they overlap evenly, so they
+ * usual gap, centered in the box; short of room they overlap evenly, so they
  * stay inside the box however small it is (cards don't shrink, so a box
- * narrower or shorter than one card holds them centred on it). Of the grid
+ * narrower or shorter than one card holds them centered on it). Of the grid
  * shapes, the one that leaves the most of each card showing wins; among
  * shapes that show every card whole, the one closest to the box's shape.
  */
@@ -281,7 +281,7 @@ function overlapGroups(cards: PileCard[]): PileCard[][] {
     }
     return i;
   };
-  // Spatial hash on centres: overlapping cards are within 108 mm of each other.
+  // Spatial hash on centers: overlapping cards are within 108 mm of each other.
   const CELL = 110;
   const grid = new Map<string, number[]>();
   const key = (cx: number, cy: number) => `${cx},${cy}`;
@@ -359,7 +359,7 @@ function fence(group: PileCard[], fenced: Set<string>, oldOf: Map<string, string
 
 /**
  * Group cards whose footprints overlap, transitively. Groups of two or more
- * are piles: a stack when every card shares the bottom card's centre within
+ * are piles: a stack when every card shares the bottom card's center within
  * 2 mm and its yaw, otherwise messy. `prev` maps old pile ids to their cards
  * so a pile keeps its id while it keeps most of its cards. Named piles keep
  * their id however many cards join or leave, down to a single card. A

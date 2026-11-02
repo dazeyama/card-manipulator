@@ -88,8 +88,8 @@ describe('o: and t:', () => {
   });
 });
 
-describe('c: colour', () => {
-  it('c: means at least these colours', () => {
+describe('c: color', () => {
+  it('c: means at least these colors', () => {
     expect(names('c:r')).toEqual(['Lightning Bolt', 'Fire // Ice']);
     expect(names('c:ur')).toEqual(['Fire // Ice']);
     expect(names('color:red')).toEqual(['Lightning Bolt', 'Fire // Ice']);
@@ -111,7 +111,7 @@ describe('c: colour', () => {
   });
 });
 
-describe('id: colour identity', () => {
+describe('id: color identity', () => {
   it('id: means within this identity', () => {
     expect(names('id<=bg')).toEqual(['Tarmogoyf', 'Sol Ring', 'Craterhoof Behemoth']);
     expect(names('id:ub')).toEqual(['Counterspell', 'Sol Ring', 'Dimir Signet', 'Delver of Secrets // Insectile Aberration', 'Jace, the Mind Sculptor', 'Island', 'Lim-D\u00fbl\'s Vault']);
@@ -218,7 +218,7 @@ describe('errors (spec 9.4: never a silent empty match)', () => {
   it('rejects unknown keys, bad values and broken syntax', () => {
     expect(error('foo:bar')).toMatch(/Unknown term/);
     expect(error('mv<=x')).toMatch(/needs a number/);
-    expect(error('c:purple')).toMatch(/Unknown colour/);
+    expect(error('c:purple')).toMatch(/Unknown color/);
     expect(error('r:shiny')).toMatch(/Unknown rarity/);
     expect(error('(t:creature')).toMatch(/Missing closing parenthesis/);
     expect(error('t:creature)')).toMatch(/Unmatched/);

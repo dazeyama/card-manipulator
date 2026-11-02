@@ -52,7 +52,7 @@ describe('hidden cards after a sorted layout (7.3)', () => {
     expect(row.map((p) => p.x)).toEqual([0, 24, 48]);
   });
 
-  it('centres the row where the cards were when every card is hidden', () => {
+  it('centers the row where the cards were when every card is hidden', () => {
     const row = hiddenRow([], 3, { x: 100, y: 50 });
     expect(row.map((p) => p.x)).toEqual([76, 100, 124]);
     expect(row.every((p) => p.y === 50)).toBe(true);

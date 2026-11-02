@@ -27,7 +27,7 @@ export class SceneView {
     this.scene.background = new THREE.Color(TABLE_COLOR);
 
     // Soft ambient plus one sun. Levels are chosen so a card in full light shows
-    // close to its printed colours with no tone mapping.
+    // close to its printed colors with no tone mapping.
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d2c8, 1.35));
     this.sun = new THREE.DirectionalLight(0xffffff, 1.55);
     this.sun.castShadow = true;
@@ -87,7 +87,7 @@ diffuseColor.rgb *= 1.0 - fade * (0.035 * minor + 0.06 * major);`,
     this.renderer.setSize(width, height, false);
   }
 
-  /** Follow the camera: keep the table centred and fit the shadow map to what is visible. */
+  /** Follow the camera: keep the table centered and fit the shadow map to what is visible. */
   fitToView(rig: CameraRig): void {
     const t = rig.target;
     this.table.position.set(t.x, t.y, 0);

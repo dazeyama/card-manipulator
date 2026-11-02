@@ -8,7 +8,7 @@ const inside = (spots: { x: number; y: number }[], b: Box) =>
   spots.every((p) => p.x - CARD_W / 2 >= b.minX - 1e-6 && p.x + CARD_W / 2 <= b.maxX + 1e-6 && p.y - CARD_H / 2 >= b.minY - 1e-6 && p.y + CARD_H / 2 <= b.maxY + 1e-6);
 
 describe('spreading into a dragged box (decision 159)', () => {
-  it('keeps the usual gap when the box has room, centred in it', () => {
+  it('keeps the usual gap when the box has room, centered in it', () => {
     const box = { minX: 0, minY: 0, maxX: 2000, maxY: 1000 };
     const spots = fitLayout(6, box);
     expect(inside(spots, box)).toBe(true);
@@ -41,7 +41,7 @@ describe('spreading into a dragged box (decision 159)', () => {
     expect(spots[2].y).toBeLessThan(spots[0].y);
   });
 
-  it('centres the cards on a box smaller than one card', () => {
+  it('centers the cards on a box smaller than one card', () => {
     const spots = fitLayout(3, { minX: 0, minY: 0, maxX: 20, maxY: 20 });
     for (const p of spots) {
       expect(p.x).toBeCloseTo(10, 9);

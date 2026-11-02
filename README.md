@@ -35,7 +35,7 @@ A few keys do most of the work. Each acts on the selection, or on the pile under
 |---|---|
 | S | Stack. Twice quickly: shuffle |
 | X | Spread the pile out so every card shows |
-| C | Lay out a mana curve. Twice: a column per colour |
+| C | Lay out a mana curve. Twice: a column per color |
 | E | Columns by EDHREC rank. Twice: by CubeCobra Elo |
 | F | Flip. Middle-click flips one card |
 | H | Fan like a hand |
@@ -66,7 +66,7 @@ There are no rules, turns or automatic life totals. It plays like a real table, 
 
 ## Play online
 
-Press **Go online** and your table becomes a room with a link. Send the link and up to eight people can join. You pick a nickname and a colour, and everyone sees each other's cursors and moves live.
+Press **Go online** and your table becomes a room with a link. Send the link and up to eight people can join. You pick a nickname and a color, and everyone sees each other's cursors and moves live.
 
 - The player who opened the room wears the **crown**. They set what everyone else may do, from View only up to Everything.
 - Hidden information is real. Cards on your stand and every face-down card are hidden from other players. The server leaves those cards out of what it sends them, so a player can't find them by digging through the page. The crown's browser is the one exception, since it runs the table.

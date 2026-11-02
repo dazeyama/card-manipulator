@@ -10,7 +10,7 @@ import { standWhyNot } from './online/guard';
 import { inFrontOf, isStand, liftOntoSlope, STAND_D, STAND_W, underStand } from './state/stand';
 import { CARD_H, CARD_W, type Card, type Mat } from './state/types';
 
-/** A card can be under a stand only if its centre is this close to the stand's, mm. */
+/** A card can be under a stand only if its center is this close to the stand's, mm. */
 const REACH = Math.hypot(STAND_W, STAND_D) / 2 + Math.hypot(CARD_W, CARD_H) / 2;
 
 export function installStandSnap(app: App): void {

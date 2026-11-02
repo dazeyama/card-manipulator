@@ -26,7 +26,7 @@ import { remoteHeld } from '../state/remoteHeld';
 export type DragMode = 'single' | 'gather' | 'formation' | 'rigid';
 
 const LIFT = 10;
-/** Tidy mode (decision 115): a drop cascades only this far (in cascade steps) or more below the top card's centre. */
+/** Tidy mode (decision 115): a drop cascades only this far (in cascade steps) or more below the top card's center. */
 const CASCADE_ZONE = 0.75;
 /** Spring rate of the lead card: about 80 ms of visible lag (spec 15.5). */
 const OMEGA_LEAD = 28;
@@ -56,7 +56,7 @@ const TURN_MAX = 0.35;
 export const MOVING_SPEED = 150;
 /** ...sliding on for this long at their speed, as if friction caught them. */
 export const CARRY_S = 0.03;
-/** No clipping (decision 97): a tilted card's corner can dip this far below its centre per unit of slope. */
+/** No clipping (decision 97): a tilted card's corner can dip this far below its center per unit of slope. */
 const HALF_DIAG = Math.hypot(CARD_W, CARD_H) / 2;
 /** The least gap kept between a held card's lowest corner and the cards under it, mm. */
 const MIN_CLEAR = 1.5;
@@ -122,7 +122,7 @@ const SWEEP_GRACE_MS = 150;
 
 /**
  * A sweep takes only the cards of a pile within this far of the card under the
- * cursor, centre to centre (decision 325): all of a deck or a dropped handful,
+ * cursor, center to center (decision 325): all of a deck or a dropped handful,
  * but never the far side of a spread grid or a long cascade, which detection
  * counts as one pile. Lingering as the cursor moves takes what it passes.
  * 90 mm, about a card's length (decision 326): in a grid, the card under the
@@ -549,7 +549,7 @@ export class DragController {
   }
 
   /**
-   * A card pulled by a point off its centre swings so the centre trails behind
+   * A card pulled by a point off its center swings so the center trails behind
    * the motion, like dragging a real card by its corner. Only a little.
    */
   private turnSingle(dt: number): void {
@@ -561,7 +561,7 @@ export class DragController {
     this.lastCursor = { ...this.cursor };
     const lever = Math.hypot(c.ox, c.oy);
     if (lever > 8) {
-      // Torque of the drag on the centre: turns it to point away from the motion.
+      // Torque of the drag on the center: turns it to point away from the motion.
       const torque = (c.ox * -this.cursorVel.y - c.oy * -this.cursorVel.x) / lever;
       this.turnVel += (torque * TURN_GAIN * Math.min(1, lever / 40) - this.turnVel * TURN_DAMP) * dt;
     } else {
@@ -1162,14 +1162,14 @@ export class DragController {
       if (tidy) {
         // Two snap points (decisions 114, 115): squared on top of the pile, or one
         // cascade step down from its top card, as in a curve column. The stack zone
-        // is the bigger one: anything from 22 mm above the top card's centre down to
+        // is the bigger one: anything from 22 mm above the top card's center down to
         // three quarters of a step below it stacks; only a drop clearly at the
         // cascade point (or further down) cascades.
         const yaw = snapYaw(top.yaw);
         const down = { x: Math.sin(yaw), y: -Math.cos(yaw) };
         const lead = held[held.length - 1];
         const ref = mode === 'single' ? { x: this.cursor.x + lead.ox, y: this.cursor.y + lead.oy } : this.cursor;
-        // How far below the top card's centre the drop is, along the card's long side.
+        // How far below the top card's center the drop is, along the card's long side.
         const below = (ref.x - top.x) * down.x + (ref.y - top.y) * down.y;
         if (below >= CASCADE_STEP * CASCADE_ZONE) {
           // Each card continues the cascade, one step further down.

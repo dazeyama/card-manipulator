@@ -14,7 +14,7 @@ import { offCorner } from './lifeCounter';
 const BADGE_MM = 36;
 const BADGE_MIN_PX = 30;
 const BADGE_MAX_PX = 96;
-/** Its centre, in from the slope's top-left corner, mm (decision 253). */
+/** Its center, in from the slope's top-left corner, mm (decision 253). */
 const INSET = 13;
 /** It keeps this far from any card on the slope, mm, or goes outside. */
 const CLEAR = BADGE_MM / 2;

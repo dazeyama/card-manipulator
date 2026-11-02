@@ -651,7 +651,7 @@ function serverTitle(s: OnlineUi['server']): string {
   return 'No room server';
 }
 
-/** Light colours (yellow, white) take dark letters. */
+/** Light colors (yellow, white) take dark letters. */
 function isLight(colour: string): boolean {
   const n = parseInt(colour.slice(1), 16);
   const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
@@ -726,7 +726,7 @@ export class OnlinePanel {
     else this.showForm();
   }
 
-  /** Offline: the short form (12.2): the room's name, your name and colour, the tag, Go online. */
+  /** Offline: the short form (12.2): the room's name, your name and color, the tag, Go online. */
   private showForm(): void {
     this.title.textContent = 'Go online';
     const app = this.ui.app;
@@ -778,7 +778,7 @@ export class OnlinePanel {
       h('p', { class: 'muted small first' }, 'Share this table by link: up to eight players, each with their own cursor. Your table stays yours; Go offline brings it back as it is.'),
       h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Room name'), name),
       h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Your nickname'), nick),
-      h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Your colour'), colours.el),
+      h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Your color'), colours.el),
       h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Tag'),
         h('div', { class: 'row tight' }, h('label', { class: 'inline' }, tagCube, 'Cube'), h('label', { class: 'inline' }, tagPlay, 'Play'))),
       error,
@@ -835,7 +835,7 @@ export class OnlinePanel {
     this.rows.render();
   }
 
-  /** Settings (12.2, 4.3): the crown changes them (O23), Everything Lock table too (O111); everyone else sees them greyed. */
+  /** Settings (12.2, 4.3): the crown changes them (O23), Everything Lock table too (O111); everyone else sees them grayed. */
   private settingsSection(online: Online): HTMLElement {
     const room = online.room;
     const s = room.settings;

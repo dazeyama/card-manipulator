@@ -25,7 +25,7 @@ export type Op =
   | { t: 'spread'; set?: Spread[]; remove?: string[] }
   /** Spawn, move, lock, life, name, owner; `spill` removes stands with their cards dropped (6.3). */
   | { t: 'mat'; set?: Mat[]; remove?: string[]; spill?: string[] }
-  /** Spawn, move, roll result, number, colour. */
+  /** Spawn, move, roll result, number, color. */
   | { t: 'dice'; set?: Die[]; remove?: string[] }
   | { t: 'basics'; basics: Basics }
   /** The CubeCobra cubes on the table (decision 321, O113): added or updated by id, or dropped. */

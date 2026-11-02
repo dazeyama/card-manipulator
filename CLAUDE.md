@@ -33,6 +33,7 @@ Regenerate the test lists (Scryfall, through the app's own client): `node --expe
 - **Scryfall courtesy.** Every request goes through the one serialized queue in `src/scryfall/client.ts`: 100 ms between general calls, 550 ms between searches. Reuse the caches.
 - **Reference projects are read-only.** `C:\ClaudeProjects\pug-pricing-tool` is reference material for the Scryfall client and conventions. Never edit it.
 - **Chrome and Edge only.** Performance target is the owner's RTX 4070 Ti at 1080p.
+- **US English** (decision 338). UI text, comments and docs use US spellings: color, center, gray, behavior, normalize. Older code identifiers and stored or protocol keys keep their UK spelling (`colour`, `colourLayout`, `'centre'`): renaming them would break saved tables, rooms and stored settings. New identifiers use US spelling.
 - **Keep TypeScript simple.** Strict mode, but plain types the owner can read. No type gymnastics.
 - **Pure logic is tested.** The query engine, decklist parser, pile detection and layouts live in pure modules with vitest tests.
 - **Every new action goes on the radial and the bottom bar, always** (decision 309). When a key, double tap or command is added or changed, it gets an item in `RADIAL_MENU` (`src/input/radial.ts`) in the fitting wedge's ring, with its icon, key, label and title, and the same change; the bottom bar is built from that list, so it gets the button too. Also update the `?` panel (`src/ui/helpPanel.ts`), RADIAL.md's table and `tests/radial.test.ts`. Leave something off only if the owner says so.

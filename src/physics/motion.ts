@@ -16,7 +16,7 @@ interface Tween {
   ease: Ease;
   /** Extra height at the middle of the tween, for flips and tosses. */
   arc: number;
-  /** A small hop at the end, in millimetres: the soft bounce of a landing. */
+  /** A small hop at the end, in millimeters: the soft bounce of a landing. */
   bounce: number;
   done?: () => void;
 }
@@ -54,7 +54,7 @@ export class Motion {
     });
   }
 
-  /** Jump straight to a pose, cancelling any tween. */
+  /** Jump straight to a pose, canceling any tween. */
   snap(uid: string, to: Partial<Pose>): void {
     this.tweens.delete(uid);
     this.layer.setPose(uid, to);

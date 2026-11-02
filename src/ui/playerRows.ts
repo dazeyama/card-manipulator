@@ -1,6 +1,6 @@
 // The Online panel's player list (ONLINE.md 12.2 Players): one row per
 // player in join order, with their swatch (yours opens a popover of the free
-// colours, O18), nickname, the side they are on (↑ near, ↓ far), their rank,
+// colors, O18), nickname, the side they are on (↑ near, ↓ far), their rank,
 // 👑 on the crown and "away" for a player whose browser has gone (O19).
 // For the crown (O23): a rank picker on every other row, and a ⋯ menu with
 // Pass crown, Kick, Ban and Give stand to… (4.5, 4.6, 6.3). Everything is a
@@ -19,7 +19,7 @@ import type { RoomState } from '../online/room';
 import type { Session } from '../online/session';
 import { h } from './dom';
 
-/** The colours no other seated player holds. */
+/** The colors no other seated player holds. */
 export function freeColours(players: Player[], me: string): string[] {
   const taken = new Set(players.filter((p) => p.id !== me).map((p) => p.colour.toLowerCase()));
   return PLAYER_COLOURS.filter((c) => !taken.has(c.toLowerCase()));
@@ -65,7 +65,7 @@ export class PlayerRows {
   private row(p: Player): HTMLElement {
     const room = this.room!;
     const mine = p.id === room.me;
-    const swatch = h('button', { class: 'swatch' + (mine ? ' mine' : ''), title: mine ? 'Your colour: click for another free one' : p.nickname, 'aria-label': mine ? 'Change your colour' : `${p.nickname}'s colour` });
+    const swatch = h('button', { class: 'swatch' + (mine ? ' mine' : ''), title: mine ? 'Your color: click for another free one' : p.nickname, 'aria-label': mine ? 'Change your color' : `${p.nickname}'s color` });
     swatch.style.background = p.colour;
     if (mine) swatch.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -151,9 +151,9 @@ export class PlayerRows {
     const mineNow = room.player(room.me)?.colour.toLowerCase();
     const free = freeColours(room.players, room.me).filter((c) => c.toLowerCase() !== mineNow);
     const pop = h('div', { class: 'colour-popover' });
-    if (!free.length) pop.append(h('span', { class: 'muted small' }, 'Every colour is taken'));
+    if (!free.length) pop.append(h('span', { class: 'muted small' }, 'Every color is taken'));
     for (const c of free) {
-      const b = h('button', { class: 'swatch', title: 'Take this colour', 'aria-label': `Colour ${c}` });
+      const b = h('button', { class: 'swatch', title: 'Take this color', 'aria-label': `Color ${c}` });
       b.style.background = c;
       b.addEventListener('click', () => {
         setColour(c);

@@ -30,7 +30,7 @@ const MAT_CORNER = 10;
 /** A corner button shows fully within this many px of the mouse, fading out by the far distance (decision 243). */
 const BUTTON_NEAR_PX = 70;
 const BUTTON_FAR_PX = 170;
-/** How far in from its corner each corner button's centre sits, mm (decisions 238, 242). */
+/** How far in from its corner each corner button's center sits, mm (decisions 238, 242). */
 const BUTTON_INSET = 15;
 /** Two clicks on a mat this close together are a double-click, ms, as on a card. */
 const DOUBLE_CLICK_MS = 350;
@@ -269,7 +269,7 @@ export class Mats {
     const m = store.mats.get(uid);
     if (!m || !this.mayHandle(m)) return;
     const yaw = Math.round((m.yaw - Math.PI / 2) / (Math.PI / 2)) * (Math.PI / 2);
-    // A card stand turns its cards with it, about its centre (decision 221).
+    // A card stand turns its cards with it, about its center (decision 221).
     const members = isStand(m) ? this.cardsOn(uid) : [];
     if (members.length) {
       const d = yaw - m.yaw, c = Math.cos(d), s = Math.sin(d);
@@ -656,7 +656,7 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
     return false;
   }
 
-  /** Cards whose centre lies on a mat. */
+  /** Cards whose center lies on a mat. */
   cardsOn(uid: string): string[] {
     const m = this.app.store.mats.get(uid);
     if (!m) return [];
@@ -937,7 +937,7 @@ export function lifeCorner(m: Mat): -1 | 1 {
   return Math.cos(m.yaw) < -1e-6 ? 1 : -1;
 }
 
-/** A rounded rectangle, centred, half w by half h with corner radius r. */
+/** A rounded rectangle, centered, half w by half h with corner radius r. */
 function roundedRect(w: number, h: number, r: number): THREE.Shape {
   const s = new THREE.Shape();
   s.moveTo(-w + r, -h);
@@ -952,7 +952,7 @@ function roundedRect(w: number, h: number, r: number): THREE.Shape {
   return s;
 }
 
-/** The mat's outline, centred, with rounded corners; `pad` grows it all round (the selection rim). */
+/** The mat's outline, centered, with rounded corners; `pad` grows it all round (the selection rim). */
 function matShape(pad = 0): THREE.Shape {
   const w = MAT_W / 2 + pad, h = MAT_H / 2 + pad, r = MAT_CORNER + pad;
   const s = new THREE.Shape();
@@ -978,7 +978,7 @@ function matTop(): THREE.ShapeGeometry {
 }
 
 /**
- * The cards a mat carries (decision 147): those whose centre lies on it, and
+ * The cards a mat carries (decision 147): those whose center lies on it, and
  * every card in the same pile as one of them, even where it hangs off the
  * mat, since a pile moves as one.
  */

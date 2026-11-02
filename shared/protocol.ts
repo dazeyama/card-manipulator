@@ -4,7 +4,7 @@
 // stale tab `bye {reason: 'version'}`.
 //
 // Also the few numbers and helpers both sides must agree on: the limits of
-// 10.5 that the client checks too, the colour set (5.2), the player id from
+// 10.5 that the client checks too, the color set (5.2), the player id from
 // an identity token (5.1), and snapshot parts (8.7).
 
 import type { Finish } from '../src/state/types';
@@ -45,7 +45,7 @@ export const CHAT_LINES = 100;
 /** Stream messages a second (O45). */
 export const STREAM_HZ = 10;
 
-/** The eight player colours (5.2, O76): far apart on the felt and in small tags. */
+/** The eight player colors (5.2, O76): far apart on the felt and in small tags. */
 export const PLAYER_COLOURS = ['#e63946', '#f4a261', '#e9c46a', '#2a9d8f', '#4895ef', '#7b2cbf', '#ff6fb5', '#f1f5f9'];
 
 // ---- room meta ----
@@ -119,7 +119,7 @@ export interface StreamOut {
   fly?: Record<string, Pose6>;
   /**
    * **(decision 293)** The glove my cursor shows (a `Glove` name from src/ui/cursorArt.ts:
-   * open, fist, point, a gesture...), sent with `cur`; others draw it in my colour,
+   * open, fist, point, a gesture...), sent with `cur`; others draw it in my color,
    * without its emoji. At most 16 characters.
    */
   cs?: string;
@@ -255,7 +255,7 @@ export type ServerMsg =
   | { t: 'forget'; uids: string[] }
   | { t: 'refused'; id: string; reason: RefuseReason }
   | ({ t: 'stream'; from: string } & StreamOut)
-  /** On any join, leave, rank, colour, side or crown change. */
+  /** On any join, leave, rank, color, side or crown change. */
   | { t: 'players'; players: Player[] }
   | { t: 'chat'; line: ChatLine }
   /** Who is crown now. */
@@ -265,7 +265,7 @@ export type ServerMsg =
   /** **(agent, O93)** To the crown: send a fresh snapshot (after the server woke from hibernation). */
   | { t: 'needSnapshot' }
   | { t: 'settings'; settings: PublicSettings }
-  /** **(decision 310)** To everyone: a player is searching these cards (they glow in their colour); `uids: []`, done. */
+  /** **(decision 310)** To everyone: a player is searching these cards (they glow in their color); `uids: []`, done. */
   | { t: 'searching'; player: string; uids: string[] }
   | { t: 'bye'; reason: ByeReason }
   | { t: 'pong' };
@@ -325,7 +325,7 @@ export interface RoomInfo {
   open: boolean;
   /** The crown's nickname ("hosted by Dazey", 12.3). */
   crown: string;
-  /** Colours held by a seated player, connected or away (O19), with the holder's first letter, for the join prompt's greyed swatches. */
+  /** Colors held by a seated player, connected or away (O19), with the holder's first letter, for the join prompt's grayed swatches. */
   taken: { colour: string; initial: string }[];
 }
 

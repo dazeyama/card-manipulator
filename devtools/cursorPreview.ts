@@ -1,6 +1,6 @@
 // Build art/cursors/preview.html: every cursor the app can show, grouped by
 // what the mouse is doing, each with what causes it and what it means, at real
-// size and three times larger, on the table colour and on dark card art. Hover
+// size and three times larger, on the table color and on dark card art. Hover
 // a tile to use it as the cursor. Badges are drawn onto the art with a canvas
 // exactly as src/ui/cursors.ts does. Keep the lists here in step with that file.
 // Dev only.

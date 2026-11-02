@@ -150,7 +150,7 @@ function termNode(t: Extract<Token, { kind: 'term' }>): Node {
   }
   if (field === 'rarity' && !rarityRank(t.value)) throw new QueryError(`Unknown rarity \`${t.value}\``, t.pos);
   if ((field === 'color' || field === 'identity') && !parseColors(t.value)) {
-    throw new QueryError(`Unknown colour \`${t.value}\``, t.pos);
+    throw new QueryError(`Unknown color \`${t.value}\``, t.pos);
   }
   return { type: 'term', field, op: t.op, value: t.value, raw: t.raw };
 }
@@ -170,7 +170,7 @@ const NAMED_COLORS: Record<string, string> = {
   wubrg: 'wubrg', rainbow: 'wubrg',
 };
 
-/** A colour value as a set of letters; 'colorless' and 'multicolor' are special. */
+/** A color value as a set of letters; 'colorless' and 'multicolor' are special. */
 export type ColorQuery = { kind: 'set'; colors: Set<string> } | { kind: 'colorless' } | { kind: 'multicolor' };
 
 export function parseColors(v: string): ColorQuery | null {

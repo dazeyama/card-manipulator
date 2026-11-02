@@ -6,7 +6,7 @@ import { MAT_H, MAT_W, type Mat } from '../src/state/types';
 const mat = (yaw = 0): Mat => ({ uid: 'm1', scryfallId: 'x', name: 'Ragavan', art: '', x: 100, y: 50, yaw });
 
 describe('playmats (decision 144)', () => {
-  it('covers 61 by 35 cm around its centre', () => {
+  it('covers 61 by 35 cm around its center', () => {
     expect(onMat(mat(), 100, 50)).toBe(true);
     expect(onMat(mat(), 100 + MAT_W / 2 - 1, 50 + MAT_H / 2 - 1)).toBe(true);
     expect(onMat(mat(), 100 + MAT_W / 2 + 1, 50)).toBe(false);

@@ -35,7 +35,7 @@ export const SLOPE_RUN = (STAND_D - LIP_D) / (1 + Math.tan(SLOPE) / Math.tan(BAC
 export const STAND_H = SLOPE_RUN * Math.tan(SLOPE);
 /** The slope's length along it, from behind the lip to the ridge, mm. */
 export const SLOPE_LEN = SLOPE_RUN / Math.cos(SLOPE);
-/** Where (front to back, from the stand's centre) the slope starts and the ridge is. */
+/** Where (front to back, from the stand's center) the slope starts and the ridge is. */
 export const SLOPE_START = -STAND_D / 2 + LIP_D;
 export const RIDGE = SLOPE_START + SLOPE_RUN;
 
@@ -257,7 +257,7 @@ export const FRONT_GAP = 12;
 
 /**
  * A layout too big for a stand's slope goes on the table just in front of the
- * stand instead (decision 222): the same shape, centred across the stand, its
+ * stand instead (decision 222): the same shape, centered across the stand, its
  * far edge FRONT_GAP in front of the stand's lip.
  */
 export function inFrontOf<T extends Footprint>(m: Mat, spots: T[]): T[] {
@@ -310,7 +310,7 @@ export function slopePopLift(me: { x: number; y: number; z: number; yaw: number 
   return popLift(flat(me), [...others].map(flat)) / Math.cos(SLOPE);
 }
 
-/** Turn a layout made for an upright table spot to a stand's turn: offsets about `centre`, and each card's yaw. */
+/** Turn a layout made for an upright table spot to a stand's turn: offsets about `center`, and each card's yaw. */
 export function alignTo<T extends Footprint>(spots: T[], centre: { x: number; y: number }, yaw: number): T[] {
   if (!yaw) return spots;
   const c = Math.cos(yaw), s = Math.sin(yaw);

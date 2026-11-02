@@ -1,4 +1,4 @@
-// Empty named piles stay on the table as a labelled outline footprint, so a
+// Empty named piles stay on the table as a labeled outline footprint, so a
 // set of bins can be prepared before sorting (spec 11.3, decision 27).
 
 import * as THREE from 'three';

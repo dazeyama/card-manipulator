@@ -58,7 +58,7 @@ describe('resting as rigid cards (decisions 99, 100)', () => {
     expect(Math.abs(r.tiltX) + Math.abs(r.tiltY)).toBeLessThan(1e-9);
   });
 
-  it('lies flat on a card when its centre is supported, even hanging a little off it', () => {
+  it('lies flat on a card when its center is supported, even hanging a little off it', () => {
     const at = { x: 5, y: 0, yaw: 0 };
     const supports = [flat(0, 0, CARD_T / 2)];
     const r = restOn(at, supports);
@@ -82,7 +82,7 @@ describe('resting as rigid cards (decisions 99, 100)', () => {
     }
   });
 
-  it('stays flat hanging off a tall stack while its centre is over it, and tips once it is not', () => {
+  it('stays flat hanging off a tall stack while its center is over it, and tips once it is not', () => {
     const stack = [flat(0, 0, 30)];
     const held = restOn({ x: 20, y: 0, yaw: 0 }, stack);
     expect(Math.abs(slopesOf(held.tiltX, held.tiltY).gs)).toBeLessThan(1e-9);
@@ -162,7 +162,7 @@ describe('deep messy piles (decision 194)', () => {
       resting.push({ x: c.x, y: c.y, yaw: c.yaw, ...r });
       top = Math.max(top, r.z);
     });
-    // 450 cards are 135 mm of card; the pile may sit a couple of millimetres proud, no more.
+    // 450 cards are 135 mm of card; the pile may sit a couple of millimeters proud, no more.
     expect(top).toBeLessThan(placed[449].z + REST_SLACK + 0.01);
   });
 

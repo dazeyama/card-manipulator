@@ -43,7 +43,7 @@ export type Action =
   | 'grab'
   | 'named'
   | 'spread'
-  /** `dice` set of existing dice: move, roll result, number, colour. */
+  /** `dice` set of existing dice: move, roll result, number, color. */
   | 'dice'
   /** `dice` set that adds a die (D, D D). */
   | 'diceAdd'

@@ -35,7 +35,7 @@ interface Entry {
   lift: number;
   foil: boolean;
   hidden: boolean;
-  /** Another player's colour (their selection or hold, ONLINE.md 5.4), or null. */
+  /** Another player's color (their selection or hold, ONLINE.md 5.4), or null. */
   tint: THREE.Color | null;
 }
 
@@ -80,7 +80,7 @@ vec3 hue(float h) {
   return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
 }
 
-/** p: the point on the card, mm from its centre; n and wp: world normal and position. */
+/** p: the point on the card, mm from its center; n and wp: world normal and position. */
 vec3 foilSheen(vec2 p, vec3 n, vec3 wp) {
   vec3 V = normalize(cameraPosition - wp);
   float facing = dot(n, V);
@@ -153,7 +153,7 @@ if (abs(vFace) < 0.5) {
   totalEmissiveRadiance += vec3(0.40, 0.385, 0.36) * lit * (1.0 - 0.35 * line * fade);
   diffuseColor.rgb = vec3(0.0);
 }
-// The rim in the accent blue for your own selection, another player's colour for theirs (ONLINE.md 5.4).
+// The rim in the accent blue for your own selection, another player's color for theirs (ONLINE.md 5.4).
 diffuseColor.rgb = mix(diffuseColor.rgb, vGlow, rim * 0.85 + vFlags.x * 0.06);
 totalEmissiveRadiance += vGlow * rim * 0.55;
 if (vFlags.z > 0.5 && vFace > 0.5) totalEmissiveRadiance += foilSheen(vLocal.xy, normalize(vWorldN), vWorldP);
@@ -431,7 +431,7 @@ export class CardLayer {
   }
 
   /**
-   * Glow in another player's colour, for their selection or what they hold
+   * Glow in another player's color, for their selection or what they hold
    * (ONLINE.md 5.4); null for none. Your own selection still glows in the accent.
    */
   setTint(uid: string, color: THREE.Color | null): void {

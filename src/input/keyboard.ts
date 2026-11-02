@@ -29,7 +29,7 @@ export class KeyboardInput {
   beforeKey: (e: KeyboardEvent) => void = () => {};
   /** In a room, may this key's command run (ONLINE.md 6.4)? The guard says why not itself. */
   guard: (name: string) => boolean = () => true;
-  /** The same question without the toast, for greying out the radial menu's wedges. */
+  /** The same question without the toast, for graying out the radial menu's wedges. */
   allowed: (name: string) => boolean = () => true;
   /** Keys whose press ran a hotkey and are still down, with when it last ran. */
   private readonly down = new Map<string, number>();

@@ -1,4 +1,4 @@
-// The table model (spec Section 6). Distances are millimetres. The table is
+// The table model (spec Section 6). Distances are millimeters. The table is
 // the plane z = 0; x runs right and y runs away from the default camera.
 
 import type { Basics } from './basics';
@@ -16,7 +16,7 @@ export interface Card {
   uid: string;
   scryfallId: string;
   finish: Finish;
-  /** Centre of the card. z is the centre height above the table. */
+  /** Center of the card. z is the center height above the table. */
   x: number;
   y: number;
   z: number;

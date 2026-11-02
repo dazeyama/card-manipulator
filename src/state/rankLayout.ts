@@ -51,7 +51,7 @@ function better(mode: RankMode) {
 }
 
 /**
- * Lay cards out in rank columns centred on `centre`. Returns where each card
+ * Lay cards out in rank columns centered on `center`. Returns where each card
  * goes, in the order to place them (each column's top card first, so the next
  * lies over it and leaves its title bar showing).
  */

@@ -1,5 +1,5 @@
 // The name filter (ONLINE.md 10.4, O15, O79): a short blocklist for room and
-// player names, the owner's to edit. A name is normalised (lower case,
+// player names, the owner's to edit. A name is normalized (lower case,
 // accents dropped, 0→o 1→i 3→e 4→a 5→s 7→t @→a $→s) and checked two ways:
 //
 // - BLOCKED entries are found anywhere once everything but letters is
@@ -45,7 +45,7 @@ export function normalise(name: string): string {
   return letters(name).replace(/[^a-z]/g, '');
 }
 
-/** The name's words, normalised. */
+/** The name's words, normalized. */
 export function words(name: string): string[] {
   return letters(name).split(/[^a-z]+/).filter(Boolean);
 }
