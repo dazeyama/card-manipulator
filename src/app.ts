@@ -115,6 +115,8 @@ export class App {
     this.atlas = new Atlas(this.view.renderer, 1);
     this.layer = new CardLayer(this.view.scene, this.atlas, ACCENT);
     this.motion = new Motion(this.layer);
+    // The hover pop clears only cards where they lie: not ones in a hand or still animating (decision 352).
+    this.layer.popIgnore = (uid) => this.motion.held.has(uid) || this.motion.isAnimating(uid);
     this.blur = new MotionBlur(this.view.renderer, this.view.scene, this.layer);
     this.images = new CardImages(this.atlas, this.layer, this.store);
     void this.images.loadBack();

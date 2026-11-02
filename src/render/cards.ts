@@ -209,6 +209,16 @@ export class CardLayer {
   private prevStale = true;
   /** Cards added, or popped up or down by hovering, since the last update: their previous matrix is their new one, so they don't streak. */
   private readonly fresh = new Set<Entry>();
+  /** The card hovered now, and whether its pop was given (a card stand's) rather than worked out here. */
+  private popped: Entry | null = null;
+  private popGiven = false;
+  /** Frames since the hovered card's pop was last worked out again (decision 352). */
+  private popAge = 0;
+  /**
+   * Cards the pop doesn't clear (decision 352): ones in a hand or still
+   * animating into place, which are not where they will lie. Set by the app.
+   */
+  popIgnore: ((uid: string) => boolean) | null = null;
   private glowDirty = false;
   private readonly accent: THREE.Color;
   private readonly entries = new Map<string, Entry>();
@@ -354,6 +364,7 @@ export class CardLayer {
     this.entries.delete(uid);
     this.dirtyMatrix.delete(entry);
     this.fresh.delete(entry);
+    if (this.popped === entry) this.popped = null;
     const last = this.byIndex.pop()!;
     if (last !== entry) {
       // Move the last instance into the freed index.
@@ -379,6 +390,7 @@ export class CardLayer {
     this.byIndex = [];
     this.dirtyMatrix.clear();
     this.fresh.clear();
+    this.popped = null;
     this.setCount(0);
   }
 
@@ -400,7 +412,9 @@ export class CardLayer {
   private *posesNear(e: Entry): Generator<Pose> {
     const reach = Math.hypot(CARD_W, CARD_H);
     for (const o of this.byIndex) {
-      if (o !== e && !o.hidden && Math.abs(o.pose.x - e.pose.x) < reach && Math.abs(o.pose.y - e.pose.y) < reach) yield o.pose;
+      if (o === e || o.hidden || Math.abs(o.pose.x - e.pose.x) >= reach || Math.abs(o.pose.y - e.pose.y) >= reach) continue;
+      if (this.popIgnore?.(o.uid)) continue;
+      yield o.pose;
     }
   }
 
@@ -436,6 +450,9 @@ export class CardLayer {
     e.hovered = on;
     // High enough to clear every card lying on it, so it shows whole (decision 174).
     e.lift = on ? lift ?? popLift(e.pose, this.posesNear(e)) : 0;
+    this.popped = on ? e : this.popped === e ? null : this.popped;
+    this.popGiven = on && lift !== undefined;
+    this.popAge = 0;
     this.writeFlags(e);
     this.dirtyMatrix.add(e);
     // The pop is a jump, not movement: no motion blur for it (decision 346).
@@ -493,6 +510,18 @@ export class CardLayer {
 
   /** Push changed instance data to the GPU. Call once per frame. */
   update(): void {
+    // The hovered card's pop, worked out again a few times a second (decision 352): cards still
+    // falling or sliding into place when the hover began are where they lie now.
+    const h = this.popped;
+    if (h && !this.popGiven && ++this.popAge >= 6) {
+      this.popAge = 0;
+      const lift = popLift(h.pose, this.posesNear(h));
+      if (Math.abs(lift - h.lift) > 0.05) {
+        h.lift = lift;
+        this.dirtyMatrix.add(h);
+        this.fresh.add(h);
+      }
+    }
     if (this.dirtyMatrix.size) {
       const arr = this.object.instanceMatrix;
       let lo = Infinity;
