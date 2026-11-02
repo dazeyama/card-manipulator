@@ -152,6 +152,19 @@ describe('the hover pop (decision 174)', () => {
     expect(tilted).toBeGreaterThan(flat);
   });
 
+  it('measures a slanted card above where it overlaps, not at its far high corner (decision 351)', () => {
+    const me = card(CARD_T / 2);
+    // Overlapping only along its low edge, rising away from the hovered card.
+    const slanted = { x: 55, y: 0, z: CARD_T * 1.5 + 4, yaw: 0, tiltX: 0, tiltY: 0.15 };
+    const lift = popLift(me, [slanted]);
+    // Clear of it where they overlap...
+    const edge = slanted.z + CARD_T / 2 - Math.tan(0.15) * (55 - CARD_W / 2) - 0.01;
+    expect(me.z - CARD_T / 2 + lift).toBeGreaterThan(Math.min(edge, slanted.z));
+    // ...but nowhere near its far corner, as the old measure had it.
+    const old = slanted.z + CARD_T / 2 + Math.sin(0.15) * Math.hypot(CARD_W, CARD_H) / 2 - (me.z - CARD_T / 2) + 0.6;
+    expect(lift).toBeLessThan(old - 3);
+  });
+
   it('ignores cards below it and cards that do not overlap it', () => {
     expect(popLift(card(5), [card(1), card(30, 300)])).toBe(POP_MIN);
   });

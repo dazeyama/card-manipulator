@@ -63,22 +63,26 @@ interface Drawn {
 export const POP_MIN = 2;
 /** ...and clears the cards lying on it by this much, mm (decision 174), however many there are (decision 347). */
 const POP_CLEAR = 0.6;
-const HALF_DIAG = Math.hypot(CARD_W, CARD_H) / 2;
 
 /**
  * How far to lift a hovered card so it shows whole (decision 174): above every
- * card overlapping it that lies higher, allowing for tilts, and never less
- * than POP_MIN. No limit (decision 347): however tall the stack and however far
- * down the hovered card, it becomes the top preview card.
+ * card overlapping it that lies higher, and never less than POP_MIN. No limit
+ * (decision 347): however tall the stack and however far down the hovered
+ * card, it becomes the top preview card. Tilts are measured where the cards
+ * really overlap (decision 351): the top of each card above at the corners of
+ * the overlap, against the hovered card's own bottom there, the same points
+ * resting uses. (Before, every tilted card counted as raised by its full tilt
+ * at its highest corner wherever that was, so a card under a slanted one could
+ * pop several centimeters too high.)
  */
 export function popLift(me: Drawn, others: Iterable<Drawn>): number {
-  const slant = (d: Drawn) => (Math.abs(Math.sin(d.tiltX)) + Math.abs(Math.sin(d.tiltY))) * HALF_DIAG;
-  const myBottom = me.z - CARD_T / 2 - slant(me);
+  const above: Resting[] = [];
+  for (const o of others) if (o.z > me.z && overlaps(o, me)) above.push(o);
+  if (!above.length) return POP_MIN;
+  const { gs, gt } = slopesOf(me.tiltX, me.tiltY);
+  const bottom = me.z - CARD_T / 2;
   let lift = POP_MIN;
-  for (const o of others) {
-    if (o.z <= me.z || !overlaps(o, me)) continue;
-    lift = Math.max(lift, o.z + CARD_T / 2 + slant(o) - myBottom + POP_CLEAR);
-  }
+  for (const p of contacts(me, above)) lift = Math.max(lift, p.z - (bottom + gs * p.s + gt * p.t) + POP_CLEAR);
   return lift;
 }
 
