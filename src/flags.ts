@@ -17,7 +17,7 @@ import { land, placeSequential } from './commands';
 import type { CustomGesture, Mods } from './input/mouse';
 import { allowedNow } from './online/guard';
 import { compileQuery } from './query/evaluate';
-import { clearOf, FLAG_PULL, FLAG_REACH, flagOfCard, membersOf, nextColour, nextName, outsideSpot, type Flag } from './state/flags';
+import { clearOf, FLAG_PULL, FLAG_REACH, flagMembership, flagOfCard, nextColour, nextName, outsideSpot, type Flag } from './state/flags';
 import { remoteHeld } from './state/remoteHeld';
 import { newUid } from './state/store';
 import { queryCard } from './state/selection';
@@ -118,6 +118,8 @@ export class Flags {
   }
   /** Card counts on the cloths are worked out again when something changed. */
   private countsDirty = true;
+  /** Which flag each card belongs to, piles touching a zone included (decision 354); worked out again when dirty. */
+  private membership = new Map<string, Flag>();
   private readonly counts = new Map<string, number>();
   /** Cards this browser's user added or moved since the filters were last kept. */
   private touched = new Set<string>();
@@ -158,6 +160,9 @@ export class Flags {
     store.events.on('added', note);
     store.events.on('removed', () => (this.countsDirty = true));
     store.events.on('records', () => (this.countsDirty = true));
+    // A pile joining or leaving a zone changes who belongs.
+    store.events.on('piles', () => (this.countsDirty = true));
+    store.flagOf = (uid) => this.memberships().get(uid)?.uid ?? null;
 
     // Hover buttons over the cloth: ✏️ name, filter and color; ⤓ export; 🔒 lock.
     const button = (text: string, title: string, run: (uid: string, el: HTMLElement) => void) => {
@@ -340,7 +345,6 @@ export class Flags {
     };
     /** Shift: pull in what lies within reach of the pole, into the zone, where the filter allows. */
     const pull = (at: { x: number; y: number }) => {
-      const flags = [...store.flags.values()].filter((o) => o.uid !== uid);
       for (const c of store.cards.values()) {
         if (riders!.has(c.uid) || c.stand || app.motion.held.has(c.uid) || remoteHeld.has(c.uid)) continue;
         const dx = c.x - at.x;
@@ -348,7 +352,8 @@ export class Flags {
         const d = Math.hypot(dx, dy);
         if (d > FLAG_PULL) continue;
         // Another flag's card stays that flag's; a card the filter won't take stays put.
-        if (flagOfCard(flags, c) || (fits && !fits(c.uid))) continue;
+        const owner = this.memberships().get(c.uid);
+        if ((owner && owner.uid !== uid) || (fits && !fits(c.uid))) continue;
         const k = d > FLAG_INSIDE ? FLAG_INSIDE / d : 1;
         app.motion.cancel(c.uid);
         app.motion.held.add(c.uid);
@@ -445,9 +450,29 @@ export class Flags {
     };
   }
 
-  /** A flag's cards. */
+  /** Which flag each card belongs to (decision 354), worked out again if something changed. */
+  private memberships(): Map<string, Flag> {
+    if (!this.countsDirty) return this.membership;
+    this.countsDirty = false;
+    const store = this.app.store;
+    const fitters = new Map<Flag, ((uid: string) => boolean) | null>();
+    const fits = (f: Flag, uid: string) => {
+      if (!fitters.has(f)) fitters.set(f, this.fitter(f));
+      const t = fitters.get(f);
+      return !t || t(uid);
+    };
+    this.membership = flagMembership(store.flags.values(), store.cards.values(), fits);
+    this.counts.clear();
+    for (const f of this.membership.values()) this.counts.set(f.uid, (this.counts.get(f.uid) ?? 0) + 1);
+    return this.membership;
+  }
+
+  /** A flag's cards: in its circle, and in piles touching it (decision 354). */
   members(f: Flag) {
-    return membersOf(f, this.app.store.flags.values(), this.app.store.cards.values());
+    const m = this.memberships();
+    const out = [];
+    for (const c of this.app.store.cards.values()) if (m.get(c.uid)?.uid === f.uid) out.push(c);
+    return out;
   }
 
   /** Whether a card may be in a flag: it matches the filter, or this browser can't see it to tell (rooms). */
@@ -671,15 +696,7 @@ export class Flags {
   private frame(dt: number): void {
     const app = this.app;
     const store = app.store;
-    if (this.countsDirty) {
-      this.countsDirty = false;
-      this.counts.clear();
-      const flags = [...store.flags.values()];
-      for (const c of store.cards.values()) {
-        const f = flagOfCard(flags, c);
-        if (f) this.counts.set(f.uid, (this.counts.get(f.uid) ?? 0) + 1);
-      }
-    }
+    this.memberships();
     const sel = this.selected ? store.flags.get(this.selected) : undefined;
     if (this.selected && (!sel || sel.locked)) this.selected = null;
     this.rim.visible = !!sel && !sel.locked;

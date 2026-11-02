@@ -50,6 +50,51 @@ export function flagOfCard(flags: Iterable<Flag>, card: { x: number; y: number; 
   return card.stand ? null : flagAt(flags, card.x, card.y);
 }
 
+/**
+ * Which flag each card belongs to (decision 354): a card whose center lies in
+ * a zone is that flag's, and so is every card of the same pile (cards
+ * touching cards, all the way along), so a curve or a spread reaching out of
+ * the circle still counts. A pile reaching two zones: cards in a circle stay
+ * that flag's, the rest go to the flag with more of the pile in its circle.
+ * `fits` is the flag's filter: a card joined only through its pile counts only
+ * if it matches (one in the circle counts either way; it is turned out).
+ */
+export function flagMembership<C extends { uid: string; x: number; y: number; stand?: string; pileId: string | null }>(
+  flags: Iterable<Flag>,
+  cards: Iterable<C>,
+  fits: (flag: Flag, uid: string) => boolean = () => true,
+): Map<string, Flag> {
+  const all = [...flags];
+  const out = new Map<string, Flag>();
+  if (!all.length) return out;
+  const groups = new Map<string, C[]>();
+  for (const c of cards) {
+    const key = c.pileId ?? `card:${c.uid}`;
+    let g = groups.get(key);
+    if (!g) groups.set(key, (g = []));
+    g.push(c);
+  }
+  for (const g of groups.values()) {
+    const direct = new Map<string, Flag>();
+    const votes = new Map<Flag, number>();
+    for (const c of g) {
+      const f = flagOfCard(all, c);
+      if (!f) continue;
+      direct.set(c.uid, f);
+      votes.set(f, (votes.get(f) ?? 0) + 1);
+    }
+    if (!votes.size) continue;
+    let lead: Flag | null = null;
+    for (const [f, n] of votes) if (!lead || n > votes.get(lead)!) lead = f;
+    for (const c of g) {
+      const d = direct.get(c.uid);
+      if (d) out.set(c.uid, d);
+      else if (!c.stand && fits(lead!, c.uid)) out.set(c.uid, lead!);
+    }
+  }
+  return out;
+}
+
 /** The cards of one flag. */
 export function membersOf<C extends { uid: string; x: number; y: number; stand?: string }>(flag: Flag, flags: Iterable<Flag>, cards: Iterable<C>): C[] {
   const all = [...flags];

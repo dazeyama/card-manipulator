@@ -511,6 +511,8 @@ export class Store {
 
   /** Flags on the table (decision 327), by uid. */
   readonly flags = new Map<string, Flag>();
+  /** The flag a card belongs to, piles touching a zone included (decision 354); set by the flags, for searches. */
+  flagOf: ((uid: string) => string | null) | null = null;
 
   /** Place or change flags (whole, by uid), and take others away. */
   setFlags(set: Flag[], remove: string[] = []): void {

@@ -13,7 +13,9 @@ export function queryCard(store: Store, card: Card): QueryCard {
     record: store.recordOf(card),
     selected: store.selection.has(card.uid),
     pileName: namedPileOf(store, card),
-    flagName: store.flags.size ? flagOfCard(store.flags.values(), card)?.name ?? null : null,
+    flagName: !store.flags.size ? null
+      : store.flagOf ? store.flags.get(store.flagOf(card.uid) ?? '')?.name ?? null
+      : flagOfCard(store.flags.values(), card)?.name ?? null,
     elo: store.eloOf(card),
   };
 }
