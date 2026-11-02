@@ -190,7 +190,8 @@ export function installRegression(app: App, ui: Ui): void {
     check(6, 'a land dropped on Keep slides off', !store.piles.get(keepPile.id)!.cardUids.includes(landCard));
     ui.tray.remove([...store.piles.get(keepPile.id)!.cardUids]);
     await wait(300);
-    check(6, 'an emptied named pile keeps its label', app.named.empty().some((n: { name: string }) => n.name === 'Keep') && !!document.querySelector('.badge.outline'));
+    // Emptied, a named pile goes; flags are what stay empty (decision 328).
+    check(6, 'an emptied named pile goes', !store.named.has(keepPile.id));
 
     // ---- Phase 7 ----
     const { decklistText } = await import('../io/exportDecklist');
@@ -206,7 +207,7 @@ export function installRegression(app: App, ui: Ui): void {
     store.clear();
     await loadDoc(app, doc);
     await wait(400);
-    check(7, 'save, new table, load back', store.cards.size === n0 && app.named.empty().length === 1);
+    check(7, 'save, new table, load back', store.cards.size === n0);
     ui.inspect.hover([...store.cards.keys()][0]);
     await wait(250);
     check(7, 'hover shows the inspect panel', !!document.querySelector('.inspect-images img'));

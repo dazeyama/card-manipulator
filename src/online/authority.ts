@@ -315,6 +315,8 @@ export class Authority {
         return crown ? null : may('basics');
       case 'cubes':
         return crown ? null : may('cubes');
+      case 'flag':
+        return crown ? null : may('flag');
       case 'table':
         return crown ? null : may('table');
       case 'replace':

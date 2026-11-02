@@ -46,6 +46,7 @@ import { buildPlaymatTab } from './ui/playmatTab';
 import { ContextHints } from './ui/hints';
 import { HelpPanel } from './ui/helpPanel';
 import { CubeChips } from './ui/cubeChips';
+import { Flags } from './flags';
 import { RadialMenu } from './ui/radialMenu';
 import { RADIAL_MENU, type RadialItem } from './input/radial';
 import { buildQueryTab } from './ui/queryTab';
@@ -92,7 +93,13 @@ const topBar = new TopBar(app, top);
 const spawnPanel = new SpawnPanel(app, left);
 const hud = new Hud(app, bottom);
 app.rest = new RestSync(app);
-const pileSync = installPileSync(app.store, () => app.named?.keepFilters());
+// After each detection: filtered piles and flags turn away what doesn't match (decisions 322, 327),
+// and named piles left empty go (decision 328).
+const pileSync = installPileSync(app.store, () => {
+  app.named?.keepFilters();
+  app.named?.dropEmpty();
+  flags.keepFilters();
+});
 // Cards cached before EDHREC rank was kept are fetched again once (decision 187).
 installRecordUpgrade(app.store);
 const commands = new Commands(app);
@@ -133,10 +140,29 @@ app.dice = dice;
 new DiceNumbers(app, dice, diceLayer);
 // Dragging selected dice brings the selected cards too (decision 274).
 dice.cardsAlong = (x, y, alt, aside) => (drag.dragging ? null : drag.begin([...store.selection], alt ? 'formation' : 'gather', x, y, undefined, aside));
+// Flags (decision 327): B, then a click, sets one down; drag its pole or cloth to move it alone.
+const flags = new Flags(app, {
+  cardHovered: () => !!mouse.hovered,
+  exportCards: (uids, label, near) => exporter.open(uids, label, near),
+});
 mouse.hooks.objectPress = (x, y, mods) => {
   const uid = diceLayer.pick(x, y);
-  return uid ? dice.press(uid, x, y, mods) : null;
+  if (uid) return dice.press(uid, x, y, mods);
+  // A flag's pole and cloth stand over the cards; a locked flag lets the press through.
+  const flag = flags.pick(x, y);
+  return flag ? flags.press(flag, x, y) : null;
 };
+keyboard.bind('b', () => {
+  if (!drag.dragging) flags.arm();
+});
+app.canvas.parentElement!.addEventListener('pointerdown', (e) => {
+  if (!app.flagging || e.button !== 0) return;
+  e.stopImmediatePropagation();
+  e.preventDefault();
+  const r = app.canvas.getBoundingClientRect();
+  const at = app.rig.screenToPlane(e.clientX - r.left, e.clientY - r.top, 0);
+  if (at) flags.placeAt(at, { x: e.clientX, y: e.clientY });
+}, true);
 mouse.hooks.marquee = (rect, mode) => {
   const inside = dice.inRect(rect);
   if (mode === 'replace') dice.select(inside);
@@ -818,11 +844,12 @@ function tableBox(x0: number, y0: number, x1: number, y1: number): { minX: numbe
   return { minX: c.x - hx * lo, minY: c.y - hy * lo, maxX: c.x + hx * lo, maxY: c.y + hy * lo };
 }
 window.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape' || !(app.drawing || app.spreading || app.placing)) return;
+  if (e.key !== 'Escape' || !(app.drawing || app.spreading || app.placing || app.flagging)) return;
   e.stopImmediatePropagation();
   app.drawing = null;
   app.spreading = null;
   app.placing = null;
+  app.flagging = false;
   endSpreadGesture?.();
 }, true);
 // H: fan the selection or the hovered pile like a hand of cards; H again stacks it back (decision 141).
@@ -979,6 +1006,15 @@ const removeSelection = () => {
     app.showGesture('remove');
     dice.remove(doomed);
     if (!store.selection.size) return;
+  }
+  // Over a flag with nothing selected: take the flag away; its cards stay (decision 327).
+  const flag = !store.selection.size && !mouse.hovered ? flags.hovered : null;
+  if (flag) {
+    if (!store.flags.get(flag)?.locked && allowedNow('flag')) {
+      app.showGesture('remove');
+      flags.remove(flag);
+    }
+    return;
   }
   if (store.selection.size || (!mouse.hovered && mats.movable)) app.showGesture('remove');
   // Over a playmat with nothing selected: remove the mat (decision 144).

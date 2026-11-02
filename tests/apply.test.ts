@@ -20,6 +20,7 @@ function build(): Store {
   store.setSpreads([{ id: 's1', anchor: { x: 200, y: 0 }, yaw: 0, uids: ['c'], pileId: null }]);
   store.setDice([{ uid: 'd1', x: 5, y: 5, z: 10, yaw: 0, value: 3 }, { uid: 'd2', x: 50, y: 5, z: 10, yaw: 0, value: 6, kind: 'd20', color: '#1f3a6e' }]);
   store.setCubes([{ id: 'k1', name: 'Vintage Cube', size: 540 }, { id: 'k2', name: 'Peasant', size: 360 }]);
+  store.setFlags([{ uid: 'g1', name: 'Keep', filter: null, colour: '#e63946', x: 0, y: -900 }, { uid: 'g2', name: 'Bulk', filter: null, colour: '#6b7280', x: 900, y: -900 }]);
   return store;
 }
 
@@ -43,6 +44,8 @@ const OPS: [string, Op][] = [
   ['basics', { t: 'basics', basics: { ...defaultBasics(), Island: { name: 'Snow-Covered Island', set: 'khm', number: '277', foil: true } } }],
   ['cubes set, new and changed', { t: 'cubes', set: [{ id: 'k2', name: 'Pauper', size: 450 }, { id: 'k1', name: 'Vintage Cube v2', size: 540 }] }],
   ['cubes remove', { t: 'cubes', remove: ['k1'] }],
+  ['flag set, new and changed', { t: 'flag', set: [{ uid: 'g2', name: 'Sell', filter: null, colour: '#4895ef', x: 900, y: 0 }, { uid: 'g1', name: 'Keep', filter: 't:land', colour: '#e63946', x: 5, y: 5, locked: true }] }],
+  ['flag remove', { t: 'flag', remove: ['g1'] }],
   ['table name', { t: 'table', name: '  Draft night  ' }],
   ['replace', { t: 'replace', table: { name: 'Fresh', cards: [card('z', 1)], named: [], spreads: [], mats: [], dice: [], basics: defaultBasics() } }],
   ['batch', { t: 'batch', ops: [{ t: 'remove', uids: ['a'] }, { t: 'move', moves: [{ uid: 'b', x: 1 }] }, { t: 'dice', remove: ['d1'] }, { t: 'table', name: 'B' }] }],
@@ -109,6 +112,7 @@ describe('the store tells a room each local change and how to undo it', () => {
     ['replaceDice', (s) => s.replaceDice([{ uid: 'd9', x: 1, y: 1, z: 10, yaw: 0, value: 2 }])],
     ['setBasics', (s) => s.setBasics({ ...defaultBasics(), Forest: { name: 'Forest', set: 'unf', number: '239', foil: false } })],
     ['setCubes', (s) => s.setCubes([{ id: 'k1', name: 'Renamed', size: 541 }, { id: 'k9', name: 'New', size: 360 }], ['k2'])],
+    ['setFlags', (s) => s.setFlags([{ uid: 'g1', name: 'Renamed', filter: 't:creature', colour: '#2a9d8f', x: 40, y: 0 }, { uid: 'g9', name: 'New', filter: null, colour: '#e9c46a', x: 900, y: 900 }], ['g2'])],
     ['setName', (s) => s.setName('Other')],
     ['clear', (s) => s.clear()],
     ['replaceTable', (s) => s.replaceTable({ name: 'R', cards: [card('r1')], named: [], spreads: [], mats: [], dice: [], basics: defaultBasics() })],

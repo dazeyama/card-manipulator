@@ -151,6 +151,18 @@ describe('named piles (spec 11.3)', () => {
     expect(named.empty()).toEqual([]);
   });
 
+  it('a named pile left with no cards goes (decision 328)', () => {
+    const { store, named } = setup();
+    const pile = [...store.piles.values()][0];
+    named.promote(pile.id, 'Keep', null);
+    named.dropEmpty();
+    expect(store.named.has(pile.id)).toBe(true);
+    store.removeCards(['u0', 'u1', 'u2']);
+    redetect(store);
+    named.dropEmpty();
+    expect(store.named.size).toBe(0);
+  });
+
   it('un-naming makes it an ordinary pile again', () => {
     const { store, named } = setup();
     const pile = [...store.piles.values()][0];

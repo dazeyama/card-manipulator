@@ -355,6 +355,7 @@ The table below is the contract `shared/permissions.ts` encodes as `needs(action
 | `add` of any card (Spawn panel, paste, tray restore) | Cards |
 | `remove` of any card | Cards |
 | `mat` set that adds a playmat; `mat` remove of a playmat | Move (O110) |
+| `flag` set or remove (place, move, edit, lock, take away a flag) | Move (O114) |
 | `mat` set: `owner` of a stand that is not yours (claim), Spill (remove with cards dropped) | Everything |
 | `basics` | Everything |
 | `cubes` (the cube list, with Spawn cube) | Cards |
@@ -484,6 +485,7 @@ export type Op =
   | { t: 'dice'; set?: Die[]; remove?: string[] }         // spawn, move, roll result, number, colour
   | { t: 'basics'; basics: Basics }
   | { t: 'cubes'; set?: CubeInfo[]; remove?: string[] }  // the CubeCobra cubes on the table (O113)
+  | { t: 'flag'; set?: Flag[]; remove?: string[] }        // flags: placed, moved, changed, taken away (O114)
   | { t: 'table'; name: string }                          // crown only
   | { t: 'replace'; table: TableState };                  // crown only: New table, Load file
 
@@ -1053,6 +1055,7 @@ Owner answers of 2026-10-30 are recorded as such; **(agent)** marks a choice mad
 | O111 | Owner (2026-10-31): **Everything becomes a co-host**: besides full table access it may **kick, ban, change ranks and Give a stand to**, but only over players **below** Everything (never another Everything player, never the crown), and when it sets a rank it can give View, Move, Tokens or Cards, not Everything. Passing the crown, Go offline, and the room's listing (visibility, password, tag, newcomer rank) stay the crown's. Playmats stay Move (O110). **(agent)** The owner had no preference on the table powers: Everything also gets **Lock table**, which fits with kicking and banning as a way to calm a room; New table and Load file (they replace the crown's own table), renaming the table (it is the room's public name) and Downloads (the crown's privacy choice) stay the crown's. **Lock table now freezes everyone below Everything**, so the player who locks it is not locked out. The crown's ⋯ menu on a player row shows for Everything too, without Pass crown. The server accepts `rank`, `kick`, `ban` and `settings {locked}` from an Everything player's socket when the target is below Everything; the crown's judge accepts Give stand to from Everything for an unowned stand. Replaces O23's "the crown alone" for these, O24's "nothing about the room or players", and O51's freeze of everyone below the crown. |
 | O112 | Owner (2026-11-01): **searching a face-down pile** (L L, spec decision 310) loosens O30 for decks too big for a stand. A `search {uids}` message (Move rank, at most 250 cards) makes the server reveal those cards to that player alone; it broadcasts `searching {player, uids}` so every table glows the pile in the searcher's colour, and says in chat “Sam is searching a pile of 62” and “Sam finished searching”. `search {uids: []}` ends it, with `forget` for the cards still hidden from them; leaving ends it too. **(agent)** Searches are server memory only (a hibernation ends them; the searcher's browser hides the cards itself when its search ends); no protocol bump, the messages are additive; the client's gate (`visibleTo`) and the crown's both include the player's own search. |
 | O113 | Owner (2026-11-01): **cube chips in rooms** (spec decision 321): everyone in a room sees which CubeCobra cubes are on the table. **(agent)** A new op `{t: 'cubes', set?, remove?}` keeps the table's cube list (id, name, size) in `TableState.cubes`, and snapshots carry it in part 0; each card's `cube` id travels in its `CardSnap`, as other card fields do, and is not redacted: it says which public cube a hidden card came from, never which card it is. The op needs Cards, like spawning the cube. The op and the snapshot field changed the protocol's shape, so `PROTOCOL` is 2: tabs left open across the deploy are told to reload. |
+| O114 | Owner (2026-11-01): **flags in rooms** (spec decision 327): everyone sees them. **(agent)** A new op `{t: 'flag', set?, remove?}` keeps `TableState.flags`, carried in snapshot part 0; placing, moving, editing, locking or taking away a flag needs **Move**, like a playmat, since flags are no one's. Turning a card away is an ordinary `move` by the browser that put it down. An empty named pile is deleted by the crown's browser alone (spec decision 328). The op and the snapshot field change the protocol's shape: `PROTOCOL` is 3. |
 
 ## Appendix B: Open items
 

@@ -3,6 +3,7 @@
 
 import type { Basics } from './basics';
 import type { Die } from './dice';
+import type { Flag } from './flags';
 
 export const CARD_W = 63;
 export const CARD_H = 88;
@@ -231,4 +232,6 @@ export interface TableDoc {
   dice?: Die[];
   /** CubeCobra cubes spawned onto the table (decision 321); older files have none. */
   cubes?: CubeInfo[];
+  /** Flags (decision 327); older files have none. */
+  flags?: Flag[];
 }

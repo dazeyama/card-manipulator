@@ -74,6 +74,8 @@ export type Action =
   | 'basics'
   /** The CubeCobra cubes on the table (decision 321): Cards, like spawning the cube. */
   | 'cubes'
+  /** Flags (decision 327): Move, like a playmat; they are no one's. */
+  | 'flag'
   /** The table's name. */
   | 'table'
   /** New table, Load file. */
@@ -122,6 +124,7 @@ const NEEDS: Record<Action, Need> = {
   standSpill: 'everything',
   basics: 'everything',
   cubes: 'cards',
+  flag: 'move',
   table: 'crown',
   replace: 'crown',
   reuid: 'crown',

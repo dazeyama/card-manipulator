@@ -40,7 +40,7 @@ Regenerate the test lists (Scryfall, through the app's own client): `node --expe
 ## Where things are
 
 - `src/main.ts` boots everything and wires the mouse grammar, keys, badges and files; `src/app.ts` owns the store, renderer, camera and frame loop.
-- `src/commands.ts` landing cards and the Stack / Spread / Tidy / Rotate / Flip / Frame commands; `src/named.ts` named piles; `src/spawn.ts` creating cards.
+- `src/commands.ts` landing cards and the Stack / Spread / Tidy / Rotate / Flip / Frame commands; `src/named.ts` named piles; `src/flags.ts` flags, the named zones (decision 327); `src/spawn.ts` creating cards.
 - `src/state/` the table model, selection, pile geometry and detection (`piles.ts`, pure), and `pileSync.ts` which runs detection after cards settle.
 - `src/scryfall/` the API client, resolution and caches.
 - `src/query/` the local Scryfall-subset query engine.

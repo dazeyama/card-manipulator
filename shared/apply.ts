@@ -59,6 +59,7 @@ export function copyTable(t: TableState): TableState {
     dice: t.dice.map((d) => ({ ...d })),
     basics: JSON.parse(JSON.stringify(t.basics)) as TableState['basics'],
     cubes: (t.cubes ?? []).map((c) => ({ ...c })),
+    flags: (t.flags ?? []).map((f) => ({ ...f })),
   };
 }
 
@@ -125,6 +126,8 @@ export function applyOp(table: TableState, op: Op): TableState {
       return { ...table, basics: JSON.parse(JSON.stringify(op.basics)) as TableState['basics'] };
     case 'cubes':
       return { ...table, cubes: without(upsert(table.cubes ?? [], op.set ?? [], byId, (c) => ({ ...c })), op.remove, byId) };
+    case 'flag':
+      return { ...table, flags: without(upsert(table.flags ?? [], op.set ?? [], byUid, (f) => ({ ...f })), op.remove, byUid) };
     case 'table':
       return { ...table, name: op.name.trim() || 'Untitled table' };
     case 'replace':

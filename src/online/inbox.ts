@@ -66,6 +66,9 @@ export function applyToStore(store: Store, op: Op): void {
     case 'cubes':
       store.setCubes(op.set ?? [], op.remove ?? []);
       return;
+    case 'flag':
+      store.setFlags(op.set ?? [], op.remove ?? []);
+      return;
     case 'table':
       store.setName(op.name);
       return;

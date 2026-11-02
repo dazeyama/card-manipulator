@@ -58,6 +58,7 @@ export function toDoc(app: App, withCardData: boolean): TableDoc {
     basics: store.basics,
     dice: [...store.dice.values()].map((d) => ({ ...d, x: round(d.x), y: round(d.y), z: round(d.z), yaw: round(d.yaw, 5) })),
     cubes: cubesOnTable(store.cubes.values(), store.cards.values()),
+    flags: [...store.flags.values()].map((f) => ({ ...f, x: round(f.x), y: round(f.y) })),
   };
 }
 
@@ -92,6 +93,7 @@ export function tableOfDoc(doc: TableDoc): TableState {
     // Older files have no basics: they keep the defaults (decision 210).
     basics: readBasics(doc.basics),
     cubes: Array.isArray(doc.cubes) ? doc.cubes.map((c) => ({ ...c })) : [],
+    flags: Array.isArray(doc.flags) ? doc.flags.map((f) => ({ ...f })) : [],
   };
 }
 

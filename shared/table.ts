@@ -1,5 +1,5 @@
 // The plain table a room shares (ONLINE.md 8.1): cards, named piles, spreads,
-// mats, dice, basics, cubes and the table's name, as JSON-ready arrays. It is the
+// mats, dice, basics, cubes, flags and the table's name, as JSON-ready arrays. It is the
 // shape behind the client's Store, the server's mirror, a snapshot and the
 // `replace` op. Piles (detected) and the selection are not part of it: every
 // browser works them out from positions.
@@ -10,10 +10,11 @@
 import type { CardSnap } from '../src/state/history';
 import type { Spread } from '../src/state/store';
 import type { CubeInfo, Mat, NamedPile } from '../src/state/types';
+import type { Flag } from '../src/state/flags';
 import type { Die } from '../src/state/dice';
 import { defaultBasics, type Basics } from '../src/state/basics';
 
-export type { CardSnap, Spread, Mat, NamedPile, Die, Basics, CubeInfo };
+export type { CardSnap, Spread, Mat, NamedPile, Die, Basics, CubeInfo, Flag };
 
 export interface TableState {
   name: string;
@@ -25,6 +26,8 @@ export interface TableState {
   basics: Basics;
   /** CubeCobra cubes spawned onto the table (decision 321); older tables have none. */
   cubes?: CubeInfo[];
+  /** Flags (decision 327, O114); older tables have none. */
+  flags?: Flag[];
 }
 
 /**
@@ -36,5 +39,5 @@ export const HIDDEN = 'hidden';
 
 /** An empty table, as New table leaves it. */
 export function emptyTable(name = 'Untitled table'): TableState {
-  return { name, cards: [], named: [], spreads: [], mats: [], dice: [], basics: defaultBasics(), cubes: [] };
+  return { name, cards: [], named: [], spreads: [], mats: [], dice: [], basics: defaultBasics(), cubes: [], flags: [] };
 }

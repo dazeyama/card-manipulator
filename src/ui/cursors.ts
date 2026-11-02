@@ -181,6 +181,8 @@ export class Cursors {
   private pointCursor = '';
   /** P P: the pointing glove with a 📦, the cards going down face down like a pack (decision 226). */
   private packCursor = '';
+  /** B: the pointing glove with a 🚩, placing a flag (decision 327). */
+  private flagCursor = '';
   private gestureCursors: Partial<Record<Gesture, string>> = {};
 
   constructor(private readonly app: App, private readonly mouse: MouseInput, private readonly drag: DragController) {
@@ -243,6 +245,13 @@ export class Cursors {
     paint(pk);
     drawEmoji(pg, '📦', SIZE);
     this.packCursor = value(pk, px, py, 'pointer');
+    const fl = document.createElement('canvas');
+    fl.width = fl.height = SIZE;
+    const fg = fl.getContext('2d')!;
+    fg.drawImage(point, 0, 0, SIZE, SIZE);
+    paint(fl);
+    drawEmoji(fg, '🚩', SIZE);
+    this.flagCursor = value(fl, px, py, 'pointer');
     document.documentElement.style.setProperty('--cursor-point', this.pointCursor);
     // Drawing a hand: the pointing glove with the number as a keycap (decision 143);
     // 0 (any number, decision 162) shows the numbers keycap.
@@ -345,7 +354,7 @@ export class Cursors {
     const settling = !!g?.settle && age < GESTURE_MAX_MS && g.settle.some((u) => this.app.motion.isAnimating(u));
     const gesture = g && (age < GESTURE_MS || settling) ? this.gestureCursors[g.name] : undefined;
     // The glove alone, for the room's stream: others draw it in your colour (decision 293).
-    const glove: Glove = gesture ? g!.name : draw || this.app.placing ? 'point' : this.app.spreading ? (this.app.spreading.reverse ? 'pointReverse' : 'point') : STATES[state][0];
+    const glove: Glove = gesture ? g!.name : draw || this.app.placing || this.app.flagging ? 'point' : this.app.spreading ? (this.app.spreading.reverse ? 'pointReverse' : 'point') : STATES[state][0];
     this.app.cursorGlove = glove;
     const next = gesture
       ? gesture
@@ -355,7 +364,9 @@ export class Cursors {
         ? (this.app.spreading.reverse ? this.reverseCursor : this.spreadCursor) || 'pointer'
         : this.app.placing
           ? (this.app.placing.faceDown ? this.packCursor : this.pointCursor) || 'pointer'
-          : this.cursors[state] ?? STATES[state][2];
+          : this.app.flagging
+            ? this.flagCursor || 'pointer'
+            : this.cursors[state] ?? STATES[state][2];
     if (next === this.shown) return;
     this.shown = next;
     this.app.canvas.parentElement!.style.cursor = next;

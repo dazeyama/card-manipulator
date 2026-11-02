@@ -10,9 +10,9 @@
 import type { Finish } from '../src/state/types';
 import type { Op } from './ops';
 import type { Rank } from './permissions';
-import type { Basics, CardSnap, CubeInfo, Die, Mat, NamedPile, Spread, TableState } from './table';
+import type { Basics, CardSnap, CubeInfo, Die, Flag, Mat, NamedPile, Spread, TableState } from './table';
 
-export const PROTOCOL = 2;
+export const PROTOCOL = 3;
 
 // ---- limits both sides check (10.5; the server's own rates are in server/src/limits.ts) ----
 
@@ -143,6 +143,7 @@ export interface SnapshotPart {
   mats?: Mat[];
   dice?: Die[];
   cubes?: CubeInfo[];
+  flags?: Flag[];
   count?: number;
   cards?: CardSnap[];
   /** On part 0 of a snapshot the server sends: the seq it is current to. The crown never sends it. */
@@ -175,7 +176,7 @@ export function splitSnapshot(table: TableState, perPart = SNAPSHOT_PART_CARDS):
   const parts = 1 + groups.length;
   const out: SnapshotPart[] = [{
     t: 'snapshot', part: 0, parts,
-    name: table.name, basics: table.basics, named: table.named, spreads: table.spreads, mats: table.mats, dice: table.dice, cubes: table.cubes ?? [],
+    name: table.name, basics: table.basics, named: table.named, spreads: table.spreads, mats: table.mats, dice: table.dice, cubes: table.cubes ?? [], flags: table.flags ?? [],
     count: table.cards.length,
   }];
   groups.forEach((cards, i) => out.push({ t: 'snapshot', part: i + 1, parts, cards }));
@@ -205,6 +206,7 @@ export function joinSnapshot(parts: SnapshotPart[]): TableState | null {
     dice: head.dice ?? [],
     basics: head.basics,
     cubes: head.cubes ?? [],
+    flags: head.flags ?? [],
   };
 }
 

@@ -34,6 +34,7 @@ export class Autosave {
     ev.on('mats', schedule);
     ev.on('basics', schedule);
     ev.on('cubes', schedule);
+    ev.on('flags', schedule);
     ev.on('life', schedule);
     ev.on('dice', schedule);
     app.onFrame(() => {

@@ -13,6 +13,8 @@ export interface QueryCard {
   selected: boolean;
   /** The named pile this card is in, if any. */
   pileName: string | null;
+  /** The flag whose zone it lies in, if any (decision 327). */
+  flagName?: string | null;
   /** Its CubeCobra Elo, if known (decision 192). */
   elo?: number;
 }
@@ -130,6 +132,8 @@ function compileTerm(field: string, op: Op, raw: string): Predicate {
     }
     case 'pile':
       return (c) => eqOp(op, c.pileName !== null && fold(c.pileName) === want);
+    case 'flag':
+      return (c) => eqOp(op, !!c.flagName && fold(c.flagName) === want);
     case 'is':
       return isTest(want, op);
   }

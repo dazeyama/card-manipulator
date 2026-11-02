@@ -146,6 +146,8 @@ export function keyAction(name: string): Action | null {
   if (name === 'ctrl+z') return 'move';
   if (name === 'd') return 'diceAdd';
   if (name === 'n') return 'named';
+  // Placing a flag (decision 327).
+  if (name === 'b') return 'flag';
   // Shift + T is your own Tidy mode, a personal setting (O44).
   if (name === 'shift+t') return null;
   // Stack, spread, tidy, curve and colours, ranks, fan, turn or roll, flip, place, draw or set a die.

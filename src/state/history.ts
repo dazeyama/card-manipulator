@@ -52,6 +52,7 @@ export function sameTable(a: TableSnap, b: TableSnap): boolean {
     && JSON.stringify(a.named) === JSON.stringify(b.named)
     && JSON.stringify(a.spreads) === JSON.stringify(b.spreads)
     && JSON.stringify(a.mats) === JSON.stringify(b.mats)
+    && JSON.stringify(a.flags ?? []) === JSON.stringify(b.flags ?? [])
     && JSON.stringify(byUid(a.dice)) === JSON.stringify(byUid(b.dice));
 }
 

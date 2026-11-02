@@ -1,5 +1,6 @@
 // Selection commands (spec 9): select, add, toggle, refine and table search.
 
+import { flagOfCard } from './flags';
 import { compileQuery, type QueryCard } from '../query/evaluate';
 import type { Store } from './store';
 import type { Card } from './types';
@@ -12,6 +13,7 @@ export function queryCard(store: Store, card: Card): QueryCard {
     record: store.recordOf(card),
     selected: store.selection.has(card.uid),
     pileName: namedPileOf(store, card),
+    flagName: store.flags.size ? flagOfCard(store.flags.values(), card)?.name ?? null : null,
     elo: store.eloOf(card),
   };
 }

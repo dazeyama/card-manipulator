@@ -4,7 +4,7 @@
 // TableState; on the client the Store's mutation methods make them (11.1).
 
 import type { CardMove } from '../src/state/store';
-import type { Basics, CardSnap, CubeInfo, Die, Mat, NamedPile, Spread, TableState } from './table';
+import type { Basics, CardSnap, CubeInfo, Die, Flag, Mat, NamedPile, Spread, TableState } from './table';
 
 export type { CardMove };
 
@@ -30,6 +30,8 @@ export type Op =
   | { t: 'basics'; basics: Basics }
   /** The CubeCobra cubes on the table (decision 321, O113): added or updated by id, or dropped. */
   | { t: 'cubes'; set?: CubeInfo[]; remove?: string[] }
+  /** Flags (decision 327, O114): placed, moved or changed whole by uid, or taken away. */
+  | { t: 'flag'; set?: Flag[]; remove?: string[] }
   /** Crown only: the table's name. */
   | { t: 'table'; name: string }
   /** Crown only: New table, Load file. */

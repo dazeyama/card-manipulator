@@ -71,6 +71,7 @@ export const RADIAL_MENU: RadialWedge[] = [
   { label: 'Point', icon: '👉', cards: true, items: [
     { label: 'Point', key: 'P', presses: ['p'], icon: '👉', title: 'Move as a stack: then click the table where it goes' },
     { label: 'Pass pack', key: 'P P', presses: ['p', 'p'], icon: '📦', title: 'Move face down, like a pack to pass: then click where it goes' },
+    { label: 'Flag', key: 'B', presses: ['b'], icon: '🚩', title: 'Place a flag, a named zone that sorts cards: click the table where it goes, then name it', anywhere: true },
   ] },
 ];
 

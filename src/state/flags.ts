@@ -1,0 +1,114 @@
+// Flags (decision 327): a named, coloured zone on the table, a pole at the
+// centre of a circle 35 cm in radius, that sorts cards by where they lie. A card on the table whose centre is inside a flag's circle is the
+// flag's; zones never overlap, so a card is never two flags'. A flag lives
+// without cards. Pure: geometry only, tested without a browser.
+
+import { CARD_H, CARD_W } from './types';
+
+export interface Flag {
+  uid: string;
+  name: string;
+  /** Cards that don't match are turned away from the zone (spec 9.4's query language). */
+  filter: string | null;
+  /** The cloth and the zone's tint, `#rrggbb`. */
+  colour: string;
+  /** The pole: the zone's centre. */
+  x: number;
+  y: number;
+  /** Locked in place: not dragged or removed until unlocked. */
+  locked?: boolean;
+}
+
+/** How far a flag's zone reaches from its pole, mm. */
+export const FLAG_REACH = 350;
+
+/** The colours a flag may be. */
+export const FLAG_COLOURS = ['#e63946', '#f4a261', '#e9c46a', '#2a9d8f', '#4895ef', '#7b2cbf', '#ff6fb5', '#6b7280'];
+
+/** Where a turned-away card's centre lands past the edge: half a card's diagonal and a gap out. */
+const OUTSIDE = Math.hypot(CARD_W, CARD_H) / 2 + 12;
+
+/** The flag whose zone holds a table point, or null. */
+export function flagAt(flags: Iterable<Flag>, x: number, y: number): Flag | null {
+  let best: Flag | null = null;
+  let bestD = FLAG_REACH;
+  for (const f of flags) {
+    const d = Math.hypot(x - f.x, y - f.y);
+    if (d <= bestD) {
+      best = f;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+/** The flag a card belongs to: one on the table (not a card stand) with its centre in the zone. */
+export function flagOfCard(flags: Iterable<Flag>, card: { x: number; y: number; stand?: string }): Flag | null {
+  return card.stand ? null : flagAt(flags, card.x, card.y);
+}
+
+/** The cards of one flag. */
+export function membersOf<C extends { uid: string; x: number; y: number; stand?: string }>(flag: Flag, flags: Iterable<Flag>, cards: Iterable<C>): C[] {
+  const all = [...flags];
+  return [...cards].filter((c) => flagOfCard(all, c)?.uid === flag.uid);
+}
+
+/**
+ * Where a flag may stand near `at` without its zone overlapping another's:
+ * pushed straight away from each one too close until the zones only touch.
+ */
+export function clearOf(at: { x: number; y: number }, others: Iterable<{ x: number; y: number }>): { x: number; y: number } {
+  const list = [...others];
+  const gap = FLAG_REACH * 2;
+  let p = { ...at };
+  for (let round = 0; round < 24; round++) {
+    let moved = false;
+    for (const o of list) {
+      let dx = p.x - o.x;
+      let dy = p.y - o.y;
+      let d = Math.hypot(dx, dy);
+      if (d >= gap - 0.01) continue;
+      if (d < 1e-6) {
+        // Right on top: away to the right.
+        dx = 1;
+        dy = 0;
+        d = 1;
+      }
+      p = { x: o.x + (dx / d) * gap, y: o.y + (dy / d) * gap };
+      moved = true;
+    }
+    if (!moved) return p;
+  }
+  return p;
+}
+
+/**
+ * Where a card a flag turns away should land: straight out from the pole past
+ * the zone's edge, turned round the zone a little at a time if that spot is in
+ * another flag's zone.
+ */
+export function outsideSpot(flag: Flag, card: { x: number; y: number }, others: Iterable<Flag>): { x: number; y: number } {
+  const list = [...others].filter((f) => f.uid !== flag.uid);
+  const r = FLAG_REACH + OUTSIDE;
+  let a = Math.atan2(card.y - flag.y, card.x - flag.x);
+  if (card.x === flag.x && card.y === flag.y) a = 0;
+  for (let k = 0; k < 24; k++) {
+    // 0, +15°, -15°, +30°, -30°...
+    const turn = (Math.ceil(k / 2) * (k % 2 ? 1 : -1) * Math.PI) / 12;
+    const spot = { x: flag.x + Math.cos(a + turn) * r, y: flag.y + Math.sin(a + turn) * r };
+    if (!list.some((f) => Math.hypot(spot.x - f.x, spot.y - f.y) <= FLAG_REACH + OUTSIDE)) return spot;
+  }
+  return { x: flag.x + Math.cos(a) * r, y: flag.y + Math.sin(a) * r };
+}
+
+/** The next colour for a new flag: the first no flag has, or round again. */
+export function nextColour(flags: Iterable<Flag>): string {
+  const used = new Set([...flags].map((f) => f.colour));
+  return FLAG_COLOURS.find((c) => !used.has(c)) ?? FLAG_COLOURS[used.size % FLAG_COLOURS.length];
+}
+
+/** A name for a new flag: Flag 1, Flag 2... the first not taken. */
+export function nextName(flags: Iterable<Flag>): string {
+  const names = new Set([...flags].map((f) => f.name.toLowerCase()));
+  for (let n = 1; ; n++) if (!names.has(`flag ${n}`)) return `Flag ${n}`;
+}

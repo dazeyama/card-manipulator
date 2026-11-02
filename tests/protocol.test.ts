@@ -11,13 +11,13 @@ function card(i: number): CardSnap {
 }
 
 function table(n: number): TableState {
-  return { ...emptyTable('Test'), cards: Array.from({ length: n }, (_, i) => card(i)), dice: [{ uid: 'd1', x: 1, y: 2, z: 10, yaw: 0, value: 4 }], cubes: [{ id: 'vintage', name: 'Vintage Cube', size: 540 }] };
+  return { ...emptyTable('Test'), cards: Array.from({ length: n }, (_, i) => card(i)), dice: [{ uid: 'd1', x: 1, y: 2, z: 10, yaw: 0, value: 4 }], cubes: [{ id: 'vintage', name: 'Vintage Cube', size: 540 }], flags: [{ uid: 'f1', name: 'Keep', filter: 't:creature', colour: '#e63946', x: 10, y: 20 }] };
 }
 
 describe('protocol', () => {
-  it('speaks version 2', () => {
-    // 2: the cubes op and snapshot field (decision 321, O113).
-    expect(PROTOCOL).toBe(2);
+  it('speaks version 3', () => {
+    // 2: the cubes op and snapshot field (decision 321, O113); 3: flags (decision 327, O114).
+    expect(PROTOCOL).toBe(3);
   });
 
   it('splits a table into a head and parts of 1,000 cards, and joins it back in any order', () => {

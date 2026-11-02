@@ -105,6 +105,18 @@ export class NamedPiles {
     store.events.emit('piles', undefined);
   }
 
+  /**
+   * Named piles left with no cards go (decision 328): a named pile lives only
+   * while it holds cards; flags are what stays empty. In a room the crown's
+   * browser does this, so the room hears of it once.
+   */
+  dropEmpty(): void {
+    const online = this.app.online;
+    if (online && !online.room.isCrown) return;
+    const gone = this.empty().map((n) => n.id);
+    if (gone.length) this.app.store.setNamed([], gone);
+  }
+
   /** Delete an empty named pile's outline (decision 27). */
   remove(id: string): void {
     if (this.hasCards(id)) return;

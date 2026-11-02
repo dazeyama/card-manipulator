@@ -23,14 +23,15 @@ describe('radial menu contents', () => {
     expect(RADIAL_MENU.filter((w) => w.items.length < 2)).toEqual([]);
   });
 
-  it('points, or passes a pack with P P (decision 305)', () => {
+  it('points, passes a pack with P P (decision 305), or places a flag with B, cards or not (decision 327)', () => {
     const point = RADIAL_MENU.find((w) => w.label === 'Point')!;
-    expect(point.items.map((i) => `${i.label}: ${i.presses.join(' ')}`)).toEqual(['Point: p', 'Pass pack: p p']);
+    expect(point.items.map((i) => `${i.label}: ${i.presses.join(' ')}`)).toEqual(['Point: p', 'Pass pack: p p', 'Flag: b']);
+    expect(point.items[2].anywhere).toBe(true);
   });
 
   it('gives every item an icon and a title for the bottom bar', () => {
     const items = RADIAL_MENU.flatMap((w) => w.items);
-    expect(items).toHaveLength(25);
+    expect(items).toHaveLength(26);
     for (const i of items) {
       expect(i.icon, i.label).not.toBe('');
       expect(i.title, i.label).not.toBe('');

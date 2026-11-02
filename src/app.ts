@@ -66,6 +66,8 @@ export class App {
   spreading: { source: string[]; reverse?: boolean } | null = null;
   /** Pointer mode: the next click on the table stacks these cards there (decision 189). */
   placing: { source: string[]; faceDown?: boolean } | null = null;
+  /** B was pressed: the next click on the table places a flag there (decision 327). */
+  flagging = false;
   /** Per-frame hooks run before rendering. */
   private readonly frameHooks: ((now: number, dt: number) => void)[] = [];
   private lastFrame = performance.now();

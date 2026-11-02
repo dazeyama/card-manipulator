@@ -19,6 +19,7 @@ import {
 } from './types';
 import { defaultBasics, type Basics } from './basics';
 import type { Die } from './dice';
+import type { Flag } from './flags';
 import type { CardSnap } from './history';
 import type { Op } from '../../shared/ops';
 import type { TableState } from '../../shared/table';
@@ -47,6 +48,8 @@ export interface StoreEvents {
   basics: void;
   /** A CubeCobra cube was added to the table's list (decision 321). */
   cubes: void;
+  /** Flags were placed, moved, changed or removed (decision 327). */
+  flags: void;
   /** A playmat's life total changed (decision 239). Not a table change for undo. */
   life: void;
   /** Dice were added, moved, rolled, set or removed (decision 255). */
@@ -506,6 +509,21 @@ export class Store {
     this.told({ t: 'cubes', set: set.map((c) => ({ ...c })), remove: [...remove] }, { t: 'cubes', set: was.map((c) => ({ ...c })), remove: added });
   }
 
+  /** Flags on the table (decision 327), by uid. */
+  readonly flags = new Map<string, Flag>();
+
+  /** Place or change flags (whole, by uid), and take others away. */
+  setFlags(set: Flag[], remove: string[] = []): void {
+    const was = [...set.map((f) => f.uid), ...remove].flatMap((uid) => this.flags.get(uid) ?? []).map((f) => ({ ...f }));
+    const added = set.filter((f) => !this.flags.has(f.uid)).map((f) => f.uid);
+    const gone = remove.filter((uid) => this.flags.has(uid));
+    for (const uid of remove) this.flags.delete(uid);
+    for (const f of set) this.flags.set(f.uid, { ...f });
+    if (!set.length && !gone.length) return;
+    this.events.emit('flags', undefined);
+    this.told({ t: 'flag', set: set.map((f) => ({ ...f })), remove: [...gone] }, { t: 'flag', set: was, remove: added });
+  }
+
   /** A mat changed in place: tell the room the whole mat, before and after. */
   private matChanged(m: Mat, was: Mat): void {
     this.told({ t: 'mat', set: [{ ...m }] }, { t: 'mat', set: [was] });
@@ -665,6 +683,8 @@ export class Store {
     this.elo.clear();
     this.cubes.clear();
     this.events.emit('cubes', undefined);
+    this.flags.clear();
+    this.events.emit('flags', undefined);
     this.dice.clear();
     this.events.emit('dice', undefined);
     this.basics = defaultBasics();
@@ -692,6 +712,7 @@ export class Store {
       dice: [...this.dice.values()].map((d) => ({ ...d })),
       basics: JSON.parse(JSON.stringify(this.basics)) as Basics,
       cubes: [...this.cubes.values()].map((c) => ({ ...c })),
+      flags: [...this.flags.values()].map((f) => ({ ...f })),
     };
   }
 
@@ -722,11 +743,14 @@ export class Store {
     this.basics = JSON.parse(JSON.stringify(t.basics)) as Basics;
     this.cubes.clear();
     for (const c of t.cubes ?? []) this.cubes.set(c.id, { ...c });
+    this.flags.clear();
+    for (const f of t.flags ?? []) this.flags.set(f.uid, { ...f });
     this.events.emit('added', cards.map((c) => c.uid));
     this.events.emit('mats', undefined);
     this.events.emit('dice', undefined);
     this.events.emit('basics', undefined);
     this.events.emit('cubes', undefined);
+    this.events.emit('flags', undefined);
     this.events.emit('name', undefined);
     this.events.emit('selection', undefined);
     this.events.emit('settled', cards.map((c) => c.uid));

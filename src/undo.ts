@@ -49,6 +49,7 @@ export class Undo {
     store.events.on('removed', changed);
     store.events.on('moved', changed);
     store.events.on('mats', changed);
+    store.events.on('flags', changed);
     store.events.on('dice', changed);
     store.events.on('reset', () => {
       if (this.restoring) return;
@@ -176,6 +177,7 @@ export class Undo {
     const spreads = new Set(then.spreads.map((sp) => sp.id));
     store.setSpreads(then.spreads.filter((sp) => JSON.stringify(store.spreads.get(sp.id)) !== JSON.stringify(sp)), [...store.spreads.keys()].filter((id) => !spreads.has(id)));
     this.restoreMats(then);
+    this.restoreFlags(then);
     // Dice as they were (decision 255): only those that differ, by uid, so no other die goes out with it (reviews 9, 17).
     const thenDice = new Map(then.dice.map((d) => [d.uid, d]));
     const changed = then.dice.filter((d) => JSON.stringify(store.dice.get(d.uid)) !== JSON.stringify(d));
@@ -186,6 +188,15 @@ export class Undo {
       land(app, d.move.map((c) => ({ uid: c.uid, x: c.x, y: c.y, z: c.z, yaw: c.yaw, faceUp: c.faceUp })), { stagger: Math.min(1.5, 200 / d.move.length), arc: 6, keepSide: true });
     }
     store.events.emit('piles', undefined);
+  }
+
+  /** Flags back as they were (decision 327): placed, moved, changed or taken away. */
+  private restoreFlags(then: TableSnap): void {
+    const store = this.app.store;
+    const want = new Map((then.flags ?? []).map((f) => [f.uid, f]));
+    const gone = [...store.flags.keys()].filter((uid) => !want.has(uid));
+    const set = [...want.values()].filter((f) => JSON.stringify(store.flags.get(f.uid)) !== JSON.stringify(f));
+    if (set.length || gone.length) store.setFlags(set.map((f) => ({ ...f })), gone);
   }
 
   private restoreMats(then: TableSnap): void {
@@ -204,19 +215,21 @@ export class Undo {
   }
 }
 
-/** The cards, dice, mats, named piles and spreads an op touches. */
-function keysOf(op: Op): { cards: string[]; dice: string[]; mats: Set<string>; named: Set<string>; spreads: Set<string> } {
+/** The cards, dice, mats, flags, named piles and spreads an op touches. */
+function keysOf(op: Op): { cards: string[]; dice: string[]; mats: Set<string>; flags: Set<string>; named: Set<string>; spreads: Set<string> } {
   const mats = new Set<string>();
+  const flags = new Set<string>();
   const named = new Set<string>();
   const spreads = new Set<string>();
   const walk = (o: Op) => {
     if (o.t === 'batch') o.ops.forEach(walk);
     else if (o.t === 'mat') [...(o.set ?? []).map((m) => m.uid), ...(o.remove ?? []), ...(o.spill ?? [])].forEach((u) => mats.add(u));
+    else if (o.t === 'flag') [...(o.set ?? []).map((f) => f.uid), ...(o.remove ?? [])].forEach((u) => flags.add(u));
     else if (o.t === 'named') [...(o.set ?? []).map((p) => p.id), ...(o.remove ?? [])].forEach((u) => named.add(u));
     else if (o.t === 'spread') [...(o.set ?? []).map((s) => s.id), ...(o.remove ?? [])].forEach((u) => spreads.add(u));
   };
   walk(op);
-  return { cards: cardsTouched(op), dice: diceTouched(op), mats, named, spreads };
+  return { cards: cardsTouched(op), dice: diceTouched(op), mats, flags, named, spreads };
 }
 
 /**
@@ -237,6 +250,7 @@ export function changedByMe(snap: TableSnap, op: Op, store: Store): boolean {
   })
     || differ(snap.dice, k.dice, (d) => d.uid, (u) => store.dice.get(u))
     || differ(snap.mats, k.mats, (m) => m.uid, (u) => store.mats.get(u))
+    || differ(snap.flags ?? [], k.flags, (f) => f.uid, (u) => store.flags.get(u))
     || differ(snap.named, k.named, (p) => p.id, (id) => store.named.get(id))
     || differ(snap.spreads, k.spreads, (s) => s.id, (id) => store.spreads.get(id));
 }
@@ -265,7 +279,7 @@ export function foldInto(snap: TableSnap, op: Op, store: Store): void {
     }
     return out;
   };
-  const { mats, named, spreads } = keysOf(op);
+  const { mats, flags, named, spreads } = keysOf(op);
   snap.cards = sync(snap.cards, cardsTouched(op), (c) => c.uid, (u) => {
     const c = store.cards.get(u);
     return c ? snapCard(c) : undefined;
@@ -277,6 +291,10 @@ export function foldInto(snap: TableSnap, op: Op, store: Store): void {
   snap.mats = sync(snap.mats, mats, (m) => m.uid, (u) => {
     const m = store.mats.get(u);
     return m ? { ...m } : undefined;
+  });
+  snap.flags = sync(snap.flags ?? [], flags, (f) => f.uid, (u) => {
+    const f = store.flags.get(u);
+    return f ? { ...f } : undefined;
   });
   snap.named = sync(snap.named, named, (p) => p.id, (id) => {
     const p = store.named.get(id);
