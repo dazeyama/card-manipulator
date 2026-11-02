@@ -194,6 +194,17 @@ export class Flags {
     row.append(edit, out, this.lockButton);
     this.buttons.append(this.filterTag, row);
     app.overlay.append(this.buttons);
+    // Buttons kept up only by the wait (the mouse no longer on the flag) go at the next thing
+    // you do that isn't using them: a press elsewhere, a key, the wheel (decision 340).
+    const dismiss = (e: Event) => {
+      if (!this.buttonsFor || this.hovered || (e.target instanceof Node && this.buttons.contains(e.target))) return;
+      this.buttonsFor = null;
+      this.lastHoverAt = 0;
+      this.buttons.hidden = true;
+    };
+    window.addEventListener('pointerdown', dismiss, true);
+    window.addEventListener('keydown', dismiss, true);
+    window.addEventListener('wheel', dismiss, { capture: true, passive: true });
 
     app.onFrame((_now, dt) => this.frame(dt));
     this.sync();
