@@ -594,6 +594,8 @@ export class Flags {
     // Upright, facing -y (towards the default camera); the turner swings it round to face the camera.
     const cloth = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, roughness: 0.9 }));
     // The tilted cloth casts no shadow: its shadow would hang in the air, cut off from the pole's.
+    // It turns to face the camera, so turning the camera doesn't count as its motion (decision 342).
+    cloth.userData.noBlur = true;
     turner.add(cloth);
     // Seen by the sun only: it draws nothing, but fills the shadow map.
     const shadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, side: THREE.DoubleSide }));

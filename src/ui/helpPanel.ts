@@ -102,7 +102,7 @@ export class HelpPanel {
         h('div', { class: 'help-ticks' },
           h('label', { class: 'inline help-hide' }, hide, 'Hide control hints'),
           h('label', { class: 'inline help-hide' }, hideCubes, 'Hide cube chips'),
-          h('label', { class: 'inline help-hide', title: 'Moving cards smear a little, like a camera catching them; panning stays sharp. High graphics only.' }, motion, 'Motion blur'),
+          h('label', { class: 'inline help-hide', title: 'Moving cards, dice, mats and flags smear a little, like a camera catching them; panning stays sharp. High graphics only.' }, motion, 'Motion blur'),
         ),
         h('label', { class: 'inline help-cursor' }, 'Cursor size', size),
       ),

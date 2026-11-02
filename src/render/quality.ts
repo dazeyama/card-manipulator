@@ -28,7 +28,7 @@ export interface GraphicsPreset {
   woodPx: 1024 | 512;
   /** Playmat art redrawn at twice the size and sharpened (decision 323). */
   sharpArt: boolean;
-  /** Moving cards smear (decision 341), unless the ? panel turns it off. */
+  /** Moving cards and objects smear (decisions 341, 342), unless the ? panel turns it off. */
   motionBlur: boolean;
 }
 

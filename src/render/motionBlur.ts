@@ -1,14 +1,18 @@
-// Motion blur (decision 341): moving cards smear along their motion; the
-// camera's own motion never blurs, so panning, zooming and orbiting stay sharp.
+// Motion blur (decisions 341, 342): moving things smear along their motion;
+// the camera's own motion never blurs, so panning, zooming and orbiting stay
+// sharp.
 //
 // Three passes a frame, in place of drawing straight to the screen:
 // 1. the scene, as always, into an off-screen image (with its own edge smoothing);
-// 2. the motion pass: the cards alone, each pixel writing how far its card moved
-//    on screen since the last frame, measured with this frame's camera at both
-//    ends (so only the card's own motion counts);
+// 2. the motion pass: the scene again, every object writing how far each of its
+//    pixels moved on screen since the last frame, measured with this frame's
+//    camera at both ends (so only the object's own motion counts). Cards use
+//    each card's matrix from the last frame; every other object (dice, playmats,
+//    stands, flags, close-up images) its world matrix from the last frame. Each
+//    keeps its own depth settings, so what is drawn over what stays the same;
+//    things that follow the camera (the table) count as still;
 // 3. a full-screen pass that averages each pixel along the fastest motion near it,
-//    so a smear spills a little past a moving card's edge, capped in length.
-// Dice, stands and other objects are drawn sharp; only cards blur.
+//    so a smear spills a little past a moving thing's edge, capped in length.
 
 import * as THREE from 'three';
 import type { CardLayer } from './cards';
@@ -32,6 +36,22 @@ void main() {
   vec3 p = aFlags.w > 0.5 ? vec3(0.0) : position;
   vNow = projectionMatrix * viewMatrix * modelMatrix * instanceMatrix * vec4(p, 1.0);
   vPrev = projectionMatrix * viewMatrix * modelMatrix * aPrev * vec4(p, 1.0);
+  gl_Position = vNow;
+}
+`;
+
+/** Any other object: its world matrix now and as it was last frame (`uPrev`). */
+const objectVertex = /* glsl */ `
+uniform mat4 uPrev;
+varying vec4 vNow;
+varying vec4 vPrev;
+void main() {
+  vec4 p = vec4(position, 1.0);
+  #ifdef USE_INSTANCING
+  p = instanceMatrix * p;
+  #endif
+  vNow = projectionMatrix * viewMatrix * modelMatrix * p;
+  vPrev = projectionMatrix * viewMatrix * uPrev * p;
   gl_Position = vNow;
 }
 `;
@@ -117,8 +137,15 @@ export class MotionBlur {
   private allow = false;
   private color: THREE.WebGLRenderTarget | null = null;
   private motion: THREE.WebGLRenderTarget | null = null;
-  private readonly motionScene = new THREE.Scene();
   private readonly motionMaterial = new THREE.ShaderMaterial({ vertexShader: motionVertex, fragmentShader: motionFragment });
+  /** Motion materials for other objects, one per set of depth settings, so each draws over others as it does in the scene. */
+  private readonly objectMaterials = new Map<string, THREE.ShaderMaterial>();
+  /** Each object's world matrix as it was drawn last frame. */
+  private readonly prev = new WeakMap<THREE.Object3D, THREE.Matrix4>();
+  /** What the motion pass swapped, to put back. */
+  private readonly swapped: { mesh: THREE.Mesh; material: THREE.Material | THREE.Material[] }[] = [];
+  private readonly hidden: THREE.Object3D[] = [];
+  private readonly drawn: THREE.Object3D[] = [];
   private readonly blurScene = new THREE.Scene();
   private readonly blurCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   private readonly blurMaterial: THREE.ShaderMaterial;
@@ -183,6 +210,68 @@ export class MotionBlur {
     if (this.enabled) this.cards.keepPrevious();
   }
 
+  /** A motion material with the same depth settings as `m`. */
+  private objectMaterial(m: THREE.Material): THREE.ShaderMaterial {
+    const key = `${m.depthTest}${m.depthWrite}${m.side}`;
+    let mm = this.objectMaterials.get(key);
+    if (!mm) {
+      mm = new THREE.ShaderMaterial({
+        vertexShader: objectVertex,
+        fragmentShader: motionFragment,
+        uniforms: { uPrev: { value: new THREE.Matrix4() } },
+        depthTest: m.depthTest,
+        depthWrite: m.depthWrite,
+        side: m.side,
+      });
+      // Each object its own last-frame matrix; one never drawn before, or following the camera, counts as still.
+      const uniforms = mm.uniforms;
+      mm.onBeforeRender = (_r, _s, _c, _g, object) => {
+        const prev = object.userData.noBlur ? undefined : this.prev.get(object);
+        uniforms.uPrev.value.copy(prev ?? object.matrixWorld);
+        mm!.uniformsNeedUpdate = true;
+      };
+      this.objectMaterials.set(key, mm);
+    }
+    return mm;
+  }
+
+  /**
+   * Give every drawn object its motion material for the motion pass. Points,
+   * lines and sprites (markers, outlines) sit it out; so do materials that
+   * draw nothing (a flag's grip, a shadow stand-in), which keep their own.
+   */
+  private swap(): void {
+    this.drawn.length = 0;
+    const cards = this.cards.object;
+    this.scene.traverseVisible((o) => {
+      if ((o as THREE.Points).isPoints || (o as THREE.Line).isLine || (o as THREE.Sprite).isSprite) {
+        o.visible = false;
+        this.hidden.push(o);
+        return;
+      }
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const material = mesh.material;
+      if (mesh === cards) {
+        this.swapped.push({ mesh, material });
+        mesh.material = this.motionMaterial;
+        return;
+      }
+      const list = Array.isArray(material) ? material : [material];
+      if (list.some((m) => !m.visible || !m.colorWrite)) return;
+      this.swapped.push({ mesh, material });
+      mesh.material = Array.isArray(material) ? material.map((m) => this.objectMaterial(m)) : this.objectMaterial(material);
+      this.drawn.push(mesh);
+    });
+  }
+
+  private restore(): void {
+    for (const s of this.swapped) s.mesh.material = s.material;
+    for (const o of this.hidden) o.visible = true;
+    this.swapped.length = 0;
+    this.hidden.length = 0;
+  }
+
   render(camera: THREE.Camera): void {
     const r = this.renderer;
     if (!this.enabled) {
@@ -202,21 +291,28 @@ export class MotionBlur {
     // 1. The scene, off screen.
     r.setRenderTarget(this.color);
     r.render(this.scene, camera);
-    // 2. The cards' motion. The card mesh visits the motion scene with the motion material, then goes back.
-    const mesh = this.cards.object;
-    const parent = mesh.parent;
-    const material = mesh.material;
+    // 2. The motion pass: the same scene, every object with its motion material, no background, no new shadows.
+    this.swap();
+    const background = this.scene.background;
+    const shadows = r.shadowMap.autoUpdate;
     r.getClearColor(this.clear);
     const alpha = r.getClearAlpha();
+    this.scene.background = null;
+    r.shadowMap.autoUpdate = false;
     r.setRenderTarget(this.motion);
     r.setClearColor(0x000000, 0);
-    this.motionScene.add(mesh);
-    mesh.material = this.motionMaterial;
     r.clear();
-    r.render(this.motionScene, camera);
-    mesh.material = material;
-    parent?.add(mesh);
+    r.render(this.scene, camera);
     r.setClearColor(this.clear, alpha);
+    r.shadowMap.autoUpdate = shadows;
+    this.scene.background = background;
+    this.restore();
+    // This frame's world matrices are next frame's previous ones.
+    for (const o of this.drawn) {
+      const m = this.prev.get(o);
+      if (m) m.copy(o.matrixWorld);
+      else this.prev.set(o, o.matrixWorld.clone());
+    }
     // 3. The smear, to the screen.
     const u = this.blurMaterial.uniforms;
     u.tColor.value = this.color!.texture;

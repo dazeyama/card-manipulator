@@ -39,7 +39,7 @@ export class App {
   readonly atlas: Atlas;
   readonly layer: CardLayer;
   readonly motion: Motion;
-  /** Moving cards smear (decision 341); in High graphics, unless the ? panel turns it off. */
+  /** Moving cards and objects smear (decisions 341, 342); in High graphics, unless the ? panel turns it off. */
   readonly blur: MotionBlur;
   readonly images: CardImages;
   /** Set once Rapier has loaded (Phase 5); null until then. */

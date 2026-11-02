@@ -41,6 +41,8 @@ export class SceneView {
     this.scene.add(this.sun.target);
 
     this.table = this.makeTable();
+    // It moves with the camera to stay under it: never motion blur's (decision 342).
+    this.table.userData.noBlur = true;
     this.scene.add(this.table);
   }
 
