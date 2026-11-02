@@ -13,6 +13,11 @@
 //    things that follow the camera (the table) count as still;
 // 3. a full-screen pass that averages each pixel along the fastest motion near it,
 //    so a smear spills a little past a moving thing's edge, capped in length.
+//
+// The one exception to "never the camera" (decision 343): while the camera
+// swings round to the other side of the table for mirror mode, last frame's
+// camera is used for the "before" end too, so the whole view smears with the
+// swing.
 
 import * as THREE from 'three';
 import type { CardLayer } from './cards';
@@ -26,16 +31,26 @@ const SHUTTER = 0.7;
 /** Motion of more than this share of the screen in one frame is a jump (spawned, undone, snapped), not movement: no blur. */
 const JUMP = 0.25;
 
+/** Where "before" is seen from: this frame's camera, or (during the mirror swing) last frame's. */
+const cameraHead = /* glsl */ `
+uniform mat4 uPrevCamera;
+uniform float uCameraBlur;
+mat4 beforeCamera() {
+  return uCameraBlur > 0.5 ? uPrevCamera : projectionMatrix * viewMatrix;
+}
+`;
+
 const motionVertex = /* glsl */ `
 attribute mat4 aPrev;
 attribute vec4 aFlags;
 varying vec4 vNow;
 varying vec4 vPrev;
+${cameraHead}
 void main() {
   // A hidden card draws nothing, as in the card shader.
   vec3 p = aFlags.w > 0.5 ? vec3(0.0) : position;
   vNow = projectionMatrix * viewMatrix * modelMatrix * instanceMatrix * vec4(p, 1.0);
-  vPrev = projectionMatrix * viewMatrix * modelMatrix * aPrev * vec4(p, 1.0);
+  vPrev = beforeCamera() * modelMatrix * aPrev * vec4(p, 1.0);
   gl_Position = vNow;
 }
 `;
@@ -45,13 +60,14 @@ const objectVertex = /* glsl */ `
 uniform mat4 uPrev;
 varying vec4 vNow;
 varying vec4 vPrev;
+${cameraHead}
 void main() {
   vec4 p = vec4(position, 1.0);
   #ifdef USE_INSTANCING
   p = instanceMatrix * p;
   #endif
   vNow = projectionMatrix * viewMatrix * modelMatrix * p;
-  vPrev = projectionMatrix * viewMatrix * uPrev * p;
+  vPrev = beforeCamera() * uPrev * p;
   gl_Position = vNow;
 }
 `;
@@ -137,7 +153,10 @@ export class MotionBlur {
   private allow = false;
   private color: THREE.WebGLRenderTarget | null = null;
   private motion: THREE.WebGLRenderTarget | null = null;
-  private readonly motionMaterial = new THREE.ShaderMaterial({ vertexShader: motionVertex, fragmentShader: motionFragment });
+  /** Last frame's camera (projection times view), and whether to use it: the mirror swing (decision 343). Shared by every motion material. */
+  private readonly cameraUniforms = { uPrevCamera: { value: new THREE.Matrix4() }, uCameraBlur: { value: 0 } };
+  private havePrevCamera = false;
+  private readonly motionMaterial = new THREE.ShaderMaterial({ vertexShader: motionVertex, fragmentShader: motionFragment, uniforms: this.cameraUniforms });
   /** Motion materials for other objects, one per set of depth settings, so each draws over others as it does in the scene. */
   private readonly objectMaterials = new Map<string, THREE.ShaderMaterial>();
   /** Each object's world matrix as it was drawn last frame. */
@@ -218,7 +237,7 @@ export class MotionBlur {
       mm = new THREE.ShaderMaterial({
         vertexShader: objectVertex,
         fragmentShader: motionFragment,
-        uniforms: { uPrev: { value: new THREE.Matrix4() } },
+        uniforms: { uPrev: { value: new THREE.Matrix4() }, ...this.cameraUniforms },
         depthTest: m.depthTest,
         depthWrite: m.depthWrite,
         side: m.side,
@@ -272,10 +291,12 @@ export class MotionBlur {
     this.hidden.length = 0;
   }
 
-  render(camera: THREE.Camera): void {
+  /** Draw a frame. `swinging`: the camera is turning to the other side for mirror mode, and its motion blurs too. */
+  render(camera: THREE.Camera, swinging = false): void {
     const r = this.renderer;
     if (!this.enabled) {
       r.render(this.scene, camera);
+      this.havePrevCamera = false;
       return;
     }
     r.getDrawingBufferSize(this.size);
@@ -292,6 +313,9 @@ export class MotionBlur {
     r.setRenderTarget(this.color);
     r.render(this.scene, camera);
     // 2. The motion pass: the same scene, every object with its motion material, no background, no new shadows.
+    const cameraBlur = swinging && this.havePrevCamera;
+    this.cameraUniforms.uCameraBlur.value = cameraBlur ? 1 : 0;
+    this.motionMaterial.uniformsNeedUpdate = true;
     this.swap();
     const background = this.scene.background;
     const shadows = r.shadowMap.autoUpdate;
@@ -307,6 +331,9 @@ export class MotionBlur {
     r.shadowMap.autoUpdate = shadows;
     this.scene.background = background;
     this.restore();
+    // This frame's camera is next frame's previous one.
+    this.cameraUniforms.uPrevCamera.value.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    this.havePrevCamera = true;
     // This frame's world matrices are next frame's previous ones.
     for (const o of this.drawn) {
       const m = this.prev.get(o);
@@ -318,6 +345,8 @@ export class MotionBlur {
     u.tColor.value = this.color!.texture;
     u.tMotion.value = this.motion!.texture;
     u.uAspect.value.set(h / w, 1);
+    // A swing moves the whole view a long way each frame: no motion there counts as a jump.
+    u.uJump.value = cameraBlur ? 1e6 : JUMP;
     r.setRenderTarget(null);
     r.render(this.blurScene, this.blurCamera);
   }

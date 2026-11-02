@@ -263,6 +263,11 @@ export class CameraRig {
     return this.swing !== null;
   }
 
+  /** Turning round the table to the other side (mirror mode, decision 267): motion blur blurs the camera then (decision 343). */
+  get turning(): boolean {
+    return this.turn !== this.turnTo;
+  }
+
   /**
    * Move the camera to fit a table-space box (spec 7.2, Z). The box is fitted
    * as the tilted camera actually sees it (decision 212): as close as keeps all

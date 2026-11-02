@@ -188,7 +188,7 @@ export class App {
         this.view.fitToView(this.rig);
         this.rig.changed = false;
       }
-      this.blur.render(this.rig.camera);
+      this.blur.render(this.rig.camera, this.rig.turning);
       this.frameTimes.push(performance.now() - t0);
       if (this.frameTimes.length > 240) this.frameTimes.shift();
       requestAnimationFrame(tick);
