@@ -27,11 +27,15 @@ import { FlagEditor } from './ui/flagEditor';
 const POLE_H = 170;
 const POLE_R = 2.5;
 /**
- * The pole stands at the top of its zone, on the circle's far edge from the
- * default view (decision 333), leaving the middle clear for cards; the flag's
- * x and y stay the zone's centre.
+ * The pole stands at the top of its zone, on the circle's edge furthest from
+ * the camera (decision 333), leaving the middle clear for cards; the flag's x
+ * and y stay the zone's centre. It follows the way the camera faces, so it is
+ * still at the top after mirror mode crosses the table, sliding round the
+ * circle to get there (decision 336).
  */
-const MAST_Y = FLAG_REACH;
+const MAST_R = FLAG_REACH;
+/** How quickly the pole slides round to the top, per second (most of the way in about a third of a second). */
+const MAST_EASE = 9;
 /** Two clicks on a flag's bare zone within this long select its cards (decision 335). */
 const DOUBLE_CLICK_MS = 350;
 /** The cloth's height on the table, mm; its width follows the text. */
@@ -45,6 +49,8 @@ const ZONE_ORDER = -0.85;
 
 interface Drawn {
   root: THREE.Group;
+  /** Pole, cloth and shadow, together on the circle's edge. */
+  mast: THREE.Group;
   zone: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>;
   ring: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
   /** Hinged at the pole's top: turns about the pole and tilts back to face the camera, so the cloth reads from any angle, top-down too. */
@@ -185,7 +191,7 @@ export class Flags {
     this.buttons.append(this.filterTag, row);
     app.overlay.append(this.buttons);
 
-    app.onFrame(() => this.frame());
+    app.onFrame((_now, dt) => this.frame(dt));
     this.sync();
   }
 
@@ -203,6 +209,11 @@ export class Flags {
   }
 
   private lastClick = { uid: '', at: 0 };
+  /** Where round the circle the poles stand: an angle on the table, +y (the default view's top) at π/2. */
+  private mastAngle = Math.PI / 2;
+  /** The pole's offset from the zone's centre, for that angle. */
+  private mastAt = { x: 0, y: MAST_R };
+  private readonly look = new THREE.Vector3();
 
   /**
    * A click on bare table (canvas pixels). Two on the same flag's zone within
@@ -499,7 +510,7 @@ export class Flags {
     const f = this.app.store.flags.get(uid);
     const r = this.app.canvas.getBoundingClientRect();
     if (!f) return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-    const s = this.app.rig.worldToScreen(f.x, f.y + MAST_Y, POLE_H);
+    const s = this.app.rig.worldToScreen(f.x + this.mastAt.x, f.y + this.mastAt.y, POLE_H);
     return { x: r.left + s.x, y: r.top + s.y };
   }
 
@@ -574,10 +585,10 @@ export class Flags {
     shadowTurner.add(shadow);
     // Pole, cloth and shadow stand together at the top of the zone.
     const mast = new THREE.Group();
-    mast.position.y = MAST_Y;
+    mast.position.set(this.mastAt.x, this.mastAt.y, 0);
     mast.add(pole, base, grip, turner, shadowTurner);
     root.add(zone, ring, mast);
-    return { root, zone, ring, turner, cloth, grip, shadow, shadowTurner, text: '', colour: '', width: 0 };
+    return { root, mast, zone, ring, turner, cloth, grip, shadow, shadowTurner, text: '', colour: '', width: 0 };
   }
 
   /** Paint a cloth's text: the name and the count, on the flag's colour. */
@@ -612,7 +623,8 @@ export class Flags {
     d.text = text;
   }
 
-  private frame(): void {
+  /** Every frame; `dt` is the seconds since the last one. */
+  private frame(dt: number): void {
     const app = this.app;
     const store = app.store;
     if (this.countsDirty) {
@@ -632,6 +644,14 @@ export class Flags {
       this.rim.position.set(at.x, at.y, 0.2);
     }
     const cam = app.rig.camera.position;
+    // The top of the view: straight away from the camera across the table. The poles slide round to it.
+    app.rig.camera.getWorldDirection(this.look);
+    if (Math.hypot(this.look.x, this.look.y) > 1e-3) {
+      const want = Math.atan2(this.look.y, this.look.x);
+      const diff = Math.atan2(Math.sin(want - this.mastAngle), Math.cos(want - this.mastAngle));
+      this.mastAngle += Math.abs(diff) < 1e-3 ? diff : diff * Math.min(1, dt * MAST_EASE);
+      this.mastAt = { x: Math.cos(this.mastAngle) * MAST_R, y: Math.sin(this.mastAngle) * MAST_R };
+    }
     for (const f of store.flags.values()) {
       const d = this.drawn.get(f.uid);
       if (!d) continue;
@@ -639,9 +659,10 @@ export class Flags {
       if (text !== d.text) this.paint(d, text, f.colour);
       const at = this.dragging?.uid === f.uid ? this.dragging : f;
       d.root.position.set(at.x, at.y, 0);
+      d.mast.position.set(this.mastAt.x, this.mastAt.y, 0);
       // The cloth faces the camera: turned about the pole, and tilted back as far as the camera looks down.
-      const dx = cam.x - at.x;
-      const dy = cam.y - (at.y + MAST_Y);
+      const dx = cam.x - (at.x + this.mastAt.x);
+      const dy = cam.y - (at.y + this.mastAt.y);
       d.turner.rotation.z = Math.atan2(dx, -dy);
       d.shadowTurner.rotation.z = d.turner.rotation.z;
       d.turner.rotation.x = -Math.atan2(cam.z - d.turner.position.z, Math.hypot(dx, dy));
@@ -665,7 +686,7 @@ export class Flags {
     const show = !!f && !this.dragging && !app.flagging;
     this.buttons.hidden = !show;
     if (show) {
-      const s = app.rig.worldToScreen(f.x, f.y + MAST_Y, POLE_H);
+      const s = app.rig.worldToScreen(f.x + this.mastAt.x, f.y + this.mastAt.y, POLE_H);
       // Their bottom edge just above the pole's top, so they never cover the cloth.
       this.buttons.style.transform = `translate(${Math.round(s.x + 8)}px, ${Math.round(s.y - 10)}px) translateY(-100%)`;
       this.lockButton.textContent = f.locked ? '🔒' : '🔓';
