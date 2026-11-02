@@ -92,7 +92,7 @@ const topBar = new TopBar(app, top);
 const spawnPanel = new SpawnPanel(app, left);
 const hud = new Hud(app, bottom);
 app.rest = new RestSync(app);
-const pileSync = installPileSync(app.store);
+const pileSync = installPileSync(app.store, () => app.named?.keepFilters());
 // Cards cached before EDHREC rank was kept are fetched again once (decision 187).
 installRecordUpgrade(app.store);
 const commands = new Commands(app);

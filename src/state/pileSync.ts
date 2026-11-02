@@ -64,8 +64,12 @@ export function redetect(store: Store, moved: Set<string> = new Set()): void {
   }
 }
 
-/** Run detection on the next frame after any settle, coalescing bursts. */
-export function installPileSync(store: Store): { flush: () => void; lastMs: () => number } {
+/**
+ * Run detection on the next frame after any settle, coalescing bursts. `after`
+ * runs once each detection is done: filtered named piles turn away cards then
+ * (decision 322).
+ */
+export function installPileSync(store: Store, after: () => void = () => {}): { flush: () => void; lastMs: () => number } {
   let queued = false;
   let last = 0;
   let moved = new Set<string>();
@@ -76,6 +80,7 @@ export function installPileSync(store: Store): { flush: () => void; lastMs: () =
     moved = new Set();
     redetect(store, m);
     last = performance.now() - t0;
+    after();
   };
   const queue = () => {
     if (queued) return;

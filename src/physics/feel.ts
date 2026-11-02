@@ -172,6 +172,8 @@ export class DragController {
   private flicked = false;
   /** Shift is held now, without Ctrl: the drag sweeps up cards it passes over (decision 110). */
   private sweeping = false;
+  /** This drag has said why its sweep left cards behind (decision 322). */
+  private refusedSaid = false;
   private shift = false;
   private ctrl = false;
   private dwell: Dwell | null = null;
@@ -439,6 +441,14 @@ export class DragController {
       if (d && now - d.lost > SWEEP_GRACE_MS) this.dwell = null;
       return;
     }
+    // Carrying a whole filtered pile, the sweep leaves behind what it won't take (decision 322).
+    const carried = this.carriedFilter(held);
+    const takes = (uid: string) => {
+      if (!carried || carried.fits(uid)) return true;
+      if (!this.refusedSaid) store.events.emit('notice', `${carried.name} only takes cards matching \`${carried.filter}\``);
+      this.refusedSaid = true;
+      return false;
+    };
     const pile = store.pileOf(hit);
     const key = pile?.id ?? hit;
     if (d && d.key === key) d.lost = 0;
@@ -448,7 +458,7 @@ export class DragController {
     }
     // A messy pile isn't a deck: every card the cursor reaches comes at once (decision 178).
     const neat = !pile || pile.kind === 'stack';
-    if (!neat && !held.has(hit)) {
+    if (!neat && !held.has(hit) && takes(hit)) {
       this.collect(hit);
       held.add(hit);
       d.taken++;
@@ -456,12 +466,12 @@ export class DragController {
     const want = sweepCount(now - d.since, d.size, neat);
     while (d.taken < want) {
       // The card under the cursor first, then the pile from the top down.
-      let next: string | null = d.taken === 0 ? hit : null;
+      let next: string | null = d.taken === 0 && takes(hit) ? hit : null;
       if (!next && pile) {
         let topZ = -Infinity;
         for (const u of pile.cardUids) {
           const c = store.cards.get(u);
-          if (c && !held.has(u) && c.z > topZ) {
+          if (c && !held.has(u) && c.z > topZ && (!carried || carried.fits(u))) {
             topZ = c.z;
             next = u;
           }
@@ -472,6 +482,25 @@ export class DragController {
       held.add(next);
       d.taken++;
     }
+  }
+
+  /**
+   * The filter of a named pile held whole (every one of its cards in the
+   * hand), which the cards a sweep pulls in must match; null when none is.
+   */
+  private carriedFilter(held: Set<string>): { fits: (uid: string) => boolean; name: string; filter: string } | null {
+    const store = this.app.store;
+    const seen = new Set<string>();
+    for (const u of held) {
+      const id = store.cards.get(u)?.pileId;
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      const n = store.named.get(id);
+      const fits = this.app.named.matcher(id);
+      const pile = store.piles.get(id);
+      if (n?.filter && fits && pile && pile.cardUids.every((c) => held.has(c))) return { fits, name: n.name, filter: n.filter };
+    }
+    return null;
   }
 
   /** Add a card to the clump; it springs up from where it lies. */
@@ -910,6 +939,7 @@ export class DragController {
     }
     this.active = false;
     this.sweeping = false;
+    this.refusedSaid = false;
     this.dwell = null;
     this.label.hidden = true;
     this.held = [];
@@ -1038,36 +1068,7 @@ export class DragController {
 
   /** Rejected cards slide off beside the pile with a short shake and a toast. */
   private reject(held: Held[], pileId: string): void {
-    const app = this.app;
-    const store = app.store;
-    const n = store.named.get(pileId);
-    const anchor = store.piles.get(pileId)?.anchor ?? n?.anchor ?? this.cursor;
-    const yaw = n?.yaw ?? 0;
-    const off = CARD_W + 28;
-    const at = { x: anchor.x + Math.cos(yaw) * off, y: anchor.y + Math.sin(yaw) * off, yaw };
-    const uids = held.map((c) => c.uid);
-    const leaving = uids.filter((u) => store.cards.get(u)?.pileId === pileId);
-    if (leaving.length) store.moveCards(leaving.map((u) => ({ uid: u, pileId: null })));
-    const spots = messyLayout(uids.length, at).map((p) => ({ x: p.x, y: p.y, yaw: p.yaw }));
-    land(app, placeSequential(app, uids, spots), { duration: 260, arc: 8 });
-    // The shake: a quick wobble once they have slid off.
-    setTimeout(() => {
-      for (const u of uids) {
-        const pose = app.layer.pose(u);
-        const c = store.cards.get(u);
-        if (!pose || !c) continue;
-        const base = c.yaw;
-        app.motion.animate(u, { yaw: base + 0.12 }, {
-          duration: 60,
-          done: () => app.motion.animate(u, { yaw: base - 0.1 }, {
-            duration: 70,
-            done: () => app.motion.animate(u, { yaw: base }, { duration: 60 }),
-          }),
-        });
-      }
-    }, 270);
-    const label = uids.length === 1 ? '1 card doesn’t' : `${uids.length} cards don’t`;
-    store.events.emit('notice', `${label} match ${n?.name ?? 'the pile'}: \`${n?.filter ?? ''}\``);
+    this.app.named.turnAway(held.map((c) => c.uid), pileId);
   }
 
   /**

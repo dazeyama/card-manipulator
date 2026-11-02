@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NamedPiles } from '../src/named';
+import { clearSpot, NamedPiles } from '../src/named';
 import { Store } from '../src/state/store';
 import { redetect } from '../src/state/pileSync';
 import type { App } from '../src/app';
@@ -13,7 +13,7 @@ function record(id: string, type: string): CardRecord {
   };
 }
 
-function setup(): { store: Store; named: NamedPiles } {
+function setup(): { store: Store; named: NamedPiles; away: string[][] } {
   const store = new Store();
   store.addRecords([record('elf', 'Creature — Elf'), record('forest', 'Basic Land — Forest')]);
   const cards: Card[] = ['elf', 'elf', 'forest'].map((id, i) => ({
@@ -21,8 +21,23 @@ function setup(): { store: Store; named: NamedPiles } {
   }));
   store.addCards(cards);
   redetect(store);
-  const named = new NamedPiles({ store } as unknown as App);
-  return { store, named };
+  const named = new NamedPiles({ store, motion: { held: new Set() } } as unknown as App);
+  // Turning cards away animates them on the table; here it only records which.
+  const away: string[][] = [];
+  named.turnAway = (uids) => void away.push(uids);
+  return { store, named, away };
+}
+
+/** A pile named Keep with the filter t:creature, holding the two elves (u2, the forest, turned away and moved off). */
+function keep(): { store: Store; named: NamedPiles; away: string[][]; id: string } {
+  const s = setup();
+  const id = [...s.store.piles.values()][0].id;
+  s.named.promote(id, 'Keep', 't:creature');
+  s.store.moveCards([{ uid: 'u2', x: 500, y: 0, pileId: null }]);
+  redetect(s.store);
+  s.named.keepFilters();
+  s.away.length = 0;
+  return { ...s, id };
 }
 
 describe('named piles (spec 11.3)', () => {
@@ -49,6 +64,75 @@ describe('named piles (spec 11.3)', () => {
     const pile = [...store.piles.values()][0];
     named.promote(pile.id, 'Keep', 't:creature');
     expect(named.sort(pile.id, ['u0', 'u1', 'u2'])).toEqual({ accepted: ['u0', 'u1'], rejected: ['u2'] });
+  });
+
+  it('a new filter turns away the cards already in the pile that do not match (decision 322)', () => {
+    const { store, named, away } = setup();
+    const pile = [...store.piles.values()][0];
+    named.promote(pile.id, 'Keep', 't:creature');
+    expect(away).toEqual([['u2']]);
+  });
+
+  it('turns away a card brought into a filtered pile by any move, not only a drop (decision 322)', () => {
+    const { store, named, away, id } = keep();
+    // A layout, a sweep, a toss or a draw all end in a move like this one.
+    store.moveCards([{ uid: 'u2', x: 4, y: 3, z: 0.75 }]);
+    redetect(store);
+    expect(store.cards.get('u2')!.pileId).toBe(id);
+    named.keepFilters();
+    expect(away).toEqual([['u2']]);
+  });
+
+  it('turns away a spawned or pasted card that lands in a filtered pile', () => {
+    const { store, named, away } = keep();
+    store.addCards([{ uid: 'n1', scryfallId: 'forest', finish: 'nonfoil', x: 2, y: 2, z: 0.9, yaw: 0, faceUp: true, pileId: null, spreadOf: null }]);
+    redetect(store);
+    named.keepFilters();
+    expect(away).toEqual([['n1']]);
+  });
+
+  it('takes in a matching card without turning anything away', () => {
+    const { store, named, away, id } = keep();
+    store.addCards([{ uid: 'n2', scryfallId: 'elf', finish: 'nonfoil', x: 2, y: 2, z: 0.9, yaw: 0, faceUp: true, pileId: null, spreadOf: null }]);
+    redetect(store);
+    named.keepFilters();
+    expect(away).toEqual([]);
+    expect(store.cards.get('n2')!.pileId).toBe(id);
+  });
+
+  it('turns away the cards of a pile that merges into a filtered one', () => {
+    const { store, named, away } = keep();
+    store.addCards([{ uid: 'f2', scryfallId: 'forest', finish: 'nonfoil', x: 520, y: 0, z: 0.45, yaw: 0, faceUp: true, pileId: null, spreadOf: null }]);
+    redetect(store);
+    named.keepFilters();
+    away.length = 0;
+    // An elf set down between them joins the forests' pile to Keep.
+    store.addCards([{ uid: 'e3', scryfallId: 'elf', finish: 'nonfoil', x: 50, y: 0, z: 0.9, yaw: 0, faceUp: true, pileId: null, spreadOf: null }]);
+    store.moveCards([{ uid: 'u2', x: 100, y: 0 }, { uid: 'f2', x: 110, y: 0 }]);
+    redetect(store);
+    named.keepFilters();
+    expect(away.flat().sort()).toEqual(['f2', 'u2']);
+  });
+
+  it('leaves another player\'s change and a loaded table alone', () => {
+    const { store, named, away } = keep();
+    store.remote(() => store.moveCards([{ uid: 'u2', x: 4, y: 3, z: 0.75 }]));
+    redetect(store);
+    named.keepFilters();
+    expect(away).toEqual([]);
+    store.replaceTable(store.table());
+    redetect(store);
+    named.keepFilters();
+    expect(away).toEqual([]);
+  });
+
+  it('turns cards away to the first clear spot beside the pile', () => {
+    // Clear on the right: one card's width and a gap out.
+    expect(clearSpot({ x: 0, y: 0 }, 0, [])).toEqual({ x: 91, y: 0 });
+    // A card there: the left side.
+    expect(clearSpot({ x: 0, y: 0 }, 0, [{ x: 91, y: 0 }])).toEqual({ x: -91, y: 0 });
+    // Both taken: one step further right.
+    expect(clearSpot({ x: 0, y: 0 }, 0, [{ x: 91, y: 0 }, { x: -91, y: 0 }])).toEqual({ x: 174, y: 0 });
   });
 
   it('an emptied named pile stays as an outline until deleted (decision 27)', () => {
