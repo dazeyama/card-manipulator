@@ -30,6 +30,8 @@ const MAX_SMEAR = 0.035;
 const SHUTTER = 0.7;
 /** Motion of more than this share of the screen in one frame is a jump (spawned, undone, snapped), not movement: no blur. */
 const JUMP = 0.25;
+/** Cards smear half as much for their own motion as other things do (decision 350); the camera's swing smears them fully. */
+const CARD_BLUR = 0.5;
 
 /** Where "before" is seen from: this frame's camera, or (during the mirror swing) last frame's. */
 const cameraHead = /* glsl */ `
@@ -45,13 +47,31 @@ attribute mat4 aPrev;
 attribute vec4 aFlags;
 varying vec4 vNow;
 varying vec4 vPrev;
+// Where the card is now, seen from "before": the difference from vNow is the camera's swing alone.
+varying vec4 vHere;
 ${cameraHead}
 void main() {
   // A hidden card draws nothing, as in the card shader.
   vec3 p = aFlags.w > 0.5 ? vec3(0.0) : position;
   vNow = projectionMatrix * viewMatrix * modelMatrix * instanceMatrix * vec4(p, 1.0);
+  vHere = beforeCamera() * modelMatrix * instanceMatrix * vec4(p, 1.0);
   vPrev = beforeCamera() * modelMatrix * aPrev * vec4(p, 1.0);
   gl_Position = vNow;
+}
+`;
+
+/** Cards: their own motion counts at CARD_BLUR, the camera's swing in full (decision 350). */
+const cardFragment = /* glsl */ `
+uniform float uCardBlur;
+varying vec4 vNow;
+varying vec4 vPrev;
+varying vec4 vHere;
+void main() {
+  vec2 now = vNow.xy / vNow.w;
+  vec2 here = vHere.xy / vHere.w;
+  vec2 before = vPrev.xy / vPrev.w;
+  vec2 v = ((now - here) + (here - before) * uCardBlur) * 0.5;
+  gl_FragColor = vec4(v, 0.0, 1.0);
 }
 `;
 
@@ -156,7 +176,7 @@ export class MotionBlur {
   /** Last frame's camera (projection times view), and whether to use it: the mirror swing (decision 343). Shared by every motion material. */
   private readonly cameraUniforms = { uPrevCamera: { value: new THREE.Matrix4() }, uCameraBlur: { value: 0 } };
   private havePrevCamera = false;
-  private readonly motionMaterial = new THREE.ShaderMaterial({ vertexShader: motionVertex, fragmentShader: motionFragment, uniforms: this.cameraUniforms });
+  private readonly motionMaterial = new THREE.ShaderMaterial({ vertexShader: motionVertex, fragmentShader: cardFragment, uniforms: { ...this.cameraUniforms, uCardBlur: { value: CARD_BLUR } } });
   /** Motion materials for other objects, one per set of depth settings, so each draws over others as it does in the scene. */
   private readonly objectMaterials = new Map<string, THREE.ShaderMaterial>();
   /** Each object's world matrix as it was drawn last frame. */
