@@ -26,6 +26,8 @@ export interface GraphicsPreset {
   mirrorSamples: number;
   /** The card stand's wood texture, px square (decision 229): its file, the GPU makes the smaller mip levels. */
   woodPx: 1024 | 512;
+  /** Playmat art redrawn at twice the size and sharpened (decision 323). */
+  sharpArt: boolean;
 }
 
 export const GRAPHICS: Record<GraphicsMode, GraphicsPreset> = {
@@ -42,6 +44,7 @@ export const GRAPHICS: Record<GraphicsMode, GraphicsPreset> = {
     mirrorMax: 1920,
     mirrorSamples: 4,
     woodPx: 512,
+    sharpArt: false,
   },
   high: {
     // Drawn at twice the resolution and scaled down: card text and edges stop shimmering.
@@ -59,6 +62,8 @@ export const GRAPHICS: Record<GraphicsMode, GraphicsPreset> = {
     mirrorMax: 2560,
     mirrorSamples: 8,
     woodPx: 1024,
+    // The art crop is 626 px across a 61 cm mat: up close it is soft without this.
+    sharpArt: true,
   },
 };
 

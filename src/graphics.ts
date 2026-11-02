@@ -95,7 +95,7 @@ export class Graphics {
     const anisotropy = Math.min(p.anisotropy, renderer.capabilities.getMaxAnisotropy());
     this.app.atlas.setAnisotropy(anisotropy);
     this.hires.setQuality({ abovePx: p.hiresAbovePx, max: p.hiresMax, pool: p.hiresPool, image: p.hiresImage, anisotropy });
-    this.mats.setQuality({ mirrorEveryMs: p.mirrorEveryMs, mirrorMax: p.mirrorMax, mirrorSamples: p.mirrorSamples, anisotropy });
+    this.mats.setQuality({ mirrorEveryMs: p.mirrorEveryMs, mirrorMax: p.mirrorMax, mirrorSamples: p.mirrorSamples, anisotropy, sharpArt: p.sharpArt });
     setWoodQuality(p.woodPx, anisotropy);
     setDiceAnisotropy(anisotropy);
   }

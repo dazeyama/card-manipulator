@@ -56,6 +56,8 @@ export interface MatQuality {
   mirrorMax: number;
   mirrorSamples: number;
   anisotropy: number;
+  /** Art redrawn at twice the size and sharpened (decision 323). */
+  sharpArt: boolean;
 }
 
 interface Drawn {
@@ -87,6 +89,12 @@ export class Mats {
   private readonly drawn = new Map<string, Drawn>();
   private readonly loader = new ImageLoader(ART_W, ART_H);
   private readonly textures = new Map<string, THREE.Texture>();
+  /** Each art as loaded, and sharpened (decision 323), so a change of graphics mode swaps them at once. */
+  private readonly rawArt = new Map<string, ImageBitmap>();
+  private readonly sharpArt = new Map<string, Promise<ImageBitmap | null>>();
+  private sharpener: Worker | null = null;
+  private readonly sharpJobs = new Map<number, (bmp: ImageBitmap | null) => void>();
+  private sharpNext = 0;
   /** The mat under the mouse (whether or not a card is above it), or null. */
   hovered: string | null = null;
   /** A mat being dragged, and whether it carries its cards. */
@@ -111,7 +119,7 @@ export class Mats {
   private readonly counts = new Map<string, HTMLDivElement>();
   private alt = false;
   private readonly mirrors: Mirror[] = [];
-  private quality: MatQuality = { mirrorEveryMs: 33, mirrorMax: 1920, mirrorSamples: 4, anisotropy: 8 };
+  private quality: MatQuality = { mirrorEveryMs: 33, mirrorMax: 1920, mirrorSamples: 4, anisotropy: 8, sharpArt: false };
   private readonly mirrorCam = new THREE.OrthographicCamera(-MAT_W / 2, MAT_W / 2, MAT_H / 2, -MAT_H / 2, 1, 5000);
 
   constructor(private readonly app: App) {
@@ -537,11 +545,55 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
   /** Switch graphics mode: the art's filtering changes at once, the mirror on its next frame. */
   setQuality(q: MatQuality): void {
     const refilter = q.anisotropy !== this.quality.anisotropy;
+    const resharp = q.sharpArt !== this.quality.sharpArt;
     this.quality = { ...q };
+    if (resharp) for (const [url, tex] of this.textures) this.showArt(url, tex);
     if (!refilter) return;
     for (const tex of this.textures.values()) {
       tex.anisotropy = q.anisotropy;
       tex.needsUpdate = true;
+    }
+  }
+
+  /** Put the art the graphics mode wants on this texture: sharpened in High once it is ready, as loaded otherwise. */
+  private showArt(url: string, tex: THREE.Texture): void {
+    const raw = this.rawArt.get(url);
+    if (!this.quality.sharpArt) {
+      if (raw && tex.image !== raw) {
+        tex.image = raw;
+        tex.needsUpdate = true;
+      }
+      return;
+    }
+    if (!raw) return;
+    let job = this.sharpArt.get(url);
+    if (!job) this.sharpArt.set(url, (job = this.sharpen(raw)));
+    void job.then((bmp) => {
+      // Still High, and still this art's texture.
+      if (!bmp || !this.quality.sharpArt || this.textures.get(url) !== tex || tex.image === bmp) return;
+      tex.image = bmp;
+      tex.needsUpdate = true;
+    });
+  }
+
+  /** Sharpen an art in the worker; null if the browser can't (the art stays as loaded). */
+  private sharpen(raw: ImageBitmap): Promise<ImageBitmap | null> {
+    try {
+      if (!this.sharpener) {
+        this.sharpener = new Worker(new URL('./render/sharpenWorker.ts', import.meta.url), { type: 'module' });
+        this.sharpener.addEventListener('message', (e: MessageEvent<{ id: number; bitmap: ImageBitmap | null }>) => {
+          this.sharpJobs.get(e.data.id)?.(e.data.bitmap);
+          this.sharpJobs.delete(e.data.id);
+        });
+      }
+      const id = this.sharpNext++;
+      const worker = this.sharpener;
+      return new Promise((resolve) => {
+        this.sharpJobs.set(id, resolve);
+        worker.postMessage({ id, bitmap: raw });
+      });
+    } catch {
+      return Promise.resolve(null);
     }
   }
 
@@ -561,6 +613,8 @@ worldPosition.z -= ${MAT_T.toFixed(2)};
       tex.offset.set(0, (1 + keep) / 2);
       tex.needsUpdate = true;
       this.textures.set(url, tex);
+      this.rawArt.set(url, bmp);
+      this.showArt(url, tex);
       return tex;
     } catch {
       return null;
