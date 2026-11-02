@@ -1,7 +1,8 @@
 // The room's chat (ONLINE.md 5.5, O35): a strip in the Online panel with the
 // last 100 lines, each name in its player's color, system lines in gray.
 // Plain text up to 300 characters; Enter sends. Nothing is kept past the
-// room's life. Keys don't reach the table while the field has focus.
+// room's life. Keys don't reach the table while the field has focus. Enter on
+// the table puts the cursor here, and Esc gives the keys back (O116).
 
 import { CHAT_TEXT_MAX, type ChatLine } from '../../shared/protocol';
 import type { RoomState } from '../online/room';

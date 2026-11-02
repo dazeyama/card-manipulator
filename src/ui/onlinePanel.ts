@@ -707,6 +707,14 @@ export class OnlinePanel {
     else this.open();
   }
 
+  /** Enter on the table, in a room (O116): the panel opens if it is closed, and the cursor goes into the chat. False offline. */
+  openChat(): boolean {
+    if (!this.ui.online) return false;
+    if (!this.isOpen) this.open();
+    this.chat.focus();
+    return true;
+  }
+
   /** Rebuild for the current state: the short form offline, the room online. */
   refresh(): void {
     const online = this.ui.online;

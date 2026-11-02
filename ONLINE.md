@@ -814,7 +814,7 @@ The first-visit welcome (decision 153) gains one line under its heading: "Playin
 
 ## 13. Keys and the help panel
 
-No new keys. **M** keeps its meaning and is how you cross the table online. Enter in the chat field sends; keys stay inactive while it has focus (spec 16). The help panel gains an **Online** group:
+One new key since O116: **Enter** on the table, in a room, opens the Online panel if it is closed and puts the cursor in the chat box; Esc there gives the keys back to the table. **M** keeps its meaning and is how you cross the table online. Enter in the chat field sends; keys stay inactive while it has focus (spec 16). The help panel gains an **Online** group:
 
 | Icon | Keys | What |
 |---|---|---|
@@ -1057,6 +1057,7 @@ Owner answers of 2026-10-30 are recorded as such; **(agent)** marks a choice mad
 | O113 | Owner (2026-11-01): **cube chips in rooms** (spec decision 321): everyone in a room sees which CubeCobra cubes are on the table. **(agent)** A new op `{t: 'cubes', set?, remove?}` keeps the table's cube list (id, name, size) in `TableState.cubes`, and snapshots carry it in part 0; each card's `cube` id travels in its `CardSnap`, as other card fields do, and is not redacted: it says which public cube a hidden card came from, never which card it is. The op needs Cards, like spawning the cube. The op and the snapshot field changed the protocol's shape, so `PROTOCOL` is 2: tabs left open across the deploy are told to reload. |
 | O114 | Owner (2026-11-01): **flags in rooms** (spec decision 327): everyone sees them. **(agent)** A new op `{t: 'flag', set?, remove?}` keeps `TableState.flags`, carried in snapshot part 0; placing, moving, editing, locking or taking away a flag needs **Move**, like a playmat, since flags are no one's. Turning a card away is an ordinary `move` by the browser that put it down. An empty named pile is deleted by the crown's browser alone (spec decision 328). The op and the snapshot field change the protocol's shape: `PROTOCOL` is 3. |
 | O115 | Owner (2026-11-02): other players' cursors faded when off your screen and then **disappeared**; keep the fade but **never let them fully disappear**. **(agent)** A cursor off your screen was already pinned to its edge at 60 % opacity; it vanished when its player's pointer left their table (their stream stops carrying a cursor). Now it stays at its last spot, pinned to your screen's edge if need be, at 35 % opacity until their pointer is back on the table; it goes only when the player leaves the room. A player whose pointer has never been on the table yet still has no cursor to show. Client only: no protocol change. |
+| O116 | Owner (2026-11-02): **Enter for text chat**, as proposed, and not on the radial. **(agent)** On the table in a room, Enter opens the Online panel if it is closed and puts the cursor in the chat box; Enter there sends as before, and Esc leaves the box, so keys act on the table again. Offline it does nothing. Off the radial and the bottom bar by the owner's choice: a window control, like the camera keys. The `?` panel's Online group lists it. |
 
 ## Appendix B: Open items
 

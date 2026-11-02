@@ -65,6 +65,7 @@ const GROUPS: [string, Line[]][] = [
     ['👑', 'Crown', 'the host: ranks, kicks, bans, settings, Lock table; passed from a player’s ⋯ in the panel · Everything is a co-host: it can kick, ban, set ranks up to Cards and lock the table, for players below Everything'],
     ['🪪', 'Ranks', 'View · Move · Tokens · Cards · Everything; the crown sets them, Everything up to Cards'],
     ['🂠', 'Hidden', 'your stand’s cards and face-down cards show their backs to others; 👤 on a stand’s lip says whose it is'],
+    ['💬', 'Enter', 'chat: opens the panel and puts the cursor in the chat box; Enter sends, Esc gives the keys back to the table'],
     ['🪞', 'M', 'cross to the far side of the table'],
   ]],
 ];
