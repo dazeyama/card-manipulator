@@ -204,6 +204,14 @@ export class DragController {
   private cursorVel = { x: 0, y: 0 };
   /** Height of the held group's shared plane at the cursor (NaN until the first frame). */
   private base = NaN;
+  /**
+   * A card pulled out from inside a pile (decision 348): it slides out at its
+   * own height, flat, between the cards under and over it, and only rises to
+   * the usual carrying height once it is clear of the cards that lay on it.
+   * `z` is its height in the pile; `above`, the cards that lay on it, which
+   * stay put (and don't settle onto what is under) until it is clear.
+   */
+  private slideOut: { z: number; above: string[] } | null = null;
   private readonly qTilt = new THREE.Quaternion();
   private readonly qCard = new THREE.Quaternion();
   private readonly qPart = new THREE.Quaternion();
@@ -318,8 +326,16 @@ export class DragController {
       this.app.motion.cancel(h.uid);
       this.app.motion.held.add(h.uid);
     }
-    // What rested on the lifted cards falls now (decision 100).
-    this.app.rest?.lifted(this.held.map((h) => h.uid));
+    // Pulled out from inside a pile (not off its top): it slides out at its own height first (decision 348).
+    this.slideOut = null;
+    if (this.held.length === 1 && !this.overStand) {
+      const c = cards[0];
+      const above = (store.pileOf(c.uid)?.cardUids ?? []).filter((u) => u !== c.uid && (store.cards.get(u)?.z ?? -Infinity) > c.z);
+      const pose = this.app.layer.pose(c.uid);
+      if (above.length && pose) this.slideOut = { z: pose.z, above };
+    }
+    // What rested on the lifted cards falls now (decision 100); a card sliding out lets them fall once it is clear.
+    if (!this.slideOut) this.app.rest?.lifted(this.held.map((h) => h.uid));
     this.active = true;
     this.shuffledHand = false;
     // In a room, a hold from the crown (8.4): in the hand at once; if someone else was first, back they go.
@@ -827,9 +843,11 @@ export class DragController {
       this.slopeOf = this.overStand;
     }
     if (!n) return;
+    // Sliding out of its pile: flat, at its own height, until clear of the cards that lay on it (decision 348).
+    const sliding = this.slideOn();
     // One lean for the group: the leading edge rises a little, as before.
     const span = Math.max(LEAN_SPAN, maxX - minX, maxY - minY);
-    const lean = LEAN_SPAN / span;
+    const lean = sliding ? 0 : LEAN_SPAN / span;
     const perSpeed = tidy ? TIDY_TILT_PER_SPEED : TILT_PER_SPEED;
     const maxTilt = tidy ? TIDY_MAX_TILT : MAX_TILT;
     const sx = Math.tan(clamp((avx / n) * perSpeed, -maxTilt, maxTilt) * lean);
@@ -837,12 +855,15 @@ export class DragController {
     const cx = this.cursor.x, cy = this.cursor.y;
 
     // Rise over what lies under (or just ahead of) any held card.
-    const spots = this.surfaces();
-    const want = planeBase(spots, cx, cy, sx, sy, LIFT);
-    const floor = planeBase(spots, cx, cy, sx, sy, 0);
-    if (Number.isNaN(this.base)) this.base = want;
-    else this.base += (want - this.base) * Math.min(1, dt * (want > this.base ? RISE_RATE : FALL_RATE));
-    this.base = Math.max(this.base, floor);
+    if (sliding) this.base = this.slideOut!.z;
+    else {
+      const spots = this.surfaces();
+      const want = planeBase(spots, cx, cy, sx, sy, LIFT);
+      const floor = planeBase(spots, cx, cy, sx, sy, 0);
+      if (Number.isNaN(this.base)) this.base = want;
+      else this.base += (want - this.base) * Math.min(1, dt * (want > this.base ? RISE_RATE : FALL_RATE));
+      this.base = Math.max(this.base, floor);
+    }
 
     this.normal.set(-sx, -sy, 1).normalize();
     this.qTilt.setFromUnitVectors(DragController.UP, this.normal);
@@ -901,6 +922,35 @@ export class DragController {
       }
       layer.touch(c.uid);
     }
+  }
+
+  /**
+   * Whether the card pulled out of a pile is still sliding out (decision 348).
+   * It stops once the card is clear of every card that lay on it, or if it
+   * meets another pile's card higher than its own height (it rises over that
+   * as usual); the cards that lay on it settle then.
+   */
+  private slideOn(): boolean {
+    const s = this.slideOut;
+    const c = this.held[0];
+    if (!s || !c) return false;
+    const layer = this.app.layer;
+    const pose = layer.pose(c.uid);
+    if (!pose) return false;
+    const me = { x: c.sx ?? pose.x, y: c.sy ?? pose.y, yaw: pose.yaw };
+    const above = new Set(s.above);
+    let under = false;
+    let blocked = false;
+    layer.forEach((uid, p) => {
+      if (uid === c.uid || Math.abs(p.x - me.x) > HALF_DIAG * 2 || Math.abs(p.y - me.y) > HALF_DIAG * 2) return;
+      if (!overlaps(p, me)) return;
+      if (above.has(uid)) under = true;
+      else if (restingTop(p.z, p.tiltX, p.tiltY, HALF_DIAG) > s.z - CARD_T / 2 + 1) blocked = true;
+    });
+    if (under && !blocked) return true;
+    this.slideOut = null;
+    this.app.rest?.lifted([c.uid]);
+    return false;
   }
 
   /** For every held card, where it is and the top of the table's cards under it now or just ahead of it. */
@@ -962,6 +1012,7 @@ export class DragController {
     this.active = false;
     this.sweeping = false;
     this.refusedSaid = false;
+    this.slideOut = null;
     this.dwell = null;
     this.label.hidden = true;
     this.held = [];
