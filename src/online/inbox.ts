@@ -63,6 +63,9 @@ export function applyToStore(store: Store, op: Op): void {
     case 'basics':
       store.setBasics(JSON.parse(JSON.stringify(op.basics)) as typeof op.basics);
       return;
+    case 'cubes':
+      store.setCubes(op.set ?? [], op.remove ?? []);
+      return;
     case 'table':
       store.setName(op.name);
       return;

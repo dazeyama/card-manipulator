@@ -11,12 +11,13 @@ function card(i: number): CardSnap {
 }
 
 function table(n: number): TableState {
-  return { ...emptyTable('Test'), cards: Array.from({ length: n }, (_, i) => card(i)), dice: [{ uid: 'd1', x: 1, y: 2, z: 10, yaw: 0, value: 4 }] };
+  return { ...emptyTable('Test'), cards: Array.from({ length: n }, (_, i) => card(i)), dice: [{ uid: 'd1', x: 1, y: 2, z: 10, yaw: 0, value: 4 }], cubes: [{ id: 'vintage', name: 'Vintage Cube', size: 540 }] };
 }
 
 describe('protocol', () => {
-  it('speaks version 1', () => {
-    expect(PROTOCOL).toBe(1);
+  it('speaks version 2', () => {
+    // 2: the cubes op and snapshot field (decision 321, O113).
+    expect(PROTOCOL).toBe(2);
   });
 
   it('splits a table into a head and parts of 1,000 cards, and joins it back in any order', () => {
@@ -32,7 +33,7 @@ describe('protocol', () => {
 
   it('closes a part by size as well as by count, so heavy cards stay under the part limit', () => {
     // Cards with every optional field and long uids, about twice a plain card.
-    const heavy = (i: number): CardSnap => ({ ...card(i), uid: `c${String(i).padStart(40, '0')}`, scryfallId: `${String(i).padStart(36, 'f')}`, laidAt: { x: 1234.567, y: -987.654 }, stand: `m${'s'.repeat(40)}`, side: 1, pileId: `p${'q'.repeat(40)}`, spreadOf: `s${'r'.repeat(40)}` });
+    const heavy = (i: number): CardSnap => ({ ...card(i), uid: `c${String(i).padStart(40, '0')}`, scryfallId: `${String(i).padStart(36, 'f')}`, laidAt: { x: 1234.567, y: -987.654 }, stand: `m${'s'.repeat(40)}`, side: 1, pileId: `p${'q'.repeat(40)}`, spreadOf: `s${'r'.repeat(40)}`, cube: `${'v'.repeat(24)}` });
     const t = { ...emptyTable('Heavy'), cards: Array.from({ length: 5000 }, (_, i) => heavy(i)) };
     const parts = splitSnapshot(t);
     for (const p of parts) expect(byteLength(JSON.stringify(p))).toBeLessThan(MAX_SNAPSHOT_PART_BYTES);

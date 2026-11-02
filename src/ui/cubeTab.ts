@@ -55,7 +55,9 @@ export function buildCubeTab(app: App, options: () => SpawnOptions): HTMLElement
       });
       app.store.addRecords([...records.values()].filter((r) => !app.store.records.has(r.id)));
       app.store.setElo(elo);
-      const uids = spawnCards(app, items, options());
+      // The cube's chip at the top of the play space (decision 321), shown while any of its cards are on the table.
+      app.store.setCubes([{ id: cube.id, name: cube.name, size: cube.cards.length }]);
+      const uids = spawnCards(app, items, { ...options(), cube: cube.id });
       const lost = cube.cards.length - items.length;
       status.textContent = `Spawned ${cube.name}: ${uids.length.toLocaleString()} cards, ${elo.length.toLocaleString()} with Elo${lost ? `; ${lost} Scryfall didn't know` : ''}.`;
       toast(`Spawned ${cube.name} (${uids.length.toLocaleString()} cards)`, 'ok');

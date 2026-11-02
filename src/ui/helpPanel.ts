@@ -3,6 +3,7 @@
 // hint line in the play space shows just what matters now; this lists it all.
 
 import { h } from './dom';
+import type { CubeChips } from './cubeChips';
 import type { ContextHints } from './hints';
 import { CURSOR_LABEL, cursorChoice, cursorSizeNow, setCursorChoice, type CursorChoice } from './cursorSize';
 
@@ -69,11 +70,15 @@ const GROUPS: [string, Line[]][] = [
 export class HelpPanel {
   private readonly el: HTMLDivElement;
 
-  constructor(hints: ContextHints) {
+  constructor(hints: ContextHints, cubes: CubeChips) {
     // Hide the hint line along the bottom of the table (decision 234).
     const hide = h('input', { type: 'checkbox' });
     hide.checked = hints.hidden;
     hide.addEventListener('change', () => (hints.hidden = hide.checked));
+    // Hide the cube chips along the top (decision 321).
+    const hideCubes = h('input', { type: 'checkbox' });
+    hideCubes.checked = cubes.hidden;
+    hideCubes.addEventListener('change', () => (cubes.hidden = hideCubes.checked));
     // Cursor size (decision 289): Auto sizes to the screen; remembered in this browser.
     const size = h('select', { 'aria-label': 'Cursor size' });
     const fill = () => {
@@ -89,6 +94,7 @@ export class HelpPanel {
       h('div', { class: 'help-head' }, h('span', { class: 'pe-title' }, 'Controls'), h('span', { class: 'muted small' }, 'Keys act on the selection, or on the pile under the cursor.')),
       h('div', { class: 'help-options' },
         h('label', { class: 'inline help-hide' }, hide, 'Hide control hints'),
+        h('label', { class: 'inline help-hide' }, hideCubes, 'Hide cube chips'),
         h('label', { class: 'inline help-cursor' }, 'Cursor size', size),
       ),
       ...GROUPS.map(([title, lines]) =>

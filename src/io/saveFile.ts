@@ -5,6 +5,7 @@ import type { App } from '../app';
 import { getRecords } from '../scryfall/cardData';
 import { fetchByIds } from '../scryfall/resolve';
 import { readBasics } from '../state/basics';
+import { cubesOnTable } from '../state/cubes';
 import { DEFAULT_SETTINGS, type Card, type CardRecord, type TableDoc } from '../state/types';
 import { HIDDEN, type TableState } from '../../shared/table';
 
@@ -31,6 +32,8 @@ export function toDoc(app: App, withCardData: boolean): TableDoc {
     ...(c.stand ? { stand: c.stand } : {}),
     // Last moved from the far side (decision 267).
     ...(c.side ? { side: c.side } : {}),
+    // Spawned from a CubeCobra cube (decision 321).
+    ...(c.cube ? { cube: c.cube } : {}),
   }));
   const cardData: Record<string, CardRecord> = {};
   if (withCardData) {
@@ -54,6 +57,7 @@ export function toDoc(app: App, withCardData: boolean): TableDoc {
     elo: eloOnTable(app),
     basics: store.basics,
     dice: [...store.dice.values()].map((d) => ({ ...d, x: round(d.x), y: round(d.y), z: round(d.z), yaw: round(d.yaw, 5) })),
+    cubes: cubesOnTable(store.cubes.values(), store.cards.values()),
   };
 }
 
@@ -87,6 +91,7 @@ export function tableOfDoc(doc: TableDoc): TableState {
     dice: Array.isArray(doc.dice) ? doc.dice.map((d) => ({ ...d })) : [],
     // Older files have no basics: they keep the defaults (decision 210).
     basics: readBasics(doc.basics),
+    cubes: Array.isArray(doc.cubes) ? doc.cubes.map((c) => ({ ...c })) : [],
   };
 }
 

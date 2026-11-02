@@ -61,7 +61,7 @@ export interface CreateRoom {
   tag: Tag;
 }
 
-const OP_KINDS = new Set(['add', 'remove', 'move', 'grab', 'release', 'reuid', 'named', 'spread', 'mat', 'dice', 'basics', 'table', 'replace', 'batch']);
+const OP_KINDS = new Set(['add', 'remove', 'move', 'grab', 'release', 'reuid', 'named', 'spread', 'mat', 'dice', 'basics', 'cubes', 'table', 'replace', 'batch']);
 
 /** A light shape check before an op reaches the mirror or the crown; applyOp and the judge read the rest. */
 function isOp(x: unknown): x is Op {

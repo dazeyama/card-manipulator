@@ -10,7 +10,7 @@ import type { Card } from './types';
 import type { TableState } from '../../shared/table';
 
 /** A card as undo keeps it: everything an action can change. */
-export type CardSnap = Pick<Card, 'uid' | 'scryfallId' | 'finish' | 'x' | 'y' | 'z' | 'yaw' | 'faceUp' | 'pileId' | 'spreadOf' | 'laidAt' | 'stand' | 'side'>;
+export type CardSnap = Pick<Card, 'uid' | 'scryfallId' | 'finish' | 'x' | 'y' | 'z' | 'yaw' | 'faceUp' | 'pileId' | 'spreadOf' | 'laidAt' | 'stand' | 'side' | 'cube'>;
 
 /** Cards, named piles, spreads, mats, dice, basics and the table's name. */
 export type TableSnap = TableState;

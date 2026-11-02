@@ -21,6 +21,8 @@ export interface SpawnOptions {
   where: 'cursor' | 'center';
   /** Explicit spot, overriding `where`. */
   at?: { x: number; y: number };
+  /** The CubeCobra cube the cards come from, by id (decision 321). */
+  cube?: string;
 }
 
 const DROP_HEIGHT = 70;
@@ -53,6 +55,7 @@ export function spawnCards(app: App, items: SpawnItem[], opts: SpawnOptions): st
     yaw: places[i].yaw,
     faceUp: opts.faceUp,
     side: app.side || undefined,
+    ...(opts.cube ? { cube: opts.cube } : {}),
     pileId: null,
     spreadOf: null,
   }));

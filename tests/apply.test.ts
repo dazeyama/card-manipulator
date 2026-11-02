@@ -19,6 +19,7 @@ function build(): Store {
   store.setNamed([{ id: 'p1', name: 'Keep', filter: null, anchor: { x: 100, y: 0 }, yaw: 0 }]);
   store.setSpreads([{ id: 's1', anchor: { x: 200, y: 0 }, yaw: 0, uids: ['c'], pileId: null }]);
   store.setDice([{ uid: 'd1', x: 5, y: 5, z: 10, yaw: 0, value: 3 }, { uid: 'd2', x: 50, y: 5, z: 10, yaw: 0, value: 6, kind: 'd20', color: '#1f3a6e' }]);
+  store.setCubes([{ id: 'k1', name: 'Vintage Cube', size: 540 }, { id: 'k2', name: 'Peasant', size: 360 }]);
   return store;
 }
 
@@ -40,6 +41,8 @@ const OPS: [string, Op][] = [
   ['mat spill', { t: 'mat', spill: ['st'] }],
   ['dice set and remove', { t: 'dice', set: [{ uid: 'd1', x: 9, y: 9, z: 10, yaw: 1, value: 5 }, { uid: 'd3', x: 0, y: 0, z: 10, yaw: 0, value: 1 }], remove: ['d2'] }],
   ['basics', { t: 'basics', basics: { ...defaultBasics(), Island: { name: 'Snow-Covered Island', set: 'khm', number: '277', foil: true } } }],
+  ['cubes set, new and changed', { t: 'cubes', set: [{ id: 'k2', name: 'Pauper', size: 450 }, { id: 'k1', name: 'Vintage Cube v2', size: 540 }] }],
+  ['cubes remove', { t: 'cubes', remove: ['k1'] }],
   ['table name', { t: 'table', name: '  Draft night  ' }],
   ['replace', { t: 'replace', table: { name: 'Fresh', cards: [card('z', 1)], named: [], spreads: [], mats: [], dice: [], basics: defaultBasics() } }],
   ['batch', { t: 'batch', ops: [{ t: 'remove', uids: ['a'] }, { t: 'move', moves: [{ uid: 'b', x: 1 }] }, { t: 'dice', remove: ['d1'] }, { t: 'table', name: 'B' }] }],
@@ -105,6 +108,7 @@ describe('the store tells a room each local change and how to undo it', () => {
     ['removeDice', (s) => s.removeDice(['d2'])],
     ['replaceDice', (s) => s.replaceDice([{ uid: 'd9', x: 1, y: 1, z: 10, yaw: 0, value: 2 }])],
     ['setBasics', (s) => s.setBasics({ ...defaultBasics(), Forest: { name: 'Forest', set: 'unf', number: '239', foil: false } })],
+    ['setCubes', (s) => s.setCubes([{ id: 'k1', name: 'Renamed', size: 541 }, { id: 'k9', name: 'New', size: 360 }], ['k2'])],
     ['setName', (s) => s.setName('Other')],
     ['clear', (s) => s.clear()],
     ['replaceTable', (s) => s.replaceTable({ name: 'R', cards: [card('r1')], named: [], spreads: [], mats: [], dice: [], basics: defaultBasics() })],

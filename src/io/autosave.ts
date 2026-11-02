@@ -33,6 +33,7 @@ export class Autosave {
     ev.on('reset', schedule);
     ev.on('mats', schedule);
     ev.on('basics', schedule);
+    ev.on('cubes', schedule);
     ev.on('life', schedule);
     ev.on('dice', schedule);
     app.onFrame(() => {

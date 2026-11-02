@@ -313,6 +313,8 @@ export class Authority {
         return crown ? null : this.checkMat(op, from, may, ctx);
       case 'basics':
         return crown ? null : may('basics');
+      case 'cubes':
+        return crown ? null : may('cubes');
       case 'table':
         return crown ? null : may('table');
       case 'replace':

@@ -72,6 +72,8 @@ export type Action =
   /** `mat` spill or remove of a stand that is not yours (O31). */
   | 'standSpill'
   | 'basics'
+  /** The CubeCobra cubes on the table (decision 321): Cards, like spawning the cube. */
+  | 'cubes'
   /** The table's name. */
   | 'table'
   /** New table, Load file. */
@@ -119,6 +121,7 @@ const NEEDS: Record<Action, Need> = {
   standClaim: 'everything',
   standSpill: 'everything',
   basics: 'everything',
+  cubes: 'cards',
   table: 'crown',
   replace: 'crown',
   reuid: 'crown',

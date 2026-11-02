@@ -11,6 +11,7 @@ import {
   DEFAULT_SETTINGS,
   type Card,
   type CardRecord,
+  type CubeInfo,
   type NamedPile,
   type Pile,
   type Settings,
@@ -44,6 +45,8 @@ export interface StoreEvents {
   mats: void;
   /** The table's basic land printings changed (decision 210). */
   basics: void;
+  /** A CubeCobra cube was added to the table's list (decision 321). */
+  cubes: void;
   /** A playmat's life total changed (decision 239). Not a table change for undo. */
   life: void;
   /** Dice were added, moved, rolled, set or removed (decision 255). */
@@ -126,6 +129,7 @@ export function snapCard(c: Card): CardSnap {
     uid: c.uid, scryfallId: c.scryfallId, finish: c.finish,
     x: c.x, y: c.y, z: c.z, yaw: c.yaw, faceUp: c.faceUp,
     pileId: c.pileId, spreadOf: c.spreadOf, laidAt: c.laidAt ? { ...c.laidAt } : undefined, stand: c.stand, side: c.side,
+    ...(c.cube ? { cube: c.cube } : {}),
   };
 }
 
@@ -489,6 +493,19 @@ export class Store {
     this.told({ t: 'basics', basics: JSON.parse(JSON.stringify(basics)) as Basics }, { t: 'basics', basics: was });
   }
 
+  /** CubeCobra cubes spawned onto the table (decision 321), by cube id; kept with the table. */
+  readonly cubes = new Map<string, CubeInfo>();
+
+  /** Add cubes to the list, or update ones already on it, and drop others by id. */
+  setCubes(set: CubeInfo[], remove: string[] = []): void {
+    const was = [...set.map((c) => c.id), ...remove].flatMap((id) => this.cubes.get(id) ?? []);
+    const added = set.filter((c) => !this.cubes.has(c.id)).map((c) => c.id);
+    for (const id of remove) this.cubes.delete(id);
+    for (const c of set) this.cubes.set(c.id, { ...c });
+    this.events.emit('cubes', undefined);
+    this.told({ t: 'cubes', set: set.map((c) => ({ ...c })), remove: [...remove] }, { t: 'cubes', set: was.map((c) => ({ ...c })), remove: added });
+  }
+
   /** A mat changed in place: tell the room the whole mat, before and after. */
   private matChanged(m: Mat, was: Mat): void {
     this.told({ t: 'mat', set: [{ ...m }] }, { t: 'mat', set: [was] });
@@ -646,6 +663,8 @@ export class Store {
     this.cards.clear();
     this.mats.clear();
     this.elo.clear();
+    this.cubes.clear();
+    this.events.emit('cubes', undefined);
     this.dice.clear();
     this.events.emit('dice', undefined);
     this.basics = defaultBasics();
@@ -672,6 +691,7 @@ export class Store {
       mats: [...this.mats.values()].map((m) => ({ ...m })),
       dice: [...this.dice.values()].map((d) => ({ ...d })),
       basics: JSON.parse(JSON.stringify(this.basics)) as Basics,
+      cubes: [...this.cubes.values()].map((c) => ({ ...c })),
     };
   }
 
@@ -700,10 +720,13 @@ export class Store {
     for (const m of t.mats) this.mats.set(m.uid, { ...m });
     for (const d of t.dice) this.dice.set(d.uid, { ...d });
     this.basics = JSON.parse(JSON.stringify(t.basics)) as Basics;
+    this.cubes.clear();
+    for (const c of t.cubes ?? []) this.cubes.set(c.id, { ...c });
     this.events.emit('added', cards.map((c) => c.uid));
     this.events.emit('mats', undefined);
     this.events.emit('dice', undefined);
     this.events.emit('basics', undefined);
+    this.events.emit('cubes', undefined);
     this.events.emit('name', undefined);
     this.events.emit('selection', undefined);
     this.events.emit('settled', cards.map((c) => c.uid));

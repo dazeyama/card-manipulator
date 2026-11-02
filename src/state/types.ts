@@ -38,6 +38,16 @@ export interface Card {
   stand?: string;
   /** The side of the table that last moved it (decision 267): 1 the far side, in mirror mode; unset, the near side. */
   side?: 0 | 1;
+  /** The CubeCobra cube it was spawned from, by cube id (decision 321). */
+  cube?: string;
+}
+
+/** A CubeCobra cube spawned onto the table (decision 321): its chip at the top of the play space. */
+export interface CubeInfo {
+  id: string;
+  name: string;
+  /** Cards in the cube's mainboard on CubeCobra. */
+  size: number;
 }
 
 export type PileKind = 'stack' | 'messy';
@@ -205,6 +215,8 @@ export interface TableDoc {
     side?: 0 | 1;
     /** Saved from a room by someone who could not see it (ONLINE.md 7.5, O75): scryfallId is 'hidden'. */
     hidden?: true;
+    /** The CubeCobra cube it came from (decision 321). */
+    cube?: string;
   }[];
   /** Open spreads (agent decision 61); older files have none. */
   spreads?: { id: string; anchor: { x: number; y: number }; yaw: number; uids: string[]; pileId: string | null }[];
@@ -217,4 +229,6 @@ export interface TableDoc {
   basics?: Basics;
   /** Dice on the table (decision 255); older files have none. */
   dice?: Die[];
+  /** CubeCobra cubes spawned onto the table (decision 321); older files have none. */
+  cubes?: CubeInfo[];
 }
