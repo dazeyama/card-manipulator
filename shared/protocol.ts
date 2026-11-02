@@ -123,6 +123,8 @@ export interface StreamOut {
    * without its emoji. At most 16 characters.
    */
   cs?: string;
+  /** **(O118)** My quick chat is open: others show typing dots over my cursor. Absent when it is closed. */
+  typ?: 1;
 }
 
 // ---- snapshots (8.7) ----

@@ -59,5 +59,8 @@ describe('the cursor glove goes with the cursor (decision 293)', () => {
     expect(composeStream(0, [1, 2], [], [], undefined, 'fist').cs).toBe('fist');
     expect(composeStream(0, undefined, [], [], undefined, 'fist').cs).toBeUndefined();
     expect(composeStream(0, [1, 2], [], [], undefined, 'x'.repeat(40)).cs).toHaveLength(16);
+    // The quick chat open (O118): typing dots for the others, with or without a cursor.
+    expect(composeStream(0, undefined, [], [], undefined, 'fist', true).typ).toBe(1);
+    expect(composeStream(0, [1, 2], [], [], undefined, 'fist').typ).toBeUndefined();
   });
 });

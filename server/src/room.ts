@@ -780,6 +780,8 @@ export class Room extends DurableObject<Env> {
     if (msg.fly) out.fly = msg.fly;
     // The glove the player's cursor shows (decision 293): a short name, letters only.
     if (typeof msg.cs === 'string' && msg.cs.length <= 16 && /^[A-Za-z]+$/.test(msg.cs)) out.cs = msg.cs;
+    // Their quick chat is open: typing dots over their cursor (O118).
+    if (msg.typ === 1) out.typ = 1;
     const text = JSON.stringify(out);
     for (const s of this.sockets()) {
       if (s.id === seat.id) continue;

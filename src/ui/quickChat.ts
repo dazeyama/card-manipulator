@@ -72,6 +72,7 @@ export class QuickChat {
     clearTimeout(this.fadeTimer);
     this.el.classList.remove('faded');
     this.field.hidden = false;
+    this.app.chatOpen = true;
     this.field.focus();
   }
 
@@ -79,6 +80,7 @@ export class QuickChat {
   close(): void {
     if (this.field.hidden) return;
     this.field.hidden = true;
+    this.app.chatOpen = false;
     if (document.activeElement === this.field) this.field.blur();
     this.app.canvas.focus();
     this.fadeLater();

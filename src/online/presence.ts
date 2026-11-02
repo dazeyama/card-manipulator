@@ -48,6 +48,8 @@ interface Cursor {
   /** Their latest chat line, over their cursor for a few seconds (O117). */
   bubble?: HTMLSpanElement;
   bubbleTimer?: number;
+  /** Their quick chat is open: the bubble shows typing dots (O118). */
+  typing?: boolean;
 }
 
 /** A chat line over its sender's cursor: shortened past this many characters... */
@@ -86,20 +88,46 @@ export class Presence implements PresenceView {
     sync.online.room.events.on('chat', (line) => this.say(line.from, line.text));
   }
 
+  /** The bubble over a player's cursor, made the first time it is needed, in their color. */
+  private bubbleOf(c: Cursor): HTMLSpanElement {
+    let b = c.bubble;
+    if (!b) {
+      b = document.createElement('span');
+      b.className = 'remote-cursor-bubble gone';
+      c.el.append(b);
+      c.bubble = b;
+    }
+    const colour = this.sync.online.room.player(c.id)?.colour;
+    if (colour) b.style.borderColor = colour;
+    return b;
+  }
+
+  /** A player's quick chat opened or closed (O118): typing dots in their bubble while it is open. */
+  private typing(from: string, on: boolean): void {
+    const c = this.cursors.get(from);
+    if (!c || !c.seen || !!c.typing === on) return;
+    c.typing = on;
+    const b = this.bubbleOf(c);
+    if (on) {
+      clearTimeout(c.bubbleTimer);
+      b.classList.add('typing');
+      b.replaceChildren(...[0, 1, 2].map(() => document.createElement('i')));
+      b.classList.remove('gone');
+    } else if (b.classList.contains('typing')) {
+      // Closed without a line (Esc): the dots fade. A line sent replaces them in `say`.
+      b.classList.add('gone');
+    }
+  }
+
   /** Another player's chat line, in a bubble over their cursor for a few seconds. */
   private say(from: string | undefined, text: string): void {
     if (!from || from === this.sync.online.room.me || this.stopped) return;
     const c = this.cursors.get(from);
     if (!c || !c.seen) return;
-    let b = c.bubble;
-    if (!b) {
-      b = document.createElement('span');
-      b.className = 'remote-cursor-bubble';
-      c.el.append(b);
-      c.bubble = b;
-    }
-    const colour = this.sync.online.room.player(from)?.colour;
-    if (colour) b.style.borderColor = colour;
+    // The line replaces their typing dots; their next stream says if the box is still open.
+    c.typing = false;
+    const b = this.bubbleOf(c);
+    b.classList.remove('typing');
     b.textContent = text.length > BUBBLE_CHARS ? `${text.slice(0, BUBBLE_CHARS - 1).trimEnd()}…` : text;
     b.classList.remove('gone');
     clearTimeout(c.bubbleTimer);
@@ -145,6 +173,7 @@ export class Presence implements PresenceView {
     // The glove they show (decision 293); absent or unknown, the plain arrow.
     if (msg.cur) this.cursorTo(msg.from, msg.cur[0], msg.cur[1], now, isGlove(msg.cs) ? msg.cs : 'arrow');
     else this.hideCursor(msg.from);
+    this.typing(msg.from, msg.typ === 1);
     if (msg.sel) {
       this.selections.set(msg.from, msg.sel);
       this.retint();

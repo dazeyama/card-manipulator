@@ -56,6 +56,8 @@ export class App {
   flags: Flags | null = null;
   /** The glove your cursor shows now (a Glove of ui/cursorArt.ts), set by the cursors; a room streams it (decision 293). */
   cursorGlove = 'arrow';
+  /** The room's quick chat has its text box open; a room streams it as typing dots (O118). */
+  chatOpen = false;
   /** The room this table is in (ONLINE.md 11.2); null while offline. */
   online: Online | null = null;
   /** The table point under the cursor the last time it was over the table (spawn "at the cursor"). */
