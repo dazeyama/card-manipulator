@@ -47,6 +47,7 @@ import { ContextHints } from './ui/hints';
 import { HelpPanel } from './ui/helpPanel';
 import { CubeChips } from './ui/cubeChips';
 import { Flags } from './flags';
+import { StackSettler } from './settleStacks';
 import { RadialMenu } from './ui/radialMenu';
 import { RADIAL_MENU, type RadialItem } from './input/radial';
 import { buildQueryTab } from './ui/queryTab';
@@ -94,11 +95,13 @@ const spawnPanel = new SpawnPanel(app, left);
 const hud = new Hud(app, bottom);
 app.rest = new RestSync(app);
 // After each detection: filtered piles and flags turn away what doesn't match (decisions 322, 327),
-// and named piles left empty go (decision 328).
+// named piles left empty go (decision 328), and neat stacks with a gap drop onto what is under them (decision 349).
+const settler = new StackSettler(app);
 const pileSync = installPileSync(app.store, () => {
   app.named?.keepFilters();
   app.named?.dropEmpty();
   flags.keepFilters();
+  settler.settle();
 });
 // Cards cached before EDHREC rank was kept are fetched again once (decision 187).
 installRecordUpgrade(app.store);
