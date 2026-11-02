@@ -73,6 +73,15 @@ export class Flags {
   hovered: string | null = null;
   /** A flag being dragged, drawn at its new spot until let go. */
   private dragging: { uid: string; x: number; y: number } | null = null;
+  /** A dragged flag carries cards (Alt, or Shift's pull): the cursor shows the link (decision 330). */
+  private carrying = false;
+  /** The unlocked flag whose pole or cloth is under the mouse: a press there picks it up (the open glove). */
+  grabbable: string | null = null;
+
+  /** A flag is in hand: the cursor shows the fist (decision 330). */
+  get holding(): { carrying: boolean } | null {
+    return this.dragging ? { carrying: this.carrying } : null;
+  }
   /** Card counts on the cloths are worked out again when something changed. */
   private countsDirty = true;
   private readonly counts = new Map<string, number>();
@@ -215,6 +224,7 @@ export class Flags {
     const fits = this.fitter(f);
     const carry = () => {
       if (riders) return;
+      this.carrying = true;
       riders = new Map();
       for (const c of this.members(f)) {
         if (app.motion.held.has(c.uid) || remoteHeld.has(c.uid)) continue;
@@ -276,6 +286,7 @@ export class Flags {
       up: () => {
         const to = this.dragging;
         this.dragging = null;
+        this.carrying = false;
         if (!moved) {
           store.clearSelection();
           this.edit(uid);
@@ -316,6 +327,7 @@ export class Flags {
       },
       cancel: () => {
         this.dragging = null;
+        this.carrying = false;
         release();
         // Back where they lie.
         for (const u of riders?.keys() ?? []) {
@@ -538,10 +550,12 @@ export class Flags {
     // The flag under the mouse: its pole or cloth, or its bare zone (no card under the cursor).
     const p = app.pointer;
     let hovered: string | null = null;
+    this.grabbable = null;
     if (!p.inside) {
       if (!this.buttons.matches(':hover')) this.hovered = null;
     } else if (!this.buttons.matches(':hover')) {
       hovered = this.pick(p.x, p.y);
+      if (hovered && !store.flags.get(hovered)?.locked) this.grabbable = hovered;
       if (!hovered && !this.deps.cardHovered()) {
         const t = app.rig.screenToPlane(p.x, p.y, 0);
         hovered = t ? flagOfCard(store.flags.values(), t)?.uid ?? null : null;

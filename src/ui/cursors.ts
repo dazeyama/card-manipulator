@@ -308,6 +308,12 @@ export class Cursors {
     // Dragging a playmat: the fist, linked when it carries its cards (decision 144).
     const mats = this.app.mats;
     if (mats?.dragging) return mats.dragging.carrying ? 'fistFormation' : 'fist';
+    // A flag (decision 330): the fist while dragging it, with the magnet while Shift pulls cards in,
+    // or the link while Alt carries its cards; the open glove over its pole or cloth.
+    const flags = this.app.flags;
+    const flag = flags?.holding;
+    if (flag) return shift ? 'fistSweep' : flag.carrying ? 'fistFormation' : 'fist';
+    if (flags?.grabbable && !this.drag.dragging && gesture !== 'marquee') return shift ? 'openSweep' : alt ? 'openFormation' : 'open';
     // Dice (decision 260): the fist while carrying any, the open hand over one.
     const dice = this.app.dice;
     if (dice?.dragging) return 'fist';

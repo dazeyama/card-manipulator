@@ -145,6 +145,7 @@ const flags = new Flags(app, {
   cardHovered: () => !!mouse.hovered,
   exportCards: (uids, label, near) => exporter.open(uids, label, near),
 });
+app.flags = flags;
 mouse.hooks.objectPress = (x, y, mods) => {
   const uid = diceLayer.pick(x, y);
   if (uid) return dice.press(uid, x, y, mods);

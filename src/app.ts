@@ -15,6 +15,7 @@ import type { NamedPiles } from './named';
 import type { RestSync } from './physics/restSync';
 import type { Mats } from './mats';
 import type { Dice } from './dice';
+import type { Flags } from './flags';
 import type { Rest } from './state/rest';
 import type { Online } from './online';
 
@@ -48,6 +49,8 @@ export class App {
   mats: Mats | null = null;
   /** Dice (decision 255), set at boot. */
   dice: Dice | null = null;
+  /** Flags (decision 327), for the cursor. */
+  flags: Flags | null = null;
   /** The glove your cursor shows now (a Glove of ui/cursorArt.ts), set by the cursors; a room streams it (decision 293). */
   cursorGlove = 'arrow';
   /** The room this table is in (ONLINE.md 11.2); null while offline. */
