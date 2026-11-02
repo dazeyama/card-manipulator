@@ -428,9 +428,10 @@ export class Presence implements PresenceView {
     const { rig } = this.sync.app;
     const { width, height } = rig.viewport;
     for (const c of this.cursors.values()) {
-      // No timeout: a resting mouse streams nothing new, and its cursor stays (O18). It goes
-      // when its player's pointer leaves the table (a stream without `cur`) or the player does.
-      const visible = c.shown;
+      // No timeout: a resting mouse streams nothing new, and its cursor stays (O18). When its
+      // player's pointer leaves the table (a stream without `cur`) it stays where it was last,
+      // faded (O115); it goes only when the player leaves. Never seen yet: nowhere to draw it.
+      const visible = c.seen > 0;
       c.el.style.display = visible ? '' : 'none';
       if (!visible) continue;
       const s = rig.worldToScreen(c.x, c.y, 0);
@@ -438,7 +439,8 @@ export class Presence implements PresenceView {
       const x = Math.min(width - 10, Math.max(2, Number.isFinite(s.x) ? s.x : width / 2));
       const y = Math.min(height - 10, Math.max(2, Number.isFinite(s.y) ? s.y : height / 2));
       c.el.style.transform = `translate(${x}px, ${y}px)`;
-      c.el.style.opacity = off ? '0.6' : '1';
+      // Off your screen, pinned to its edge; off their table, faded further, but never gone (O115).
+      c.el.style.opacity = !c.shown ? '0.35' : off ? '0.6' : '1';
     }
   }
 }
