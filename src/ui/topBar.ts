@@ -94,7 +94,11 @@ export class TopBar {
       mirror.setAttribute('aria-pressed', String(mirrored));
     });
     mirror.addEventListener('click', () => app.rig.setMirrored(!app.rig.mirrored));
-    this.actions.append(mirror);
+    // Centre (decision 337): back to the middle of the table at the usual zoom, as Home does,
+    // for when you have panned off into the empty table and can't find your way back.
+    const centre = h('button', { class: 'btn small', title: 'Centre (Home): back to the middle of the table, at the usual zoom' }, 'Centre (Home)');
+    centre.addEventListener('click', () => app.rig.reset());
+    this.actions.append(mirror, centre);
   }
 
   /** Let the table's name be edited, or show it as text (a room's non-crown players, ONLINE.md 12.1). */

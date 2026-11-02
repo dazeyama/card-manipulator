@@ -36,6 +36,8 @@ const POLE_R = 2.5;
 const MAST_R = FLAG_REACH;
 /** How quickly the pole slides round to the top, per second (most of the way in about a third of a second). */
 const MAST_EASE = 9;
+/** The hover buttons stay this long after the mouse leaves the flag, so it can reach them (decision 337). */
+const BUTTON_GRACE_MS = 700;
 /** Two clicks on a flag's bare zone within this long select its cards (decision 335). */
 const DOUBLE_CLICK_MS = 350;
 /** The cloth's height on the table, mm; its width follows the text. */
@@ -163,7 +165,7 @@ export class Flags {
       b.title = title;
       b.addEventListener('pointerdown', (e) => e.stopPropagation());
       b.addEventListener('click', () => {
-        if (this.hovered) run(this.hovered, b);
+        if (this.buttonsFor) run(this.buttonsFor, b);
       });
       return b;
     };
@@ -209,6 +211,9 @@ export class Flags {
   }
 
   private lastClick = { uid: '', at: 0 };
+  /** The flag the hover buttons are showing for: the hovered one, or the last one for a moment after (decision 337). */
+  private buttonsFor: string | null = null;
+  private lastHoverAt = 0;
   /** Where round the circle the poles stand: an angle on the table, +y (the default view's top) at π/2. */
   private mastAngle = Math.PI / 2;
   /** The pole's offset from the zone's centre, for that angle. */
@@ -682,7 +687,16 @@ export class Flags {
       }
       this.hovered = hovered;
     }
-    const f = this.hovered ? store.flags.get(this.hovered) : undefined;
+    // The buttons wait a moment after the mouse leaves the flag: from the zone to the buttons over
+    // the pole is a short trip off the flag. On them they stay, as long as the mouse does.
+    const now = performance.now();
+    if (this.buttons.matches(':hover')) this.lastHoverAt = now;
+    else if (this.hovered) {
+      this.buttonsFor = this.hovered;
+      this.lastHoverAt = now;
+    } else if (now - this.lastHoverAt > BUTTON_GRACE_MS) this.buttonsFor = null;
+    const f = this.buttonsFor ? store.flags.get(this.buttonsFor) : undefined;
+    if (!f) this.buttonsFor = null;
     const show = !!f && !this.dragging && !app.flagging;
     this.buttons.hidden = !show;
     if (show) {
