@@ -168,7 +168,7 @@ card-manipulator/
 ├── src/ui/
 │   ├── onlinePanel.ts           the floating Online panel (Section 12.2)
 │   ├── joinPrompt.ts            nickname, color, password (Section 12.3)
-│   ├── chatStrip.ts             the chat in the panel
+│   ├── quickChat.ts             the chat, bottom left of the play space
 │   ├── tableBrowser.ts          the public list (Section 12.5)
 │   ├── playerRows.ts            the player list with rank pickers and the crown's menu
 │   └── desktopOnly.ts           the phone page (O53)
@@ -304,7 +304,7 @@ Two sides, as mirror mode has them. Everyone arrives on the near side and presse
 
 ### 5.4 Presence (O18, O33)
 
-- **Cursors: always shown, never hideable** (O18). A remote cursor is a small arrow in the player's color with a name tag, a DOM element positioned every frame by projecting the player's table point (x, y, 0) through your camera, so it sits on the felt where their mouse is. Off-screen cursors are clamped to the edge with the tag pointing in, at 60 % opacity. When a player's pointer leaves their table (onto a panel, out of the window), their cursor stays where it last was at 35 % opacity, never disappearing; it goes only when they leave the room (O115).
+- **Cursors: always shown, never hideable** (O18). A remote cursor is a small arrow in the player's color with a name tag, a DOM element positioned every frame by projecting the player's table point (x, y, 0) through your camera, so it sits on the felt where their mouse is. Off-screen cursors are clamped to the edge with the tag pointing in, at 60 % opacity. When a player's pointer leaves their table (onto a panel, out of the window), their cursor stays where it last was at 35 % opacity, never disappearing; it goes only when they leave the room (O115). A chat line they send shows in a speech bubble over their cursor for about 4 seconds, cut at 60 characters (O117).
 - **Held cards and dice float live.** While a player holds something, their stream carries each held uid's pose; your browser interpolates them 100 ms behind the stream and draws them lifted with a glow in that player's color. They are not selectable or grabbable by you ("That card is in Sam's hand").
 - **Selections in color.** A player's selection is sent at most twice a second as a uid list; those cards and dice glow in their color rather than the accent blue. Your own stays blue. This needs a per-instance glow color in `render/cards.ts` (an extra instanced attribute of three floats; the shader multiplies the glow by it) and in `render/dice.ts`.
 - **Tossed cards and rolled dice animate for everyone.** The thrower's stream carries flight poses until Rapier settles them; then the `move` or `dice` op lands them for good (Section 8.5).
@@ -312,7 +312,7 @@ Two sides, as mirror mode has them. Everyone arrives on the near side and presse
 
 ### 5.5 Chat (O35)
 
-A strip in the Online panel: the last 100 lines, name in the player's color, plain text up to 300 characters, Enter sends, nothing saved past the room's life. System lines in gray: joined (with rank), left, back, kicked, banned, crown passed, table locked and unlocked, room settings changed, "Sam spilled Pat's stand". The server keeps the 100 lines for joiners. Five messages per five seconds per player; more are dropped with a "Slow down" line only you see. **(agent)** Chat is not run through the name filter: it is private to the room and the crown can kick.
+A small box in the bottom left of the play space, above the control hints (O117): a new line shows there with up to four before it, and they fade 8 seconds after the last one. Enter on the table opens a text box under them (O116); Enter sends and closes it, Esc closes it. Name in the player's color, plain text up to 300 characters, nothing saved past the room's life. System lines in gray: joined (with rank), left, back, kicked, banned, crown passed, table locked and unlocked, room settings changed, "Sam spilled Pat's stand". The server keeps the 100 lines for joiners. Five messages per five seconds per player; more are dropped with a "Slow down" line only you see. **(agent)** Chat is not run through the name filter: it is private to the room and the crown can kick.
 
 ---
 
@@ -756,7 +756,7 @@ Spec 4.2 says everything that changes the table goes through `Store`. Online rel
 | `ui/topBar.ts` | the **Online** button and the avatar row; the lock icon; "Reconnecting…" |
 | `ui/helpPanel.ts` | an **Online** group (Section 13) |
 | `ui/cursors.ts` | unchanged for your own cursor; remote cursors are `presence.ts` DOM |
-| `styles/app.css` | `.online-panel`, `.player-row`, `.chat-strip`, `.remote-cursor`, `.table-browser`, `.join-prompt`, `.room-closed` |
+| `styles/app.css` | `.online-panel`, `.player-row`, `.quick-chat`, `.remote-cursor-bubble`, `.remote-cursor`, `.table-browser`, `.join-prompt`, `.room-closed` |
 | `index.html` | nothing: `#/room/...` is a hash route handled in `main.ts` |
 | `public/welcome-table.json` | unchanged; the welcome *screen* gains a **Join a table** link |
 | `dev/regression.ts` | `__room()` opens a second tab joined to the current room for the gate; `__bots(n)` adds n fake players streaming cursors for the performance pass (dev only) |
@@ -814,11 +814,11 @@ The first-visit welcome (decision 153) gains one line under its heading: "Playin
 
 ## 13. Keys and the help panel
 
-One new key since O116: **Enter** on the table, in a room, opens the Online panel if it is closed and puts the cursor in the chat box; Esc there gives the keys back to the table. **M** keeps its meaning and is how you cross the table online. Enter in the chat field sends; keys stay inactive while it has focus (spec 16). The help panel gains an **Online** group:
+One new key since O116: **Enter** on the table, in a room, opens the chat box in the bottom left of the play space (O117) with the cursor in it; Enter sends and closes it, Esc closes it, and the keys go back to the table. **M** keeps its meaning and is how you cross the table online. Enter in the chat field sends; keys stay inactive while it has focus (spec 16). The help panel gains an **Online** group:
 
 | Icon | Keys | What |
 |---|---|---|
-| 🌐 | Go online | share your table by link; the panel has the link, settings, players and chat |
+| 🌐 | Go online | share your table by link; the panel has the link, settings and players |
 | 👑 | Crown | the host: ranks, kicks, settings, Lock table; passed in the player row |
 | 🪪 | Ranks | View · Move · Tokens · Cards · Everything; the crown sets them |
 | 🂠 | Hidden | your stand's cards and face-down cards show their backs to others |
@@ -1056,8 +1056,9 @@ Owner answers of 2026-10-30 are recorded as such; **(agent)** marks a choice mad
 | O112 | Owner (2026-11-01): **searching a face-down pile** (L L, spec decision 310) loosens O30 for decks too big for a stand. A `search {uids}` message (Move rank, at most 250 cards) makes the server reveal those cards to that player alone; it broadcasts `searching {player, uids}` so every table glows the pile in the searcher's color, and says in chat “Sam is searching a pile of 62” and “Sam finished searching”. `search {uids: []}` ends it, with `forget` for the cards still hidden from them; leaving ends it too. **(agent)** Searches are server memory only (a hibernation ends them; the searcher's browser hides the cards itself when its search ends); no protocol bump, the messages are additive; the client's gate (`visibleTo`) and the crown's both include the player's own search. |
 | O113 | Owner (2026-11-01): **cube chips in rooms** (spec decision 321): everyone in a room sees which CubeCobra cubes are on the table. **(agent)** A new op `{t: 'cubes', set?, remove?}` keeps the table's cube list (id, name, size) in `TableState.cubes`, and snapshots carry it in part 0; each card's `cube` id travels in its `CardSnap`, as other card fields do, and is not redacted: it says which public cube a hidden card came from, never which card it is. The op needs Cards, like spawning the cube. The op and the snapshot field changed the protocol's shape, so `PROTOCOL` is 2: tabs left open across the deploy are told to reload. |
 | O114 | Owner (2026-11-01): **flags in rooms** (spec decision 327): everyone sees them. **(agent)** A new op `{t: 'flag', set?, remove?}` keeps `TableState.flags`, carried in snapshot part 0; placing, moving, editing, locking or taking away a flag needs **Move**, like a playmat, since flags are no one's. Turning a card away is an ordinary `move` by the browser that put it down. An empty named pile is deleted by the crown's browser alone (spec decision 328). The op and the snapshot field change the protocol's shape: `PROTOCOL` is 3. |
-| O115 | Owner (2026-11-02): other players' cursors faded when off your screen and then **disappeared**; keep the fade but **never let them fully disappear**. **(agent)** A cursor off your screen was already pinned to its edge at 60 % opacity; it vanished when its player's pointer left their table (their stream stops carrying a cursor). Now it stays at its last spot, pinned to your screen's edge if need be, at 35 % opacity until their pointer is back on the table; it goes only when the player leaves the room. A player whose pointer has never been on the table yet still has no cursor to show. Client only: no protocol change. |
-| O116 | Owner (2026-11-02): **Enter for text chat**, as proposed, and not on the radial. **(agent)** On the table in a room, Enter opens the Online panel if it is closed and puts the cursor in the chat box; Enter there sends as before, and Esc leaves the box, so keys act on the table again. Offline it does nothing. Off the radial and the bottom bar by the owner's choice: a window control, like the camera keys. The `?` panel's Online group lists it. |
+| O115 | Owner (2026-11-01): other players' cursors faded when off your screen and then **disappeared**; keep the fade but **never let them fully disappear**. **(agent)** A cursor off your screen was already pinned to its edge at 60 % opacity; it vanished when its player's pointer left their table (their stream stops carrying a cursor). Now it stays at its last spot, pinned to your screen's edge if need be, at 35 % opacity until their pointer is back on the table; it goes only when the player leaves the room. A player whose pointer has never been on the table yet still has no cursor to show. Client only: no protocol change. |
+| O116 | Owner (2026-11-01): **Enter for text chat**, as proposed, and not on the radial. **(agent)** On the table in a room, Enter opens the Online panel if it is closed and puts the cursor in the chat box; Enter there sends as before, and Esc leaves the box, so keys act on the table again. Offline it does nothing. Off the radial and the bottom bar by the owner's choice: a window control, like the camera keys. The `?` panel's Online group lists it. |
+| O117 | Owner (2026-11-01): **a quick chat in the bottom left of the play space** instead of opening the Online panel, which is a settings menu at heart; and **chat lines show over the sender's cursor**. The owner chose: it shows on new messages, then fades; 5 lines; the chat leaves the Online panel; a speech bubble for 4 s. **(agent)** The box sits above the control hints, ignores the mouse except for its text box, and fades 8 s after the last line (not while the text box is open). Enter on the table now opens this box rather than the panel (O116 updated); Enter sends and closes it, Esc or clicking away closes it. The panel keeps a one-line hint, "Chat: press Enter on the table". The bubble sits above and right of the cursor's tip with a border in the player's color, cut at 60 characters, and stays 4 s, a little longer for long lines (at most 7 s); your own lines and system lines get none, nor does a player whose cursor has never been on the table. Client only: no protocol change. |
 
 ## Appendix B: Open items
 

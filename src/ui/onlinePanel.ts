@@ -17,7 +17,7 @@ import type { TopBar } from './topBar';
 import { confirmDialog } from './confirm';
 import { h } from './dom';
 import { roomToast, type Guard } from '../online/guard';
-import { ChatStrip } from './chatStrip';
+import { QuickChat } from './quickChat';
 import { PlayerRows } from './playerRows';
 import { ColourPicker, joinPrompt } from './joinPrompt';
 import { hideRoomState, roomNameLine, showRoomState } from './roomStates';
@@ -664,12 +664,14 @@ export class OnlinePanel {
   private readonly body: HTMLElement;
   private readonly title: HTMLElement;
   private readonly rows: PlayerRows;
-  private readonly chat = new ChatStrip();
+  /** The room's chat, in the bottom left of the play space (O117). */
+  private readonly chat: QuickChat;
   private attachedTo: Online | null = null;
   private moved = false;
 
   constructor(private readonly ui: OnlineUi) {
     this.rows = new PlayerRows(ui.app);
+    this.chat = new QuickChat(ui.app);
     const close = h('button', { class: 'icon-btn', title: 'Close (Esc)', 'aria-label': 'Close' }, '✕');
     close.addEventListener('click', () => this.close());
     this.title = h('span', { class: 'panel-title' }, 'Online');
@@ -707,11 +709,10 @@ export class OnlinePanel {
     else this.open();
   }
 
-  /** Enter on the table, in a room (O116): the panel opens if it is closed, and the cursor goes into the chat. False offline. */
+  /** Enter on the table, in a room (O116): the quick chat opens with the cursor in it (O117). False offline. */
   openChat(): boolean {
     if (!this.ui.online) return false;
-    if (!this.isOpen) this.open();
-    this.chat.focus();
+    this.chat.open();
     return true;
   }
 
@@ -838,7 +839,8 @@ export class OnlinePanel {
       ),
       this.settingsSection(online),
       h('div', { class: 'online-section' }, h('div', { class: 'online-section-title' }, `Players (${room.players.filter((p) => p.connected).length} of 8)`), this.rows.el),
-      h('div', { class: 'online-section grow-section' }, h('div', { class: 'online-section-title' }, 'Chat'), this.chat.el),
+      // The chat lives in the bottom left of the play space now (O117).
+      h('p', { class: 'muted small' }, 'Chat: press Enter on the table.'),
     );
     this.rows.render();
   }

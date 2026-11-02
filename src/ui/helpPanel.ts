@@ -61,11 +61,11 @@ const GROUPS: [string, Line[]][] = [
   ]],
   // Rooms (ONLINE.md 13): no new keys; how sharing a table works.
   ['Online', [
-    ['🌐', 'Go online', 'share your table by link: up to eight players, each with a cursor; the panel has the link, settings, players and chat · 🗂 Tables lists the public ones'],
+    ['🌐', 'Go online', 'share your table by link: up to eight players, each with a cursor; the panel has the link, settings and players · 🗂 Tables lists the public ones'],
     ['👑', 'Crown', 'the host: ranks, kicks, bans, settings, Lock table; passed from a player’s ⋯ in the panel · Everything is a co-host: it can kick, ban, set ranks up to Cards and lock the table, for players below Everything'],
     ['🪪', 'Ranks', 'View · Move · Tokens · Cards · Everything; the crown sets them, Everything up to Cards'],
     ['🂠', 'Hidden', 'your stand’s cards and face-down cards show their backs to others; 👤 on a stand’s lip says whose it is'],
-    ['💬', 'Enter', 'chat: opens the panel and puts the cursor in the chat box; Enter sends, Esc gives the keys back to the table'],
+    ['💬', 'Enter', 'chat: a box opens in the bottom left with the last lines; Enter sends, Esc gives the keys back to the table'],
     ['🪞', 'M', 'cross to the far side of the table'],
   ]],
 ];

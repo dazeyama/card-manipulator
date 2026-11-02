@@ -45,7 +45,16 @@ interface Cursor {
   y: number;
   seen: number;
   shown: boolean;
+  /** Their latest chat line, over their cursor for a few seconds (O117). */
+  bubble?: HTMLSpanElement;
+  bubbleTimer?: number;
 }
+
+/** A chat line over its sender's cursor: shortened past this many characters... */
+const BUBBLE_CHARS = 60;
+/** ...shown this long, a little longer for longer lines, at most BUBBLE_MAX_MS. */
+const BUBBLE_MS = 4000;
+const BUBBLE_MAX_MS = 7000;
 
 const SVG = 'http://www.w3.org/2000/svg';
 
@@ -73,6 +82,29 @@ export class Presence implements PresenceView {
     window.addEventListener(CURSOR_SIZE_EVENT, this.resize);
     // A pile being searched glows in the searcher's color (L L, decision 310).
     sync.online.room.events.on('searches', () => this.retint());
+    // A chat line shows over its sender's cursor for a moment (O117).
+    sync.online.room.events.on('chat', (line) => this.say(line.from, line.text));
+  }
+
+  /** Another player's chat line, in a bubble over their cursor for a few seconds. */
+  private say(from: string | undefined, text: string): void {
+    if (!from || from === this.sync.online.room.me || this.stopped) return;
+    const c = this.cursors.get(from);
+    if (!c || !c.seen) return;
+    let b = c.bubble;
+    if (!b) {
+      b = document.createElement('span');
+      b.className = 'remote-cursor-bubble';
+      c.el.append(b);
+      c.bubble = b;
+    }
+    const colour = this.sync.online.room.player(from)?.colour;
+    if (colour) b.style.borderColor = colour;
+    b.textContent = text.length > BUBBLE_CHARS ? `${text.slice(0, BUBBLE_CHARS - 1).trimEnd()}…` : text;
+    b.classList.remove('gone');
+    clearTimeout(c.bubbleTimer);
+    const ms = Math.min(BUBBLE_MAX_MS, BUBBLE_MS + Math.max(0, text.length - 40) * 30);
+    c.bubbleTimer = window.setTimeout(() => b!.classList.add('gone'), ms);
   }
 
   /** The viewer's Cursor size changed: every remote glove is drawn again at it. */
