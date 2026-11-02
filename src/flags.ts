@@ -14,10 +14,11 @@
 import * as THREE from 'three';
 import type { App } from './app';
 import { land, placeSequential } from './commands';
-import type { CustomGesture } from './input/mouse';
+import type { CustomGesture, Mods } from './input/mouse';
 import { allowedNow } from './online/guard';
 import { compileQuery } from './query/evaluate';
-import { clearOf, FLAG_REACH, flagOfCard, membersOf, nextColour, nextName, outsideSpot, type Flag } from './state/flags';
+import { clearOf, FLAG_PULL, FLAG_REACH, flagOfCard, membersOf, nextColour, nextName, outsideSpot, type Flag } from './state/flags';
+import { remoteHeld } from './state/remoteHeld';
 import { newUid } from './state/store';
 import { queryCard } from './state/selection';
 import { FlagEditor } from './ui/flagEditor';
@@ -29,6 +30,8 @@ const POLE_R = 2.5;
 const CLOTH_H = 46;
 /** The cloth's texture: this many pixels tall, so the text stays sharp up close. */
 const CLOTH_PX = 128;
+/** Pulled cards end this far in from the pole at most, so a whole card lies inside the zone. */
+const FLAG_INSIDE = FLAG_REACH - 55;
 /** Drawn over the playmats, under the cards (the mats are at -0.9). */
 const ZONE_ORDER = -0.85;
 
@@ -191,43 +194,134 @@ export class Flags {
     return best;
   }
 
-  /** A press on a flag's pole or cloth: drag it, or (a click) open its box. Null if it is locked. */
-  press(uid: string, sx: number, sy: number): CustomGesture | null {
+  /**
+   * A press on a flag's pole or cloth: drag it, or (a click) open its box.
+   * Null if it is locked. Dragged plainly, the flag moves alone; with **Alt**
+   * its cards ride along, keeping their layout, as a playmat's do; while
+   * **Shift** is held it is a black hole (decision 329): every card within
+   * 44 cm of the pole that the flag's filter takes is pulled into the zone and
+   * carried, along with the cards already there.
+   */
+  press(uid: string, sx: number, sy: number, mods: Mods): CustomGesture | null {
     const app = this.app;
-    const f = app.store.flags.get(uid);
+    const store = app.store;
+    const f = store.flags.get(uid);
     if (!f || f.locked) return null;
     const grab = app.rig.screenToPlane(sx, sy, 0);
     if (!grab) return null;
     let moved = false;
+    /** Cards carried: their offset from the pole now (o), where it is heading (t), and whether Shift pulled them in. */
+    let riders: Map<string, { ox: number; oy: number; tx: number; ty: number; pulled: boolean }> | null = null;
+    const fits = this.fitter(f);
+    const carry = () => {
+      if (riders) return;
+      riders = new Map();
+      for (const c of this.members(f)) {
+        if (app.motion.held.has(c.uid) || remoteHeld.has(c.uid)) continue;
+        app.motion.cancel(c.uid);
+        app.motion.held.add(c.uid);
+        const o = { ox: c.x - f.x, oy: c.y - f.y };
+        riders.set(c.uid, { ...o, tx: o.ox, ty: o.oy, pulled: false });
+      }
+    };
+    /** Shift: pull in what lies within reach of the pole, into the zone, where the filter allows. */
+    const pull = (at: { x: number; y: number }) => {
+      const flags = [...store.flags.values()].filter((o) => o.uid !== uid);
+      for (const c of store.cards.values()) {
+        if (riders!.has(c.uid) || c.stand || app.motion.held.has(c.uid) || remoteHeld.has(c.uid)) continue;
+        const dx = c.x - at.x;
+        const dy = c.y - at.y;
+        const d = Math.hypot(dx, dy);
+        if (d > FLAG_PULL) continue;
+        // Another flag's card stays that flag's; a card the filter won't take stays put.
+        if (flagOfCard(flags, c) || (fits && !fits(c.uid))) continue;
+        const k = d > FLAG_INSIDE ? FLAG_INSIDE / d : 1;
+        app.motion.cancel(c.uid);
+        app.motion.held.add(c.uid);
+        riders!.set(c.uid, { ox: dx, oy: dy, tx: dx * k, ty: dy * k, pulled: true });
+      }
+    };
+    const release = () => {
+      for (const u of riders?.keys() ?? []) app.motion.held.delete(u);
+    };
     return {
       kind: 'custom',
-      move: (x, y) => {
+      move: (x, y, e) => {
         if (!moved && Math.hypot(x - sx, y - sy) <= 4) return;
         if (!moved) {
           // In a room, moving a flag needs Move, as a playmat does (ONLINE.md 6.2).
           if (!allowedNow('flag')) return;
           moved = true;
+          if (mods.alt) carry();
         }
         const p = app.rig.screenToPlane(x, y, 0);
-        if (p) this.dragging = { uid, x: f.x + p.x - grab.x, y: f.y + p.y - grab.y };
+        if (!p) return;
+        const at = { x: f.x + p.x - grab.x, y: f.y + p.y - grab.y };
+        this.dragging = { uid, ...at };
+        if (e.shiftKey) {
+          carry();
+          pull(at);
+        }
+        // The carried cards follow the pole; the pulled ones slide in towards it.
+        for (const [u, r] of riders ?? []) {
+          r.ox += (r.tx - r.ox) * 0.3;
+          r.oy += (r.ty - r.oy) * 0.3;
+          const pose = app.layer.pose(u);
+          if (!pose) continue;
+          pose.x = at.x + r.ox;
+          pose.y = at.y + r.oy;
+          app.layer.touch(u);
+        }
       },
       up: () => {
         const to = this.dragging;
         this.dragging = null;
         if (!moved) {
-          app.store.clearSelection();
+          store.clearSelection();
           this.edit(uid);
           return;
         }
-        if (!to) return;
-        const others = [...app.store.flags.values()].filter((o) => o.uid !== uid);
+        if (!to) return release();
+        const others = [...store.flags.values()].filter((o) => o.uid !== uid);
         const spot = clearOf(to, others);
-        app.store.setFlags([{ ...f, x: spot.x, y: spot.y }]);
+        if (riders?.size) {
+          // The cards that were there keep their layout and height; the pulled ones land on what is under them.
+          const kept = [...riders].filter(([, r]) => !r.pulled);
+          // Bottom first, so cards pulled from one stack land in the same order.
+          const pulled = [...riders].filter(([, r]) => r.pulled).sort(([a], [b]) => store.cards.get(a)!.z - store.cards.get(b)!.z);
+          if (kept.length) {
+            store.moveCards(kept.map(([u, r]) => ({ uid: u, x: spot.x + r.tx, y: spot.y + r.ty })));
+            for (const [u] of kept) {
+              app.motion.held.delete(u);
+              const c = store.cards.get(u);
+              const pose = app.layer.pose(u);
+              if (c && pose) {
+                pose.x = c.x;
+                pose.y = c.y;
+                app.layer.touch(u);
+              }
+            }
+            store.events.emit('settled', kept.map(([u]) => u));
+          }
+          if (pulled.length) {
+            for (const [u] of pulled) app.motion.held.delete(u);
+            const uids = pulled.map(([u]) => u);
+            const spots = pulled.map(([u, r]) => ({ x: spot.x + r.tx, y: spot.y + r.ty, yaw: store.cards.get(u)!.yaw }));
+            land(app, placeSequential(app, uids, spots), { duration: 160, stagger: 0 });
+          }
+        }
+        store.setFlags([{ ...f, x: spot.x, y: spot.y }]);
         // Set down on cards: the ones that don't match go out past the edge.
         this.keepOut(uid);
       },
       cancel: () => {
         this.dragging = null;
+        release();
+        // Back where they lie.
+        for (const u of riders?.keys() ?? []) {
+          const c = store.cards.get(u);
+          if (c) app.motion.animate(u, { x: c.x, y: c.y }, { duration: 150 });
+        }
       },
     };
   }

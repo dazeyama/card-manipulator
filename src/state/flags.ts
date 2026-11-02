@@ -22,6 +22,9 @@ export interface Flag {
 /** How far a flag's zone reaches from its pole, mm. */
 export const FLAG_REACH = 350;
 
+/** Shift-dragging a flag pulls in cards from this far from the pole (decision 329). */
+export const FLAG_PULL = 440;
+
 /** The colours a flag may be. */
 export const FLAG_COLOURS = ['#e63946', '#f4a261', '#e9c46a', '#2a9d8f', '#4895ef', '#7b2cbf', '#ff6fb5', '#6b7280'];
 

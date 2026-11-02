@@ -150,7 +150,7 @@ mouse.hooks.objectPress = (x, y, mods) => {
   if (uid) return dice.press(uid, x, y, mods);
   // A flag's pole and cloth stand over the cards; a locked flag lets the press through.
   const flag = flags.pick(x, y);
-  return flag ? flags.press(flag, x, y) : null;
+  return flag ? flags.press(flag, x, y, mods) : null;
 };
 keyboard.bind('b', () => {
   if (!drag.dragging) flags.arm();
