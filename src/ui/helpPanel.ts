@@ -93,8 +93,10 @@ export class HelpPanel {
     this.el = h('div', { class: 'help-panel', hidden: '' },
       h('div', { class: 'help-head' }, h('span', { class: 'pe-title' }, 'Controls'), h('span', { class: 'muted small' }, 'Keys act on the selection, or on the pile under the cursor.')),
       h('div', { class: 'help-options' },
-        h('label', { class: 'inline help-hide' }, hide, 'Hide control hints'),
-        h('label', { class: 'inline help-hide' }, hideCubes, 'Hide cube chips'),
+        h('div', { class: 'help-ticks' },
+          h('label', { class: 'inline help-hide' }, hide, 'Hide control hints'),
+          h('label', { class: 'inline help-hide' }, hideCubes, 'Hide cube chips'),
+        ),
         h('label', { class: 'inline help-cursor' }, 'Cursor size', size),
       ),
       ...GROUPS.map(([title, lines]) =>
