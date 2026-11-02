@@ -100,18 +100,21 @@ describe('named piles (spec 11.3)', () => {
     expect(store.cards.get('n2')!.pileId).toBe(id);
   });
 
-  it('turns away the cards of a pile that merges into a filtered one', () => {
-    const { store, named, away } = keep();
+  it('leaves a pile resting against a filtered one whole, turning nothing away (decision 324)', () => {
+    const { store, named, away, id } = keep();
     store.addCards([{ uid: 'f2', scryfallId: 'forest', finish: 'nonfoil', x: 520, y: 0, z: 0.45, yaw: 0, faceUp: true, pileId: null, spreadOf: null }]);
     redetect(store);
-    named.keepFilters();
-    away.length = 0;
-    // An elf set down between them joins the forests' pile to Keep.
-    store.addCards([{ uid: 'e3', scryfallId: 'elf', finish: 'nonfoil', x: 50, y: 0, z: 0.9, yaw: 0, faceUp: true, pileId: null, spreadOf: null }]);
-    store.moveCards([{ uid: 'u2', x: 100, y: 0 }, { uid: 'f2', x: 110, y: 0 }]);
+    const forests = store.cards.get('u2')!.pileId!;
+    // The forests' pile, slid over against Keep, then an elf put down touching both.
+    store.moveCards([{ uid: 'u2', x: 60, y: 0 }, { uid: 'f2', x: 70, y: 0 }]);
+    redetect(store);
+    store.addCards([{ uid: 'e3', scryfallId: 'elf', finish: 'nonfoil', x: 30, y: 0, z: 0.9, yaw: 0, faceUp: true, pileId: null, spreadOf: null }]);
     redetect(store);
     named.keepFilters();
-    expect(away.flat().sort()).toEqual(['f2', 'u2']);
+    expect(away).toEqual([]);
+    expect(store.cards.get('e3')!.pileId).toBe(id);
+    expect(store.cards.get('u2')!.pileId).toBe(forests);
+    expect(store.cards.get('f2')!.pileId).toBe(forests);
   });
 
   it('leaves another player\'s change and a loaded table alone', () => {

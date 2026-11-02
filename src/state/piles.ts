@@ -269,19 +269,8 @@ export function sameYaw(a: number, b: number): boolean {
   return d < YAW_TOLERANCE || Math.PI - d < YAW_TOLERANCE;
 }
 
-/**
- * Group cards whose footprints overlap, transitively. Groups of two or more
- * are piles: a stack when every card shares the bottom card's centre within
- * 2 mm and its yaw, otherwise messy. `prev` maps old pile ids to their cards
- * so a pile keeps its id while it keeps most of its cards. Named piles keep
- * their id however many cards join or leave, down to a single card.
- */
-export function detectPiles(
-  cards: PileCard[],
-  prev: Map<string, string[]> = new Map(),
-  makeId: () => string = defaultId,
-  opts: { named?: Set<string>; moved?: Set<string> } = {},
-): DetectedPile[] {
+/** Cards whose footprints overlap, grouped transitively. */
+function overlapGroups(cards: PileCard[]): PileCard[][] {
   const n = cards.length;
   const parent = new Int32Array(n);
   for (let i = 0; i < n; i++) parent[i] = i;
@@ -327,19 +316,76 @@ export function detectPiles(
     if (!g) groups.set(r, (g = []));
     g.push(c);
   });
+  return [...groups.values()];
+}
 
+/**
+ * A group that holds a fenced pile (a named pile with a filter, decision 324)
+ * split so the fenced pile takes only its own cards and the cards just put
+ * down on it: cards that moved, or belonged to no pile, that touch a card it
+ * already held. Nothing joins through another card that is joining, so a long
+ * chain laid against it adds only its near end; and another pile's resting
+ * cards never join, however much of it touches, so a bin set beside a big
+ * pile leaves it whole. What is left is grouped again by overlap.
+ */
+function fence(group: PileCard[], fenced: Set<string>, oldOf: Map<string, string>, moved: Set<string>): PileCard[][] {
+  const here = new Set<string>();
+  for (const c of group) {
+    const o = oldOf.get(c.uid);
+    if (o && fenced.has(o)) here.add(o);
+  }
+  if (!here.size) return [group];
+  const out: PileCard[][] = [];
+  const taken = new Set<string>();
+  for (const id of here) {
+    const members = group.filter((c) => oldOf.get(c.uid) === id);
+    for (const c of members) taken.add(c.uid);
+    // Newcomers: what the user just put down, or loose cards that were in no pile.
+    const candidates = group.filter((c) => !taken.has(c.uid) && (moved.has(c.uid) || !oldOf.has(c.uid)));
+    const held = members.length;
+    for (let i = 0; i < held; i++) {
+      for (let j = candidates.length - 1; j >= 0; j--) {
+        if (!overlaps(members[i], candidates[j], 1)) continue;
+        taken.add(candidates[j].uid);
+        members.push(candidates[j]);
+        candidates.splice(j, 1);
+      }
+    }
+    out.push(members);
+  }
+  out.push(...overlapGroups(group.filter((c) => !taken.has(c.uid))));
+  return out;
+}
+
+/**
+ * Group cards whose footprints overlap, transitively. Groups of two or more
+ * are piles: a stack when every card shares the bottom card's centre within
+ * 2 mm and its yaw, otherwise messy. `prev` maps old pile ids to their cards
+ * so a pile keeps its id while it keeps most of its cards. Named piles keep
+ * their id however many cards join or leave, down to a single card. A
+ * `fenced` pile (a filtered one) never takes in another pile's resting cards
+ * by touching them (decision 324).
+ */
+export function detectPiles(
+  cards: PileCard[],
+  prev: Map<string, string[]> = new Map(),
+  makeId: () => string = defaultId,
+  opts: { named?: Set<string>; moved?: Set<string>; fenced?: Set<string> } = {},
+): DetectedPile[] {
   // Old pile of each card, to keep ids stable.
   const oldOf = new Map<string, string>();
   for (const [id, uids] of prev) for (const u of uids) oldOf.set(u, id);
   const named = opts.named ?? new Set<string>();
   const moved = opts.moved ?? new Set<string>();
+  const fenced = opts.fenced ?? new Set<string>();
+  const groups = overlapGroups(cards).flatMap((g) => (fenced.size ? fence(g, fenced, oldOf, moved) : [g]));
 
   interface Group {
     cards: PileCard[];
     votes: Map<string, { all: number; stayed: number }>;
   }
   const list: Group[] = [];
-  for (const g of groups.values()) {
+  for (const g of groups) {
     const votes = new Map<string, { all: number; stayed: number }>();
     for (const c of g) {
       const o = oldOf.get(c.uid);

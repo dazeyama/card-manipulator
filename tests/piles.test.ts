@@ -86,6 +86,48 @@ describe('detectPiles (spec 11.1)', () => {
     expect(detectPiles(cards, new Map(), id)[0].cardUids).toEqual(['a', 'b', 'c']);
   });
 
+  describe('a filtered pile is fenced (decision 324)', () => {
+    // Keep: two cards at the origin. Big: a chain of six resting cards, its first touching Keep.
+    const keep = [card('k1', 0, 0, 0.15), card('k2', 0, 0, 0.45)];
+    const big = Array.from({ length: 6 }, (_, i) => card(`b${i}`, 50 + i * 50, 0, 0.15 + (i % 2) * 0.3));
+    const prev = new Map([['keep', ['k1', 'k2']], ['big', big.map((c) => c.uid)]]);
+    const opts = (moved: string[] = []) => ({ named: new Set(['keep']), fenced: new Set(['keep']), moved: new Set(moved) });
+
+    it('leaves a resting pile it touches whole, however long the chain', () => {
+      const piles = detectPiles([...keep, ...big], prev, id, opts());
+      expect(piles.find((p) => p.id === 'keep')!.cardUids).toEqual(['k1', 'k2']);
+      expect(piles.find((p) => p.id === 'big')!.cardUids.sort()).toEqual(big.map((c) => c.uid).sort());
+    });
+
+    it('without a filter, the named pile takes the whole chain as before', () => {
+      const piles = detectPiles([...keep, ...big], prev, id, { named: new Set(['keep']) });
+      expect(piles).toHaveLength(1);
+      expect(piles[0].id).toBe('keep');
+    });
+
+    it('takes a card just put down on it, and loose cards that were in no pile', () => {
+      const moved = card('b0', 10, 0, 0.75);
+      const loose = card('x', -40, 0, 0.15);
+      const piles = detectPiles([...keep, moved, loose, ...big.slice(1)], prev, id, opts(['b0']));
+      expect(piles.find((p) => p.id === 'keep')!.cardUids.sort()).toEqual(['b0', 'k1', 'k2', 'x']);
+      expect(piles.find((p) => p.id === 'big')!.cardUids).not.toContain('b0');
+    });
+
+    it('takes only the near end of a chain laid against it', () => {
+      const piles = detectPiles([...keep, ...big], prev, id, opts(big.map((c) => c.uid)));
+      expect(piles.find((p) => p.id === 'keep')!.cardUids.sort()).toEqual(['b0', 'k1', 'k2']);
+      expect(piles.find((p) => p.id === 'big')!.cardUids).toHaveLength(5);
+    });
+
+    it('takes newcomers only through contact with what it holds, not through another pile', () => {
+      // A loose card touching only the far end of Big stays out of Keep.
+      const far = card('y', 340, 0, 0.75);
+      const piles = detectPiles([...keep, ...big, far], prev, id, opts());
+      expect(piles.find((p) => p.id === 'keep')!.cardUids).toEqual(['k1', 'k2']);
+      expect(piles.find((p) => p.id === 'big')!.cardUids).toContain('y');
+    });
+  });
+
   it('does not join cards laid side by side with a gap', () => {
     const cards = [card('a', 0, 0), card('b', 69, 0), card('c', 0, 94)];
     expect(detectPiles(cards, new Map(), id)).toHaveLength(0);

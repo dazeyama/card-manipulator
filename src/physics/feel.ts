@@ -1035,6 +1035,9 @@ export class DragController {
       }
     }
     let keepId = targetId;
+    // A filtered pile set down on an ordinary one stays itself, on top of it: it
+    // never takes in a pile it merely lands on (decision 324).
+    if (!store.named.has(targetId) && [...sources].some((id) => store.named.get(id)?.filter)) return;
     // Through the store, so a room hears of it (ONLINE.md 11.1).
     if (!store.named.has(targetId) && sources.size) {
       keepId = [...sources][0];

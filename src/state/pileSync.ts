@@ -11,6 +11,8 @@ import { remoteHeld } from './remoteHeld';
 
 export function redetect(store: Store, moved: Set<string> = new Set()): void {
   const named = new Set(store.named.keys());
+  // Filtered named piles take in only what is put down against them (decision 324).
+  const fenced = new Set([...store.named.values()].filter((n) => n.filter).map((n) => n.id));
   // Cards of a spread named pile stay members while spread (spec 11.3).
   const spreadMember = new Map<string, string>();
   for (const sp of store.spreads.values()) {
@@ -38,7 +40,7 @@ export function redetect(store: Store, moved: Set<string> = new Set()): void {
       list.push(c.uid);
     }
   }
-  const found = [...spaces.values()].flatMap((cards) => detectPiles(cards, prev, undefined, { named, moved }));
+  const found = [...spaces.values()].flatMap((cards) => detectPiles(cards, prev, undefined, { named, moved, fenced }));
   const piles = new Map<string, Pile>();
   for (const d of found) {
     const n = store.named.get(d.id);
