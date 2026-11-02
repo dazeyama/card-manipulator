@@ -90,7 +90,13 @@ export class HiRes {
       const card = this.app.store.cards.get(o.uid);
       if (!pose || !card) continue;
       // Up with the card when hovering pops it above the cards on it (decision 173).
-      this.p.set(pose.x, pose.y, pose.z + this.app.layer.lift(o.uid));
+      const lift = this.app.layer.lift(o.uid);
+      // The pop is a jump, not movement: no motion blur for it this frame (decision 346).
+      if (lift !== o.mesh.userData.lift) {
+        o.mesh.userData.lift = lift;
+        o.mesh.userData.stillOnce = true;
+      }
+      this.p.set(pose.x, pose.y, pose.z + lift);
       this.e.set(pose.tiltX, pose.roll + pose.tiltY, pose.yaw, 'ZXY');
       this.q.setFromEuler(this.e);
       this.m.compose(this.p, this.q, this.one).multiply(this.lift);

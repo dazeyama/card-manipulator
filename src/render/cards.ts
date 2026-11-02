@@ -207,7 +207,7 @@ export class CardLayer {
   private aPrev: THREE.InstancedBufferAttribute;
   /** Some card moved last frame, so this frame's previous matrices must be copied again. */
   private prevStale = true;
-  /** Cards added since the last update: their previous matrix is their first, so they don't streak in. */
+  /** Cards added, or popped up or down by hovering, since the last update: their previous matrix is their new one, so they don't streak. */
   private readonly fresh = new Set<Entry>();
   private glowDirty = false;
   private readonly accent: THREE.Color;
@@ -438,6 +438,8 @@ export class CardLayer {
     e.lift = on ? lift ?? popLift(e.pose, this.posesNear(e)) : 0;
     this.writeFlags(e);
     this.dirtyMatrix.add(e);
+    // The pop is a jump, not movement: no motion blur for it (decision 346).
+    this.fresh.add(e);
   }
 
   setFoil(uid: string, on: boolean): void {

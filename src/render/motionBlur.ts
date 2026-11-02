@@ -253,7 +253,10 @@ export class MotionBlur {
       mm.onBeforeRender = (_r, _s, _c, _g, object) => {
         const d = object.userData;
         const swing = this.cameraUniforms.uCameraBlur.value > 0.5;
-        const prev = d.noBlur || (d.followsCamera && !swing) ? undefined : this.prev.get(object);
+        // `stillOnce`: it jumped this frame (a close-up image popping with its card, decision 346).
+        const still = d.noBlur || (d.followsCamera && !swing) || d.stillOnce;
+        d.stillOnce = false;
+        const prev = still ? undefined : this.prev.get(object);
         uniforms.uPrev.value.copy(prev ?? object.matrixWorld);
         mm!.uniformsNeedUpdate = true;
       };
