@@ -120,6 +120,14 @@ export const SWEEP_ALL_MS = 1600;
 /** Moving off a pile for less than this keeps its dwell time. */
 const SWEEP_GRACE_MS = 150;
 
+/**
+ * A sweep takes only the cards of a pile within this far of the card under the
+ * cursor, centre to centre (decision 325): all of a deck or a dropped handful,
+ * but never the far side of a spread grid or a long cascade, which detection
+ * counts as one pile. Lingering as the cursor moves takes what it passes.
+ */
+export const SWEEP_REACH = 60;
+
 /** A messy pile gives way sooner (decision 178): more after this long, all of it after this long. */
 export const SWEEP_MESSY_MORE_MS = 120;
 export const SWEEP_MESSY_ALL_MS = 650;
@@ -463,7 +471,18 @@ export class DragController {
       held.add(hit);
       d.taken++;
     }
-    const want = sweepCount(now - d.since, d.size, neat);
+    // Only the pile's cards within reach of the one under the cursor (decision 325).
+    const under = store.cards.get(hit);
+    const near = (c: { x: number; y: number; stand?: string }) =>
+      !!under && c.stand === under.stand && Math.hypot(c.x - under.x, c.y - under.y) <= SWEEP_REACH;
+    let reachable = 0;
+    if (pile) {
+      for (const u of pile.cardUids) {
+        const c = store.cards.get(u);
+        if (c && !held.has(u) && near(c)) reachable++;
+      }
+    }
+    const want = sweepCount(now - d.since, Math.min(d.size, d.taken + reachable), neat);
     while (d.taken < want) {
       // The card under the cursor first, then the pile from the top down.
       let next: string | null = d.taken === 0 && takes(hit) ? hit : null;
@@ -471,7 +490,7 @@ export class DragController {
         let topZ = -Infinity;
         for (const u of pile.cardUids) {
           const c = store.cards.get(u);
-          if (c && !held.has(u) && c.z > topZ && (!carried || carried.fits(u))) {
+          if (c && !held.has(u) && c.z > topZ && near(c) && (!carried || carried.fits(u))) {
             topZ = c.z;
             next = u;
           }
