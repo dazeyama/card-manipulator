@@ -75,6 +75,7 @@ export class Flags {
   private readonly raycaster = new THREE.Raycaster();
   private readonly buttons: HTMLDivElement;
   private readonly lockButton: HTMLButtonElement;
+  private readonly filterTag: HTMLDivElement;
   readonly editor: FlagEditor;
   /** The flag under the mouse (its pole, cloth, or bare zone), or null. */
   hovered: string | null = null;
@@ -151,7 +152,10 @@ export class Flags {
     this.buttons = document.createElement('div');
     this.buttons.className = 'flag-buttons';
     this.buttons.hidden = true;
-    this.buttons.append(edit, out, this.lockButton);
+    // Under the buttons, the flag's filter while it is hovered (decision 332).
+    this.filterTag = document.createElement('div');
+    this.filterTag.className = 'flag-filter';
+    this.buttons.append(edit, out, this.lockButton, this.filterTag);
     app.overlay.append(this.buttons);
 
     app.onFrame(() => this.frame());
@@ -589,6 +593,12 @@ export class Flags {
       this.lockButton.textContent = f.locked ? '🔒' : '🔓';
       this.lockButton.classList.toggle('on', !!f.locked);
       this.lockButton.title = f.locked ? 'Unlock: let the flag be moved and taken away' : 'Lock the flag in place';
+      this.filterTag.hidden = !f.filter;
+      if (f.filter && this.filterTag.textContent !== f.filter) {
+        const pill = document.createElement('span');
+        pill.textContent = f.filter;
+        this.filterTag.replaceChildren(pill);
+      }
     }
   }
 }
