@@ -42,6 +42,13 @@ interface Drawn {
   /** Hinged at the pole's top: turns about the pole and tilts back to face the camera, so the cloth reads from any angle, top-down too. */
   turner: THREE.Group;
   cloth: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
+  /**
+   * The cloth's shadow (decision 331): an unseen cloth the same size, hanging
+   * straight down from the pole as a real flag would, turned like the one you
+   * see but never tilted, so the shadow stays joined to the pole's.
+   */
+  shadow: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
+  shadowTurner: THREE.Group;
   /** A thicker, unseen pole, so the thin one is easy to grab. */
   grip: THREE.Mesh;
   text: string;
@@ -441,6 +448,8 @@ export class Flags {
       d.cloth.geometry.dispose();
       d.cloth.material.map?.dispose();
       d.cloth.material.dispose();
+      d.shadow.geometry.dispose();
+      d.shadow.material.dispose();
       this.drawn.delete(uid);
     }
     for (const f of store.flags.values()) {
@@ -485,10 +494,16 @@ export class Flags {
     turner.rotation.order = 'ZXY';
     // Upright, facing -y (towards the default camera); the turner swings it round to face the camera.
     const cloth = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, roughness: 0.9 }));
-    cloth.castShadow = true;
+    // The tilted cloth casts no shadow: its shadow would hang in the air, cut off from the pole's.
     turner.add(cloth);
-    root.add(zone, ring, pole, base, grip, turner);
-    return { root, zone, ring, turner, cloth, grip, text: '', colour: '', width: 0 };
+    // Seen by the sun only: it draws nothing, but fills the shadow map.
+    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, side: THREE.DoubleSide }));
+    shadow.castShadow = true;
+    const shadowTurner = new THREE.Group();
+    shadowTurner.position.z = turner.position.z;
+    shadowTurner.add(shadow);
+    root.add(zone, ring, pole, base, grip, turner, shadowTurner);
+    return { root, zone, ring, turner, cloth, grip, shadow, shadowTurner, text: '', colour: '', width: 0 };
   }
 
   /** Paint a cloth's text: the name and the count, on the flag's colour. */
@@ -518,6 +533,8 @@ export class Flags {
     // Hung from the pole's top, out to one side.
     d.cloth.scale.set(d.width, 1, CLOTH_H);
     d.cloth.position.set(d.width / 2 + POLE_R, 0, -CLOTH_H / 2);
+    d.shadow.scale.copy(d.cloth.scale);
+    d.shadow.position.copy(d.cloth.position);
     d.text = text;
   }
 
@@ -545,6 +562,7 @@ export class Flags {
       const dx = cam.x - at.x;
       const dy = cam.y - at.y;
       d.turner.rotation.z = Math.atan2(dx, -dy);
+      d.shadowTurner.rotation.z = d.turner.rotation.z;
       d.turner.rotation.x = -Math.atan2(cam.z - d.turner.position.z, Math.hypot(dx, dy));
     }
     // The flag under the mouse: its pole or cloth, or its bare zone (no card under the cursor).
