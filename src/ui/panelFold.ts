@@ -18,7 +18,8 @@ export class PanelFold {
    */
   constructor(private readonly app: App, private readonly panel: HTMLElement, private readonly side: 'left' | 'right', private readonly name: string, pinnedByDefault = false) {
     this.pin = h('button', { class: 'icon-btn pin-btn', title: 'Pin open: this panel stays open when you use the table' }, '📌');
-    this.collapse = h('button', { class: 'icon-btn', title: 'Collapse panel' });
+    // Filled in the accent, so the show and hide arrow stands out from the panel (decision 356).
+    this.collapse = h('button', { class: 'icon-btn fold-btn', title: 'Collapse panel' });
     this.pin.addEventListener('click', () => this.setPinned(!this.pinned));
     this.collapse.addEventListener('click', () => this.set(!panel.classList.contains('collapsed')));
     this.controls = h('div', { class: 'panel-head-buttons' }, this.pin, this.collapse);

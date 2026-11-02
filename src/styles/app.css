@@ -55,6 +55,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .panel.collapsed .panel-title { display: none; }
 /* Pin and collapse buttons in a panel's head (decision 137). */
 .panel-head-buttons { display: flex; gap: 4px; }
+/* The show and hide arrow (decision 356): filled in the accent, a taller tab when the panel is closed. */
+.icon-btn.fold-btn { background: var(--accent); border-color: var(--accent); color: #fff; font-size: 16px; font-weight: 700; width: 26px; height: 26px; box-shadow: 0 1px 3px rgba(37, 99, 235, 0.35); }
+.icon-btn.fold-btn:hover { filter: brightness(1.12); }
+.panel.collapsed .icon-btn.fold-btn { height: 44px; }
 .pin-btn { font-size: 12px; filter: grayscale(1); opacity: 0.55; }
 .pin-btn.on { filter: none; opacity: 1; background: var(--accent-soft); border-color: var(--accent); }
 .panel.collapsed .pin-btn { display: none; }
