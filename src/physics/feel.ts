@@ -125,8 +125,10 @@ const SWEEP_GRACE_MS = 150;
  * cursor, centre to centre (decision 325): all of a deck or a dropped handful,
  * but never the far side of a spread grid or a long cascade, which detection
  * counts as one pile. Lingering as the cursor moves takes what it passes.
+ * 90 mm, about a card's length (decision 326): in a grid, the card under the
+ * cursor and the ring of cards around it.
  */
-export const SWEEP_REACH = 60;
+export const SWEEP_REACH = 90;
 
 /** A messy pile gives way sooner (decision 178): more after this long, all of it after this long. */
 export const SWEEP_MESSY_MORE_MS = 120;
