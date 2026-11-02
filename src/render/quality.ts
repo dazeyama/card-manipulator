@@ -28,6 +28,8 @@ export interface GraphicsPreset {
   woodPx: 1024 | 512;
   /** Playmat art redrawn at twice the size and sharpened (decision 323). */
   sharpArt: boolean;
+  /** Moving cards smear (decision 341), unless the ? panel turns it off. */
+  motionBlur: boolean;
 }
 
 export const GRAPHICS: Record<GraphicsMode, GraphicsPreset> = {
@@ -45,6 +47,7 @@ export const GRAPHICS: Record<GraphicsMode, GraphicsPreset> = {
     mirrorSamples: 4,
     woodPx: 512,
     sharpArt: false,
+    motionBlur: false,
   },
   high: {
     // Drawn at twice the resolution and scaled down: card text and edges stop shimmering.
@@ -64,6 +67,7 @@ export const GRAPHICS: Record<GraphicsMode, GraphicsPreset> = {
     woodPx: 1024,
     // The art crop is 626 px across a 61 cm mat: up close it is soft without this.
     sharpArt: true,
+    motionBlur: true,
   },
 };
 

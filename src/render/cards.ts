@@ -200,6 +200,15 @@ export class CardLayer {
   private aBack: THREE.InstancedBufferAttribute;
   private aFlags: THREE.InstancedBufferAttribute;
   private aGlow: THREE.InstancedBufferAttribute;
+  /**
+   * Each card's matrix as drawn the frame before (decision 341), for motion blur:
+   * the motion pass compares it with the matrix now. Kept only while blur is on.
+   */
+  private aPrev: THREE.InstancedBufferAttribute;
+  /** Some card moved last frame, so this frame's previous matrices must be copied again. */
+  private prevStale = true;
+  /** Cards added since the last update: their previous matrix is their first, so they don't streak in. */
+  private readonly fresh = new Set<Entry>();
   private glowDirty = false;
   private readonly accent: THREE.Color;
   private readonly entries = new Map<string, Entry>();
@@ -249,6 +258,7 @@ export class CardLayer {
     this.aBack = mesh.geometry.getAttribute('aBack') as THREE.InstancedBufferAttribute;
     this.aFlags = mesh.geometry.getAttribute('aFlags') as THREE.InstancedBufferAttribute;
     this.aGlow = mesh.geometry.getAttribute('aGlow') as THREE.InstancedBufferAttribute;
+    this.aPrev = mesh.geometry.getAttribute('aPrev') as THREE.InstancedBufferAttribute;
     scene.add(mesh);
   }
 
@@ -267,6 +277,8 @@ export class CardLayer {
     geo.setAttribute('aBack', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3));
     geo.setAttribute('aFlags', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4));
     geo.setAttribute('aGlow', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3));
+    // Last frame's matrix, for motion blur's motion pass (decision 341); the card shader ignores it.
+    geo.setAttribute('aPrev', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 16), 16));
     const mesh = new THREE.InstancedMesh(geo, this.material, capacity);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.count = 0;
@@ -332,6 +344,7 @@ export class CardLayer {
     this.writeSlots(entry, front, back);
     this.writeFlags(entry);
     this.dirtyMatrix.add(entry);
+    this.fresh.add(entry);
     this.setCount(this.byIndex.length);
   }
 
@@ -340,6 +353,7 @@ export class CardLayer {
     if (!entry) return;
     this.entries.delete(uid);
     this.dirtyMatrix.delete(entry);
+    this.fresh.delete(entry);
     const last = this.byIndex.pop()!;
     if (last !== entry) {
       // Move the last instance into the freed index.
@@ -350,6 +364,8 @@ export class CardLayer {
       copyAttr(this.aBack, from, last.index);
       copyAttr(this.aFlags, from, last.index);
       copyAttr(this.aGlow, from, last.index);
+      copyAttr(this.aPrev, from, last.index);
+      this.aPrev.needsUpdate = true;
       this.slotsDirty = true;
       this.flagsDirty = true;
       this.glowDirty = true;
@@ -362,6 +378,7 @@ export class CardLayer {
     this.entries.clear();
     this.byIndex = [];
     this.dirtyMatrix.clear();
+    this.fresh.clear();
     this.setCount(0);
   }
 
@@ -452,6 +469,26 @@ export class CardLayer {
     for (const e of this.byIndex) fn(e.uid, e.pose);
   }
 
+  /**
+   * Motion blur (decision 341): before this frame's update, last frame's
+   * matrices become the previous ones. Copied only after a frame in which a
+   * card moved; otherwise they already match.
+   */
+  keepPrevious(): void {
+    if (!this.prevStale) return;
+    this.prevStale = false;
+    const n = this.byIndex.length * 16;
+    (this.aPrev.array as Float32Array).set((this.object.instanceMatrix.array as Float32Array).subarray(0, n));
+    this.aPrev.clearUpdateRanges();
+    this.aPrev.addUpdateRange(0, n);
+    this.aPrev.needsUpdate = true;
+  }
+
+  /** Motion blur was just turned on: the previous matrices are stale, copy them next frame. */
+  resetPrevious(): void {
+    this.prevStale = true;
+  }
+
   /** Push changed instance data to the GPU. Call once per frame. */
   update(): void {
     if (this.dirtyMatrix.size) {
@@ -461,9 +498,15 @@ export class CardLayer {
       for (const e of this.dirtyMatrix) {
         this.compose(e);
         this.m.toArray(arr.array as Float32Array, e.index * 16);
+        if (this.fresh.has(e)) {
+          this.m.toArray(this.aPrev.array as Float32Array, e.index * 16);
+          this.aPrev.needsUpdate = true;
+        }
         if (e.index < lo) lo = e.index;
         if (e.index > hi) hi = e.index;
       }
+      this.fresh.clear();
+      this.prevStale = true;
       arr.clearUpdateRanges();
       arr.addUpdateRange(lo * 16, (hi - lo + 1) * 16);
       arr.needsUpdate = true;
@@ -515,6 +558,8 @@ export class CardLayer {
     const nb = mesh.geometry.getAttribute('aBack') as THREE.InstancedBufferAttribute;
     const nl = mesh.geometry.getAttribute('aFlags') as THREE.InstancedBufferAttribute;
     const ng = mesh.geometry.getAttribute('aGlow') as THREE.InstancedBufferAttribute;
+    const np = mesh.geometry.getAttribute('aPrev') as THREE.InstancedBufferAttribute;
+    (np.array as Float32Array).set(this.aPrev.array as Float32Array);
     (nf.array as Float32Array).set(this.aFront.array as Float32Array);
     (ng.array as Float32Array).set(this.aGlow.array as Float32Array);
     (nb.array as Float32Array).set(this.aBack.array as Float32Array);
@@ -529,6 +574,8 @@ export class CardLayer {
     this.aBack = nb;
     this.aFlags = nl;
     this.aGlow = ng;
+    this.aPrev = np;
+    np.needsUpdate = true;
     this.capacity = capacity;
     this.slotsDirty = true;
     this.flagsDirty = true;

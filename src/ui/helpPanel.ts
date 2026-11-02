@@ -4,6 +4,7 @@
 
 import { h } from './dom';
 import type { CubeChips } from './cubeChips';
+import type { MotionBlur } from '../render/motionBlur';
 import type { ContextHints } from './hints';
 import { CURSOR_LABEL, cursorChoice, cursorSizeNow, setCursorChoice, type CursorChoice } from './cursorSize';
 
@@ -71,7 +72,7 @@ const GROUPS: [string, Line[]][] = [
 export class HelpPanel {
   private readonly el: HTMLDivElement;
 
-  constructor(hints: ContextHints, cubes: CubeChips) {
+  constructor(hints: ContextHints, cubes: CubeChips, blur: MotionBlur) {
     // Hide the hint line along the bottom of the table (decision 234).
     const hide = h('input', { type: 'checkbox' });
     hide.checked = hints.hidden;
@@ -80,6 +81,10 @@ export class HelpPanel {
     const hideCubes = h('input', { type: 'checkbox' });
     hideCubes.checked = cubes.hidden;
     hideCubes.addEventListener('change', () => (cubes.hidden = hideCubes.checked));
+    // Moving cards smear, in High graphics (decision 341).
+    const motion = h('input', { type: 'checkbox' });
+    motion.checked = blur.wanted;
+    motion.addEventListener('change', () => (blur.wanted = motion.checked));
     // Cursor size (decision 289): Auto sizes to the screen; remembered in this browser.
     const size = h('select', { 'aria-label': 'Cursor size' });
     const fill = () => {
@@ -97,6 +102,7 @@ export class HelpPanel {
         h('div', { class: 'help-ticks' },
           h('label', { class: 'inline help-hide' }, hide, 'Hide control hints'),
           h('label', { class: 'inline help-hide' }, hideCubes, 'Hide cube chips'),
+          h('label', { class: 'inline help-hide', title: 'Moving cards smear a little, like a camera catching them; panning stays sharp. High graphics only.' }, motion, 'Motion blur'),
         ),
         h('label', { class: 'inline help-cursor' }, 'Cursor size', size),
       ),

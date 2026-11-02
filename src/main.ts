@@ -1131,7 +1131,7 @@ fileBtn('Open…', 'Load a saved table file', () => void openFile());
 fileBtn('Save', 'Save the table as a file (Ctrl + S)', () => saveFile());
 fileBtn('Export', 'Export the whole table as a decklist or CSV', () => exporter.open([...store.cards.keys()], store.name)).classList.add('export-trigger');
 // ?: the full controls list (decision 135).
-const help = new HelpPanel(hints, new CubeChips(app));
+const help = new HelpPanel(hints, new CubeChips(app), app.blur);
 fileBtn('?', 'All the controls (?)', () => help.toggle()).classList.add('help-trigger');
 keyboard.bind('?', () => help.toggle());
 

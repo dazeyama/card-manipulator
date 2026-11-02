@@ -98,5 +98,6 @@ export class Graphics {
     this.mats.setQuality({ mirrorEveryMs: p.mirrorEveryMs, mirrorMax: p.mirrorMax, mirrorSamples: p.mirrorSamples, anisotropy, sharpArt: p.sharpArt });
     setWoodQuality(p.woodPx, anisotropy);
     setDiceAnisotropy(anisotropy);
+    this.app.blur.allowed = p.motionBlur;
   }
 }

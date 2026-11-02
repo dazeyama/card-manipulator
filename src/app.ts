@@ -10,6 +10,7 @@ import { Atlas, type Slot } from './render/atlas';
 import { CardImages } from './render/cardImages';
 import { CardLayer, type Pose } from './render/cards';
 import { Motion } from './physics/motion';
+import { MotionBlur } from './render/motionBlur';
 import type { Physics } from './physics/world';
 import type { NamedPiles } from './named';
 import type { RestSync } from './physics/restSync';
@@ -38,6 +39,8 @@ export class App {
   readonly atlas: Atlas;
   readonly layer: CardLayer;
   readonly motion: Motion;
+  /** Moving cards smear (decision 341); in High graphics, unless the ? panel turns it off. */
+  readonly blur: MotionBlur;
   readonly images: CardImages;
   /** Set once Rapier has loaded (Phase 5); null until then. */
   physics: Physics | null = null;
@@ -112,6 +115,7 @@ export class App {
     this.atlas = new Atlas(this.view.renderer, 1);
     this.layer = new CardLayer(this.view.scene, this.atlas, ACCENT);
     this.motion = new Motion(this.layer);
+    this.blur = new MotionBlur(this.view.renderer, this.view.scene, this.layer);
     this.images = new CardImages(this.atlas, this.layer, this.store);
     void this.images.loadBack();
 
@@ -177,13 +181,14 @@ export class App {
       this.rig.step(now);
       for (const fn of this.frameHooks) fn(now, dt);
       this.layer.setTime(now / 1000);
+      this.blur.beforeUpdate();
       this.layer.update();
       this.atlas.flush(now);
       if (this.rig.changed) {
         this.view.fitToView(this.rig);
         this.rig.changed = false;
       }
-      this.view.render(this.rig.camera);
+      this.blur.render(this.rig.camera);
       this.frameTimes.push(performance.now() - t0);
       if (this.frameTimes.length > 240) this.frameTimes.shift();
       requestAnimationFrame(tick);
