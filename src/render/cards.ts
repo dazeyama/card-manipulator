@@ -24,11 +24,10 @@ export interface Pose {
 }
 
 export const CORNER_R = 3;
-/** A sleeve's rim round a face-up card, mm, and how far a raised card stands out of its sleeve (decision 360). */
+/** A sleeve's rim round the card inside it, mm (decisions 360, 363). */
 export const SLEEVE_RIM = 1.3;
 /** A sleeve's corner radius, mm: square to the eye (decision 362). */
 const SLEEVE_CORNER = 0.25;
-const RAISED_BY = 11;
 
 interface Entry {
   uid: string;
@@ -135,36 +134,25 @@ ${FOIL_GLSL}
 `;
 
 const mapFragment = /* glsl */ `
-// A sleeve is cut square: sleeved cards have sharp corners (decision 362). Raised,
-// the card's own rounded top stands out of it.
-float mouth = CARD_HALF.y - ${RAISED_BY.toFixed(2)};
-float corner = vSleeve.w > 0.5 && !(vSleeve.w > 1.5 && vLocal.y > mouth) ? ${SLEEVE_CORNER.toFixed(2)} : CORNER;
-float cd = cardDist(vLocal.xy, corner);
+// A sleeve is cut square: sleeved cards have sharp corners (decision 362).
+float cd = cardDist(vLocal.xy, vSleeve.w > 0.5 ? ${SLEEVE_CORNER.toFixed(2)} : CORNER);
 // Edge faces lie exactly on the outline (cd = 0): give them a little slack or
 // rounding noise punches holes in them.
 if (cd > (abs(vFace) < 0.5 ? 0.05 : 0.0)) discard;
 // Sleeved, the card sits inside the sleeve, a rim smaller all round: its whole
 // face, rounded corners and all, with the sleeve showing in the corners (decision 363).
-// Raised, the card is half out, so its face keeps its full size.
+// Raised, its back face shows the same way (decision 364).
 vec2 inside = vSleeve.w > 0.5 ? CARD_HALF - ${SLEEVE_RIM.toFixed(2)} : CARD_HALF;
-vec2 cuv = vLocal.xy / ((vSleeve.w > 1.5 ? CARD_HALF : inside) * 2.0) + 0.5;
+vec2 cuv = vLocal.xy / (inside * 2.0) + 0.5;
 vec4 texel;
 if (vFace > 0.5) texel = sampleSlot(vFront, clamp(cuv, 0.0, 1.0));
 else if (vFace < -0.5) texel = sampleSlot(vBack, vec2(1.0 - vLocal.x / (CARD_HALF.x * 2.0) - 0.5, vLocal.y / (CARD_HALF.y * 2.0) + 0.5));
 else texel = vec4(0.58, 0.56, 0.53, 1.0);
-// A sleeve (decision 360): its color round the card inside it. Raised out of it,
-// the card stands proud of the sleeve's top edge: no sleeve along the top, and a
-// thin line where the sleeve's mouth crosses the card.
+// A sleeve (decision 360): its color round the card inside it.
 if (vSleeve.w > 0.5 && vFace > 0.5) {
   vec2 q = abs(vLocal.xy) - (inside - CORNER);
   float card = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - CORNER;
-  float sleeveRim = smoothstep(-0.3, 0.05, card);
-  if (vSleeve.w > 1.5) {
-    sleeveRim *= 1.0 - smoothstep(mouth - 0.3, mouth + 0.3, vLocal.y);
-    float line = 1.0 - smoothstep(0.0, 0.45, abs(vLocal.y - mouth));
-    texel.rgb = mix(texel.rgb, vSleeve.rgb * 0.7, line * 0.85);
-  }
-  texel.rgb = mix(texel.rgb, vSleeve.rgb, sleeveRim);
+  texel.rgb = mix(texel.rgb, vSleeve.rgb, smoothstep(-0.3, 0.05, card));
 }
 diffuseColor.rgb *= texel.rgb;
 diffuseColor.rgb *= 1.0 + 0.14 * vFlags.y;

@@ -101,8 +101,8 @@ export class HiRes {
       this.e.set(pose.tiltX, pose.roll + pose.tiltY, pose.yaw, 'ZXY');
       this.q.setFromEuler(this.e);
       this.m.compose(this.p, this.q, this.one).multiply(this.lift);
-      // In a sleeve the card is a rim smaller all round (decision 363); raised, it is half out at full size.
-      if (card.sleeve && !card.raised) this.m.multiply(this.inSleeve);
+      // In a sleeve the card is a rim smaller all round, raised too (decisions 363, 364).
+      if (card.sleeve) this.m.multiply(this.inSleeve);
       o.mesh.matrix.copy(this.m);
       // Only while the front faces up; the small back image is fine for backs.
       o.mesh.visible = Math.cos(pose.roll) > 0.2;
