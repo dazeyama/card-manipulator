@@ -1,4 +1,4 @@
-// Sleeves on the Playmat tab (decision 360): pick a color, or type a card for
+// Sleeves on the Accessories tab (decisions 360, 373): pick a color, or type a card for
 // art sleeves, and Spawn pack lays a sleeve pack in the middle of the view.
 // U drops a pack of the last sleeves chosen at the cursor. Drop a pack
 // on a deck to sleeve it (src/sleeves.ts).

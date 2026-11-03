@@ -1,4 +1,4 @@
-// The Spawn panel's Playmat tab (decision 144): one decklist line, such as
+// The playmat section of the Spawn panel's Accessories tab (decisions 144, 373): one decklist line, such as
 // "Ragavan, Nimble Pilferer (MH2) 138", becomes a playmat with that exact
 // printing's art. The art is Scryfall's art crop, the illustration alone.
 
@@ -66,6 +66,7 @@ export function buildPlaymatTab(app: App, mats: Mats): HTMLElement {
   });
 
   return h('div', {},
+    h('div', { class: 'panel-section-title' }, 'Playmat'),
     h('div', { class: 'row' }, line),
     h('div', { class: 'row' }, go),
     h('p', { class: 'muted small' }, 'The card’s art on a 61 × 35 cm playmat, which always lies under the cards. Use set and number for an exact printing.'),

@@ -10,7 +10,7 @@ import type { CustomGesture, Mods } from './input/mouse';
 import { FLICK_SPEED, flickDirection } from './physics/feel';
 import { shortAngle } from './physics/motion';
 import type { DiceLayer } from './render/dice';
-import { d20Yaw, DARK_COLOURS, DIE_SIZE, dieSize, dieTurn, gatherOffsets, maxValue, valueRange, valueUp, yawOf, type Die, type DieKind } from './state/dice';
+import { d20Yaw, DARK_COLOURS, DIE_SIZE, DIE_WHITE, dieSize, dieTurn, gatherOffsets, maxValue, valueRange, valueUp, yawOf, type Die, type DieKind } from './state/dice';
 import { newUid } from './state/store';
 import { remoteHeld } from './state/remoteHeld';
 import { outboxOf } from './online/outbox';
@@ -332,13 +332,16 @@ export class Dice {
    * showing 1, or (D D, decision 278) a d20 of a dark color at random, showing 20,
    * the right way up (decision 279).
    */
-  spawn(at: { x: number; y: number }, kind?: DieKind): string {
+  spawn(at: { x: number; y: number }, kind?: DieKind, color?: string): string {
     // Facing the side that spawns it (decision 267).
     const d20 = kind === 'd20';
+    // A color chosen on the Accessories tab (decision 373); else white, or a d20's dark one at random.
+    const paint = color ? (color === DIE_WHITE ? undefined : color) : d20 ? DARK_COLOURS[Math.floor(Math.random() * DARK_COLOURS.length)] : undefined;
     const die: Die = this.laid({
       uid: newUid('d'), x: at.x, y: at.y, z: this.surfaceAt(at.x, at.y) + dieSize(kind) / 2, yaw: this.app.facing + (Math.random() - 0.5) * 0.6,
       value: d20 ? 20 : 1, side: this.app.side || undefined,
-      ...(d20 ? { kind, color: DARK_COLOURS[Math.floor(Math.random() * DARK_COLOURS.length)] } : {}),
+      ...(d20 ? { kind } : {}),
+      ...(paint ? { color: paint } : {}),
     });
     this.app.store.setDice([die]);
     return die.uid;

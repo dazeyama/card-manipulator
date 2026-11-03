@@ -45,6 +45,7 @@ import { uprightYaw, type Placed } from './state/piles';
 import type { Mat } from './state/types';
 import { buildPlaymatTab } from './ui/playmatTab';
 import { buildSleevesSection, dropLastPack } from './ui/sleevesTab';
+import { buildDiceSection } from './ui/diceTab';
 import { installSleeves } from './sleeves';
 import { ContextHints } from './ui/hints';
 import { HelpPanel } from './ui/helpPanel';
@@ -235,11 +236,13 @@ spawnPanel.addTab('query', 'Query', buildQueryTab(app, () => spawnPanel.options(
 installClipboard(app, () => spawnPanel.options());
 // The 4th tab: playmats from a card's art (decision 144).
 // Card stands are spawned from the Playmat tab too, below the playmat (decisions 220, 235).
+// The tab is Accessories since decision 373, with dice to spawn in a color at the end.
 const playmatPane = buildPlaymatTab(app, mats);
 playmatPane.append(buildStandSection(app, mats));
 // Sleeve packs, below the stand (decision 360).
 playmatPane.append(buildSleevesSection(app, dice));
-spawnPanel.addTab('playmat', 'Playmat', playmatPane);
+playmatPane.append(buildDiceSection(app, dice));
+spawnPanel.addTab('playmat', 'Accessories', playmatPane);
 // A whole CubeCobra cube, with each card's Elo (decision 192), second after List (decision 193).
 spawnPanel.addTab('cube', 'Cube', buildCubeTab(app, () => spawnPanel.options()), { after: 'list' });
 const hires = new HiRes(app);
@@ -1248,7 +1251,7 @@ for (const b of hudMoves) guard.gate(b, 'move');
 guard.gate(exportBtn, 'download', true);
 guard.gate(pointBtn, 'move');
 gateByText(topBar.actions, [['New', 'replace'], ['Open…', 'replace'], ['Save', 'download'], ['Export', 'download']]);
-gateByText(left, [['Spawn', 'addCards'], ['Spawn cube', 'addCards'], ['Spawn basics', 'addTokens'], ['Choose basics…', 'basics'], ['Spawn playmat', 'matAdd'], ['Spawn pack', 'sleeves']]);
+gateByText(left, [['Spawn', 'addCards'], ['Spawn cube', 'addCards'], ['Spawn basics', 'addTokens'], ['Choose basics…', 'basics'], ['Spawn playmat', 'matAdd'], ['Spawn pack', 'sleeves'], ['Spawn d6', 'diceAdd'], ['Spawn d20', 'diceAdd']]);
 for (const chip of left.querySelectorAll('.basic-chip')) guard.gate(chip as HTMLElement, 'addTokens');
 // Enter on the table, in a room: into the chat (O116). Not on the radial: a window control, like the camera keys.
 keyboard.bind('enter', () => {

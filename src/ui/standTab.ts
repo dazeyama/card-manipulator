@@ -1,5 +1,5 @@
 // The card stand's spawner (decisions 220, 235): a section of the Spawn
-// panel's Playmat tab. A wooden wedge that holds cards up at 25 degrees facing
+// panel's Accessories tab (decision 373). A wooden wedge that holds cards up at 25 degrees facing
 // you, with a name plate on its back for the player across the table.
 // One full stand per player at a time, offline too (O27, O32): the button
 // says so while you have one. In a room the plate reads your nickname unless
