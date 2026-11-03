@@ -1073,3 +1073,4 @@ Owner answers of 2026-10-30 are recorded as such; **(agent)** marks a choice mad
 - A short grace period for an empty room (reload-proof links); see O61 and Section 17.
 - Server tests beyond the gate (`@cloudflare/vitest-pool-workers`).
 - The word list in `shared/words.ts` is the agent's short standard list (O79); the owner edits it before or after Phase O3 goes public.
+- **Usage counter** (owner, 2026-11-03: open, not now). The room server keeps no history of who connected. Proposed: the Lobby keeps daily totals for the last 90 days (rooms made, distinct players who made or joined a room, counted by their anonymous player id, and the most players connected at once), shown on `#/admin`; no names or ip addresses kept, and no per-player rows after the day is counted. A server change, live on push. The site's visitor count is the spec's open item (spec Appendix B).

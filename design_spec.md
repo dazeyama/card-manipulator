@@ -1339,4 +1339,6 @@ All dated 2026-10-27, from the brainstorming session.
 
 ## Appendix B: Open items
 
-None as of 2026-10-31. The radial menu on Space, the last open item, is built (decision 298).
+- **Site visitor counts** (owner, 2026-11-03: open, not now). The GitHub Pages site has no analytics. Proposed: Cloudflare Web Analytics, a cookie-free beacon script on the page, its token from the owner's Cloudflare dashboard, counting visitors who never go online too. Usage of the room server is ONLINE.md's open item (Appendix B, the usage counter).
+
+The radial menu on Space, the earlier last open item, is built (decision 298).
