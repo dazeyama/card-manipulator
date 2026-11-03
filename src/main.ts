@@ -1009,7 +1009,7 @@ keyboard.bind('f', () => {
     flipOrFront(false, fTargets);
   }, F_WAIT_MS);
 });
-// Shift + F raises a sleeved double-faced card's back face, face up, or lowers it again (decision 360).
+// Shift + F, Back side: a sleeved double-faced card's back side, face up, or its front again (decisions 360, 365).
 keyboard.bind('shift+f', () => {
   if (!drag.dragging) commands.raise(hoveredCard());
 });

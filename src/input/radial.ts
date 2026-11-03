@@ -36,8 +36,8 @@ export const RADIAL_MENU: RadialWedge[] = [
   { label: 'Flip', icon: '🃏', cards: true, items: [
     { label: 'Flip', key: 'F', presses: ['f'], icon: '🃏', title: 'Flip over' },
     { label: 'Face all up', key: 'F F', presses: ['f', 'f'], icon: '👁️', title: 'Turn every card face up' },
-    // Sleeves (decision 360): a sleeved double-faced card's back face, raised out of its sleeve; and taking sleeves off.
-    { label: 'Raise', key: 'Shift F', presses: ['shift+f'], icon: '⤴️', title: 'Show a sleeved double-faced card’s back face, face up; again puts it back' },
+    // Sleeves (decision 360): a sleeved double-faced card's back side, face up (named Back side, decision 365); and taking sleeves off.
+    { label: 'Back side', key: 'Shift F', presses: ['shift+f'], icon: '🔄', title: 'Turn a sleeved double-faced card to its back side, face up; again turns it back to the front' },
     { label: 'Unsleeve', key: 'U', presses: ['u'], icon: '🧤', title: 'Take the sleeves off' },
   ] },
   { label: 'Turn', icon: '🔃', cards: true, items: [

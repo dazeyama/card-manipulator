@@ -50,7 +50,7 @@ const UNSUPPORTED = new Set([
   'sets', 'papersets', 'prints', 'paperprints', 'powtou', 'pt', 'cheapest', 'illustrations', 'kw2',
 ]);
 
-export const IS_VALUES = new Set(['foil', 'nonfoil', 'etched', 'dfc', 'mdfc', 'transform', 'split', 'permanent', 'spell', 'faceup', 'facedown', 'sleeved', 'raised', 'selected', 'multicolor', 'colorless', 'historic', 'legendary']);
+export const IS_VALUES = new Set(['foil', 'nonfoil', 'etched', 'dfc', 'mdfc', 'transform', 'split', 'permanent', 'spell', 'faceup', 'facedown', 'sleeved', 'raised', 'backside', 'selected', 'multicolor', 'colorless', 'historic', 'legendary']);
 
 const NUMERIC: Field[] = ['mv', 'pow', 'tou', 'loy', 'edhrec', 'elo'];
 const ORDERED: Field[] = ['mv', 'pow', 'tou', 'loy', 'rarity', 'color', 'identity', 'number', 'edhrec', 'elo'];

@@ -119,7 +119,7 @@ export class InspectPanel {
     out.push(h('div', { class: 'printing muted' },
       `${r.set_name || setName(r.set) || r.set.toUpperCase()} (${r.set.toUpperCase()}) #${r.collector_number} · ${cap(r.rarity)} · ${finish}${card.faceUp ? '' : ' · face down'}`));
     // Its sleeve (decision 360).
-    if (card.sleeve) out.push(h('div', { class: 'printing muted' }, `Sleeved · ${sleeveName(card.sleeve)}${card.raised ? ' · raised, showing its back face' : ''}`));
+    if (card.sleeve) out.push(h('div', { class: 'printing muted' }, `Sleeved · ${sleeveName(card.sleeve)}${card.raised ? ' · back side up' : ''}`));
     // EDHREC rank (decision 187) and CubeCobra Elo (decision 192): how the card is valued.
     // Each a chip on its own line (decision 197).
     const elo = this.app.store.elo.get(r.oracle_id);

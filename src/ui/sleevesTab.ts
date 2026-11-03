@@ -105,7 +105,7 @@ export function buildSleevesSection(app: App, dice: Dice): HTMLElement {
     h('div', { class: 'die-swatches sleeve-swatches' }, ...DARK_COLOURS.map(swatch)),
     h('div', { class: 'row' }, line),
     h('div', { class: 'row' }, go),
-    h('p', { class: 'muted small' }, 'Drop a pack on a deck to sleeve it; the deck is saved under List. Face down, sleeved cards show the sleeve; Shift + F raises a double-faced card’s back face, U takes sleeves off, Shift + U drops another pack.'),
+    h('p', { class: 'muted small' }, 'Drop a pack on a deck to sleeve it; the deck is saved under List. Face down, sleeved cards show the sleeve; Shift + F shows a double-faced card’s back side, U takes sleeves off, Shift + U drops another pack.'),
     status,
   );
   mark();

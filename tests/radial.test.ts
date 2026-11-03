@@ -31,9 +31,9 @@ describe('radial menu contents', () => {
     expect(point.items[3].anywhere).toBe(true);
   });
 
-  it('raises a sleeved card or takes sleeves off from the Flip ring (decision 360)', () => {
+  it('shows a sleeved card\'s back side or takes sleeves off from the Flip ring (decisions 360, 365)', () => {
     const flip = RADIAL_MENU.find((w) => w.label === 'Flip')!;
-    expect(flip.items.map((i) => `${i.label}: ${i.presses.join(' ')}`)).toEqual(['Flip: f', 'Face all up: f f', 'Raise: shift+f', 'Unsleeve: u']);
+    expect(flip.items.map((i) => `${i.label}: ${i.presses.join(' ')}`)).toEqual(['Flip: f', 'Face all up: f f', 'Back side: shift+f', 'Unsleeve: u']);
   });
 
   it('gives every item an icon and a title for the bottom bar', () => {

@@ -169,6 +169,7 @@ function isTest(v: string, op: Op): Predicate {
       case 'sleeved':
         return (c: QueryCard) => !!c.card.sleeve;
       case 'raised':
+      case 'backside':
         return (c: QueryCard) => !!c.card.sleeve && !!c.card.raised;
       case 'selected':
         return (c: QueryCard) => c.selected;

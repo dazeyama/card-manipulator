@@ -811,7 +811,7 @@ export class Commands {
       turned.push(c);
     }
     if (!moves.length) {
-      if (uids.length) toast(uids.some((u) => store.cards.get(u) && !store.canSee(store.cards.get(u)!)) ? 'Flip it face up first to raise it' : 'Not double-faced', 'warn', 1800);
+      if (uids.length) toast(uids.some((u) => store.cards.get(u) && !store.canSee(store.cards.get(u)!)) ? 'Flip it face up first to see its back side' : 'Not double-faced', 'warn', 1800);
       return;
     }
     this.app.showGesture('flip');
