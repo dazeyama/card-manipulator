@@ -145,9 +145,9 @@ export function keyAction(name: string): Action | null {
   if (name === 'ctrl+e' || name === 'ctrl+s') return 'download';
   if (name === 'ctrl+z') return 'move';
   if (name === 'd') return 'diceAdd';
-  // A sleeve pack rides on the dice (decision 360, O120); U unsleeves, as a move.
-  if (name === 'shift+u') return 'diceAdd';
-  if (name === 'u') return 'move';
+  // A sleeve pack rides on the dice (decision 360, O120); Shift + U unsleeves, as a move (decision 371).
+  if (name === 'u') return 'diceAdd';
+  if (name === 'shift+u') return 'move';
   if (name === 'n') return 'named';
   // Placing a flag (decision 327).
   if (name === 'b') return 'flag';

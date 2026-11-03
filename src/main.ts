@@ -206,9 +206,9 @@ mouse.hooks.wheelObject = (x, y, up, shift) => {
   dice.step(dice.numbered(), (up ? 1 : -1) * (shift ? 5 : 1));
   return true;
 };
-// Sleeves (decision 360): a pack dropped on a pile sleeves it; Shift + U drops a pack of the last sleeves at the cursor.
+// Sleeves (decision 360): a pack dropped on a pile sleeves it; U drops a pack of the last sleeves at the cursor (decision 371).
 installSleeves(app);
-keyboard.bind('shift+u', () => {
+keyboard.bind('u', () => {
   if (!drag.dragging) dropLastPack(dice, { x: app.lastTablePoint.x, y: app.lastTablePoint.y });
 });
 // C over a die (or with only dice selected) opens its color menu (decision 278).
@@ -1013,8 +1013,8 @@ keyboard.bind('f', () => {
 keyboard.bind('shift+f', () => {
   if (!drag.dragging) commands.raise(hoveredCard());
 });
-// U takes the sleeves off the selection, or the pile under the cursor (decision 360).
-keyboard.bind('u', () => {
+// Shift + U takes the sleeves off the selection, or the pile under the cursor (decisions 360, 371).
+keyboard.bind('shift+u', () => {
   if (!drag.dragging) void commands.unsleeve(hoveredPile());
 });
 // N: name the selected pile; with nothing selected, a new empty bin at the cursor (spec 11.3).

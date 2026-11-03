@@ -1,6 +1,6 @@
 // Sleeves on the Playmat tab (decision 360): pick a color, or type a card for
 // art sleeves, and Spawn pack lays a sleeve pack in the middle of the view.
-// Shift + U drops a pack of the last sleeves chosen at the cursor. Drop a pack
+// U drops a pack of the last sleeves chosen at the cursor. Drop a pack
 // on a deck to sleeve it (src/sleeves.ts).
 
 import type { App } from '../app';
@@ -19,7 +19,7 @@ export interface PackSleeve {
 
 const LAST_KEY = 'sleeves.last';
 
-/** The last sleeves chosen (Shift + U drops a pack of these), kept in this browser. */
+/** The last sleeves chosen (U drops a pack of these), kept in this browser. */
 function readLast(): PackSleeve {
   try {
     const v = JSON.parse(localStorage.getItem(LAST_KEY) ?? 'null') as PackSleeve | null;
@@ -41,7 +41,7 @@ function remember(s: PackSleeve): void {
   }
 }
 
-/** Shift + U (decision 360): a pack of the last sleeves chosen, at a spot. */
+/** U (decisions 360, 371): a pack of the last sleeves chosen, at a spot. */
 export function dropLastPack(dice: Dice, at: { x: number; y: number }): void {
   dice.spawnPack(at, last);
 }
@@ -105,7 +105,7 @@ export function buildSleevesSection(app: App, dice: Dice): HTMLElement {
     h('div', { class: 'die-swatches sleeve-swatches' }, ...DARK_COLOURS.map(swatch)),
     h('div', { class: 'row' }, line),
     h('div', { class: 'row' }, go),
-    h('p', { class: 'muted small' }, 'Drop a pack on a deck to sleeve it; the deck is saved under List. Face down, sleeved cards show the sleeve; Shift + F shows a double-faced card’s back side, U takes sleeves off, Shift + U drops another pack.'),
+    h('p', { class: 'muted small' }, 'Drop a pack on a deck to sleeve it; the deck is saved under List. Face down, sleeved cards show the sleeve; Shift + F shows a double-faced card’s back side, Shift + U takes sleeves off, U drops another pack.'),
     status,
   );
   mark();

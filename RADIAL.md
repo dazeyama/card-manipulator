@@ -29,13 +29,13 @@ Clockwise from the top. Letting go on the inner wedge does the first item.
 | Wedge | Inner (main action) | Outer ring (variants) |
 |---|---|---|
 | Stack | Stack (S) | Shuffle (S S), Tidy (T), Cut (/): 40 to 60 % off the top, beside it (decision 314), Tokens (T T): the card's tokens, or over empty table a token search (decision 308) |
-| Flip | Flip (F) | Face all up (F F), Back side (Shift F): a sleeved double-faced card's back side (decisions 360, 365), Unsleeve (U) (decision 360) |
+| Flip | Flip (F) | Face all up (F F), Back side (Shift F): a sleeved double-faced card's back side (decisions 360, 365), Unsleeve (Shift U) (decisions 360, 371) |
 | Turn | Turn 90° (R) | Upright (R R) |
 | Spread | Spread (X) | Reverse spread (X X) |
 | Hand | Fan as hand (H) | H H: **Wide hand** on the table, **Usual size** on a stand, named by where the cards lie (decisions 303, 307) |
 | Sort | Curve (C) | Color columns (C C), Curve per color (Shift C), EDHREC (E), Elo (E E) |
 | Draw | 1 card (1) | 7 cards (7), N cards (0): how many, with a Face down tick (decision 300); Search (L), Search face down (L L) (decision 310) |
-| Point | Point (P): click where the cards go, as a stack | Pass pack (P P): face down, like a draft pack (decision 305), Flag (B): click where a flag goes, cards or not (decision 327), Sleeves (Shift U): a sleeve pack at the cursor, cards or not (decision 360) |
+| Point | Point (P): click where the cards go, as a stack | Pass pack (P P): face down, like a draft pack (decision 305), Flag (B): click where a flag goes, cards or not (decision 327), Sleeves (U): a sleeve pack at the cursor, cards or not (decisions 360, 371) |
 
 Deliberately left off: pile tools (tokens, name, copy, delete, frame), dice, camera, search, save.
 

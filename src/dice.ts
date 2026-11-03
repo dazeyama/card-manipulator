@@ -344,7 +344,7 @@ export class Dice {
     return die.uid;
   }
 
-  /** Shift + U, or the Sleeves section's Spawn pack (decision 360): a sleeve pack at a spot, lying flat. */
+  /** U, or the Sleeves section's Spawn pack (decision 360): a sleeve pack at a spot, lying flat. */
   spawnPack(at: { x: number; y: number }, sleeve: { color?: string; art?: string; artName?: string }): string {
     const pack: Die = this.laid({
       uid: newUid('d'), x: at.x, y: at.y, z: this.surfaceAt(at.x, at.y) + PACK_T / 2, yaw: this.app.facing + (Math.random() - 0.5) * 0.3,

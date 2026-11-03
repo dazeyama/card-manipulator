@@ -26,7 +26,7 @@ export function buildYourDecks(app: App, deps: YourDecksDeps): HTMLElement {
   const render = async () => {
     const decks = await listDecks().catch(() => [] as DeckInfo[]);
     const now = Date.now();
-    list.replaceChildren(...(decks.length ? decks.map((d) => row(d, now)) : [h('div', { class: 'muted small' }, 'Sleeve a deck to keep it here: drop a sleeve pack on it (Playmat tab, or Shift + U).')]));
+    list.replaceChildren(...(decks.length ? decks.map((d) => row(d, now)) : [h('div', { class: 'muted small' }, 'Sleeve a deck to keep it here: drop a sleeve pack on it (Playmat tab, or U).')]));
   };
 
   const row = (d: DeckInfo, now: number): HTMLElement => {

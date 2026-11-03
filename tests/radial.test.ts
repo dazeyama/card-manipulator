@@ -25,7 +25,7 @@ describe('radial menu contents', () => {
 
   it('points, passes a pack with P P (decision 305), or places a flag with B, cards or not (decision 327)', () => {
     const point = RADIAL_MENU.find((w) => w.label === 'Point')!;
-    expect(point.items.map((i) => `${i.label}: ${i.presses.join(' ')}`)).toEqual(['Point: p', 'Pass pack: p p', 'Flag: b', 'Sleeves: shift+u']);
+    expect(point.items.map((i) => `${i.label}: ${i.presses.join(' ')}`)).toEqual(['Point: p', 'Pass pack: p p', 'Flag: b', 'Sleeves: u']);
     expect(point.items[2].anywhere).toBe(true);
     // A sleeve pack drops anywhere (decision 360).
     expect(point.items[3].anywhere).toBe(true);
@@ -33,7 +33,7 @@ describe('radial menu contents', () => {
 
   it('shows a sleeved card\'s back side or takes sleeves off from the Flip ring (decisions 360, 365)', () => {
     const flip = RADIAL_MENU.find((w) => w.label === 'Flip')!;
-    expect(flip.items.map((i) => `${i.label}: ${i.presses.join(' ')}`)).toEqual(['Flip: f', 'Face all up: f f', 'Back side: shift+f', 'Unsleeve: u']);
+    expect(flip.items.map((i) => `${i.label}: ${i.presses.join(' ')}`)).toEqual(['Flip: f', 'Face all up: f f', 'Back side: shift+f', 'Unsleeve: shift+u']);
   });
 
   it('gives every item an icon and a title for the bottom bar', () => {
