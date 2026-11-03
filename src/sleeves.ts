@@ -13,6 +13,7 @@ import type { Die } from './state/dice';
 import { deckNameFor, isArtSleeve, packSleeve } from './state/sleeves';
 import { CARD_H, CARD_W, type Card } from './state/types';
 import { toast } from './ui/toasts';
+import { confirmDialog, textDialog } from './ui/confirm';
 
 /** Install the pack drop and the double-faced marks. */
 export function installSleeves(app: App): void {
@@ -90,8 +91,11 @@ export function sleeveCards(app: App, uids: string[], sleeve: string, artName?: 
 
 /**
  * Save the sleeved cards to Your decks (decision 360): a snapshot of their
- * printings, under the pile's name, the cube's, or the next "Deck N". In a room
- * only when every card is one this player may see, so nothing hidden is kept.
+ * printings, under the name asked for in a small window (decision 367), which
+ * suggests the pile's name, the cube's, or the next "Deck N"; Don't save keeps
+ * the sleeves and saves nothing, and a name already saved asks before
+ * replacing it. In a room only when every card is one this player may see, so
+ * nothing hidden is kept.
  */
 async function saveSleeved(app: App, cards: Card[], sleeve: string, artName?: string): Promise<void> {
   const store = app.store;
@@ -114,9 +118,23 @@ async function saveSleeved(app: App, cards: Card[], sleeve: string, artName?: st
   const cubeName = cubes.size === 1 && cube ? store.cubes.get(cube)?.name ?? null : null;
   try {
     const existing = (await listDecks()).map((d) => d.name);
-    const { name, replaces } = deckNameFor(pileName, cubeName, existing);
+    // Asked for its name (decision 367), suggested from the pile, the cube, or the next "Deck N".
+    let name = deckNameFor(pileName, cubeName, existing).name;
+    let replaces = false;
+    for (;;) {
+      const typed = (await textDialog(`${said}. Name the deck to keep it in Your decks:`, { value: name, ok: 'Save deck', cancel: 'Don’t save', maxLength: 60 }))?.trim();
+      if (typed === undefined) {
+        toast(`${said}; not saved to your decks`, 'info', 2200);
+        return;
+      }
+      if (!typed) continue;
+      name = typed;
+      replaces = existing.some((d) => d.toLowerCase() === name.toLowerCase());
+      // A name already saved: replace it, or pick another.
+      if (!replaces || (await confirmDialog(`Your decks already has ${name}. Replace it with these ${n.toLocaleString()} cards?`, 'Replace'))) break;
+    }
     await saveDeck(name, groupLines(list, true).join('\n') + '\n', n, sleeve, isArtSleeve(sleeve) ? artName : undefined);
-    toast(`${said} · ${replaces ? 'updated' : 'saved as'} ${name} in your decks (List tab)`, 'ok', 3200);
+    toast(`${replaces ? 'Updated' : 'Saved'} ${name} in your decks (List tab)`, 'ok', 3200);
   } catch (err) {
     toast(`${said}, but couldn't save the deck: ${String((err as Error).message ?? err)}`, 'warn', 4000);
   }

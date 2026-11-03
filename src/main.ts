@@ -1015,7 +1015,7 @@ keyboard.bind('shift+f', () => {
 });
 // U takes the sleeves off the selection, or the pile under the cursor (decision 360).
 keyboard.bind('u', () => {
-  if (!drag.dragging) commands.unsleeve(hoveredPile());
+  if (!drag.dragging) void commands.unsleeve(hoveredPile());
 });
 // N: name the selected pile; with nothing selected, a new empty bin at the cursor (spec 11.3).
 keyboard.bind('n', () => {

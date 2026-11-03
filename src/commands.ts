@@ -7,6 +7,7 @@ import { cutCount, gridLayout, layOrder, looseStackLayout, nextQuarterClockwise,
 import type { CardMove, Spread } from './state/store';
 import { raiseOf } from './state/sleeves';
 import { toast } from './ui/toasts';
+import { confirmDialog } from './ui/confirm';
 import { colourGroup, curveLayout, type CurveCard } from './state/curve';
 import { arcHand, fanLayout, HAND_ROW, handLayout } from './state/fan';
 
@@ -824,14 +825,20 @@ export class Commands {
    * U (decision 360): take the sleeves off. A card raised face up goes face
    * down, which shows the same back face now that it has no sleeve.
    */
-  unsleeve(uids: string[] = this.sel): void {
+  async unsleeve(uids: string[] = this.sel): Promise<void> {
     uids = touchable(uids);
     const store = this.app.store;
-    const cards = uids.map((u) => store.cards.get(u)).filter((c): c is Card => !!c?.sleeve);
+    let cards = uids.map((u) => store.cards.get(u)).filter((c): c is Card => !!c?.sleeve);
     if (!cards.length) {
       if (uids.length) toast('No sleeves to take off', 'info', 1600);
       return;
     }
+    // Asked first (decision 367): face-down double-faced cards show their back faces unsleeved, to everyone in a room.
+    const n = cards.length;
+    if (!(await confirmDialog(`Take the sleeves off ${n.toLocaleString()} card${n === 1 ? '' : 's'}?`, 'Unsleeve'))) return;
+    // Only the cards still here and still sleeved.
+    cards = cards.filter((c) => store.cards.get(c.uid) === c && c.sleeve);
+    if (!cards.length) return;
     const turn = cards.filter((c) => c.raised && c.faceUp);
     store.moveCards(cards.map((c) => ({ uid: c.uid, sleeve: null, raised: null, ...(c.raised && c.faceUp ? { faceUp: false } : {}) })));
     if (turn.length) animateFlips(this.app, turn, true);
