@@ -17,6 +17,7 @@ import { outboxOf } from './online/outbox';
 import { snapYaw } from './state/piles';
 import { isStand, standHeightAt } from './state/stand';
 import { CARD_H, CARD_T, CARD_W } from './state/types';
+import { ART_RIM, DEFAULT_SLEEVE, isPack, PACK_H, PACK_T } from './state/sleeves';
 
 /** Held dice ride this far above what is under them, mm. */
 const CARRY = 16;
@@ -61,6 +62,11 @@ export class Dice {
    * in formation with Alt.
    */
   cardsAlong: ((sx: number, sy: number, alt: boolean, aside: { x: number; y: number }) => CustomGesture | null) | null = null;
+  /**
+   * A sleeve pack let go at a spot on the table (decision 360): src/sleeves.ts
+   * sleeves the cards there and takes the pack away, saying true; false, it lands.
+   */
+  packDrop: ((pack: Die, x: number, y: number) => boolean) | null = null;
 
   /** Ctrl (or Cmd) is held now: choosing cards adds to a mixed selection rather than replacing the dice's (decision 286). */
   private ctrl = false;
@@ -193,7 +199,11 @@ export class Dice {
 
   /** The size of the biggest of these dice, so a gathered block has room for a d20. */
   private biggest(uids: string[]): number {
-    return Math.max(DIE_SIZE, ...uids.map((u) => dieSize(this.app.store.dice.get(u)?.kind)));
+    // A sleeve pack takes room for its length (decision 360).
+    return Math.max(DIE_SIZE, ...uids.map((u) => {
+      const kind = this.app.store.dice.get(u)?.kind;
+      return kind === 'pack' ? PACK_H : dieSize(kind);
+    }));
   }
 
   /** A die as it lies once put down: a d20 the right way up (decision 279), any other squared in Tidy mode. */
@@ -272,6 +282,22 @@ export class Dice {
     return die.uid;
   }
 
+  /** Shift + U, or the Sleeves section's Spawn pack (decision 360): a sleeve pack at a spot, lying flat. */
+  spawnPack(at: { x: number; y: number }, sleeve: { color?: string; art?: string; artName?: string }): string {
+    const pack: Die = this.laid({
+      uid: newUid('d'), x: at.x, y: at.y, z: this.surfaceAt(at.x, at.y) + PACK_T / 2, yaw: this.app.facing + (Math.random() - 0.5) * 0.3,
+      value: 1, side: this.app.side || undefined, kind: 'pack',
+      ...(sleeve.art ? { art: sleeve.art, ...(sleeve.artName ? { artName: sleeve.artName } : {}), color: ART_RIM } : { color: sleeve.color ?? DEFAULT_SLEEVE }),
+    });
+    this.app.store.setDice([pack]);
+    return pack.uid;
+  }
+
+  /** What number keys, the wheel and 0 act on: the targets that are dice, not sleeve packs. */
+  numbered(): string[] {
+    return this.targets().filter((u) => !isPack(this.app.store.dice.get(u)));
+  }
+
   /** 1-9 and 0 (decisions 255, 278): set the number on top, on each die that can show it; a d20 any up to 999,999 (decision 279). */
   set(uids: string[], value: number): void {
     const dice = this.app.store.dice;
@@ -295,7 +321,8 @@ export class Dice {
   /** C's color menu (decision 278): give dice a color. */
   paint(uids: string[], color: string): void {
     const dice = this.app.store.dice;
-    this.app.store.setDice(uids.map((u) => dice.get(u)).filter((d): d is Die => !!d).map((d) => ({ ...d, color })));
+    // A sleeve pack painted holds color sleeves from then on (decision 360).
+    this.app.store.setDice(uids.map((u) => dice.get(u)).filter((d): d is Die => !!d).map(({ art: _art, artName: _name, ...d }) => ({ ...d, color })));
   }
 
   remove(uids: string[]): void {
@@ -309,7 +336,8 @@ export class Dice {
    */
   roll(uids: string[], toss?: { x: number; y: number }): void {
     const store = this.app.store;
-    const dice = uids.map((u) => store.dice.get(u)).filter((d): d is Die => !!d && (!this.busy.has(d.uid) || !!toss));
+    // A sleeve pack never rolls (decision 360).
+    const dice = uids.map((u) => store.dice.get(u)).filter((d): d is Die => !!d && !isPack(d) && (!this.busy.has(d.uid) || !!toss));
     if (!dice.length) return;
     const physics = this.app.physics;
     const start = dice.map((d) => {
@@ -486,7 +514,8 @@ export class Dice {
       last = { x, y, t: now };
       const prev = vel;
       vel = { x: prev.x * 0.4 + v.x * 0.6, y: prev.y * 0.4 + v.y * 0.6 };
-      const dir = held ? flickDirection(prev, v, FLICK_SPEED[store.settings.flick]) : null;
+      // A sleeve pack in the hand is never thrown (decision 360).
+      const dir = held && !held.some((h) => isPack(h.die)) ? flickDirection(prev, v, FLICK_SPEED[store.settings.flick]) : null;
       if (!dir) return false;
       // The screen direction as one on the table.
       const a = at(x, y), b = at(x + dir.x * 60, y + dir.y * 60);
@@ -510,6 +539,24 @@ export class Dice {
         return;
       }
       const p = keep ? at(x, y) : null;
+      // A sleeve pack let go over cards sleeves them and is used up (decision 360).
+      if (p && this.packDrop) {
+        const used = held.filter((h) => {
+          if (!isPack(h.die)) return false;
+          this.busy.delete(h.uid);
+          this.layer.carried.delete(h.uid);
+          if (this.packDrop!(h.die, p.x + h.ox, p.y + h.oy)) return true;
+          this.busy.add(h.uid);
+          this.layer.carried.add(h.uid);
+          return false;
+        });
+        held = held.filter((h) => !used.includes(h));
+        if (!held.length) {
+          held = null;
+          this.carrying = null;
+          return;
+        }
+      }
       // Let go with cards: they hang where they were let go until the cards come to rest,
       // then land on them, or on what else is there (decision 274).
       if (p && cards) {

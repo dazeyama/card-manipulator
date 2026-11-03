@@ -41,6 +41,12 @@ export interface Card {
   side?: 0 | 1;
   /** The CubeCobra cube it was spawned from, by cube id (decision 321). */
   cube?: string;
+  /** Its sleeve (decision 360): a color `#rrggbb` or an art crop's URL (src/state/sleeves.ts); unset, unsleeved. */
+  sleeve?: string;
+  /** A sleeved double-faced card raised to show its back face (Shift + F, decision 360); kept while face down. */
+  raised?: true;
+  /** It has a back face (a DFC), so a room can tell it is public unsleeved (ONLINE.md O119): the server never sees records. */
+  dfc?: true;
 }
 
 /** A CubeCobra cube spawned onto the table (decision 321): its chip at the top of the play space. */
@@ -218,6 +224,10 @@ export interface TableDoc {
     hidden?: true;
     /** The CubeCobra cube it came from (decision 321). */
     cube?: string;
+    /** Its sleeve, raised and double-faced marks (decision 360). */
+    sleeve?: string;
+    raised?: true;
+    dfc?: true;
   }[];
   /** Open spreads (agent decision 61); older files have none. */
   spreads?: { id: string; anchor: { x: number; y: number }; yaw: number; uids: string[]; pileId: string | null }[];

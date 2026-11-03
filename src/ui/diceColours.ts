@@ -4,12 +4,10 @@
 
 import type { Dice } from '../dice';
 import { DARK_COLOURS, DIE_COLOURS } from '../state/dice';
+import { COLOUR_NAMES } from '../state/sleeves';
 import { h } from './dom';
 
-const NAMES: Record<string, string> = {
-  '#fbfbf8': 'White', '#e0443e': 'Red', '#f08c2e': 'Orange', '#f2cf3a': 'Yellow', '#4cae4f': 'Green', '#3d7fd9': 'Blue', '#8a5cc7': 'Purple', '#e86aa6': 'Pink', '#1d1d1f': 'Black',
-  '#7a1f24': 'Dark red', '#1f3a6e': 'Dark blue', '#1f5a34': 'Dark green', '#4a2a6e': 'Dark purple', '#1d5a5e': 'Dark teal', '#5a3a1e': 'Brown', '#2c2c30': 'Charcoal',
-};
+const NAMES = COLOUR_NAMES;
 
 export class DiceColours {
   private readonly el: HTMLDivElement;

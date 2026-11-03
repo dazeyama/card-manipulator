@@ -41,7 +41,7 @@ Regenerate the test lists (Scryfall, through the app's own client): `node --expe
 ## Where things are
 
 - `src/main.ts` boots everything and wires the mouse grammar, keys, badges and files; `src/app.ts` owns the store, renderer, camera and frame loop.
-- `src/commands.ts` landing cards and the Stack / Spread / Tidy / Rotate / Flip / Frame commands; `src/named.ts` named piles; `src/flags.ts` flags, the named zones (decision 327); `src/spawn.ts` creating cards.
+- `src/commands.ts` landing cards and the Stack / Spread / Tidy / Rotate / Flip / Raise / Unsleeve / Frame commands; `src/named.ts` named piles; `src/flags.ts` flags, the named zones (decision 327); `src/sleeves.ts` sleeve packs dropped on piles, saving sleeved decks, double-faced marks (decision 360; pure parts in `src/state/sleeves.ts`); `src/spawn.ts` creating cards.
 - `src/state/` the table model, selection, pile geometry and detection (`piles.ts`, pure), and `pileSync.ts` which runs detection after cards settle.
 - `src/scryfall/` the API client, resolution and caches.
 - `src/query/` the local Scryfall-subset query engine.
@@ -50,7 +50,7 @@ Regenerate the test lists (Scryfall, through the app's own client): `node --expe
 - `src/physics/` `world.ts` Rapier for loose cards only, `feel.ts` drags, landings and flicks, `motion.ts` display tweens.
 - `src/input/` the mouse and keyboard grammar from spec Section 16.
 - `src/ui/` the DOM panels.
-- `src/io/` decklist parsing, export (decklist, CSV), save files, autosave.
+- `src/io/` decklist parsing, export (decklist, CSV), save files, autosave, save slots, Your decks (`savedDecks.ts`).
 - `src/dev/` dev-only tooling, never in the production build: `__shot(name)` saves a screenshot to `reports/screenshots/` (git-ignored, never committed, decision 310; through `devtools/shotPlugin.ts`), `__spawnFile('cube.txt', opts)`, `await __regression()` runs every phase's checklist, `__errors` lists page errors since load.
 - `test-data/` lists for manual and automated testing; `cube.txt` is the owner's.
 - Rooms (ONLINE.md 3.4): `shared/` the protocol, ops, `applyOp`, redaction, permissions, room codes, the name filter, rate limits (pure, imported by both sides; only *types* from `src/`); `server/` the Cloudflare Worker with its `Room` and `Lobby` Durable Objects (`wrangler.toml`, `src/worker.ts`, `room.ts`, `lobby.ts`).

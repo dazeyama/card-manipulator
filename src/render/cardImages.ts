@@ -7,6 +7,8 @@ import { Atlas, BACK_KEY, IMG_H, IMG_W, drawPlaceholder, type Slot } from './atl
 import type { CardLayer } from './cards';
 import { ImageLoader } from './images';
 import { HIDDEN } from '../../shared/table';
+import { ART_RIM, isArtSleeve } from '../state/sleeves';
+import { sleeveCanvas } from './sleeveArt';
 
 export class CardImages {
   readonly loader = new ImageLoader(IMG_W, IMG_H);
@@ -41,8 +43,10 @@ export class CardImages {
   gate: ((card: Card) => boolean) | null = null;
 
   slotsFor(card: Card): { front: Slot; back: Slot } {
+    // A sleeved card's back is its sleeve's (decision 360), double-faced or not.
+    const sleeve = card.sleeve ? this.sleeveSlot(card.sleeve) : null;
     if (card.scryfallId === HIDDEN || (this.gate && !this.gate(card))) {
-      const back = this.atlas.get(BACK_KEY)!;
+      const back = sleeve ?? this.atlas.get(BACK_KEY)!;
       return { front: back, back };
     }
     const r = this.store.records.get(card.scryfallId);
@@ -53,11 +57,36 @@ export class CardImages {
         front = this.atlas.allocate(key);
         this.atlas.draw(front, drawPlaceholder('…', 'loading card data'));
       }
-      return { front, back: this.atlas.get(BACK_KEY)! };
+      return { front, back: sleeve ?? this.atlas.get(BACK_KEY)! };
     }
-    const front = this.slot(r.image_small, r, r.faces[0]?.name ?? r.name);
-    const back = r.back_image_small ? this.slot(r.back_image_small, r, r.faces[1]?.name ?? r.name) : this.atlas.get(BACK_KEY)!;
-    return { front, back };
+    const backFace = r.back_image_small ? this.slot(r.back_image_small, r, r.faces[1]?.name ?? r.name) : null;
+    // Raised out of its sleeve, a double-faced card shows its back face face up.
+    const front = sleeve && card.raised && backFace ? backFace : this.slot(r.image_small, r, r.faces[0]?.name ?? r.name);
+    return { front, back: sleeve ?? backFace ?? this.atlas.get(BACK_KEY)! };
+  }
+
+  /** A sleeve's back in the atlas: drawn at once for a color, when its art arrives for art. */
+  private sleeveSlot(sleeve: string): Slot {
+    const key = `sleeve:${sleeve}`;
+    let slot = this.atlas.get(key);
+    if (slot) return slot;
+    slot = this.atlas.allocate(key);
+    if (!isArtSleeve(sleeve)) {
+      this.atlas.draw(slot, sleeveCanvas(IMG_W, IMG_H, sleeve));
+      return slot;
+    }
+    this.atlas.draw(slot, sleeveCanvas(IMG_W, IMG_H, ART_RIM));
+    const s = slot;
+    this.waiting.add(key);
+    this.loader
+      .loadCover(sleeve)
+      .then((bmp) => {
+        this.atlas.draw(s, sleeveCanvas(IMG_W, IMG_H, ART_RIM, bmp));
+        bmp.close();
+      })
+      .catch((err) => console.warn(String(err)))
+      .finally(() => this.waiting.delete(key));
+    return slot;
   }
 
   private slot(url: string | undefined, r: CardRecord, label: string): Slot {

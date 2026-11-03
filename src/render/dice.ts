@@ -13,6 +13,9 @@ import { ACCENT, type App } from '../app';
 import { D20_RADIUS, D20_VALUES, d20Geometry, d20Yaw, DIE_SIZE, dieSize, DIE_WHITE, dieTurn, faceOf, FACE_VALUES, isDark, type Die } from '../state/dice';
 import { outlineMaterial } from './standMesh';
 import { remoteHeld } from '../state/remoteHeld';
+import { ART_RIM, DEFAULT_SLEEVE, PACK_H, PACK_T, PACK_W } from '../state/sleeves';
+import { ImageLoader } from './images';
+import { sleeveCanvas } from './sleeveArt';
 
 /** Pip spots for each number, on a 3 x 3 grid from -1 to 1. */
 const PIPS: Record<number, [number, number][]> = {
@@ -185,10 +188,32 @@ export class DiceLayer {
     app.store.events.on('reset', () => this.sync());
   }
 
+  /** A sleeve pack (decision 360): its sides in the sleeves' color, its top a sleeve back. */
+  private readonly packGeometry = new THREE.BoxGeometry(PACK_W, PACK_H, PACK_T);
+  private readonly packEdges = new LineSegmentsGeometry().fromEdgesGeometry(new THREE.EdgesGeometry(new THREE.BoxGeometry(PACK_W * 0.995, PACK_H * 0.995, PACK_T * 0.99)));
+  private readonly packArt = new ImageLoader(292, 408);
+
+  private packMaterial(die: Die): THREE.Material[] {
+    const color = die.color ?? DEFAULT_SLEEVE;
+    const side = new THREE.MeshLambertMaterial({ color: new THREE.Color(color).multiplyScalar(0.85) });
+    const top = new THREE.MeshLambertMaterial({ map: canvasTexture(sleeveCanvas(292, 408, color)) });
+    if (die.art) {
+      void this.packArt.loadCover(die.art).then((bmp) => {
+        top.map?.dispose();
+        top.map = canvasTexture(sleeveCanvas(292, 408, ART_RIM, bmp));
+        top.needsUpdate = true;
+        bmp.close();
+      }).catch((err) => console.warn(String(err)));
+    }
+    // Box faces: +x, -x, +y, -y, +z (the top), -z.
+    return [side, side, side, side, top, side];
+  }
+
   private materialFor(die: Die): THREE.Material | THREE.Material[] {
     const color = die.color ?? DIE_WHITE;
-    const key = `${die.kind ?? 'd6'}:${color}`;
+    const key = `${die.kind ?? 'd6'}:${color}:${die.art ?? ''}`;
     let m = this.materials.get(key);
+    if (!m && die.kind === 'pack') this.materials.set(key, (m = this.packMaterial(die)));
     if (!m) {
       m = die.kind === 'd20'
         ? new THREE.MeshLambertMaterial({ map: d20Texture(color) })
@@ -209,7 +234,7 @@ export class DiceLayer {
       }
     }
     for (const die of dice.values()) {
-      const look = `${die.kind ?? 'd6'}:${die.color ?? DIE_WHITE}`;
+      const look = `${die.kind ?? 'd6'}:${die.color ?? DIE_WHITE}:${die.art ?? ''}`;
       let d = this.drawn.get(die.uid);
       if (d && d.look !== look) {
         // Another color, or another kind of die: drawn afresh.
@@ -218,10 +243,11 @@ export class DiceLayer {
       }
       if (!d) {
         const d20 = die.kind === 'd20';
-        const body = new THREE.Mesh(d20 ? this.d20Geometry : this.geometry, this.materialFor(die));
+        const pack = die.kind === 'pack';
+        const body = new THREE.Mesh(d20 ? this.d20Geometry : pack ? this.packGeometry : this.geometry, this.materialFor(die));
         body.castShadow = true;
         body.receiveShadow = true;
-        const edges = new LineSegments2(d20 ? this.d20Edges : this.edgeGeometry, this.outlineFor(die.uid));
+        const edges = new LineSegments2(d20 ? this.d20Edges : pack ? this.packEdges : this.edgeGeometry, this.outlineFor(die.uid));
         const group = new THREE.Group();
         group.add(body, edges);
         this.group.add(group);
@@ -315,7 +341,8 @@ export class DiceLayer {
       // Another player's dice in hand or rolling are theirs until they land (ONLINE.md 8.4).
       if (remoteHeld.has(uid)) continue;
       const size = d.look.startsWith('d20') ? dieSize('d20') : DIE_SIZE;
-      box.setFromCenterAndSize(new THREE.Vector3(), new THREE.Vector3(size, size, size));
+      if (d.look.startsWith('pack')) box.setFromCenterAndSize(new THREE.Vector3(), new THREE.Vector3(PACK_W, PACK_H, PACK_T));
+      else box.setFromCenterAndSize(new THREE.Vector3(), new THREE.Vector3(size, size, size));
       d.group.updateMatrixWorld();
       inv.copy(d.group.matrixWorld).invert();
       local.copy(ray.ray).applyMatrix4(inv);

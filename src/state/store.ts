@@ -121,6 +121,12 @@ export interface CardMove {
   spreadOf?: string | null;
   /** Where an X spread laid it (decision 160); null, not laid. */
   laidAt?: { x: number; y: number } | null;
+  /** Its sleeve (decision 360); null, unsleeved. */
+  sleeve?: string | null;
+  /** Raised out of its sleeve, showing its back face (decision 360); null, not. */
+  raised?: true | null;
+  /** It has a back face (ONLINE.md O119): set once, when a browser that knows the card finds it missing. */
+  dfc?: true;
 }
 
 /** Where a change to the table came from: this browser's user, or the room (ONLINE.md 11.1). */
@@ -133,6 +139,9 @@ export function snapCard(c: Card): CardSnap {
     x: c.x, y: c.y, z: c.z, yaw: c.yaw, faceUp: c.faceUp,
     pileId: c.pileId, spreadOf: c.spreadOf, laidAt: c.laidAt ? { ...c.laidAt } : undefined, stand: c.stand, side: c.side,
     ...(c.cube ? { cube: c.cube } : {}),
+    ...(c.sleeve ? { sleeve: c.sleeve } : {}),
+    ...(c.raised ? { raised: true as const } : {}),
+    ...(c.dfc ? { dfc: true as const } : {}),
   };
 }
 
@@ -149,6 +158,10 @@ function before(c: Card, m: CardMove): CardMove {
   if (m.pileId !== undefined) out.pileId = c.pileId;
   if (m.spreadOf !== undefined) out.spreadOf = c.spreadOf;
   if (m.laidAt !== undefined) out.laidAt = c.laidAt ? { ...c.laidAt } : null;
+  if (m.sleeve !== undefined) out.sleeve = c.sleeve ?? null;
+  if (m.raised !== undefined) out.raised = c.raised ?? null;
+  // A card's back face never goes away: undoing the mark leaves it.
+  if (m.dfc !== undefined && c.dfc) out.dfc = true;
   return out;
 }
 
@@ -274,6 +287,9 @@ export class Store {
       if (m.pileId !== undefined) c.pileId = m.pileId;
       if (m.spreadOf !== undefined) c.spreadOf = m.spreadOf;
       if (m.laidAt !== undefined) c.laidAt = m.laidAt ? { ...m.laidAt } : undefined;
+      if (m.sleeve !== undefined) c.sleeve = m.sleeve ?? undefined;
+      if (m.raised !== undefined) c.raised = m.raised ?? undefined;
+      if (m.dfc) c.dfc = true;
       changed.push(m.uid);
     }
     if (changed.length) this.events.emit('moved', changed);
@@ -764,7 +780,7 @@ export class Store {
 /** A move with its unset fields left out, as it goes over the wire. */
 function clean(m: CardMove): CardMove {
   const out: CardMove = { uid: m.uid };
-  for (const k of ['x', 'y', 'z', 'yaw', 'faceUp', 'stand', 'side', 'pileId', 'spreadOf', 'laidAt'] as const) {
+  for (const k of ['x', 'y', 'z', 'yaw', 'faceUp', 'stand', 'side', 'pileId', 'spreadOf', 'laidAt', 'sleeve', 'raised', 'dfc'] as const) {
     if (m[k] !== undefined) (out as unknown as Record<string, unknown>)[k] = m[k];
   }
   return out;

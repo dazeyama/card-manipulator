@@ -7,6 +7,9 @@ import { fetchByIds } from '../scryfall/resolve';
 import { readBasics } from '../state/basics';
 import { cubesOnTable } from '../state/cubes';
 import { DEFAULT_SETTINGS, type Card, type CardRecord, type TableDoc } from '../state/types';
+import { isDfc } from '../scryfall/trim';
+
+const hasBackFace = (r: CardRecord | undefined) => !!r && isDfc(r);
 import { HIDDEN, type TableState } from '../../shared/table';
 
 /**
@@ -34,6 +37,10 @@ export function toDoc(app: App, withCardData: boolean): TableDoc {
     ...(c.side ? { side: c.side } : {}),
     // Spawned from a CubeCobra cube (decision 321).
     ...(c.cube ? { cube: c.cube } : {}),
+    // Sleeved, raised, double-faced (decision 360); a hidden card keeps only its sleeve, which anyone sees.
+    ...(c.sleeve ? { sleeve: c.sleeve } : {}),
+    ...(c.raised && !writtenHidden(app, c) ? { raised: true as const } : {}),
+    ...(c.dfc && !writtenHidden(app, c) ? { dfc: true as const } : {}),
   }));
   const cardData: Record<string, CardRecord> = {};
   if (withCardData) {
@@ -128,7 +135,11 @@ export async function loadDoc(app: App, doc: TableDoc): Promise<void> {
 
   // The whole table at once: in a room, the crown's Load file is one `replace` op (ONLINE.md 8.2).
   store.elo.clear();
-  store.replaceTable(tableOfDoc(doc));
+  const table = tableOfDoc(doc);
+  // Double-faced cards are marked (decision 360, O119), older files too, from what card data there is
+  // (src/sleeves.ts marks the rest as their card data arrives).
+  for (const c of table.cards) if (!c.dfc && hasBackFace(store.records.get(c.scryfallId))) c.dfc = true;
+  store.replaceTable(table);
   if (doc.elo) store.setElo(Object.entries(doc.elo));
   if (doc.camera) app.rig.fromState(doc.camera);
 

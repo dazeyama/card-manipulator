@@ -23,8 +23,13 @@ export function viewOf(table: TableState): TableView {
   return { cards: new Map(table.cards.map((c) => [c.uid, c])), mats: new Map(table.mats.map((m) => [m.uid, m])) };
 }
 
-/** May this player know the card's identity (7.1)? */
+/**
+ * May this player know the card's identity (7.1)? An unsleeved double-faced
+ * card is everyone's to see wherever it lies (O119): its back face is as plain
+ * as its front, on a stand too, as in a real hand. Sleeves hide it again.
+ */
 export function canSee(card: CardSnap, mats: ReadonlyMap<string, Mat>, player: string): boolean {
+  if (card.dfc && !card.sleeve) return true;
   if (card.stand) {
     // Only a stand's owner sees its cards, and only if the mat really is a stand (review N5).
     const m = mats.get(card.stand);
@@ -33,9 +38,10 @@ export function canSee(card: CardSnap, mats: ReadonlyMap<string, Mat>, player: s
   return card.faceUp;
 }
 
-/** The card as a player who may not know it is sent it: no printing, no finish. */
+/** The card as a player who may not know it is sent it: no printing, no finish, nor that it has a back face; its sleeve shows. */
 export function hideCard(card: CardSnap): CardSnap {
-  return { ...card, scryfallId: HIDDEN, finish: 'nonfoil' };
+  const { dfc: _dfc, raised: _raised, ...rest } = card;
+  return { ...rest, scryfallId: HIDDEN, finish: 'nonfoil' };
 }
 
 /** Cards with the identities this player may not know taken out. */
@@ -62,6 +68,19 @@ export function redactOp(op: Op, after: TableView, player: string): Op {
       return { t: 'replace', table: redactTable(op.table, player) };
     case 'batch':
       return { t: 'batch', ops: op.ops.map((o) => redactOp(o, after, player)) };
+    case 'move':
+      // The crown's double-faced marks (O119) only for the cards this player may see.
+      if (!op.moves.some((m) => m.dfc)) return op;
+      return {
+        ...op,
+        moves: op.moves.flatMap((m) => {
+          if (!m.dfc) return [m];
+          const c = after.cards.get(m.uid);
+          if (c && canSee(c, after.mats, player)) return [m];
+          const { dfc: _dfc, ...rest } = m;
+          return Object.keys(rest).length > 1 ? [rest] : [];
+        }),
+      };
     default:
       return op;
   }
@@ -70,6 +89,7 @@ export function redactOp(op: Op, after: TableView, player: string): Op {
 /** True if any part of the op carries identities, so it must be redacted per player. */
 export function carriesIdentities(op: Op): boolean {
   if (op.t === 'add' || op.t === 'replace') return true;
+  if (op.t === 'move') return op.moves.some((m) => m.dfc);
   return op.t === 'batch' && op.ops.some(carriesIdentities);
 }
 

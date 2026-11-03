@@ -83,7 +83,7 @@ The owner named four tasks (2026-10-27). Every design decision should be tested 
 |---|---|
 | **Table** | The infinite flat surface everything rests on. There is exactly one table in version one. |
 | **Card** | One physical object: a specific Scryfall printing plus a finish (foil or nonfoil), a position, a rotation and a face (up or down). Four copies of a card are four card objects. |
-| **Face** | The side showing. A face-down normal card shows the Magic card back. A face-down double-faced card shows its back face. The tool treats both identically: flipping is flipping. |
+| **Face** | The side showing. A face-down normal card shows the Magic card back. A face-down double-faced card shows its back face. The tool treats both identically: flipping is flipping. A sleeved card shows its sleeve face down, and Shift + F raises a sleeved double-faced card's back face (Section 10.11). |
 | **Pile** | Any group of cards resting together on the table. Piles are detected automatically from positions (Section 11.1). |
 | **Stack** | A tidy pile: cards squared up, one on top of the next, with a count badge. |
 | **Messy pile** | An untidy pile: cards overlapping at small random offsets and angles. |
@@ -536,7 +536,7 @@ Owner's decision (2026-10-27): **middle-click flips (right-click until decision 
 
 - Middle-click a card: it flips over with a physical turn, rising, rotating about its long axis and landing. If the card is in the selection, every selected card flips in a quick cascade.
 - `F`: every selected card flips, the same cascade, without aiming the mouse at one of them.
-- A face-down normal card shows the Magic back. A face-down double-faced card shows its back face. The tool does not distinguish; there is no special "transform" command.
+- A face-down normal card shows the Magic back. A face-down double-faced card shows its back face, unless it is **sleeved** (Section 10.11): then it shows the sleeve like any card, and **Shift + F** raises its back face, face up (decision 360).
 - **Flick**: if the cursor's speed during a drag exceeds a threshold and reverses sharply, the dragged card (or clump) is tossed a short distance in the flick direction and flips in the air. The threshold is tuned in Phase 5 and exposed in settings as Off / Normal / Sensitive.
 
 ### 10.6 Spread and restack
@@ -602,6 +602,19 @@ Owner's decision (2026-11-01, decision 327): **flags**, named zones that sort ca
 - **Search**: `flag:keep` matches the cards in the flag named Keep (Section 9.4).
 - Flags are saved with the table, and in a room everyone sees them; placing, moving, changing and taking away one needs Move, as a playmat does (ONLINE.md O114).
 
+### 10.11 Sleeves
+
+Owner's decision (2026-11-02, decision 360; designed in SLEEVES.md): **digital sleeves**, as a real table has them, so a deck's double-faced cards and order stay secret in a room.
+
+- **Unsleeved double-faced cards are public** in a room, as offline: face down, in a deck or on a card stand, their back face shows to everyone (ONLINE.md O119). Sleeves hide them.
+- **Sleeve packs**: the Playmat tab's **Sleeves** section picks a color (the dice's palette) or takes a card line for **art sleeves** (that printing's art crop), and **Spawn pack** lays a pack, a small box in the sleeves' style, in the middle of the view. **Shift + U** drops a pack of the last sleeves chosen at the cursor. A pack is dragged like a die (it rides on the dice, decision 361) and is never rolled or numbered; Delete removes it.
+- **Sleeving**: let go of a pack over a card and every card in its pile is sleeved, replacing any sleeves they wore, and the pack is used up; over a selected card, the whole selection is. Let go elsewhere, the pack lies there. Undo takes the sleeving back, pack and all.
+- **Look**: face up, a sleeved card's face has a thin rim in the sleeve's color (near black for art) and its edges take the color, so whose cards are whose shows; face down, every sleeved card shows the sleeve's back: the color with a glossy sheen and a faint inner border, or the art in a thin black frame.
+- **Raise (Shift + F)**: a sleeved double-faced card comes face up showing its back face, as if pulled half out of the sleeve (the rim gone along its top, a line where the sleeve's mouth crosses it); Shift + F again lowers it to its front. F flips a raised card face down; flipped back up it is still raised. On an unsleeved double-faced card Shift + F flips it as F does; on a single-faced card it says "Not double-faced". In the Flip wedge's ring.
+- **Unsleeve (U)**: takes the sleeves off the selection, or the pile under the cursor. A raised card face up goes face down, which shows the same back face once unsleeved. In the Flip wedge's ring.
+- **Your decks**: every sleeving saves the pile as a deck, a snapshot of its exact printings and finishes with its sleeves, in this browser's IndexedDB. It is named after the pile if it is a named pile, else after its cube, else the next free "Deck N"; a deck of the same name is replaced. In a room it is saved only if the sleever can see every card, so nothing hidden is kept. The List tab lists them (Section 12.1).
+- Inspect says "Sleeved · Dark blue" (and "raised") under the printing; `is:sleeved` and `is:raised` search them. Sleeves, raised cards and packs are saved with the table.
+
 ## 11. Piles
 
 ### 11.1 Detection
@@ -635,11 +648,11 @@ Dropping a stack onto a stack merges them, and a named stack keeps its name (if 
 
 A collapsible panel on the left with five tabs:
 
-1. **List**: a textarea for a decklist, a Parse button, a preview of resolved and unresolved lines, and Spawn.
+1. **List**: a textarea for a decklist, a Parse button, a preview of resolved and unresolved lines, and Spawn. Below it, **Your decks** (decision 360): every deck saved by sleeving it, newest first, with its sleeve swatch, card count and when it was saved; **Spawn** brings it back in its sleeves as a neat face-down stack, **Edit** puts its decklist in the box, ✏️ renames and 🗑 deletes it (after a confirm).
 2. **Cube**: a CubeCobra cube link (or its id) and Spawn cube: the cube's mainboard spawns as one pile, in the cube's own printings and finishes, and the table learns each card's **CubeCobra Elo** (decision 192). It sits second, after List (decision 193). While the cube has cards on the table, a **cube chip** along the top of the play space shows CubeCobra's icon, the cube's name, its size and a link to it, one chip per cube; the `?` panel can hide them (decision 321).
 3. **Card**: a search box with autocomplete from the name catalog (fuse.js for typos), an optional set code and collector number, a quantity, a finish, and Spawn. Below it, **Basic lands** (decision 210): a chip each for Plains, Island, Swamp, Mountain and Forest spawns one, a number under each chip and **Spawn basics** spawn several at once, and **Choose basics…** opens a dialog that picks each basic's printing (a searchable list of every paper printing, snow-covered ones included, or a typed line like `Plains (ZEN) 230`) and a Foil tick. The choice is saved with the table; a new table, and any file without one, uses the Zendikar full-art basics (ZEN 230, 234, 238, 242, 246).
 4. **Query**: a Scryfall query, a Preview count (runs the search and reports the total before spawning), a cap field (default 500, settings allow up to 2,000) and Spawn. Extras are always excluded (Section 5.1); a small note under the box says so.
-5. **Playmat**: one card line, spawning a playmat with its art (Section 10.9).
+5. **Playmat**: one card line, spawning a playmat with its art (Section 10.9); below it the **Card stand** and **Sleeves** sections (Sections 10.9, 10.11).
 
 Spawn settings, kept at their defaults since decision 112 (no controls for them); below its tabs the spawn panel shows only the Removed tray; control hints live in the play space (decision 134):
 
@@ -705,6 +718,7 @@ Keep,4,Lightning Bolt,m11,149,nonfoil,…
 - **Autosave** to IndexedDB after every settle, debounced to one second. Reopening the page restores the last table, camera included.
 - **Welcome table** (decision 153): a first visit, with no table saved in this browser, opens `public/welcome-table.json`, the owner's table of 450 cards and a playmat, with EDHREC ranks and CubeCobra Elo (decision 196), so a new player has cards to play with before pressing **New**. From then on autosave keeps their own table, even an empty one. A small note over the welcome table reads "Playing with friends? Join a table or press 🌐 Go online once your table is ready." (ONLINE.md 12.6, O96). In a room, a joiner's autosave pauses and their own table comes back when they leave (ONLINE.md O9, O72).
 - **Save slots** (decision 359): **Save** opens a menu of three slots kept in this browser's IndexedDB beside autosave, each showing a small picture of the view, the table's name, its card count and when it was saved, with **Save here** and **Load**. Saving over a filled slot and loading over a table with cards each ask first. **Ctrl + S** saves into the slot last saved to or loaded from (starred) without asking; before any slot is used it opens the menu.
+- **Your decks** (decision 360): decks saved by sleeving them, in IndexedDB beside the save slots, listed on the List tab (Sections 10.11, 12.1).
 - **Save as file**: the Table document (Section 6.3) as `.json`, with `cardData` embedded, from **Download as file** at the foot of the Save menu. **Load file** replaces the table after a confirm.
 - **New table** clears everything after a confirm.
 - The table name sits in the top bar and is editable.
@@ -793,6 +807,8 @@ Personality: **snappy and light** (decision 42). Quick follow, short settles, ve
 | X | Spread the selection; with nothing selected, spread or restack the pile under the cursor (like a double-click). While dragging: spread the held cards in a grid around the cursor |
 | T | Tidy the selection, or the pile under the cursor. While dragging: square the held cards into a neat stack in the hand |
 | F | Flip the selection, or the card under the cursor. While dragging: turn the held cards over in the hand. F twice quickly: every card faces up, so a mixed stack is fronted. Like R, a single press waits 0.15 s for a second one before flipping; F F within 0.30 s faces the cards up with no flip first (decision 206) |
+| Shift + F | Raise a sleeved double-faced card's back face, face up; again lowers it (decision 360) |
+| U | Take the sleeves off the selection, or the pile under the cursor (decision 360) |
 | R | Turn the selection (or the card under the cursor) to the next quarter turn clockwise; R twice quickly: upright. While dragging, R turns the held cards |
 | C | Curve the selection, or the pile under the cursor, out by mana value; on a curve, stack it back up. C C: a column per color, W U B R G, colorless, multicolor, lands (decision 217) |
 | Shift + C | Curve everything (or the selection) out by color, two colors to a row |
@@ -802,6 +818,7 @@ Personality: **snappy and light** (decision 42). Quick follow, short settles, ve
 | L | Search the pile under the cursor (or the selection) without spreading it, if it is face up; **L L** searches a face-down pile, a deck. A box at the cursor lists its cards, top first, filtered by the query language, as rows or **Pictures**; resting on one shows it in Inspect; a click takes it out as P does. When done, the pile is shuffled unless **Shuffle when done** is unticked. In a room a face-down pile is shown to the searcher alone (decision 310) |
 | N | Name the selected pile |
 | B | Place a flag: then click the table where it goes, and name it (Section 10.10, decision 327) |
+| Shift + U | Drop a sleeve pack of the last sleeves chosen at the cursor (decision 360) |
 | Z | Frame the selection: a group as close as keeps it all on screen at the current camera angle, then one mouse-wheel notch further out, so a big group nearly fills the view (decisions 212, 213) |
 | V | Next camera view preset |
 | Home | Reset camera to the current view preset |
@@ -1301,6 +1318,8 @@ All dated 2026-10-27, from the brainstorming session.
 | 357 | Owner (2026-11-02): **Space while holding cards deals again**, as it did before decision 296 unbound it: the radial menu never opens while cards are held, so Space is free then. **(agent)** It deals exactly as right-click does now (decisions 180, 182): the hand's bottom card at once (squared with Ctrl), then one every quarter second while Space stays down (decision 181's half second had become right-click's quarter). With nothing held, Space opens the radial as before. Not a radial item: it acts only on cards in the hand, where the radial can't open. The `?` panel and the hint line say Right-click or Space. |
 | 358 | Owner (2026-11-02): spawning a 1,954-card CubeCobra cube failed with "No response from api.scryfall.com". **(agent)** Reproduced in the built-in browser. Scryfall now limits `/cards/collection`, `/cards/named` and `/cards/random` to two requests a second, as it does `/cards/search`; the queue sent collection batches at the general 100 ms pace, so a cube needing 27 batches hit the limit. Scryfall's 429 carries no CORS header, so the browser reported a failed fetch instead, the queue retried within a second or two, deepening the 30-second lockout, and gave up. Now those four endpoints go at the search pace (550 ms after the previous answer); a fetch that fails gets one retry after 1.5 s, and a second failure is taken for a hidden 429: the queue pauses 31 s with the slow-down banner, and if it still fails the message says Scryfall is limiting requests. Offline, it fails at once. A big cube takes longer (about 30 s for 1,954 new cards), so the Cube tab counts the cards up as they arrive. Checked on that cube in the built-in browser: all 1,954 cards spawned in 31 s. |
 | 359 | Owner (2026-11-02): **three save slots under the Save button** to keep tables in. The owner chose: clicking Save opens a menu of the slots, with the file download in it; Ctrl + S saves to the last slot; each slot shows name, card count, time and a picture; it asks before saving over a filled slot and before loading over a table. **(agent)** The slots live in IndexedDB like autosave (`slot.v1.N.info` for what the menu shows, `slot.v1.N.doc` for the table, without card data, which the card cache and Scryfall supply as for autosave), so they belong to this browser. The picture is a 240-pixel-wide JPEG of the view, rendered and copied in one go. Ctrl + S doesn't ask: it saves into the starred slot, the one last saved to or loaded from, and toasts it; with no slot used yet it opens the menu. The menu closes on Esc or a click elsewhere. In a room the Save button stays a Downloads action (hidden when the crown turns Downloads off), and Load needs the crown's Replace like Open. Not on the radial: Save is a top-bar file action, which RADIAL.md leaves off. |
+| 360 | Owner (2026-11-02, built 2026-11-03): **sleeves** (SLEEVES.md, Section 10.11). The owner chose: in rooms an unsleeved double-faced card's back side is public everywhere, on card stands too, as offline; **sleeve packs**, used up when dropped on a pile, sleeve every card in it, replacing old sleeves; sleeves are a **color or a card's art**; face-down sleeved cards show the sleeve, and **Shift + F** raises a sleeved double-faced card's back face, face up and public; **U** unsleeves; packs come from a **Sleeves section on the Playmat tab** and a radial and bottom-bar item; every sleeving saves the pile to **Your decks** on the List tab as a **snapshot**, spawned back **sleeved, face down, as a neat stack**. **(agent)** Shift + U drops a pack at the cursor (Point wedge) and Shift + F and U sit in the Flip wedge; a pack dropped on a selected card sleeves the selection; a raised card stays raised while face down; Shift + F on an unsleeved double-faced card flips it, on a single-faced one says so; unsleeving a raised face-up card turns it face down, the same back face; deck names come from the pile, then the cube, then "Deck N", replacing a deck of the same name; in a room a deck is saved only when the sleever sees every card; `is:sleeved`, `is:raised` and an Inspect line. |
+| 361 | **(agent, 2026-11-03)** How sleeves are built, simpler than SLEEVES.md's model: a sleeve is **a string on each card**, its color `#rrggbb` or its art crop's URL, so there is no table list of styles and no `sleeves` op; a **pack is a die of kind `pack`** (with `color`, `art`, `artName`), so it is dragged, held, saved, undone and sent to a room by the dice code and the `dice` op, with no `pack` op, and needs the dice's ranks in a room (ONLINE.md O120). Reasons: it reuses the dice's drag, holds, picking, undo and room sync whole, and a style string is self-describing. The rim and raised mark are one more card attribute in the one draw call; the sleeve back is an atlas slot per style, art center-cropped from Scryfall's art crop. Close up, the sharper image covers the raised card's mouth line (the missing top rim still shows); dropping a pack shows no glow on its target. |
 
 ## Appendix B: Open items
 

@@ -154,3 +154,40 @@ describe('visibility diffs', () => {
     expect(diff(t, { t: 'reuid', pairs: [['a', 'z']] }, 'ann')).toEqual({ reveal: [], forget: [] });
   });
 });
+
+describe('sleeves and double-faced cards (decision 360, O119)', () => {
+  const mats = new Map([['s1', stand('s1', 'bea')]]);
+
+  it('shows an unsleeved double-faced card to everyone, face down or on another player\'s stand', () => {
+    expect(canSee(card('a', { faceUp: false, dfc: true }), mats, 'ann')).toBe(true);
+    expect(canSee(card('a', { stand: 's1', faceUp: false, dfc: true }), mats, 'ann')).toBe(true);
+  });
+
+  it('hides a sleeved one face down, as any card', () => {
+    expect(canSee(card('a', { faceUp: false, dfc: true, sleeve: '#1f3a6e' }), mats, 'ann')).toBe(false);
+    expect(canSee(card('a', { faceUp: true, dfc: true, sleeve: '#1f3a6e', raised: true }), mats, 'ann')).toBe(true);
+  });
+
+  it('keeps the sleeve of a hidden card but not its back-face or raised marks', () => {
+    const h = hideCard(card('a', { faceUp: false, dfc: true, raised: true, sleeve: '#1f3a6e' }));
+    expect(h.sleeve).toBe('#1f3a6e');
+    expect(h.dfc).toBeUndefined();
+    expect(h.raised).toBeUndefined();
+    expect(h.scryfallId).toBe(HIDDEN);
+  });
+
+  it('reveals a face-down double-faced card when its sleeves come off, and forgets it when sleeved', () => {
+    const sleeved = table([card('a', { faceUp: false, dfc: true, sleeve: '#1f3a6e' })]);
+    expect(diff(sleeved, { t: 'move', moves: [{ uid: 'a', sleeve: null }] }, 'ann').reveal.map((r) => r.uid)).toEqual(['a']);
+    const bare = table([card('a', { faceUp: false, dfc: true })]);
+    expect(diff(bare, { t: 'move', moves: [{ uid: 'a', sleeve: '#1f3a6e' }] }, 'ann').forget).toEqual(['a']);
+  });
+
+  it('sends the crown\'s double-faced marks only for cards a player may see', () => {
+    const t = table([card('up', { dfc: true, sleeve: '#1f3a6e' }), card('down', { faceUp: false, dfc: true, sleeve: '#1f3a6e' })]);
+    const op: Op = { t: 'move', moves: [{ uid: 'up', dfc: true }, { uid: 'down', dfc: true }] };
+    expect(carriesIdentities(op)).toBe(true);
+    const out = redactOp(op, viewOf(applyOp(t, op)), 'ann');
+    expect(out).toEqual({ t: 'move', moves: [{ uid: 'up', dfc: true }] });
+  });
+});

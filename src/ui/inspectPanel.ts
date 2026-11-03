@@ -4,6 +4,7 @@
 
 import type { App } from '../app';
 import { setName } from '../scryfall/names';
+import { sleeveName } from '../state/sleeves';
 import type { Card, CardRecord } from '../state/types';
 import { h } from './dom';
 import { PanelFold } from './panelFold';
@@ -117,6 +118,8 @@ export class InspectPanel {
     const finish = card.finish === 'nonfoil' ? 'Nonfoil' : card.finish === 'foil' ? 'Foil' : 'Etched foil';
     out.push(h('div', { class: 'printing muted' },
       `${r.set_name || setName(r.set) || r.set.toUpperCase()} (${r.set.toUpperCase()}) #${r.collector_number} · ${cap(r.rarity)} · ${finish}${card.faceUp ? '' : ' · face down'}`));
+    // Its sleeve (decision 360).
+    if (card.sleeve) out.push(h('div', { class: 'printing muted' }, `Sleeved · ${sleeveName(card.sleeve)}${card.raised ? ' · raised, showing its back face' : ''}`));
     // EDHREC rank (decision 187) and CubeCobra Elo (decision 192): how the card is valued.
     // Each a chip on its own line (decision 197).
     const elo = this.app.store.elo.get(r.oracle_id);

@@ -16,7 +16,7 @@ import type { App } from '../app';
 import type { Online } from '.';
 import { HIDDEN } from '../../shared/table';
 import type { Placed } from '../state/piles';
-import { CARD_H, type Card, type Mat } from '../state/types';
+import { CARD_H, type Card, type CardRecord, type Mat } from '../state/types';
 
 export { HIDDEN };
 
@@ -24,9 +24,12 @@ export { HIDDEN };
  * May `me` know this card (7.1, the client's twin of shared/redact.ts canSee)?
  * Also while I search it (L L, decision 310): `searching`, the cards of my search.
  */
-export function visibleTo(card: Pick<Card, 'scryfallId' | 'faceUp' | 'stand'> & { uid?: string }, mats: Map<string, Mat>, me: string, searching?: ReadonlySet<string>): boolean {
+export function visibleTo(card: Pick<Card, 'scryfallId' | 'faceUp' | 'stand' | 'sleeve' | 'dfc'> & { uid?: string }, mats: Map<string, Mat>, me: string, searching?: ReadonlySet<string>, records?: ReadonlyMap<string, CardRecord>): boolean {
   if (card.scryfallId === HIDDEN) return false;
   if (card.uid !== undefined && searching?.has(card.uid)) return true;
+  // An unsleeved double-faced card is everyone's to see (O119): marked so, or known here to have a back face
+  // (a card the server just revealed comes without its mark).
+  if (!card.sleeve && (card.dfc || !!records?.get(card.scryfallId)?.back_image_small)) return true;
   if (card.stand) {
     // Only a stand's owner sees its cards, and only if the mat really is a stand (review N5).
     const m = mats.get(card.stand);
@@ -92,7 +95,7 @@ export class HiddenGate {
   attach(online: Online | null): void {
     if (online) {
       const mats = this.app.store.mats;
-      online.canSee = (card) => visibleTo(card, mats, online.room.me, online.room.searches.get(online.room.me));
+      online.canSee = (card) => visibleTo(card, mats, online.room.me, online.room.searches.get(online.room.me), this.app.store.records);
       // A search started or ended: its cards may show or hide.
       online.room.events.on('searches', (uids) => this.check(uids));
     }

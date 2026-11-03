@@ -36,6 +36,9 @@ export const RADIAL_MENU: RadialWedge[] = [
   { label: 'Flip', icon: '🃏', cards: true, items: [
     { label: 'Flip', key: 'F', presses: ['f'], icon: '🃏', title: 'Flip over' },
     { label: 'Face all up', key: 'F F', presses: ['f', 'f'], icon: '👁️', title: 'Turn every card face up' },
+    // Sleeves (decision 360): a sleeved double-faced card's back face, raised out of its sleeve; and taking sleeves off.
+    { label: 'Raise', key: 'Shift F', presses: ['shift+f'], icon: '⤴️', title: 'Show a sleeved double-faced card’s back face, face up; again puts it back' },
+    { label: 'Unsleeve', key: 'U', presses: ['u'], icon: '🧤', title: 'Take the sleeves off' },
   ] },
   { label: 'Turn', icon: '🔃', cards: true, items: [
     { label: 'Turn 90°', key: 'R', presses: ['r'], icon: '🔃', title: 'Turn 90°, to tap' },
@@ -72,6 +75,7 @@ export const RADIAL_MENU: RadialWedge[] = [
     { label: 'Point', key: 'P', presses: ['p'], icon: '👉', title: 'Move as a stack: then click the table where it goes' },
     { label: 'Pass pack', key: 'P P', presses: ['p', 'p'], icon: '📦', title: 'Move face down, like a pack to pass: then click where it goes' },
     { label: 'Flag', key: 'B', presses: ['b'], icon: '🚩', title: 'Place a flag, a named zone that sorts cards: click the table where it goes, then name it', anywhere: true },
+    { label: 'Sleeves', key: 'Shift U', presses: ['shift+u'], icon: '🎁', title: 'Drop a pack of sleeves at the cursor; drop it on a deck to sleeve it', anywhere: true },
   ] },
 ];
 

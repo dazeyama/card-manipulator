@@ -36,6 +36,8 @@ export class DiceNumbers {
       }
     }
     for (const d of store.dice.values()) {
+      // A sleeve pack has no number (decision 360).
+      if (d.kind === 'pack') continue;
       let el = this.labels.get(d.uid);
       if (!el) {
         el = document.createElement('div');

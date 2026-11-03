@@ -18,6 +18,27 @@ interface ScryfallCard {
   card_faces?: { image_uris?: ScryfallImages }[];
 }
 
+/** A card's art found from one decklist line: the printing and its art crop, or why not, said for the status line. */
+export type FoundArt = { id: string; name: string; where: string; art: string } | { error: string };
+
+/** The art crop of exactly the printing a line names (the front face of a double-faced card): playmats, and art sleeves (decision 360). */
+export async function findArt(text: string): Promise<FoundArt> {
+  const parsed = parseLine(text);
+  if (!parsed) return { error: 'Type a card, with its set and number for an exact printing.' };
+  try {
+    const entry: DeckEntry = { ...parsed, count: 1, lines: [1], text };
+    const { resolved } = await resolveEntries([entry]);
+    const record = resolved[0]?.record;
+    if (!record) return { error: `Couldn't find “${parsed.name}”${parsed.set ? ` in ${parsed.set.toUpperCase()}` : ''}.` };
+    const card = await scryfall.getJson<ScryfallCard>(`/cards/${record.id}`);
+    const art = card?.image_uris?.art_crop ?? card?.card_faces?.[0]?.image_uris?.art_crop;
+    if (!art) return { error: `Scryfall has no art for ${record.name}.` };
+    return { id: record.id, name: record.name, where: `${record.set.toUpperCase()} ${record.collector_number}`, art };
+  } catch {
+    return { error: 'Scryfall could not be reached. Try again in a moment.' };
+  }
+}
+
 export function buildPlaymatTab(app: App, mats: Mats): HTMLElement {
   const line = h('input', { class: 'grow', placeholder: 'Ragavan, Nimble Pilferer (MH2) 138', spellcheck: 'false', 'aria-label': 'Card for the playmat' });
   const go = h('button', { class: 'btn primary' }, 'Spawn playmat');
@@ -25,32 +46,16 @@ export function buildPlaymatTab(app: App, mats: Mats): HTMLElement {
 
   const spawn = async () => {
     const text = line.value.trim();
-    const parsed = parseLine(text);
-    if (!parsed) {
-      status.textContent = 'Type a card, with its set and number for an exact printing.';
-      return;
-    }
     go.disabled = true;
     status.textContent = 'Finding the card…';
     try {
-      const entry: DeckEntry = { ...parsed, count: 1, lines: [1], text };
-      const { resolved } = await resolveEntries([entry]);
-      const record = resolved[0]?.record;
-      if (!record) {
-        status.textContent = `Couldn't find “${parsed.name}”${parsed.set ? ` in ${parsed.set.toUpperCase()}` : ''}.`;
+      const found = await findArt(text);
+      if ('error' in found) {
+        status.textContent = found.error;
         return;
       }
-      // The art crop of exactly that printing (the front face of a double-faced card).
-      const card = await scryfall.getJson<ScryfallCard>(`/cards/${record.id}`);
-      const art = card?.image_uris?.art_crop ?? card?.card_faces?.[0]?.image_uris?.art_crop;
-      if (!art) {
-        status.textContent = `Scryfall has no art for ${record.name}.`;
-        return;
-      }
-      mats.spawn(record.id, record.name, art, { x: app.rig.target.x, y: app.rig.target.y });
-      status.textContent = `Spawned a ${record.name} playmat (${record.set.toUpperCase()} ${record.collector_number}).`;
-    } catch {
-      status.textContent = 'Scryfall could not be reached. Try again in a moment.';
+      mats.spawn(found.id, found.name, found.art, { x: app.rig.target.x, y: app.rig.target.y });
+      status.textContent = `Spawned a ${found.name} playmat (${found.where}).`;
     } finally {
       go.disabled = false;
     }

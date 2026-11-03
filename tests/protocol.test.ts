@@ -15,9 +15,10 @@ function table(n: number): TableState {
 }
 
 describe('protocol', () => {
-  it('speaks version 3', () => {
-    // 2: the cubes op and snapshot field (decision 321, O113); 3: flags (decision 327, O114).
-    expect(PROTOCOL).toBe(3);
+  it('speaks version 4', () => {
+    // 2: the cubes op and snapshot field (decision 321, O113); 3: flags (decision 327, O114);
+    // 4: sleeves, raised and double-faced cards (decision 360, O119).
+    expect(PROTOCOL).toBe(4);
   });
 
   it('splits a table into a head and parts of 1,000 cards, and joins it back in any order', () => {

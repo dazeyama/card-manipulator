@@ -111,6 +111,7 @@ export class Inbox {
         app.layer.remove(from);
         const { front, back } = app.slotsFor(card);
         app.layer.add(to, keep, front, back, card.finish !== 'nonfoil');
+        app.drawSleeve(card);
       }
     });
   }

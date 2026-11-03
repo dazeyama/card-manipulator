@@ -25,6 +25,7 @@ import { messyLayout, shuffled } from '../state/piles';
 import { inFrontOf, isFullStand, isStand } from '../state/stand';
 import { newUid, snapCard } from '../state/store';
 import { getRecords } from '../scryfall/cardData';
+import { isDfc } from '../scryfall/trim';
 import { fetchByIds } from '../scryfall/resolve';
 import type { Finish, Mat } from '../state/types';
 import type { RoomSync } from './connect';
@@ -262,6 +263,11 @@ export class Authority {
           for (const c of fresh) ctx.added.add(c.uid);
         }
         if (crown) return null;
+        // A card's double-faced mark must be true (O119): left off, a public back face would stay hidden.
+        if (op.cards.some((c) => {
+          const r = store.records.get(c.scryfallId);
+          return !!r && !!c.dfc !== isDfc(r);
+        })) return 'unknown';
         return first(may(addAction(op.cards.map((c) => store.records.get(c.scryfallId)))), op.cards.some((c) => notMine(c.stand)) ? 'stand' : null);
       }
       case 'remove': {
@@ -283,6 +289,9 @@ export class Authority {
         if (r) return r;
         for (const m of op.moves) {
           const c = store.cards.get(m.uid);
+          // Only a double-faced card is marked so (O119).
+          const record = m.dfc && c ? store.records.get(c.scryfallId) : undefined;
+          if (record && !isDfc(record)) return 'unknown';
           const to = m.stand ?? null;
           if (!c?.stand && !to) continue;
           r = may('standCards');

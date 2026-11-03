@@ -11,6 +11,7 @@ import type { Finish } from '../state/types';
 import { toast } from './toasts';
 import { h } from './dom';
 import { PanelFold } from './panelFold';
+import { buildYourDecks } from './yourDecks';
 
 
 export class SpawnPanel {
@@ -98,7 +99,15 @@ export class SpawnPanel {
     this.listText.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) void this.parseList(parse);
     });
-    return h('div', {}, this.listText, h('div', { class: 'row' }, parse, this.listSpawn, clear), this.listPreview);
+    // Decks saved by sleeving them, under the box (decision 360).
+    const decks = buildYourDecks(this.app, {
+      options: () => this.options(),
+      edit: (list) => {
+        this.listText.value = list;
+        void this.parseList(parse);
+      },
+    });
+    return h('div', {}, this.listText, h('div', { class: 'row' }, parse, this.listSpawn, clear), this.listPreview, decks);
   }
 
   private async parseList(button: HTMLButtonElement): Promise<void> {

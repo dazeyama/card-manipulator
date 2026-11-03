@@ -12,7 +12,8 @@ import type { Op } from './ops';
 import type { Rank } from './permissions';
 import type { Basics, CardSnap, CubeInfo, Die, Flag, Mat, NamedPile, Spread, TableState } from './table';
 
-export const PROTOCOL = 3;
+/** 4: sleeves, raised and double-faced cards (decision 360, O119). */
+export const PROTOCOL = 4;
 
 // ---- limits both sides check (10.5; the server's own rates are in server/src/limits.ts) ----
 

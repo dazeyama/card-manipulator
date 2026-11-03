@@ -394,7 +394,8 @@ Downloads off (O50) is layer 1 only: the data is in the browser already. The own
 A card's **identity** is its `scryfallId` and `finish`. A player may know a card's identity when:
 
 - it is **face up and not on a stand**, wherever it is (a stack, a spread, a hand of cards laid on the table, in someone's drag), or
-- it is **on a stand they own**, face up or down.
+- it is **on a stand they own**, face up or down, or
+- it is an **unsleeved double-faced card** (O119), anywhere: face down, in a deck, on anyone's stand. Its back face is as plain as its front, as with a real unsleeved card; **sleeves** (spec 10.11) hide it again.
 
 Everything else is hidden: cards on other players' stands (O29), cards on unowned stands, and every face-down card not on your stand, yours included (O30: no private peek; take it to your stand to look), except a pile you are **searching** with L L, shown to you alone while the search lasts (O112). Flipping a card face up on the table shows it to everyone. The crown's browser holds every identity (it is the authority) and its UI hides exactly what any other player's would; a crown who edits the page can read every hand, which the owner accepted (O28).
 
@@ -465,8 +466,8 @@ No hiding offline (O32): a solo table and the mirror-mode camera see every card,
 ### 8.2 Ops (`shared/ops.ts`)
 
 ```ts
-import type { CardSnap } from '../src/state/history';   // uid, scryfallId, finish, x, y, z, yaw, faceUp, pileId, spreadOf, laidAt, stand, side
-import type { CardMove } from '../src/state/store';     // uid plus any of the pose and face fields
+import type { CardSnap } from '../src/state/history';   // uid, scryfallId, finish, x, y, z, yaw, faceUp, pileId, spreadOf, laidAt, stand, side, cube, sleeve, raised, dfc
+import type { CardMove } from '../src/state/store';     // uid plus any of the pose and face fields, sleeve, raised, dfc (O119)
 import type { Mat, NamedPile } from '../src/state/types';
 import type { Die } from '../src/state/dice';
 import type { Spread } from '../src/state/store';
@@ -482,7 +483,7 @@ export type Op =
   | { t: 'named'; set?: NamedPile[]; remove?: string[] }
   | { t: 'spread'; set?: Spread[]; remove?: string[] }
   | { t: 'mat'; set?: Mat[]; remove?: string[]; spill?: string[] }  // spawn, move, lock, life, name, owner; spill = remove with cards dropped
-  | { t: 'dice'; set?: Die[]; remove?: string[] }         // spawn, move, roll result, number, colour
+  | { t: 'dice'; set?: Die[]; remove?: string[] }         // spawn, move, roll result, number, colour; sleeve packs too (O120)
   | { t: 'basics'; basics: Basics }
   | { t: 'cubes'; set?: CubeInfo[]; remove?: string[] }  // the CubeCobra cubes on the table (O113)
   | { t: 'flag'; set?: Flag[]; remove?: string[] }        // flags: placed, moved, changed, taken away (O114)
@@ -835,7 +836,7 @@ Pure modules, vitest, all added in the phase that introduces them:
 | Test | Covers |
 |---|---|
 | `permissions.test.ts` | every row of 6.2: `needs(action)`, `allowed(rank, action)`, Lock table, the Tokens-may-remove-tokens rule |
-| `redact.test.ts` | `canSee` for stands, owners, face-down; `redactSnapshot`; visibility diffs produce the right `reveal`/`forget` for flips, stand on/off, owner change, spill |
+| `redact.test.ts` | `canSee` for stands, owners, face-down, unsleeved double-faced cards; `redactSnapshot`; `hideCard` strips `dfc` and `raised`; the crown's `dfc` marks redacted per player; visibility diffs produce the right `reveal`/`forget` for flips, stand on/off, owner change, spill, sleeving and unsleeving (O119) |
 | `apply.test.ts` | every op on a `TableState`; store-vs-pure equivalence; `reuid` renames everywhere; `spill` output |
 | `protocol.test.ts` | `PROTOCOL`, message guards (`isClientMsg`), size limits, snapshot part splitting and joining |
 | `roomCode.test.ts` | alphabet, length, `isCode` |
@@ -1062,6 +1063,8 @@ Owner answers of 2026-10-30 are recorded as such; **(agent)** marks a choice mad
 | O116 | Owner (2026-11-01): **Enter for text chat**, as proposed, and not on the radial. **(agent)** On the table in a room, Enter opens the Online panel if it is closed and puts the cursor in the chat box; Enter there sends as before, and Esc leaves the box, so keys act on the table again. Offline it does nothing. Off the radial and the bottom bar by the owner's choice: a window control, like the camera keys. The `?` panel's Online group lists it. |
 | O117 | Owner (2026-11-01): **a quick chat in the bottom left of the play space** instead of opening the Online panel, which is a settings menu at heart; and **chat lines show over the sender's cursor**. The owner chose: it shows on new messages, then fades; 5 lines; the chat leaves the Online panel; a speech bubble for 4 s. **(agent)** The box sits above the control hints, ignores the mouse except for its text box, and fades 8 s after the last line (not while the text box is open). Enter on the table now opens this box rather than the panel (O116 updated); Enter sends and closes it, Esc or clicking away closes it. The panel keeps a one-line hint, "Chat: press Enter on the table". The bubble sits above and right of the cursor's tip with a border in the player's color, cut at 60 characters, and stays 4 s, a little longer for long lines (at most 7 s); your own lines and system lines get none, nor does a player whose cursor has never been on the table. Client only: no protocol change. |
 | O118 | Owner (2026-11-01): **typing dots** for players with the quick chat open. **(agent)** The stream carries `typ: 1` while your quick chat's text box is open (with or without a cursor), and the server passes it on like `cs`. Others see three bouncing dots in the speech bubble's place over your cursor, in the bubble's look with your color border; Esc or clicking away fades them, and a line you send replaces them. They show from the moment the box opens, typed or not: open is the signal. No protocol version change: an older server drops the field and nobody sees dots, nothing breaks. The server change deploys with the next push. |
+| O119 | Owner (2026-11-02, built 2026-11-03): an **unsleeved double-faced card is public** in a room wherever it lies, face down, in a deck and on any stand, as offline; **sleeves** hide it (spec decision 360). **(agent)** The server never sees card records, so each card carries `dfc: true`, set by the browser that creates it from its record (spawn, load) and by the crown for any it finds unmarked (a `move` with `dfc`); the crown's judge refuses an `add` whose mark is wrong and a `move` marking a card that has no back face. `canSee` (shared and client) is true for `dfc` without `sleeve`; the client also counts a card whose record it holds has a back face, since a revealed card comes without its mark. `hideCard` strips `dfc` and `raised` (the sleeve stays: anyone sees it), and a `move` carrying `dfc` is redacted per player like an `add`. Sleeving, unsleeving and raising are `move`s with `sleeve` and `raised`, so the visibility diff reveals or forgets the cards they hide or show. PROTOCOL 4. |
+| O120 | **(agent, 2026-11-03)** A **sleeve pack rides on the dice**: a `Die` of kind `pack`, sent in `dice` ops and held with `grab {dice}`, so a room needs nothing new for it. Spawning one (Shift + U, Spawn pack) needs Tokens, as D does, and using one up (the drop that sleeves a pile) needs Tokens too, as removing a die does, plus Move for the sleeving. Reason: one set of ranks for the small objects on the table; Move players can still sleeve with packs a Tokens player puts down. |
 
 ## Appendix B: Open items
 

@@ -4,7 +4,9 @@
 import type { App } from './app';
 import { CARD_H, CARD_T, CARD_W, type Card } from './state/types';
 import { cutCount, gridLayout, layOrder, looseStackLayout, nextQuarterClockwise, overlaps, sameYaw, shuffled, snapYaw, spreadLayout, uprightYaw, type Footprint, type Placed } from './state/piles';
-import type { Spread } from './state/store';
+import type { CardMove, Spread } from './state/store';
+import { raiseOf } from './state/sleeves';
+import { toast } from './ui/toasts';
 import { colourGroup, curveLayout, type CurveCard } from './state/curve';
 import { arcHand, fanLayout, HAND_ROW, handLayout } from './state/fan';
 
@@ -788,6 +790,53 @@ export class Commands {
     store.moveCards(cards.map((c) => ({ uid: c.uid, faceUp: !c.faceUp })));
     animateFlips(this.app, cards, shortest);
     store.events.emit('settled', cards.map((c) => c.uid));
+  }
+
+  /**
+   * Shift + F (decision 360): a sleeved double-faced card comes up raised out of
+   * its sleeve, showing its back face to everyone, or goes back down to its
+   * front; an unsleeved one flips, as F does. Says so when none can.
+   */
+  raise(uids: string[] = this.sel): void {
+    uids = touchable(uids);
+    const store = this.app.store;
+    const moves: CardMove[] = [];
+    const turned: Card[] = [];
+    for (const u of uids) {
+      const c = store.cards.get(u);
+      if (!c) continue;
+      const to = raiseOf(c, !!c.dfc || !!store.recordOf(c)?.back_image_small);
+      if (!to) continue;
+      moves.push({ uid: u, faceUp: to.faceUp, ...(c.sleeve ? { raised: to.raised } : {}) });
+      turned.push(c);
+    }
+    if (!moves.length) {
+      if (uids.length) toast(uids.some((u) => store.cards.get(u) && !store.canSee(store.cards.get(u)!)) ? 'Flip it face up first to raise it' : 'Not double-faced', 'warn', 1800);
+      return;
+    }
+    this.app.showGesture('flip');
+    store.moveCards(moves);
+    animateFlips(this.app, turned);
+    store.events.emit('settled', turned.map((c) => c.uid));
+  }
+
+  /**
+   * U (decision 360): take the sleeves off. A card raised face up goes face
+   * down, which shows the same back face now that it has no sleeve.
+   */
+  unsleeve(uids: string[] = this.sel): void {
+    uids = touchable(uids);
+    const store = this.app.store;
+    const cards = uids.map((u) => store.cards.get(u)).filter((c): c is Card => !!c?.sleeve);
+    if (!cards.length) {
+      if (uids.length) toast('No sleeves to take off', 'info', 1600);
+      return;
+    }
+    const turn = cards.filter((c) => c.raised && c.faceUp);
+    store.moveCards(cards.map((c) => ({ uid: c.uid, sleeve: null, raised: null, ...(c.raised && c.faceUp ? { faceUp: false } : {}) })));
+    if (turn.length) animateFlips(this.app, turn, true);
+    store.events.emit('settled', cards.map((c) => c.uid));
+    toast(`Took the sleeves off ${cards.length.toLocaleString()} card${cards.length === 1 ? '' : 's'}`, 'ok', 1600);
   }
 
   /** F twice quickly (decision 105): every card faces up; only the face-down ones turn. */

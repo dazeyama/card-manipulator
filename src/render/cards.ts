@@ -24,6 +24,9 @@ export interface Pose {
 }
 
 export const CORNER_R = 3;
+/** A sleeve's rim round a face-up card, mm, and how far a raised card stands out of its sleeve (decision 360). */
+const SLEEVE_RIM = 1.3;
+const RAISED_BY = 11;
 
 interface Entry {
   uid: string;
@@ -37,6 +40,9 @@ interface Entry {
   hidden: boolean;
   /** Another player's color (their selection or hold, ONLINE.md 5.4), or null. */
   tint: THREE.Color | null;
+  /** Its sleeve's rim color (decision 360), or null unsleeved; and whether it is raised out of the sleeve. */
+  sleeve: THREE.Color | null;
+  raised: boolean;
 }
 
 const vertexHead = /* glsl */ `
@@ -44,8 +50,10 @@ attribute vec3 aFront;
 attribute vec3 aBack;
 attribute vec4 aFlags;
 attribute vec3 aGlow;
+attribute vec4 aSleeve;
 uniform float uPlain;
 varying vec3 vGlow;
+varying vec4 vSleeve;
 varying vec3 vFront;
 varying vec3 vBack;
 varying vec4 vFlags;
@@ -59,6 +67,7 @@ const vertexBody = /* glsl */ `
 vFront = aFront;
 vBack = aBack;
 vGlow = aGlow;
+vSleeve = aSleeve;
 // The mirror window draws cards plainly: no selection rim, no hover glow (decision 144).
 vFlags = vec4(aFlags.x * (1.0 - uPlain), aFlags.y * (1.0 - uPlain), aFlags.z, aFlags.w);
 vLocal = position;
@@ -100,6 +109,7 @@ uniform float uTime;
 // Render pixels per screen pixel beyond the screen's own (2 in High graphics, decision 152).
 uniform float uSuper;
 varying vec3 vGlow;
+varying vec4 vSleeve;
 varying vec3 vFront;
 varying vec3 vBack;
 varying vec4 vFlags;
@@ -132,6 +142,20 @@ vec4 texel;
 if (vFace > 0.5) texel = sampleSlot(vFront, cuv);
 else if (vFace < -0.5) texel = sampleSlot(vBack, vec2(1.0 - cuv.x, cuv.y));
 else texel = vec4(0.58, 0.56, 0.53, 1.0);
+// A sleeve (decision 360): a rim of its color round the face. Raised out of it,
+// the card stands proud of the sleeve's top edge: no rim along the top, and a
+// thin line where the sleeve's mouth crosses the card.
+if (vSleeve.w > 0.5 && vFace > 0.5) {
+  float edge = 1.0 - smoothstep(-${SLEEVE_RIM.toFixed(2)}, -${(SLEEVE_RIM - 0.35).toFixed(2)}, cd);
+  float sleeveRim = 1.0 - edge;
+  if (vSleeve.w > 1.5) {
+    float mouth = CARD_HALF.y - ${RAISED_BY.toFixed(2)};
+    sleeveRim *= 1.0 - smoothstep(mouth - 0.3, mouth + 0.3, vLocal.y);
+    float line = 1.0 - smoothstep(0.0, 0.45, abs(vLocal.y - mouth));
+    texel.rgb = mix(texel.rgb, vSleeve.rgb * 0.7, line * 0.85);
+  }
+  texel.rgb = mix(texel.rgb, vSleeve.rgb, sleeveRim);
+}
 diffuseColor.rgb *= texel.rgb;
 diffuseColor.rgb *= 1.0 + 0.14 * vFlags.y;
 `;
@@ -150,7 +174,9 @@ if (abs(vFace) < 0.5) {
   float fw = fwidth(vLocal.z);
   float line = 1.0 - smoothstep(0.0, fw * 1.5, ${(CARD_T / 2).toFixed(3)} - abs(vLocal.z));
   float fade = 1.0 - smoothstep(0.04, 0.1, fw);
-  totalEmissiveRadiance += vec3(0.40, 0.385, 0.36) * lit * (1.0 - 0.35 * line * fade);
+  // A sleeved card's edge is its sleeve's: a sleeved deck's side shows the color (decision 360).
+  vec3 edgeColor = vSleeve.w > 0.5 ? mix(vec3(0.40, 0.385, 0.36), vSleeve.rgb * 0.8, 0.75) : vec3(0.40, 0.385, 0.36);
+  totalEmissiveRadiance += edgeColor * lit * (1.0 - 0.35 * line * fade);
   diffuseColor.rgb = vec3(0.0);
 }
 // The rim in the accent blue for your own selection, another player's color for theirs (ONLINE.md 5.4).
@@ -200,6 +226,9 @@ export class CardLayer {
   private aBack: THREE.InstancedBufferAttribute;
   private aFlags: THREE.InstancedBufferAttribute;
   private aGlow: THREE.InstancedBufferAttribute;
+  /** Each card's sleeve (decision 360): its rim color, and 0 unsleeved, 1 sleeved, 2 raised. */
+  private aSleeve: THREE.InstancedBufferAttribute;
+  private sleeveDirty = false;
   /**
    * Each card's matrix as drawn the frame before (decision 341), for motion blur:
    * the motion pass compares it with the matrix now. Kept only while blur is on.
@@ -268,6 +297,7 @@ export class CardLayer {
     this.aBack = mesh.geometry.getAttribute('aBack') as THREE.InstancedBufferAttribute;
     this.aFlags = mesh.geometry.getAttribute('aFlags') as THREE.InstancedBufferAttribute;
     this.aGlow = mesh.geometry.getAttribute('aGlow') as THREE.InstancedBufferAttribute;
+    this.aSleeve = mesh.geometry.getAttribute('aSleeve') as THREE.InstancedBufferAttribute;
     this.aPrev = mesh.geometry.getAttribute('aPrev') as THREE.InstancedBufferAttribute;
     scene.add(mesh);
   }
@@ -287,6 +317,7 @@ export class CardLayer {
     geo.setAttribute('aBack', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3));
     geo.setAttribute('aFlags', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4));
     geo.setAttribute('aGlow', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3));
+    geo.setAttribute('aSleeve', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4));
     // Last frame's matrix, for motion blur's motion pass (decision 341); the card shader ignores it.
     geo.setAttribute('aPrev', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 16), 16));
     const mesh = new THREE.InstancedMesh(geo, this.material, capacity);
@@ -348,11 +379,12 @@ export class CardLayer {
   add(uid: string, pose: Pose, front: Slot, back: Slot, foil: boolean): void {
     if (this.entries.has(uid)) return;
     if (this.byIndex.length >= this.capacity) this.grow(this.capacity * 2);
-    const entry: Entry = { uid, index: this.byIndex.length, pose: { ...pose }, selected: false, hovered: false, lift: 0, foil, hidden: false, tint: null };
+    const entry: Entry = { uid, index: this.byIndex.length, pose: { ...pose }, selected: false, hovered: false, lift: 0, foil, hidden: false, tint: null, sleeve: null, raised: false };
     this.byIndex.push(entry);
     this.entries.set(uid, entry);
     this.writeSlots(entry, front, back);
     this.writeFlags(entry);
+    this.writeSleeve(entry);
     this.dirtyMatrix.add(entry);
     this.fresh.add(entry);
     this.setCount(this.byIndex.length);
@@ -375,11 +407,13 @@ export class CardLayer {
       copyAttr(this.aBack, from, last.index);
       copyAttr(this.aFlags, from, last.index);
       copyAttr(this.aGlow, from, last.index);
+      copyAttr(this.aSleeve, from, last.index);
       copyAttr(this.aPrev, from, last.index);
       this.aPrev.needsUpdate = true;
       this.slotsDirty = true;
       this.flagsDirty = true;
       this.glowDirty = true;
+      this.sleeveDirty = true;
       this.dirtyMatrix.add(last);
     }
     this.setCount(this.byIndex.length);
@@ -477,6 +511,16 @@ export class CardLayer {
     this.writeFlags(e);
   }
 
+  /** A card's sleeve (decision 360): its rim color, or null unsleeved, and whether it is raised out of it. */
+  setSleeve(uid: string, color: THREE.Color | null, raised: boolean): void {
+    const e = this.entries.get(uid);
+    if (!e) return;
+    if (e.raised === raised && (e.sleeve === color || (e.sleeve && color && e.sleeve.equals(color)))) return;
+    e.sleeve = color ? color.clone() : null;
+    e.raised = raised;
+    this.writeSleeve(e);
+  }
+
   setHidden(uid: string, on: boolean): void {
     const e = this.entries.get(uid);
     if (!e || e.hidden === on) return;
@@ -556,6 +600,10 @@ export class CardLayer {
       this.aGlow.needsUpdate = true;
       this.glowDirty = false;
     }
+    if (this.sleeveDirty) {
+      this.aSleeve.needsUpdate = true;
+      this.sleeveDirty = false;
+    }
   }
 
   private compose(e: Entry): void {
@@ -582,6 +630,12 @@ export class CardLayer {
     this.glowDirty = true;
   }
 
+  private writeSleeve(e: Entry): void {
+    const c = e.sleeve;
+    this.aSleeve.setXYZW(e.index, c?.r ?? 0, c?.g ?? 0, c?.b ?? 0, c ? (e.raised ? 2 : 1) : 0);
+    this.sleeveDirty = true;
+  }
+
   private grow(capacity: number): void {
     const old = this.object;
     const mesh = this.makeMesh(capacity);
@@ -589,7 +643,9 @@ export class CardLayer {
     const nb = mesh.geometry.getAttribute('aBack') as THREE.InstancedBufferAttribute;
     const nl = mesh.geometry.getAttribute('aFlags') as THREE.InstancedBufferAttribute;
     const ng = mesh.geometry.getAttribute('aGlow') as THREE.InstancedBufferAttribute;
+    const ns = mesh.geometry.getAttribute('aSleeve') as THREE.InstancedBufferAttribute;
     const np = mesh.geometry.getAttribute('aPrev') as THREE.InstancedBufferAttribute;
+    (ns.array as Float32Array).set(this.aSleeve.array as Float32Array);
     (np.array as Float32Array).set(this.aPrev.array as Float32Array);
     (nf.array as Float32Array).set(this.aFront.array as Float32Array);
     (ng.array as Float32Array).set(this.aGlow.array as Float32Array);
@@ -605,12 +661,14 @@ export class CardLayer {
     this.aBack = nb;
     this.aFlags = nl;
     this.aGlow = ng;
+    this.aSleeve = ns;
     this.aPrev = np;
     np.needsUpdate = true;
     this.capacity = capacity;
     this.slotsDirty = true;
     this.flagsDirty = true;
     this.glowDirty = true;
+    this.sleeveDirty = true;
     mesh.instanceMatrix.needsUpdate = true;
   }
 }

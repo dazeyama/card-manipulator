@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { HIDDEN, hiddenRow, visibleTo } from '../src/online/hidden';
 import { tableOfDoc, validateDoc } from '../src/io/saveFile';
-import { CARD_H, type Mat, type TableDoc } from '../src/state/types';
+import { CARD_H, type CardRecord, type Mat, type TableDoc } from '../src/state/types';
 
 function stand(uid: string, owner?: string): Mat {
   return { uid, kind: 'stand', scryfallId: '', name: 'Sam', art: '', x: 0, y: 0, yaw: 0, ...(owner ? { owner } : {}) };
@@ -40,6 +40,15 @@ describe('who may know a card (ONLINE.md 7.1)', () => {
     expect(visibleTo({ uid: 'c1', scryfallId: 'x', faceUp: false }, mats, 'me', mine)).toBe(true);
     expect(visibleTo({ uid: 'c2', scryfallId: 'x', faceUp: false }, mats, 'me', mine)).toBe(false);
     expect(visibleTo({ uid: 'c1', scryfallId: HIDDEN, faceUp: false }, mats, 'me', mine)).toBe(false);
+  });
+
+  it('shows unsleeved double-faced cards to all, marked or known by their record, and not sleeved ones (O119)', () => {
+    expect(visibleTo({ scryfallId: 'x', faceUp: false, dfc: true }, mats, 'me')).toBe(true);
+    expect(visibleTo({ scryfallId: 'x', faceUp: true, stand: 's2', dfc: true }, mats, 'me')).toBe(true);
+    expect(visibleTo({ scryfallId: 'x', faceUp: false, dfc: true, sleeve: '#1f3a6e' }, mats, 'me')).toBe(false);
+    const records = new Map([['x', { back_image_small: 'b.jpg' } as CardRecord]]);
+    expect(visibleTo({ scryfallId: 'x', faceUp: false }, mats, 'me', undefined, records)).toBe(true);
+    expect(visibleTo({ scryfallId: HIDDEN, faceUp: false, dfc: true }, mats, 'me')).toBe(false);
   });
 });
 

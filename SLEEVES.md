@@ -1,6 +1,8 @@
 # Sleeves — design and build brief
 
-Designed with the owner on 2026-11-02; not built yet. This file holds everything a fresh session needs to build it. Read CLAUDE.md, design_spec.md (Sections 10.5, 10.9, 12.1, 14, Appendix A) and ONLINE.md (Sections 6, 7, 8, the O log) first, as always. When the build is done, the behavior below moves into the spec (a new Section 10.11 **Sleeves**, plus edits to 10.5, 12.1 and 14.3) and ONLINE.md (7.1, 8.2), the decisions are logged, and this file can be deleted or kept as history.
+**Built 2026-11-03 as decision 360** (spec Section 10.11, ONLINE.md O119 and O120). The build is simpler than Sections 3 and 4.2 below (decision 361): a sleeve is a string on each card (its color or art crop URL), so there is no `SleeveStyle` list and no `sleeves` op, and a sleeve pack is a die of kind `pack`, carried and synced by the dice code and the `dice` op, so there is no `pack` op; in a room packs need the dice's Tokens rank (O120). Dropping a pack shows no glow on its target. The rest is as written.
+
+Designed with the owner on 2026-11-02. This file holds everything a fresh session needs to build it. Read CLAUDE.md, design_spec.md (Sections 10.5, 10.9, 12.1, 14, Appendix A) and ONLINE.md (Sections 6, 7, 8, the O log) first, as always. When the build is done, the behavior below moves into the spec (a new Section 10.11 **Sleeves**, plus edits to 10.5, 12.1 and 14.3) and ONLINE.md (7.1, 8.2), the decisions are logged, and this file can be deleted or kept as history.
 
 ## 1. Why
 

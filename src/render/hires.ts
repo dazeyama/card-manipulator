@@ -132,8 +132,8 @@ export class HiRes {
       if (this.showing(s.uid) >= MIN_SHOWING) want.add(s.uid);
     }
     for (const [uid, o] of this.overlays) {
-      // A card that turned foil or nonfoil gets a fresh overlay.
-      if (!want.has(uid) || o.foil !== this.isFoil(uid)) {
+      // A card that turned foil or nonfoil, or was raised or lowered, gets a fresh overlay.
+      if (!want.has(uid) || o.foil !== this.isFoil(uid) || o.url !== this.urlFor(uid)) {
         this.group.remove(o.mesh);
         (o.mesh.material as THREE.Material).dispose();
         this.overlays.delete(uid);
@@ -161,11 +161,17 @@ export class HiRes {
     return visibleShare(me, above);
   }
 
-  private attach(uid: string): void {
+  /** The close-up image a card shows: its front, or its back face when raised out of its sleeve (decision 360). */
+  private urlFor(uid: string): string | undefined {
     const card = this.app.store.cards.get(uid);
     const r = card && this.app.store.recordOf(card);
+    const normal = card?.sleeve && card.raised && r?.back_image_normal ? r.back_image_normal : r?.image_normal;
     // Scryfall's large image sits at the same path as the normal one.
-    const url = this.quality.image === 'large' ? r?.image_normal?.replace('/normal/', '/large/') : r?.image_normal;
+    return this.quality.image === 'large' ? normal?.replace('/normal/', '/large/') : normal;
+  }
+
+  private attach(uid: string): void {
+    const url = this.urlFor(uid);
     if (!url) return;
     const tex = this.textures.get(url);
     if (!tex) {

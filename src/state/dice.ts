@@ -5,14 +5,15 @@
 // Pure, tested without a browser.
 
 import * as THREE from 'three';
+import { PACK_T } from './sleeves';
 
 /** A six-sided die's edge, mm. */
 export const DIE_SIZE = 20;
 /** A d20's height lying on a face, mm: as big as a boxed-set spin-down (decision 279). */
 export const D20_SIZE = 26;
 
-/** What sort of die (decision 278): unset, six-sided. */
-export type DieKind = 'd20';
+/** What sort of die (decision 278): unset, six-sided. A sleeve pack (decision 360) rides on the dice: it is carried, held and saved as they are, but never rolled or numbered. */
+export type DieKind = 'd20' | 'pack';
 
 export interface Die {
   uid: string;
@@ -28,8 +29,11 @@ export interface Die {
   side?: 0 | 1;
   /** A twenty-sided die (decision 278); unset, six-sided. */
   kind?: DieKind;
-  /** Its color, `#rrggbb` (decision 278); unset, white. */
+  /** Its color, `#rrggbb` (decision 278); unset, white. A sleeve pack's color sleeves (decision 360). */
   color?: string;
+  /** A sleeve pack of art sleeves (decision 360): the art crop's URL, and the card's name for the hint. */
+  art?: string;
+  artName?: string;
 }
 
 /** White, the six-sided dice's color unless chosen. */
@@ -48,19 +52,18 @@ export function isDark(color: string): boolean {
 
 /** The highest number on a die's faces. */
 export function maxValue(kind?: DieKind): number {
-  return kind === 'd20' ? 20 : 6;
+  return kind === 'd20' ? 20 : kind === 'pack' ? 0 : 6;
 }
 
-/** The numbers a die can be set to: its faces, or on a d20 any from 0 to 999,999 (decision 279). */
+/** The numbers a die can be set to: its faces, or on a d20 any from 0 to 999,999 (decision 279). A pack stays 1, lying flat. */
 export function valueRange(kind?: DieKind): { min: number; max: number } {
-  return kind === 'd20' ? { min: 0, max: 999_999 } : { min: 1, max: 6 };
+  return kind === 'd20' ? { min: 0, max: 999_999 } : kind === 'pack' ? { min: 1, max: 1 } : { min: 1, max: 6 };
 }
 
 /** A die's height lying flat, mm. */
 export function dieSize(kind?: DieKind): number {
-  return kind === 'd20' ? D20_SIZE : DIE_SIZE;
+  return kind === 'd20' ? D20_SIZE : kind === 'pack' ? PACK_T : DIE_SIZE;
 }
-
 /** A d20 is never turned (decision 279): its number reads the right way up from the side that last moved it. */
 export function d20Yaw(side?: 0 | 1): number {
   return side ? Math.PI : 0;
@@ -174,6 +177,8 @@ export function dieTurn(value: number, yaw: number, kind?: DieKind): THREE.Quate
 
 /** The face that shows a number: its own, or for a number no face has, the nearest, 1 or 20. */
 export function faceOf(value: number, kind?: DieKind): number {
+  // A sleeve pack always lies flat, its top (the box's +z face, the six-sided 1) up (decision 360).
+  if (kind === 'pack') return FACE_VALUES.indexOf(1);
   const { values } = facesOf(kind);
   return Math.max(0, values.indexOf(Math.min(maxValue(kind), Math.max(1, Math.round(value)))));
 }

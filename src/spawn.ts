@@ -8,6 +8,7 @@ import { messyLayout, stackLayout, surfaceTop } from './state/piles';
 import type { Arrival, Card, CardRecord, Finish } from './state/types';
 import { easeOut } from './physics/motion';
 import { MAX_BODIES, MAX_DROP } from './physics/world';
+import { isDfc } from './scryfall/trim';
 
 export interface SpawnItem {
   record: CardRecord;
@@ -23,6 +24,8 @@ export interface SpawnOptions {
   at?: { x: number; y: number };
   /** The CubeCobra cube the cards come from, by id (decision 321). */
   cube?: string;
+  /** Their sleeve, a saved deck spawned from the List tab (decision 360). */
+  sleeve?: string;
 }
 
 const DROP_HEIGHT = 70;
@@ -56,6 +59,9 @@ export function spawnCards(app: App, items: SpawnItem[], opts: SpawnOptions): st
     faceUp: opts.faceUp,
     side: app.side || undefined,
     ...(opts.cube ? { cube: opts.cube } : {}),
+    // Double-faced cards are marked for rooms (O119); a saved deck comes in its sleeves (decision 360).
+    ...(isDfc(f.record) ? { dfc: true as const } : {}),
+    ...(opts.sleeve ? { sleeve: opts.sleeve } : {}),
     pileId: null,
     spreadOf: null,
   }));

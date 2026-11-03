@@ -32,7 +32,7 @@ const GROUPS: [string, Line[]][] = [
   ]],
   ['Keys', [
     ['📚', 'S', 'stack · S S shuffles'],
-    ['🃏', 'F', 'flip · F F faces all up'],
+    ['🃏', 'F', 'flip · F F faces all up · Shift + F raises a sleeved double-faced card’s back face, face up, and again puts it back · U takes sleeves off'],
     ['🔃', 'R', 'turn 90° · R R stands upright'],
     ['🧹', 'T', 'tidy'],
     ['🪟', 'X', 'then click to spread there, or drag a box to fit them in it · X again switches to the reverse spread, each row right to left so the mana costs show, and back · X on a spread restacks it'],
@@ -52,6 +52,7 @@ const GROUPS: [string, Line[]][] = [
     ['🚩', 'B', 'place a flag: click the table where it goes, then name it, give it a filter and a color · a card lying in its circle is the flag’s; with a filter, cards that don’t match slide out past the edge · double-click its bare zone to select its cards · drag the pole to move the flag alone, Alt brings its cards, Shift pulls in cards within 44 cm like a black hole · ✏️ edits, ⤓ exports its cards, 🔒 locks · Delete over it takes it away · flag:name searches its cards'],
     ['🪙', 'T T', 'over a card: the tokens it makes, from Scryfall; click one to spawn it beside the card · over empty table: search for a token, set how many, and pick one to spawn it there'],
     ['🪞', 'M', 'mirror mode: sit at the far side of the table; cards you move from there turn to face you'],
+    ['🎁', 'Shift + U', 'drop a pack of sleeves at the cursor (Playmat tab → Sleeves picks the color or a card’s art) · drop the pack on a deck to sleeve every card in it, saved to Your decks on the List tab · sleeved cards face down show the sleeve, so double-faced cards stay hidden in a room; unsleeved, their back faces are public'],
     ['🎲', 'D', 'drop a die at the cursor, D D a d20; drag or select dice like cards; selected with cards, they move together, Alt keeps the layout · R rolls them · 1–9 or the wheel sets the number, 0 types one · C picks a color · Delete removes'],
     ['↩️', 'Ctrl + Z', 'undo the last move or action · again to redo it (one step)'],
     ['📋', 'Ctrl + C', 'copy the selection · Ctrl + V pastes it at the cursor, as a messy pile (any decklist pastes too)'],

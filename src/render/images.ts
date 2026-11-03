@@ -4,7 +4,7 @@
 const CACHE_NAME = 'card-images-v1';
 const CONCURRENCY = 8;
 
-type Job = { url: string; resolve: (b: ImageBitmap) => void; reject: (e: unknown) => void; priority: number };
+type Job = { url: string; resolve: (b: ImageBitmap) => void; reject: (e: unknown) => void; priority: number; cover?: boolean };
 
 export class ImageLoader {
   private readonly queue: Job[] = [];
@@ -29,13 +29,21 @@ export class ImageLoader {
     });
   }
 
+  /** Load an image cut to the loader's shape from its middle, not stretched (an art sleeve's art crop, decision 360). */
+  loadCover(url: string): Promise<ImageBitmap> {
+    return new Promise((resolve, reject) => {
+      this.queue.push({ url, resolve, reject, priority: 1, cover: true });
+      this.pump();
+    });
+  }
+
   private pump(): void {
     while (this.active < CONCURRENCY && this.queue.length) {
       let best = 0;
       for (let i = 1; i < this.queue.length; i++) if (this.queue[i].priority > this.queue[best].priority) best = i;
       const job = this.queue.splice(best, 1)[0];
       this.active++;
-      this.fetchBitmap(job.url)
+      this.fetchBitmap(job.url, job.cover)
         .then(job.resolve, job.reject)
         .finally(() => {
           this.active--;
@@ -44,7 +52,7 @@ export class ImageLoader {
     }
   }
 
-  private async fetchBitmap(url: string): Promise<ImageBitmap> {
+  private async fetchBitmap(url: string, cover = false): Promise<ImageBitmap> {
     const cache = await this.cache;
     let blob: Blob | null = null;
     if (cache) {
@@ -73,6 +81,14 @@ export class ImageLoader {
       if (cache) await cache.put(url, res.clone()).catch(() => {});
       blob = await res.blob();
       this.stats.network++;
+    }
+    if (cover) {
+      const whole = await createImageBitmap(blob);
+      const k = Math.min(whole.width / this.width, whole.height / this.height);
+      const sw = this.width * k, sh = this.height * k;
+      const out = await createImageBitmap(whole, (whole.width - sw) / 2, (whole.height - sh) / 2, sw, sh, { resizeWidth: this.width, resizeHeight: this.height, resizeQuality: 'high' });
+      whole.close();
+      return out;
     }
     return createImageBitmap(blob, { resizeWidth: this.width, resizeHeight: this.height, resizeQuality: 'high' });
   }

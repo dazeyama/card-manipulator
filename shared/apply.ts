@@ -88,6 +88,9 @@ export function applyOp(table: TableState, op: Op): TableState {
         if (m.pileId !== undefined) c.pileId = m.pileId;
         if (m.spreadOf !== undefined) c.spreadOf = m.spreadOf;
         if (m.laidAt !== undefined) c.laidAt = m.laidAt ? { ...m.laidAt } : undefined;
+        if (m.sleeve !== undefined) c.sleeve = m.sleeve ?? undefined;
+        if (m.raised !== undefined) c.raised = m.raised ?? undefined;
+        if (m.dfc) c.dfc = true;
         cards[i] = c;
       }
       return { ...table, cards };

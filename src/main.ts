@@ -44,6 +44,8 @@ import { alignTo, fromSlope, isStand, raySlope, raySlopeLocal, slopeArea } from 
 import { uprightYaw, type Placed } from './state/piles';
 import type { Mat } from './state/types';
 import { buildPlaymatTab } from './ui/playmatTab';
+import { buildSleevesSection, dropLastPack } from './ui/sleevesTab';
+import { installSleeves } from './sleeves';
 import { ContextHints } from './ui/hints';
 import { HelpPanel } from './ui/helpPanel';
 import { CubeChips } from './ui/cubeChips';
@@ -198,10 +200,17 @@ keyboard.bind('d', () => {
 });
 // The wheel over a die turns its number up or down, Shift 5 at a time (decision 278).
 mouse.hooks.wheelObject = (x, y, up, shift) => {
-  if (!diceLayer.pick(x, y)) return false;
-  dice.step(dice.targets(), (up ? 1 : -1) * (shift ? 5 : 1));
+  const over = diceLayer.pick(x, y);
+  // A sleeve pack has no number: the wheel zooms over it (decision 360).
+  if (!over || store.dice.get(over)?.kind === 'pack') return false;
+  dice.step(dice.numbered(), (up ? 1 : -1) * (shift ? 5 : 1));
   return true;
 };
+// Sleeves (decision 360): a pack dropped on a pile sleeves it; Shift + U drops a pack of the last sleeves at the cursor.
+installSleeves(app);
+keyboard.bind('shift+u', () => {
+  if (!drag.dragging) dropLastPack(dice, { x: app.lastTablePoint.x, y: app.lastTablePoint.y });
+});
 // C over a die (or with only dice selected) opens its color menu (decision 278).
 const diceColours = new DiceColours(dice);
 const colourTargets = (): string[] => (dice.hovered || (!store.selection.size && !mouse.hovered) ? dice.targets() : []);
@@ -228,6 +237,8 @@ installClipboard(app, () => spawnPanel.options());
 // Card stands are spawned from the Playmat tab too, below the playmat (decisions 220, 235).
 const playmatPane = buildPlaymatTab(app, mats);
 playmatPane.append(buildStandSection(app, mats));
+// Sleeve packs, below the stand (decision 360).
+playmatPane.append(buildSleevesSection(app, dice));
 spawnPanel.addTab('playmat', 'Playmat', playmatPane);
 // A whole CubeCobra cube, with each card's Elo (decision 192), second after List (decision 193).
 spawnPanel.addTab('cube', 'Cube', buildCubeTab(app, () => spawnPanel.options()), { after: 'list' });
@@ -628,7 +639,7 @@ const askCount = (faceDown: boolean) => {
 // 0 over a die, or with dice selected, asks for the number to show, as for drawing (decision 278);
 // a d20 takes any number from 0 to 999,999 (decision 279).
 keyboard.bind('0', () => {
-  const set = dice.targets();
+  const set = dice.numbered();
   if (!set.length) return askCount(zeroFaceDown);
   if (drag.dragging || askingCount) return;
   const ranges = set.map((u) => valueRange(store.dice.get(u)?.kind));
@@ -998,6 +1009,14 @@ keyboard.bind('f', () => {
     flipOrFront(false, fTargets);
   }, F_WAIT_MS);
 });
+// Shift + F raises a sleeved double-faced card's back face, face up, or lowers it again (decision 360).
+keyboard.bind('shift+f', () => {
+  if (!drag.dragging) commands.raise(hoveredCard());
+});
+// U takes the sleeves off the selection, or the pile under the cursor (decision 360).
+keyboard.bind('u', () => {
+  if (!drag.dragging) commands.unsleeve(hoveredPile());
+});
 // N: name the selected pile; with nothing selected, a new empty bin at the cursor (spec 11.3).
 keyboard.bind('n', () => {
   const near = { x: app.pointer.x + app.canvas.getBoundingClientRect().left, y: app.pointer.y + app.canvas.getBoundingClientRect().top };
@@ -1229,7 +1248,7 @@ for (const b of hudMoves) guard.gate(b, 'move');
 guard.gate(exportBtn, 'download', true);
 guard.gate(pointBtn, 'move');
 gateByText(topBar.actions, [['New', 'replace'], ['Open…', 'replace'], ['Save', 'download'], ['Export', 'download']]);
-gateByText(left, [['Spawn', 'addCards'], ['Spawn cube', 'addCards'], ['Spawn basics', 'addTokens'], ['Choose basics…', 'basics'], ['Spawn playmat', 'matAdd']]);
+gateByText(left, [['Spawn', 'addCards'], ['Spawn cube', 'addCards'], ['Spawn basics', 'addTokens'], ['Choose basics…', 'basics'], ['Spawn playmat', 'matAdd'], ['Spawn pack', 'diceAdd']]);
 for (const chip of left.querySelectorAll('.basic-chip')) guard.gate(chip as HTMLElement, 'addTokens');
 // Enter on the table, in a room: into the chat (O116). Not on the radial: a window control, like the camera keys.
 keyboard.bind('enter', () => {

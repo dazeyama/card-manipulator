@@ -165,6 +165,11 @@ function isTest(v: string, op: Op): Predicate {
         return (c: QueryCard) => c.card.faceUp;
       case 'facedown':
         return (c: QueryCard) => !c.card.faceUp;
+      // Sleeves (decision 360).
+      case 'sleeved':
+        return (c: QueryCard) => !!c.card.sleeve;
+      case 'raised':
+        return (c: QueryCard) => !!c.card.sleeve && !!c.card.raised;
       case 'selected':
         return (c: QueryCard) => c.selected;
       case 'multicolor':

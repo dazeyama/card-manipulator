@@ -19,6 +19,7 @@ import type { Dice } from './dice';
 import type { Flags } from './flags';
 import type { Rest } from './state/rest';
 import type { Online } from './online';
+import { sleeveRim } from './state/sleeves';
 
 export const ACCENT = new THREE.Color('#2563eb');
 
@@ -128,8 +129,15 @@ export class App {
     this.resize();
 
     this.store.events.on('added', (uids) => this.onAdded(uids));
-    this.store.events.on('removed', (uids) => uids.forEach((u) => this.layer.remove(u)));
-    this.store.events.on('reset', () => this.layer.clear());
+    this.store.events.on('moved', (uids) => this.onMoved(uids));
+    this.store.events.on('removed', (uids) => uids.forEach((u) => {
+      this.layer.remove(u);
+      this.sleeveDrawn.delete(u);
+    }));
+    this.store.events.on('reset', () => {
+      this.layer.clear();
+      this.sleeveDrawn.clear();
+    });
     this.store.events.on('selection', () => this.syncSelection());
   }
 
@@ -164,7 +172,39 @@ export class App {
       if (!card) continue;
       const { front, back } = this.slotsFor(card);
       this.layer.add(uid, poseOf(card), front, back, card.finish !== 'nonfoil');
+      this.drawSleeve(card);
       if (this.store.selection.has(uid)) this.layer.setSelected(uid, true);
+    }
+  }
+
+  /** Each drawn card's sleeve as drawn (decision 360), to notice a sleeving, an unsleeving or a raise. */
+  private readonly sleeveDrawn = new Map<string, string>();
+  private readonly rimColours = new Map<string, THREE.Color>();
+
+  /** Draw a card's sleeve: its back and raised face (slots) and the rim round its face. */
+  drawSleeve(card: Card): void {
+    const look = card.sleeve ? `${card.sleeve}|${card.raised ? 1 : 0}` : '';
+    if (!look) this.sleeveDrawn.delete(card.uid);
+    else this.sleeveDrawn.set(card.uid, look);
+    let rim: THREE.Color | null = null;
+    if (card.sleeve) {
+      const hex = sleeveRim(card.sleeve);
+      rim = this.rimColours.get(hex) ?? new THREE.Color(hex);
+      this.rimColours.set(hex, rim);
+    }
+    this.layer.setSleeve(card.uid, rim, !!card.raised);
+  }
+
+  /** Cards that moved: any whose sleeve changed is drawn afresh. */
+  private onMoved(uids: string[]): void {
+    for (const uid of uids) {
+      const card = this.store.cards.get(uid);
+      if (!card) continue;
+      const look = card.sleeve ? `${card.sleeve}|${card.raised ? 1 : 0}` : '';
+      if (look === (this.sleeveDrawn.get(uid) ?? '')) continue;
+      const { front, back } = this.slotsFor(card);
+      this.layer.setSlots(uid, front, back);
+      this.drawSleeve(card);
     }
   }
 

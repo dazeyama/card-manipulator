@@ -168,8 +168,13 @@ export class Undo {
       const card = store.cards.get(c.uid);
       if (!card) continue;
       const laid = (card.laidAt?.x !== c.laidAt?.x) || (card.laidAt?.y !== c.laidAt?.y);
-      if (card.pileId === c.pileId && card.spreadOf === c.spreadOf && !laid && card.stand === c.stand && card.side === c.side) continue;
-      links.push({ uid: c.uid, pileId: c.pileId, spreadOf: c.spreadOf, laidAt: c.laidAt ? { ...c.laidAt } : null, stand: c.stand ?? null, side: c.side ?? null });
+      // Sleeves and raised cards as they were too (decision 360).
+      const sleeved = card.sleeve === c.sleeve && !!card.raised === !!c.raised;
+      if (card.pileId === c.pileId && card.spreadOf === c.spreadOf && !laid && card.stand === c.stand && card.side === c.side && sleeved) continue;
+      links.push({
+        uid: c.uid, pileId: c.pileId, spreadOf: c.spreadOf, laidAt: c.laidAt ? { ...c.laidAt } : null, stand: c.stand ?? null, side: c.side ?? null,
+        ...(sleeved ? {} : { sleeve: c.sleeve ?? null, raised: c.raised ?? null }),
+      });
     }
     if (links.length) store.moveCards(links);
     const named = new Set(then.named.map((p) => p.id));
