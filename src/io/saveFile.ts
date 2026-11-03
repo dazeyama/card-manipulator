@@ -41,6 +41,8 @@ export function toDoc(app: App, withCardData: boolean): TableDoc {
     ...(c.sleeve ? { sleeve: c.sleeve } : {}),
     ...(c.raised && !writtenHidden(app, c) ? { raised: true as const } : {}),
     ...(c.dfc && !writtenHidden(app, c) ? { dfc: true as const } : {}),
+    // The saved deck it belongs to (decision 368).
+    ...(c.deck ? { deck: c.deck } : {}),
   }));
   const cardData: Record<string, CardRecord> = {};
   if (withCardData) {

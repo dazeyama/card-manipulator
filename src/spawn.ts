@@ -24,8 +24,9 @@ export interface SpawnOptions {
   at?: { x: number; y: number };
   /** The CubeCobra cube the cards come from, by id (decision 321). */
   cube?: string;
-  /** Their sleeve, a saved deck spawned from the List tab (decision 360). */
+  /** Their sleeve, a saved deck spawned from the List tab (decision 360), and its name (decision 368). */
   sleeve?: string;
+  deck?: string;
 }
 
 const DROP_HEIGHT = 70;
@@ -62,6 +63,7 @@ export function spawnCards(app: App, items: SpawnItem[], opts: SpawnOptions): st
     // Double-faced cards are marked for rooms (O119); a saved deck comes in its sleeves (decision 360).
     ...(isDfc(f.record) ? { dfc: true as const } : {}),
     ...(opts.sleeve ? { sleeve: opts.sleeve } : {}),
+    ...(opts.deck ? { deck: opts.deck } : {}),
     pileId: null,
     spreadOf: null,
   }));

@@ -127,6 +127,8 @@ export interface CardMove {
   raised?: true | null;
   /** It has a back face (ONLINE.md O119): set once, when a browser that knows the card finds it missing. */
   dfc?: true;
+  /** The saved deck it belongs to (decision 368); null, none. */
+  deck?: string | null;
 }
 
 /** Where a change to the table came from: this browser's user, or the room (ONLINE.md 11.1). */
@@ -142,6 +144,7 @@ export function snapCard(c: Card): CardSnap {
     ...(c.sleeve ? { sleeve: c.sleeve } : {}),
     ...(c.raised ? { raised: true as const } : {}),
     ...(c.dfc ? { dfc: true as const } : {}),
+    ...(c.deck ? { deck: c.deck } : {}),
   };
 }
 
@@ -160,6 +163,7 @@ function before(c: Card, m: CardMove): CardMove {
   if (m.laidAt !== undefined) out.laidAt = c.laidAt ? { ...c.laidAt } : null;
   if (m.sleeve !== undefined) out.sleeve = c.sleeve ?? null;
   if (m.raised !== undefined) out.raised = c.raised ?? null;
+  if (m.deck !== undefined) out.deck = c.deck ?? null;
   // A card's back face never goes away: undoing the mark leaves it.
   if (m.dfc !== undefined && c.dfc) out.dfc = true;
   return out;
@@ -290,6 +294,7 @@ export class Store {
       if (m.sleeve !== undefined) c.sleeve = m.sleeve ?? undefined;
       if (m.raised !== undefined) c.raised = m.raised ?? undefined;
       if (m.dfc) c.dfc = true;
+      if (m.deck !== undefined) c.deck = m.deck ?? undefined;
       changed.push(m.uid);
     }
     if (changed.length) this.events.emit('moved', changed);
@@ -780,7 +785,7 @@ export class Store {
 /** A move with its unset fields left out, as it goes over the wire. */
 function clean(m: CardMove): CardMove {
   const out: CardMove = { uid: m.uid };
-  for (const k of ['x', 'y', 'z', 'yaw', 'faceUp', 'stand', 'side', 'pileId', 'spreadOf', 'laidAt', 'sleeve', 'raised', 'dfc'] as const) {
+  for (const k of ['x', 'y', 'z', 'yaw', 'faceUp', 'stand', 'side', 'pileId', 'spreadOf', 'laidAt', 'sleeve', 'raised', 'dfc', 'deck'] as const) {
     if (m[k] !== undefined) (out as unknown as Record<string, unknown>)[k] = m[k];
   }
   return out;

@@ -466,8 +466,8 @@ No hiding offline (O32): a solo table and the mirror-mode camera see every card,
 ### 8.2 Ops (`shared/ops.ts`)
 
 ```ts
-import type { CardSnap } from '../src/state/history';   // uid, scryfallId, finish, x, y, z, yaw, faceUp, pileId, spreadOf, laidAt, stand, side, cube, sleeve, raised, dfc
-import type { CardMove } from '../src/state/store';     // uid plus any of the pose and face fields, sleeve, raised, dfc (O119)
+import type { CardSnap } from '../src/state/history';   // uid, scryfallId, finish, x, y, z, yaw, faceUp, pileId, spreadOf, laidAt, stand, side, cube, sleeve, raised, dfc, deck
+import type { CardMove } from '../src/state/store';     // uid plus any of the pose and face fields, sleeve, raised, dfc (O119), deck (spec decision 368)
 import type { Mat, NamedPile } from '../src/state/types';
 import type { Die } from '../src/state/dice';
 import type { Spread } from '../src/state/store';

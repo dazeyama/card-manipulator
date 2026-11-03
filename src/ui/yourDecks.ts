@@ -48,7 +48,11 @@ export function buildYourDecks(app: App, deps: YourDecksDeps): HTMLElement {
     })());
     rename.addEventListener('click', () => void (async () => {
       const name = (await textDialog('Rename the deck:', { value: d.name, ok: 'Rename', maxLength: 60 }))?.trim();
-      if (name && name !== d.name) await renameDeck(d.id, name);
+      if (!name || name === d.name) return;
+      await renameDeck(d.id, name);
+      // Its cards on the table go by the new name too, so deck: still finds them (decision 368).
+      const moves = [...app.store.cards.values()].filter((c) => c.deck?.toLowerCase() === d.name.toLowerCase()).map((c) => ({ uid: c.uid, deck: name }));
+      if (moves.length) app.store.moveCards(moves);
     })());
     drop.addEventListener('click', () => void (async () => {
       if (await confirmDialog(`Delete the deck ${d.name}?`, 'Delete')) await deleteDeck(d.id);
@@ -73,7 +77,7 @@ export function buildYourDecks(app: App, deps: YourDecksDeps): HTMLElement {
       const { entries } = parseDecklist(text);
       const { resolved, unresolved } = await resolveEntries(entries);
       const uids = spawnCards(app, resolved.map((r) => ({ record: r.record, finish: r.entry.finish, count: r.entry.count })), {
-        ...deps.options(), arrival: 'stack', faceUp: false, sleeve: d.sleeve,
+        ...deps.options(), arrival: 'stack', faceUp: false, sleeve: d.sleeve, deck: d.name,
       });
       if (!uids.length) return;
       const missed = unresolved.reduce((n, u) => n + u.count, 0);

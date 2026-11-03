@@ -47,6 +47,8 @@ export interface Card {
   raised?: true;
   /** It has a back face (a DFC), so a room can tell it is public unsleeved (ONLINE.md O119): the server never sees records. */
   dfc?: true;
+  /** The saved deck it was sleeved or spawned as, by name, for `deck:` searches (decision 368). */
+  deck?: string;
 }
 
 /** A CubeCobra cube spawned onto the table (decision 321): its chip at the top of the play space. */
@@ -228,6 +230,8 @@ export interface TableDoc {
     sleeve?: string;
     raised?: true;
     dfc?: true;
+    /** The saved deck it belongs to (decision 368). */
+    deck?: string;
   }[];
   /** Open spreads (agent decision 61); older files have none. */
   spreads?: { id: string; anchor: { x: number; y: number }; yaw: number; uids: string[]; pileId: string | null }[];

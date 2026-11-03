@@ -10,7 +10,7 @@ import type { Card } from './types';
 import type { TableState } from '../../shared/table';
 
 /** A card as undo keeps it: everything an action can change. */
-export type CardSnap = Pick<Card, 'uid' | 'scryfallId' | 'finish' | 'x' | 'y' | 'z' | 'yaw' | 'faceUp' | 'pileId' | 'spreadOf' | 'laidAt' | 'stand' | 'side' | 'cube' | 'sleeve' | 'raised' | 'dfc'>;
+export type CardSnap = Pick<Card, 'uid' | 'scryfallId' | 'finish' | 'x' | 'y' | 'z' | 'yaw' | 'faceUp' | 'pileId' | 'spreadOf' | 'laidAt' | 'stand' | 'side' | 'cube' | 'sleeve' | 'raised' | 'dfc' | 'deck'>;
 
 /** Cards, named piles, spreads, mats, dice, basics and the table's name. */
 export type TableSnap = TableState;
@@ -29,7 +29,7 @@ export interface CardDiff {
 function same(a: CardSnap, b: CardSnap): boolean {
   return a.x === b.x && a.y === b.y && a.z === b.z && a.yaw === b.yaw && a.faceUp === b.faceUp
     && a.pileId === b.pileId && a.spreadOf === b.spreadOf && a.stand === b.stand
-    && a.sleeve === b.sleeve && a.raised === b.raised
+    && a.sleeve === b.sleeve && a.raised === b.raised && a.deck === b.deck
     && a.laidAt?.x === b.laidAt?.x && a.laidAt?.y === b.laidAt?.y;
 }
 

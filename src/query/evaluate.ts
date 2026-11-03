@@ -134,6 +134,8 @@ function compileTerm(field: string, op: Op, raw: string): Predicate {
       return (c) => eqOp(op, c.pileName !== null && fold(c.pileName) === want);
     case 'flag':
       return (c) => eqOp(op, !!c.flagName && fold(c.flagName) === want);
+    case 'deck':
+      return (c) => eqOp(op, !!c.card.deck && fold(c.card.deck) === want);
     case 'is':
       return isTest(want, op);
   }

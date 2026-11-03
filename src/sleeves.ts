@@ -74,37 +74,50 @@ function dropPack(app: App, pack: Die, x: number, y: number): boolean {
   if (!hit || !allowedNow('move') || !allowedNow('diceRemove')) return false;
   const uids = touchable(store.selection.has(hit) ? [...store.selection] : store.pileOf(hit)?.cardUids.slice() ?? [hit]);
   if (!uids.length) return false;
-  const sleeve = packSleeve(pack);
-  store.removeDice([pack.uid]);
-  sleeveCards(app, uids, sleeve, pack.artName);
+  // The pack waits over the deck while its name is asked, then goes as the cards are sleeved.
+  void sleeveCards(app, uids, packSleeve(pack), pack.artName, pack.uid);
   return true;
 }
 
-/** Put every one of these cards in this sleeve, replacing any they wear, and save them as a deck. */
-export function sleeveCards(app: App, uids: string[], sleeve: string, artName?: string): void {
+/**
+ * Put every one of these cards in this sleeve, replacing any they wear, and
+ * offer to save them as a deck (decisions 360, 367): the name is asked first,
+ * so the sleeving, the pack going and the cards' deck name (`deck:`, decision
+ * 368) land together as one action, one Ctrl + Z.
+ */
+export async function sleeveCards(app: App, uids: string[], sleeve: string, artName?: string, pack?: string): Promise<void> {
   const store = app.store;
-  const cards = uids.map((u) => store.cards.get(u)).filter((c): c is Card => !!c);
+  let cards = uids.map((u) => store.cards.get(u)).filter((c): c is Card => !!c);
   if (!cards.length) return;
-  store.moveCards(cards.map((c) => ({ uid: c.uid, sleeve })));
-  void saveSleeved(app, cards, sleeve, artName);
+  const named = await askDeckName(app, cards);
+  // Only the cards still here.
+  cards = cards.filter((c) => store.cards.get(c.uid) === c);
+  if (pack) store.removeDice([pack]);
+  store.moveCards(cards.map((c) => ({ uid: c.uid, sleeve, deck: named?.name ?? null })));
+  if (!named) return;
+  try {
+    await saveDeck(named.name, named.list, cards.length, sleeve, isArtSleeve(sleeve) ? artName : undefined);
+    toast(`${named.replaces ? 'Updated' : 'Saved'} ${named.name} in your decks (List tab) · search deck:${/\s/.test(named.name) ? `"${named.name}"` : named.name}`, 'ok', 3600);
+  } catch (err) {
+    toast(`Sleeved, but couldn't save the deck: ${String((err as Error).message ?? err)}`, 'warn', 4000);
+  }
 }
 
 /**
- * Save the sleeved cards to Your decks (decision 360): a snapshot of their
- * printings, under the name asked for in a small window (decision 367), which
- * suggests the pile's name, the cube's, or the next "Deck N"; Don't save keeps
- * the sleeves and saves nothing, and a name already saved asks before
- * replacing it. In a room only when every card is one this player may see, so
- * nothing hidden is kept.
+ * The name to save sleeved cards under in Your decks (decision 367), asked in a
+ * small window suggesting the pile's name, the cube's, or the next "Deck N", with
+ * the snapshot of their printings; null for Don't save. A name already saved
+ * asks before replacing it. In a room nothing is asked unless this player may
+ * see every card, so nothing hidden is kept.
  */
-async function saveSleeved(app: App, cards: Card[], sleeve: string, artName?: string): Promise<void> {
+async function askDeckName(app: App, cards: Card[]): Promise<{ name: string; list: string; replaces: boolean } | null> {
   const store = app.store;
   const n = cards.length;
-  const said = `Sleeved ${n.toLocaleString()} card${n === 1 ? '' : 's'}`;
+  const said = `Sleeving ${n.toLocaleString()} card${n === 1 ? '' : 's'}`;
   const hidden = cards.filter((c) => !store.recordOf(c)).length;
   if (hidden) {
-    toast(`${said}. Not saved to your decks: ${hidden.toLocaleString()} card${hidden === 1 ? ' is' : 's are'} hidden from you`, 'info', 3600);
-    return;
+    toast(`Sleeved ${n.toLocaleString()} cards. Not saved to your decks: ${hidden.toLocaleString()} card${hidden === 1 ? ' is' : 's are'} hidden from you`, 'info', 3600);
+    return null;
   }
   const list: ExportCard[] = cards.map((c) => {
     const r = store.recordOf(c)!;
@@ -116,26 +129,20 @@ async function saveSleeved(app: App, cards: Card[], sleeve: string, artName?: st
   const cubes = new Set(cards.map((c) => c.cube));
   const [cube] = cubes;
   const cubeName = cubes.size === 1 && cube ? store.cubes.get(cube)?.name ?? null : null;
-  try {
-    const existing = (await listDecks()).map((d) => d.name);
-    // Asked for its name (decision 367), suggested from the pile, the cube, or the next "Deck N".
-    let name = deckNameFor(pileName, cubeName, existing).name;
-    let replaces = false;
-    for (;;) {
-      const typed = (await textDialog(`${said}. Name the deck to keep it in Your decks:`, { value: name, ok: 'Save deck', cancel: 'Don’t save', maxLength: 60 }))?.trim();
-      if (typed === undefined) {
-        toast(`${said}; not saved to your decks`, 'info', 2200);
-        return;
-      }
-      if (!typed) continue;
-      name = typed;
-      replaces = existing.some((d) => d.toLowerCase() === name.toLowerCase());
-      // A name already saved: replace it, or pick another.
-      if (!replaces || (await confirmDialog(`Your decks already has ${name}. Replace it with these ${n.toLocaleString()} cards?`, 'Replace'))) break;
+  const existing = (await listDecks().catch(() => [])).map((d) => d.name);
+  let name = deckNameFor(pileName, cubeName, existing).name;
+  for (;;) {
+    const typed = (await textDialog(`${said}. Name the deck to keep it in Your decks:`, { value: name, ok: 'Save deck', cancel: 'Don’t save', maxLength: 60 }))?.trim();
+    if (typed === undefined) {
+      toast(`Sleeved ${n.toLocaleString()} cards; not saved to your decks`, 'info', 2200);
+      return null;
     }
-    await saveDeck(name, groupLines(list, true).join('\n') + '\n', n, sleeve, isArtSleeve(sleeve) ? artName : undefined);
-    toast(`${replaces ? 'Updated' : 'Saved'} ${name} in your decks (List tab)`, 'ok', 3200);
-  } catch (err) {
-    toast(`${said}, but couldn't save the deck: ${String((err as Error).message ?? err)}`, 'warn', 4000);
+    if (!typed) continue;
+    name = typed;
+    const replaces = existing.some((d) => d.toLowerCase() === name.toLowerCase());
+    // A name already saved: replace it, or pick another.
+    if (!replaces || (await confirmDialog(`Your decks already has ${name}. Replace it with these ${n.toLocaleString()} cards?`, 'Replace'))) {
+      return { name, list: groupLines(list, true).join('\n') + '\n', replaces };
+    }
   }
 }

@@ -6,7 +6,7 @@ import { QueryError, lex, type Op, type Token } from './lexer';
 
 export type Field =
   | 'name' | 'oracle' | 'type' | 'color' | 'identity' | 'mv' | 'pow' | 'tou' | 'loy'
-  | 'rarity' | 'set' | 'number' | 'keyword' | 'is' | 'format' | 'pile' | 'flag' | 'edhrec' | 'elo';
+  | 'rarity' | 'set' | 'number' | 'keyword' | 'is' | 'format' | 'pile' | 'flag' | 'deck' | 'edhrec' | 'elo';
 
 export type Node =
   | { type: 'and'; children: Node[] }
@@ -35,6 +35,8 @@ const KEYS: Record<string, Field> = {
   pile: 'pile',
   // The flag whose zone it lies in, this tool's own (decision 327): flag:keep.
   flag: 'flag',
+  // The saved deck it was sleeved or spawned as, this tool's own (decision 368): deck:"mono red".
+  deck: 'deck',
   // EDHREC rank, this tool's own (decision 187): edhrec<=500 is the 500 most played.
   edhrec: 'edhrec', edhrecrank: 'edhrec',
   // CubeCobra Elo, from spawned cubes (decision 192): elo>=1400.

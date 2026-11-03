@@ -31,7 +31,7 @@ const records: CardRecord[] = [
 
 function qcards(): QueryCard[] {
   return records.map((r, i) => {
-    const card: Card = { uid: `u${i}`, scryfallId: r.id, finish: i === 0 ? 'foil' : i === 4 ? 'etched' : 'nonfoil', x: 0, y: 0, z: 0, yaw: 0, faceUp: i !== 2, pileId: null, spreadOf: null };
+    const card: Card = { uid: `u${i}`, scryfallId: r.id, finish: i === 0 ? 'foil' : i === 4 ? 'etched' : 'nonfoil', x: 0, y: 0, z: 0, yaw: 0, faceUp: i !== 2, pileId: null, spreadOf: null, ...(i === 3 || i === 6 ? { deck: 'Mono Blue' } : {}) };
     return { card, record: r, selected: i < 3, pileName: i < 4 ? 'Keep' : i === 5 ? 'Deck A' : null, flagName: i === 1 || i === 2 ? 'To sell' : null };
   });
 }
@@ -180,6 +180,11 @@ describe('is: and pile:', () => {
     expect(names('pile:keep')).toEqual(['Lightning Bolt', 'Counterspell', 'Serra Angel', 'Tarmogoyf']);
     expect(names('pile:"deck a"')).toEqual(['Dimir Signet']);
   });
+  it('deck: matches the saved deck the card was sleeved or spawned as (decision 368)', () => {
+    expect(names('deck:"mono blue"')).toEqual([records[3].name, records[6].name]);
+    expect(names('-deck:"mono blue"')).not.toContain(records[3].name);
+  });
+
   it('flag: matches the flag whose zone the card lies in (decision 327)', () => {
     expect(names('flag:"to sell"')).toEqual(['Counterspell', 'Serra Angel']);
     expect(names('-flag:"to sell"')).not.toContain('Counterspell');

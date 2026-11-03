@@ -91,6 +91,7 @@ export function applyOp(table: TableState, op: Op): TableState {
         if (m.sleeve !== undefined) c.sleeve = m.sleeve ?? undefined;
         if (m.raised !== undefined) c.raised = m.raised ?? undefined;
         if (m.dfc) c.dfc = true;
+        if (m.deck !== undefined) c.deck = m.deck ?? undefined;
         cards[i] = c;
       }
       return { ...table, cards };
