@@ -13,6 +13,12 @@ import type { App } from '../app';
 import { visibleShare } from '../state/piles';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
 import { FOIL_GLSL, SLEEVE_RIM } from './cards';
+import { sleeveCanvas, whenSleeveTexture } from './sleeveArt';
+import { ART_RIM, isArtSleeve } from '../state/sleeves';
+import type { Card } from '../state/types';
+
+/** Scryfall's large image size, which High graphics' close-ups load. */
+const LARGE = { width: 672, height: 936 };
 import { ImageLoader } from './images';
 
 /** How close-up images behave; the graphics mode sets these (decision 152). */
@@ -34,10 +40,15 @@ interface Overlay {
   url: string;
   foil: boolean;
   mesh: THREE.Mesh;
+  /** On the card's back: a face-down card's art sleeve (decision 374). */
+  back?: boolean;
 }
 
+/** A close-up's key for an art sleeve's back, beside the cards' own image URLs. */
+const SLEEVE_ART = 'sleeve-art:';
+
 export class HiRes {
-  private readonly loaders = { normal: new ImageLoader(488, 680), large: new ImageLoader(672, 936) };
+  private readonly loaders = { normal: new ImageLoader(488, 680), large: new ImageLoader(LARGE.width, LARGE.height) };
   private quality: HiResQuality = { abovePx: 160, max: 32, pool: 64, image: 'normal', anisotropy: 8 };
   private readonly textures = new Map<string, THREE.Texture>();
   private readonly loading = new Set<string>();
@@ -52,6 +63,8 @@ export class HiRes {
   private readonly e = new THREE.Euler(0, 0, 0, 'ZXY');
   private readonly p = new THREE.Vector3();
   private readonly one = new THREE.Vector3(1, 1, 1);
+  /** The back's plane: turned over, just under the card's back face (decision 374). */
+  private readonly backLift = new THREE.Matrix4().makeTranslation(0, 0, -(CARD_T / 2 + 0.03)).multiply(new THREE.Matrix4().makeRotationY(Math.PI));
   private readonly inSleeve = new THREE.Matrix4().makeScale((CARD_W - 2 * SLEEVE_RIM) / CARD_W, (CARD_H - 2 * SLEEVE_RIM) / CARD_H, 1);
 
   constructor(private readonly app: App) {
@@ -100,12 +113,12 @@ export class HiRes {
       this.p.set(pose.x, pose.y, pose.z + lift);
       this.e.set(pose.tiltX, pose.roll + pose.tiltY, pose.yaw, 'ZXY');
       this.q.setFromEuler(this.e);
-      this.m.compose(this.p, this.q, this.one).multiply(this.lift);
-      // In a sleeve the card is a rim smaller all round, raised too (decisions 363, 364).
-      if (card.sleeve) this.m.multiply(this.inSleeve);
+      this.m.compose(this.p, this.q, this.one).multiply(o.back ? this.backLift : this.lift);
+      // In a sleeve the card is a rim smaller all round, raised too (decisions 363, 364); a sleeve's back is the sleeve's whole size.
+      if (card.sleeve && !o.back) this.m.multiply(this.inSleeve);
       o.mesh.matrix.copy(this.m);
-      // Only while the front faces up; the small back image is fine for backs.
-      o.mesh.visible = Math.cos(pose.roll) > 0.2;
+      // Only while its side faces up: the front, or an art sleeve's back (decision 374).
+      o.mesh.visible = o.back ? Math.cos(pose.roll) < -0.2 : Math.cos(pose.roll) > 0.2;
     }
   }
 
@@ -117,8 +130,9 @@ export class HiRes {
     const cx = width / 2, cy = height / 2;
     const scored: { uid: string; d: number }[] = [];
     for (const card of app.store.cards.values()) {
-      // A card hidden from this browser in a room shows its back up close too (ONLINE.md 7.3).
-      if (!card.faceUp || !app.store.canSee(card)) continue;
+      // A card hidden from this browser in a room shows its back up close too (ONLINE.md 7.3), unless
+      // that back is an art sleeve, which anyone sees, sharpened in High graphics (decision 374).
+      if (!this.artBack(card) && (!card.faceUp || !app.store.canSee(card))) continue;
       const pose = app.layer.pose(card.uid);
       if (!pose) continue;
       const s = rig.worldToScreen(pose.x, pose.y, pose.z);
@@ -128,7 +142,7 @@ export class HiRes {
     scored.sort((a, b) => a.d - b.d);
     const want = new Set<string>();
     const hovered = this.hovered ? app.store.cards.get(this.hovered) : undefined;
-    if (hovered && app.store.canSee(hovered)) want.add(hovered.uid);
+    if (hovered && (this.artBack(hovered) || (hovered.faceUp && app.store.canSee(hovered)))) want.add(hovered.uid);
     // Nearest the middle first; a card whose face is almost all covered is skipped.
     for (const s of scored) {
       if (want.size >= this.quality.max) break;
@@ -164,9 +178,15 @@ export class HiRes {
     return visibleShare(me, above);
   }
 
-  /** The close-up image a card shows: its front, or its back face when raised out of its sleeve (decision 360). */
+  /** A face-down card in an art sleeve, in High graphics: its sleeve's back gets a close-up of its own (decision 374). */
+  private artBack(card: Card): boolean {
+    return this.quality.image === 'large' && !card.faceUp && !!card.sleeve && isArtSleeve(card.sleeve);
+  }
+
+  /** The close-up image a card shows: its front, or its back face when raised out of its sleeve (decision 360), or its art sleeve's back (decision 374). */
   private urlFor(uid: string): string | undefined {
     const card = this.app.store.cards.get(uid);
+    if (card && this.artBack(card)) return SLEEVE_ART + card.sleeve;
     const r = card && this.app.store.recordOf(card);
     const normal = card?.sleeve && card.raised && r?.back_image_normal ? r.back_image_normal : r?.image_normal;
     // Scryfall's large image sits at the same path as the normal one.
@@ -176,19 +196,50 @@ export class HiRes {
   private attach(uid: string): void {
     const url = this.urlFor(uid);
     if (!url) return;
+    const back = url.startsWith(SLEEVE_ART);
     const tex = this.textures.get(url);
     if (!tex) {
-      this.request(url);
+      if (back) this.requestSleeve(url);
+      else this.request(url);
       return;
     }
-    const foil = this.isFoil(uid);
+    // A sleeve has no foil.
+    const foil = !back && this.isFoil(uid);
     const mat = new THREE.MeshLambertMaterial({ map: tex });
     if (foil) this.addFoil(mat);
     const mesh = new THREE.Mesh(this.geometry, mat);
     mesh.matrixAutoUpdate = false;
     mesh.receiveShadow = true;
     this.group.add(mesh);
-    this.overlays.set(uid, { uid, url, foil, mesh });
+    this.overlays.set(uid, { uid, url, foil, mesh, ...(back ? { back } : {}) });
+  }
+
+  /**
+   * An art sleeve's back at the large image's size (decision 374): Scryfall's art
+   * crop, cut to the card's shape at its full resolution, under the matte finish
+   * and in its black frame, as the atlas's small copy is drawn.
+   */
+  private requestSleeve(key: string): void {
+    if (this.loading.has(key)) return;
+    this.loading.add(key);
+    const art = key.slice(SLEEVE_ART.length);
+    const { width, height } = LARGE;
+    this.loaders.large
+      .loadCover(art)
+      .then((bmp) => new Promise<void>((done) => whenSleeveTexture(() => {
+        const tex = new THREE.CanvasTexture(sleeveCanvas(width, height, ART_RIM, bmp));
+        bmp.close();
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = this.quality.anisotropy;
+        tex.flipY = false;
+        tex.needsUpdate = true;
+        this.textures.set(key, tex);
+        this.evict();
+        this.lastPick = 0;
+        done();
+      })))
+      .catch(() => {})
+      .finally(() => this.loading.delete(key));
   }
 
   private isFoil(uid: string): boolean {

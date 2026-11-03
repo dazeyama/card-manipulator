@@ -191,7 +191,8 @@ export class DiceLayer {
   /** A sleeve pack (decision 360): its sides in the sleeves' color, its top a sleeve back. */
   private readonly packGeometry = new THREE.BoxGeometry(PACK_W, PACK_H, PACK_T);
   private readonly packEdges = new LineSegmentsGeometry().fromEdgesGeometry(new THREE.EdgesGeometry(new THREE.BoxGeometry(PACK_W * 0.995, PACK_H * 0.995, PACK_T * 0.99)));
-  private readonly packArt = new ImageLoader(292, 408);
+  /** An art pack's top at four times a card slot's size, for the art crop's detail (decision 374). */
+  private readonly packArt = new ImageLoader(584, 816);
 
   private packMaterial(die: Die): THREE.Material[] {
     const color = die.color ?? DEFAULT_SLEEVE;
@@ -199,7 +200,7 @@ export class DiceLayer {
     const top = new THREE.MeshLambertMaterial({ map: canvasTexture(sleeveCanvas(292, 408, color)) });
     const paint = (art?: ImageBitmap) => {
       top.map?.dispose();
-      top.map = canvasTexture(sleeveCanvas(292, 408, art ? ART_RIM : color, art));
+      top.map = canvasTexture(art ? sleeveCanvas(584, 816, ART_RIM, art) : sleeveCanvas(292, 408, color));
       top.needsUpdate = true;
     };
     if (die.art) {
