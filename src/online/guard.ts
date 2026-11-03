@@ -145,9 +145,8 @@ export function keyAction(name: string): Action | null {
   if (name === 'ctrl+e' || name === 'ctrl+s') return 'download';
   if (name === 'ctrl+z') return 'move';
   if (name === 'd') return 'diceAdd';
-  // A sleeve pack rides on the dice (decision 360, O120); Shift + U unsleeves, as a move (decision 371).
-  if (name === 'u') return 'diceAdd';
-  if (name === 'shift+u') return 'move';
+  // Sleeve packs (U) and unsleeving (Shift + U) need Cards (decisions 371, 372, O121).
+  if (name === 'u' || name === 'shift+u') return 'sleeves';
   if (name === 'n') return 'named';
   // Placing a flag (decision 327).
   if (name === 'b') return 'flag';
@@ -189,7 +188,11 @@ export class Guard {
     const store = a.store;
     const dice = a.dice;
     if (dice && (dice.selected.size || (!store.selection.size && dice.hovered))) {
-      if (!allowedNow('diceRemove')) return false;
+      // Sleeve packs need Cards to delete, dice Tokens (decision 372, O121).
+      const doomed = dice.selected.size ? [...dice.selected] : [dice.hovered!];
+      const packs = doomed.some((u) => store.dice.get(u)?.kind === 'pack');
+      const others = doomed.some((u) => store.dice.get(u)?.kind !== 'pack');
+      if ((packs && !allowedNow('sleeves')) || (others && !allowedNow('diceRemove'))) return false;
       if (!store.selection.size) return true;
     }
     if (!store.selection.size) {

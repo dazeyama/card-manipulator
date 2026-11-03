@@ -70,8 +70,8 @@ function cardAt(app: App, x: number, y: number): string | null {
 function dropPack(app: App, pack: Die, x: number, y: number): boolean {
   const store = app.store;
   const hit = cardAt(app, x, y);
-  // In a room: Move to sleeve, and Tokens to use the pack up, as for taking a die away (O120).
-  if (!hit || !allowedNow('move') || !allowedNow('diceRemove')) return false;
+  // In a room: Cards to sleeve and use the pack up (decision 372, O121).
+  if (!hit || !allowedNow('sleeves')) return false;
   const uids = touchable(store.selection.has(hit) ? [...store.selection] : store.pileOf(hit)?.cardUids.slice() ?? [hit]);
   if (!uids.length) return false;
   // The pack waits over the deck while its name is asked, then goes as the cards are sleeved.

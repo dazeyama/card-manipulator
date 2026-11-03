@@ -615,6 +615,7 @@ Owner's decision (2026-11-02, decision 360; designed in SLEEVES.md): **digital s
 - **Unsleeve (Shift + U)**: takes the sleeves off the selection, or the pile under the cursor, after asking "Take the sleeves off N cards?" (decision 367). A raised card face up goes face down, which shows the same back face once unsleeved. In the Flip wedge's ring.
 - **Your decks**: every sleeving offers to save the pile as a deck, a snapshot of its exact printings and finishes with its sleeves, in this browser's IndexedDB. A small window asks for its name (decision 367), suggesting the pile's name if it is a named pile, else its cube's, else the next free "Deck N"; **Save deck** keeps it, **Don't save** keeps only the sleeves, and a name already saved asks before replacing that deck (no goes back to the name). In a room it is saved only if the sleever can see every card, so nothing hidden is kept. The List tab lists them (Section 12.1).
 - **`deck:`** finds a saved deck's cards on the table, such as `deck:"mono red"` (decision 368): cards sleeved and saved under that name, or spawned from Your decks, carry it, sleeved or not, until sleeved again; renaming the deck renames it on the table's cards too.
+- **In a room** (decision 372): spawning a pack (U, Spawn pack), deleting one, sleeving a deck with one and unsleeving (Shift + U) need **Cards**; dragging a pack and Back side need Move; spawning a saved deck needs Cards, like any list.
 - Inspect says "Sleeved · Dark blue" (and "back side up") under the printing; `is:sleeved` and `is:backside` (or `is:raised`) search them. Sleeves, raised cards and packs are saved with the table.
 
 ## 11. Piles
@@ -1332,6 +1333,7 @@ All dated 2026-10-27, from the brainstorming session.
 | 369 | Owner (2026-11-03): **no Edit button on saved decks**; it wasn't needed. Each row keeps Spawn, ✏️ and 🗑. |
 | 370 | Owner (2026-11-03): **Back side flips with the double flip both ways**, and **F on a card showing its back side turns it back to its front**. **(agent)** Shift + F to the back side and back to the front, and F back to the front, are each a whole turn of the card, over and up again, with the new face drawn halfway, while the card lies face down to the eye, instead of at once. F on a back side held in the hand does the same, a whole turn in the hand, when every held card shows its back side; otherwise the hand flips as before. F on cards not showing their back side flips them as usual. |
 | 371 | Owner (2026-11-03): **U and Shift + U swap**: **U** drops a sleeve pack at the cursor and **Shift + U** takes sleeves off, on the radial, the bottom bar, the `?` panel and the Playmat tab's note too. Decision 360's choice of keys is replaced; in a room U needs Tokens (it adds a pack, O120) and Shift + U needs Move. |
+| 372 | Owner (2026-11-03): in a room, **spawning, deleting, sleeving and unsleeving are all Cards**, instead of Tokens for packs and Move for sleeves (ONLINE.md O121). Dragging a pack and Back side stay Move. |
 
 ## Appendix B: Open items
 

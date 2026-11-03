@@ -91,6 +91,20 @@ describe('the crown judges by rank (ONLINE.md 6.2)', () => {
     expect(propose('mo', { t: 'dice', remove: ['d1'] })).toBe('rank');
     expect(propose('tk', { t: 'dice', remove: ['d1'] })).toBe('ok');
   });
+
+  it('needs Cards for sleeve packs and sleeving, Move to drag a pack (decision 372, O121)', () => {
+    const { propose, store } = room({ mo: 'move', tk: 'tokens', cd: 'cards' });
+    const pack = { uid: 'p1', x: 0, y: 0, z: 8, yaw: 0, value: 1, kind: 'pack' as const, color: '#1f3a6e' };
+    expect(propose('tk', { t: 'dice', set: [pack] })).toBe('rank');
+    expect(propose('cd', { t: 'dice', set: [pack] })).toBe('ok');
+    expect(store.dice.has('p1')).toBe(true);
+    expect(propose('mo', { t: 'dice', set: [{ ...pack, x: 50 }] })).toBe('ok');
+    expect(propose('tk', { t: 'dice', remove: ['p1'] })).toBe('rank');
+    expect(propose('tk', { t: 'move', moves: [{ uid: 'a', sleeve: '#1f3a6e' }] })).toBe('rank');
+    expect(propose('cd', { t: 'move', moves: [{ uid: 'a', sleeve: '#1f3a6e' }] })).toBe('ok');
+    expect(propose('tk', { t: 'move', moves: [{ uid: 'a', sleeve: null }] })).toBe('rank');
+    expect(propose('cd', { t: 'dice', remove: ['p1'] })).toBe('ok');
+  });
 });
 
 describe('holds (8.4)', () => {

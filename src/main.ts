@@ -1248,7 +1248,7 @@ for (const b of hudMoves) guard.gate(b, 'move');
 guard.gate(exportBtn, 'download', true);
 guard.gate(pointBtn, 'move');
 gateByText(topBar.actions, [['New', 'replace'], ['Open…', 'replace'], ['Save', 'download'], ['Export', 'download']]);
-gateByText(left, [['Spawn', 'addCards'], ['Spawn cube', 'addCards'], ['Spawn basics', 'addTokens'], ['Choose basics…', 'basics'], ['Spawn playmat', 'matAdd'], ['Spawn pack', 'diceAdd']]);
+gateByText(left, [['Spawn', 'addCards'], ['Spawn cube', 'addCards'], ['Spawn basics', 'addTokens'], ['Choose basics…', 'basics'], ['Spawn playmat', 'matAdd'], ['Spawn pack', 'sleeves']]);
 for (const chip of left.querySelectorAll('.basic-chip')) guard.gate(chip as HTMLElement, 'addTokens');
 // Enter on the table, in a room: into the chat (O116). Not on the radial: a window control, like the camera keys.
 keyboard.bind('enter', () => {

@@ -287,6 +287,11 @@ export class Authority {
         if (crown) return null;
         let r = may('move');
         if (r) return r;
+        // Sleeving and unsleeving need Cards (spec decision 372, O121).
+        if (op.moves.some((m) => m.sleeve !== undefined)) {
+          r = may('sleeves');
+          if (r) return r;
+        }
         for (const m of op.moves) {
           const c = store.cards.get(m.uid);
           // Only a double-faced card is marked so (O119).
@@ -314,9 +319,15 @@ export class Authority {
       case 'dice': {
         if (heldByOther(diceTouched(op))) return 'held';
         if (crown) return null;
-        const adds = (op.set ?? []).some((d) => !store.dice.has(d.uid));
+        // A sleeve pack spawned or taken away (used up, deleted) needs Cards (spec decision 372, O121); moving one is a die's move.
+        const pack = (uid: string, d?: { kind?: string }) => (d ?? store.dice.get(uid))?.kind === 'pack';
+        const added = (op.set ?? []).filter((d) => !store.dice.has(d.uid));
+        const gone = op.remove ?? [];
+        const packs = added.some((d) => pack(d.uid, d)) || gone.some((u) => pack(u));
+        const adds = added.some((d) => !pack(d.uid, d));
         const changes = (op.set ?? []).some((d) => store.dice.has(d.uid));
-        return first(adds ? may('diceAdd') : null, changes ? may('dice') : null, op.remove?.length ? may('diceRemove') : null);
+        const removes = gone.some((u) => !pack(u));
+        return first(packs ? may('sleeves') : null, adds ? may('diceAdd') : null, changes ? may('dice') : null, removes ? may('diceRemove') : null);
       }
       case 'mat':
         return crown ? null : this.checkMat(op, from, may, ctx);

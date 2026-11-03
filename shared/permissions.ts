@@ -76,6 +76,8 @@ export type Action =
   | 'cubes'
   /** Flags (decision 327): Move, like a playmat; they are no one's. */
   | 'flag'
+  /** Sleeves (spec decision 372, O121): spawning or deleting a sleeve pack, sleeving and unsleeving cards: Cards. */
+  | 'sleeves'
   /** The table's name. */
   | 'table'
   /** New table, Load file. */
@@ -125,6 +127,7 @@ const NEEDS: Record<Action, Need> = {
   basics: 'everything',
   cubes: 'cards',
   flag: 'move',
+  sleeves: 'cards',
   table: 'crown',
   replace: 'crown',
   reuid: 'crown',

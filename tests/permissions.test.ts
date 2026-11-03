@@ -19,6 +19,7 @@ const TABLE: [Action, Need][] = [
   ['addCards', 'cards'],
   ['removeCards', 'cards'],
   ['matAdd', 'move'], ['matRemove', 'move'],
+  ['sleeves', 'cards'],
   ['standClaim', 'everything'], ['standSpill', 'everything'],
   ['basics', 'everything'],
   ['table', 'crown'], ['replace', 'crown'], ['reuid', 'crown'],
