@@ -55,7 +55,7 @@ const GROUPS: [string, Line[]][] = [
     ['🎲', 'D', 'drop a die at the cursor, D D a d20; drag or select dice like cards; selected with cards, they move together, Alt keeps the layout · R rolls them · 1–9 or the wheel sets the number, 0 types one · C picks a color · Delete removes'],
     ['↩️', 'Ctrl + Z', 'undo the last move or action · again to redo it (one step)'],
     ['📋', 'Ctrl + C', 'copy the selection · Ctrl + V pastes it at the cursor, as a messy pile (any decklist pastes too)'],
-    ['💾', 'Ctrl + S', 'save · Ctrl + E exports · Ctrl + A selects all'],
+    ['💾', 'Ctrl + S', 'save to the last of the three save slots (Save opens them, and downloads a file) · Ctrl + E exports · Ctrl + A selects all'],
     ['⭕', 'Space', 'hold: the radial menu around the cursor; move toward an action and let go, further out for its variants. It acts where it opened, as the key would · a quick tap leaves it open to click · Esc closes'],
     ['❓', '?', 'this list'],
   ]],

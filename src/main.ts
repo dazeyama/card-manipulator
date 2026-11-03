@@ -25,6 +25,7 @@ import { PileEditor } from './ui/pileEditor';
 import { InspectPanel } from './ui/inspectPanel';
 import { ExportPanel } from './ui/exportPanel';
 import { confirmDialog, numberDialog } from './ui/confirm';
+import { SaveMenu } from './ui/saveMenu';
 import { Cursors } from './ui/cursors';
 import { Mats } from './mats';
 import { buildStandSection } from './ui/standTab';
@@ -1134,7 +1135,8 @@ async function newTable(): Promise<void> {
   store.setName('Untitled table');
   app.rig.reset(false);
 }
-keyboard.bind('ctrl+s', () => saveFile());
+// Ctrl + S: into the last save slot used (decision 359); the file is in the Save menu.
+keyboard.bind('ctrl+s', () => void saveMenu.quickSave());
 const fileBtn = (label: string, title: string, run: () => void) => {
   const b = h('button', { class: 'btn small', title }, label);
   b.addEventListener('click', run);
@@ -1143,7 +1145,9 @@ const fileBtn = (label: string, title: string, run: () => void) => {
 };
 fileBtn('New', 'Clear the table and start a new one', () => void newTable());
 fileBtn('Open…', 'Load a saved table file', () => void openFile());
-fileBtn('Save', 'Save the table as a file (Ctrl + S)', () => saveFile());
+const saveBtn = fileBtn('Save', 'Save the table in one of three slots in this browser, or download it as a file (Ctrl + S saves to the last slot)', () => saveMenu.toggle());
+// Three save slots in this browser, and the file download (decision 359). Loading one replaces the table: the crown's, in a room.
+const saveMenu = new SaveMenu(app, saveBtn, { download: () => saveFile(), canLoad: () => allowedNow('replace') });
 fileBtn('Export', 'Export the whole table as a decklist or CSV', () => exporter.open([...store.cards.keys()], store.name)).classList.add('export-trigger');
 // ?: the full controls list (decision 135).
 const help = new HelpPanel(hints, new CubeChips(app), app.blur);
