@@ -100,13 +100,7 @@ export class SpawnPanel {
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) void this.parseList(parse);
     });
     // Decks saved by sleeving them, under the box (decision 360).
-    const decks = buildYourDecks(this.app, {
-      options: () => this.options(),
-      edit: (list) => {
-        this.listText.value = list;
-        void this.parseList(parse);
-      },
-    });
+    const decks = buildYourDecks(this.app, { options: () => this.options() });
     return h('div', {}, this.listText, h('div', { class: 'row' }, parse, this.listSpawn, clear), this.listPreview, decks);
   }
 

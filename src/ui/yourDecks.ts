@@ -1,7 +1,7 @@
 // Your decks on the List tab (decision 360): every deck saved by sleeving it,
 // newest first, with its sleeve, card count and when it was saved. Spawn
 // brings one back in its sleeves as a neat face-down stack, ready to shuffle;
-// Edit puts its decklist in the text box; ✏️ renames it, 🗑 deletes it.
+// ✏️ renames it, 🗑 deletes it (no Edit, decision 369).
 
 import type { App } from '../app';
 import { parseDecklist } from '../io/decklist';
@@ -17,8 +17,6 @@ import { toast } from './toasts';
 export interface YourDecksDeps {
   /** The spawn panel's options, for where the deck lands. */
   options: () => SpawnOptions;
-  /** Put a decklist in the List tab's text box. */
-  edit: (list: string) => void;
 }
 
 export function buildYourDecks(app: App, deps: YourDecksDeps): HTMLElement {
@@ -38,14 +36,9 @@ export function buildYourDecks(app: App, deps: YourDecksDeps): HTMLElement {
       swatch.classList.add('art');
     } else swatch.style.background = d.sleeve;
     const spawn = h('button', { class: 'btn small primary', title: `Spawn ${d.name} in its sleeves, face down and stacked` }, 'Spawn');
-    const edit = h('button', { class: 'btn small', title: 'Put the decklist in the box above' }, 'Edit');
     const rename = h('button', { class: 'btn small ghost', title: 'Rename' }, '✏️');
     const drop = h('button', { class: 'btn small ghost', title: 'Delete this deck' }, '🗑');
     spawn.addEventListener('click', () => void spawnDeck(d, spawn));
-    edit.addEventListener('click', () => void (async () => {
-      const text = await deckList(d.id);
-      if (text) deps.edit(text);
-    })());
     rename.addEventListener('click', () => void (async () => {
       const name = (await textDialog('Rename the deck:', { value: d.name, ok: 'Rename', maxLength: 60 }))?.trim();
       if (!name || name === d.name) return;
@@ -62,7 +55,7 @@ export function buildYourDecks(app: App, deps: YourDecksDeps): HTMLElement {
       h('div', { class: 'deck-text' },
         h('div', { class: 'deck-name', title: d.name }, d.name),
         h('div', { class: 'muted small' }, `${d.cards.toLocaleString()} cards · ${savedAgo(d.savedAt, now)}`)),
-      h('div', { class: 'deck-btns' }, spawn, edit, rename, drop));
+      h('div', { class: 'deck-btns' }, spawn, rename, drop));
   };
 
   /** Spawn a saved deck: its cards looked up as a list's are, landing sleeved, face down, as a neat stack. */
