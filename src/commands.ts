@@ -108,10 +108,12 @@ export function land(app: App, landings: Landing[], opts: { stagger?: number; du
  * flips and, in a room, for others' (decision 294), so a card turning over
  * never cuts through its neighbors. `cards` are already turned in the model.
  */
-export function animateFlips(app: App, cards: Card[], shortest = false): void {
+export function animateFlips(app: App, cards: Card[], shortest = false, halfway?: (uid: string) => void): void {
   const sorted = [...cards].sort((a, b) => b.z - a.z);
   const step = Math.min(10, 600 / Math.max(1, sorted.length));
   sorted.forEach((c, i) => {
+    // Halfway through its turn, face down to the eye (Back side's whole turn, decision 370).
+    if (halfway) window.setTimeout(() => halfway(c.uid), i * step + 175);
     const pose = app.layer.pose(c.uid);
     if (!pose) return;
     // Turn to the new side: always the same way round, or the short way when
@@ -786,7 +788,12 @@ export class Commands {
     // In a room, cards on a stand this player may not touch are left out (ONLINE.md 6.3).
     uids = touchable(uids);
     const store = this.app.store;
-    const cards = uids.map((u) => store.cards.get(u)!).filter(Boolean).sort((a, b) => b.z - a.z);
+    const all = uids.map((u) => store.cards.get(u)!).filter(Boolean).sort((a, b) => b.z - a.z);
+    if (!all.length) return;
+    // A card showing its back side, sleeved and face up, turns back to its front (decision 370).
+    const backs = all.filter((c) => c.sleeve && c.raised && c.faceUp);
+    const cards = all.filter((c) => !backs.includes(c));
+    if (backs.length) this.turnFace(backs.map((c) => ({ uid: c.uid, raised: null })));
     if (!cards.length) return;
     store.moveCards(cards.map((c) => ({ uid: c.uid, faceUp: !c.faceUp })));
     animateFlips(this.app, cards, shortest);
@@ -794,31 +801,40 @@ export class Commands {
   }
 
   /**
-   * Shift + F (decision 360): a sleeved double-faced card comes up raised out of
-   * its sleeve, showing its back face to everyone, or goes back down to its
-   * front; an unsleeved one flips, as F does. Says so when none can.
+   * Back side's flips (decision 370): each card makes a whole turn, over and up
+   * again, and its new face is drawn halfway, while it lies face down to the eye.
+   */
+  private turnFace(moves: CardMove[]): void {
+    const store = this.app.store;
+    const cards = moves.map((m) => store.cards.get(m.uid)).filter((c): c is Card => !!c);
+    for (const c of cards) this.app.lookHeld.add(c.uid);
+    this.app.showGesture('flip');
+    store.moveCards(moves);
+    animateFlips(this.app, cards, false, (uid) => this.app.showLook(uid));
+    store.events.emit('settled', cards.map((c) => c.uid));
+  }
+
+  /**
+   * Shift + F, Back side (decisions 360, 365, 370): a sleeved double-faced card
+   * comes face up showing its back face to everyone, or turns back to its front,
+   * a whole turn either way; an unsleeved one flips, as F does. Says so when none can.
    */
   raise(uids: string[] = this.sel): void {
     uids = touchable(uids);
     const store = this.app.store;
     const moves: CardMove[] = [];
-    const turned: Card[] = [];
     for (const u of uids) {
       const c = store.cards.get(u);
       if (!c) continue;
       const to = raiseOf(c, !!c.dfc || !!store.recordOf(c)?.back_image_small);
       if (!to) continue;
       moves.push({ uid: u, faceUp: to.faceUp, ...(c.sleeve ? { raised: to.raised } : {}) });
-      turned.push(c);
     }
     if (!moves.length) {
       if (uids.length) toast(uids.some((u) => store.cards.get(u) && !store.canSee(store.cards.get(u)!)) ? 'Flip it face up first to see its back side' : 'Not double-faced', 'warn', 1800);
       return;
     }
-    this.app.showGesture('flip');
-    store.moveCards(moves);
-    animateFlips(this.app, turned);
-    store.events.emit('settled', turned.map((c) => c.uid));
+    this.turnFace(moves);
   }
 
   /**

@@ -620,6 +620,20 @@ export class DragController {
   flipHeld(): void {
     if (!this.active || !this.held.length) return;
     const store = this.app.store;
+    // Held cards all showing their back side turn back to their fronts, a whole turn in the hand (decision 370).
+    if (this.held.every((c) => {
+      const k = store.cards.get(c.uid);
+      return !!k?.sleeve && !!k.raised && k.faceUp;
+    })) {
+      for (const c of this.held) this.app.lookHeld.add(c.uid);
+      store.moveCards(this.held.map((c) => ({ uid: c.uid, raised: null })));
+      for (const c of this.held) {
+        const pose = this.app.layer.pose(c.uid);
+        if (pose) c.rollTo = Math.round(pose.roll / (2 * Math.PI)) * 2 * Math.PI + 2 * Math.PI;
+        window.setTimeout(() => this.app.showLook(c.uid), 150);
+      }
+      return;
+    }
     this.reverseHeld();
     store.moveCards(this.held.map((c) => ({ uid: c.uid, faceUp: !store.cards.get(c.uid)!.faceUp })));
     for (const c of this.held) {

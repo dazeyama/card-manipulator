@@ -32,7 +32,7 @@ const GROUPS: [string, Line[]][] = [
   ]],
   ['Keys', [
     ['📚', 'S', 'stack · S S shuffles'],
-    ['🃏', 'F', 'flip · F F faces all up · Shift + F turns a sleeved double-faced card to its back side, face up, and again back to the front · U takes sleeves off'],
+    ['🃏', 'F', 'flip · F F faces all up · Shift + F turns a sleeved double-faced card to its back side, face up, and Shift + F or F turns it back to the front · U takes sleeves off'],
     ['🔃', 'R', 'turn 90° · R R stands upright'],
     ['🧹', 'T', 'tidy'],
     ['🪟', 'X', 'then click to spread there, or drag a box to fit them in it · X again switches to the reverse spread, each row right to left so the mana costs show, and back · X on a spread restacks it'],

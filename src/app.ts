@@ -195,11 +195,24 @@ export class App {
     this.layer.setSleeve(card.uid, rim, !!card.raised);
   }
 
+  /**
+   * Cards turning to their other face mid-flip (Back side, decision 370): their
+   * new face is drawn halfway through the turn, when it is out of sight, by
+   * `showLook`, not as the model changes.
+   */
+  readonly lookHeld = new Set<string>();
+
+  /** Draw a held card's face as the model has it now (halfway through its flip). */
+  showLook(uid: string): void {
+    this.lookHeld.delete(uid);
+    this.onMoved([uid]);
+  }
+
   /** Cards that moved: any whose sleeve changed is drawn afresh. */
   private onMoved(uids: string[]): void {
     for (const uid of uids) {
       const card = this.store.cards.get(uid);
-      if (!card) continue;
+      if (!card || this.lookHeld.has(uid)) continue;
       const look = card.sleeve ? `${card.sleeve}|${card.raised ? 1 : 0}` : '';
       if (look === (this.sleeveDrawn.get(uid) ?? '')) continue;
       const { front, back } = this.slotsFor(card);
