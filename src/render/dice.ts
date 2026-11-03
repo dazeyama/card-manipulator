@@ -288,7 +288,9 @@ export class DiceLayer {
     const d = this.drawn.get(uid);
     if (!d) return;
     d.group.position.set(die.x, die.y, die.z);
-    d.group.quaternion.copy(dieTurn(die.value, die.kind === 'd20' ? d20Yaw(die.side) : die.yaw, die.kind));
+    // A sleeve pack resting tipped keeps the turn physics left it in (decision 362).
+    if (die.rest) d.group.quaternion.set(...die.rest);
+    else d.group.quaternion.copy(dieTurn(die.value, die.kind === 'd20' ? d20Yaw(die.side) : die.yaw, die.kind));
   }
 
   /** Draw a die at any pose (a drag or a roll in progress). */

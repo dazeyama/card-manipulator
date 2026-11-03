@@ -26,6 +26,8 @@ export interface Pose {
 export const CORNER_R = 3;
 /** A sleeve's rim round a face-up card, mm, and how far a raised card stands out of its sleeve (decision 360). */
 const SLEEVE_RIM = 1.3;
+/** A sleeve's corner radius, mm: square to the eye (decision 362). */
+const SLEEVE_CORNER = 0.25;
 const RAISED_BY = 11;
 
 interface Entry {
@@ -120,9 +122,9 @@ varying vec3 vWorldP;
 const vec2 CARD_HALF = vec2(${(CARD_W / 2).toFixed(3)}, ${(CARD_H / 2).toFixed(3)});
 const float CORNER = ${CORNER_R.toFixed(3)};
 
-float cardDist(vec2 p) {
-  vec2 q = abs(p) - (CARD_HALF - CORNER);
-  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - CORNER;
+float cardDist(vec2 p, float corner) {
+  vec2 q = abs(p) - (CARD_HALF - corner);
+  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - corner;
 }
 
 vec4 sampleSlot(vec3 slot, vec2 uv) {
@@ -133,7 +135,8 @@ ${FOIL_GLSL}
 `;
 
 const mapFragment = /* glsl */ `
-float cd = cardDist(vLocal.xy);
+// A sleeve is cut square: sleeved cards have sharp corners (decision 362).
+float cd = cardDist(vLocal.xy, vSleeve.w > 0.5 ? ${SLEEVE_CORNER.toFixed(2)} : CORNER);
 // Edge faces lie exactly on the outline (cd = 0): give them a little slack or
 // rounding noise punches holes in them.
 if (cd > (abs(vFace) < 0.5 ? 0.05 : 0.0)) discard;

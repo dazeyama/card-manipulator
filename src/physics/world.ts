@@ -18,6 +18,7 @@ import { CARD_H, CARD_T, CARD_W, type Mat } from '../state/types';
 import { isStand, LIP_D, LIP_H, STAND_D, STAND_W, standProfile, standW, standWorld, unrollPoint } from '../state/stand';
 import { standWhyNot } from '../online/guard';
 import { D20_RADIUS, d20Geometry, DIE_SIZE, dieSize, type DieKind } from '../state/dice';
+import { PACK_H, PACK_T, PACK_W } from '../state/sleeves';
 import type { Pose } from '../render/cards';
 
 // Rapier (with its WASM inlined) is loaded on demand so the table shows first.
@@ -212,11 +213,15 @@ export class Physics {
     }
     for (const d of app.store.dice.values()) {
       if (skip.has(d.uid) || d.x < minX || d.x > maxX || d.y < minY || d.y > maxY) continue;
+      // A sleeve pack is a thick box, lying as it rests, tipped too (decision 362).
+      const pack = d.kind === 'pack';
+      const [hx, hy, hz] = pack ? [PACK_W / 2, PACK_H / 2, PACK_T / 2] : [dieSize(d.kind) / 2, dieSize(d.kind) / 2, dieSize(d.kind) / 2];
+      const rot = d.rest ? { x: d.rest[0], y: d.rest[1], z: d.rest[2], w: d.rest[3] } : { x: 0, y: 0, z: Math.sin(d.yaw / 2), w: Math.cos(d.yaw / 2) };
       out.push(this.world!.createCollider(
-        RAPIER.ColliderDesc.cuboid((dieSize(d.kind) / 2) * MM, (dieSize(d.kind) / 2) * MM, (dieSize(d.kind) / 2) * MM)
+        RAPIER.ColliderDesc.cuboid(hx * MM, hy * MM, hz * MM)
           .setTranslation(d.x * MM, d.y * MM, d.z * MM)
-          .setRotation({ x: 0, y: 0, z: Math.sin(d.yaw / 2), w: Math.cos(d.yaw / 2) })
-          .setFriction(0.5),
+          .setRotation(rot)
+          .setFriction(pack ? 0.6 : 0.5),
       ));
     }
     return out;
@@ -262,6 +267,49 @@ export class Physics {
         body,
       );
       roll.bodies.push({ uid: d.uid, body });
+    }
+    this.rolls.push(roll);
+    return true;
+  }
+
+  /**
+   * Let sleeve packs fall (decision 362): from where they are drawn, with the
+   * hand's motion and a little tumble, onto cards, other packs, dice and stands,
+   * like very thick cards. Steps, draws and finishes as a roll does.
+   */
+  dropPacks(packs: { uid: string; at: THREE.Vector3; q: THREE.Quaternion; vx: number; vy: number }[], pose: Roll['pose'], done: Roll['done']): boolean {
+    const world = this.world;
+    if (!world || !packs.length || this.bodyCount + packs.length > MAX_BODIES) return false;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const p of packs) {
+      minX = Math.min(minX, p.at.x - 250);
+      maxX = Math.max(maxX, p.at.x + 250);
+      minY = Math.min(minY, p.at.y - 250);
+      maxY = Math.max(maxY, p.at.y + 250);
+    }
+    const roll: Roll = { bodies: [], statics: this.staticsAround(minX, minY, maxX, maxY, new Set(packs.map((p) => p.uid))), started: performance.now(), pose, done };
+    const r = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
+    for (const p of packs) {
+      // The hand's motion carries on, a share of it, with a small tumble.
+      const speed = Math.min(1.2, Math.hypot(p.vx, p.vy) * MM * 0.6);
+      const dir = Math.atan2(p.vy, p.vx);
+      const body = world.createRigidBody(
+        RAPIER.RigidBodyDesc.dynamic()
+          .setTranslation(p.at.x * MM, p.at.y * MM, p.at.z * MM)
+          .setRotation({ x: p.q.x, y: p.q.y, z: p.q.z, w: p.q.w })
+          .setLinvel(Math.cos(dir) * speed, Math.sin(dir) * speed, -0.15)
+          .setAngvel({ x: r(-2.5, 2.5), y: r(-2.5, 2.5), z: r(-1.5, 1.5) })
+          .setLinearDamping(0.5)
+          .setAngularDamping(1.2)
+          .setCcdEnabled(true)
+          .setCanSleep(true),
+      );
+      world.createCollider(
+        RAPIER.ColliderDesc.roundCuboid((PACK_W / 2 - 1) * MM, (PACK_H / 2 - 1) * MM, (PACK_T / 2 - 1) * MM, 1 * MM)
+          .setFriction(0.6).setRestitution(0.12).setDensity(400),
+        body,
+      );
+      roll.bodies.push({ uid: p.uid, body });
     }
     this.rolls.push(roll);
     return true;

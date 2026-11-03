@@ -17,7 +17,7 @@ import { outboxOf } from './online/outbox';
 import { snapYaw } from './state/piles';
 import { isStand, standHeightAt } from './state/stand';
 import { CARD_H, CARD_T, CARD_W } from './state/types';
-import { ART_RIM, DEFAULT_SLEEVE, isPack, PACK_H, PACK_T } from './state/sleeves';
+import { ART_RIM, DEFAULT_SLEEVE, isPack, PACK_H, PACK_T, PACK_W } from './state/sleeves';
 
 /** Held dice ride this far above what is under them, mm. */
 const CARRY = 16;
@@ -259,10 +259,72 @@ export class Dice {
     });
     for (const m of this.app.store.mats.values()) if (isStand(m)) top = Math.max(top, standHeightAt(m, x, y));
     for (const d of this.app.store.dice.values()) {
-      if (skip.has(d.uid) || Math.abs(d.x - x) > dieSize(d.kind) || Math.abs(d.y - y) > dieSize(d.kind)) continue;
+      if (skip.has(d.uid)) continue;
+      if (isPack(d)) {
+        // A sleeve pack's whole box, turned as it lies (decision 362).
+        const dx = x - d.x, dy = y - d.y;
+        const c = Math.cos(d.yaw), s = Math.sin(d.yaw);
+        if (Math.abs(dx * c + dy * s) > PACK_W / 2 + reach * 0.5 || Math.abs(-dx * s + dy * c) > PACK_H / 2 + reach * 0.5) continue;
+        top = Math.max(top, d.z + PACK_T / 2);
+        continue;
+      }
+      if (Math.abs(d.x - x) > dieSize(d.kind) || Math.abs(d.y - y) > dieSize(d.kind)) continue;
       top = Math.max(top, d.z + dieSize(d.kind) / 2);
     }
     return top;
+  }
+
+  /**
+   * Sleeve packs fall like very thick cards (decision 362): through physics
+   * from where they are drawn, onto cards, packs and dice, tumbling a little.
+   * Where each comes to rest it stays, tipped if it rests on an edge. Without
+   * physics they land flat on what is under them.
+   */
+  private fall(packs: Die[]): void {
+    if (!packs.length) return;
+    const store = this.app.store;
+    const flat = () => {
+      for (const d of packs) {
+        this.busy.delete(d.uid);
+        this.layer.carried.delete(d.uid);
+      }
+      store.setDice(packs.map((d) => this.laid({ ...d, z: this.surfaceAt(d.x, d.y, new Set([d.uid])) + PACK_T / 2 })));
+    };
+    const physics = this.app.physics;
+    const start = packs.map((d) => {
+      const drawn = this.layer.drawnAt(d.uid);
+      const sw = this.sway.get(d.uid);
+      return {
+        uid: d.uid,
+        at: drawn ? drawn.position.clone() : new THREE.Vector3(d.x, d.y, d.z + 25),
+        q: drawn ? drawn.quaternion.clone() : dieTurn(1, d.yaw, 'pack'),
+        vx: sw?.vx ?? 0,
+        vy: sw?.vy ?? 0,
+      };
+    });
+    const ok = physics?.dropPacks(start, (uid, at, q) => this.layer.pose(uid, at, q), (rest) => {
+      const moved: Die[] = [];
+      for (const r of rest) {
+        this.busy.delete(r.uid);
+        this.layer.carried.delete(r.uid);
+        const d = store.dice.get(r.uid);
+        if (!d) continue;
+        // Flat enough lies flat, turned as it came to rest; otherwise it keeps its tip.
+        const up = new THREE.Vector3(0, 0, 1).applyQuaternion(r.q);
+        const ax = new THREE.Vector3(1, 0, 0).applyQuaternion(r.q);
+        const { rest: _was, ...plain } = d;
+        // Lying flat, it sits on what is under it (a fall cut short in a slow background tab never hangs in the air).
+        moved.push(up.z > 0.995
+          ? this.laid({ ...plain, x: r.x, y: r.y, z: this.surfaceAt(r.x, r.y, new Set([r.uid])) + PACK_T / 2, yaw: Math.atan2(ax.y, ax.x) })
+          : { ...plain, x: r.x, y: r.y, z: r.z, yaw: Math.atan2(ax.y, ax.x), rest: [r.q.x, r.q.y, r.q.z, r.q.w] });
+      }
+      store.setDice(moved);
+    });
+    if (!ok) return flat();
+    for (const d of packs) {
+      this.busy.add(d.uid);
+      this.layer.carried.add(d.uid);
+    }
   }
 
   /**
@@ -290,6 +352,9 @@ export class Dice {
       ...(sleeve.art ? { art: sleeve.art, ...(sleeve.artName ? { artName: sleeve.artName } : {}), color: ART_RIM } : { color: sleeve.color ?? DEFAULT_SLEEVE }),
     });
     this.app.store.setDice([pack]);
+    // Dropped in from a little above, so it settles onto whatever is there (decision 362).
+    this.layer.pose(pack.uid, { x: pack.x, y: pack.y, z: pack.z + 30 }, dieTurn(1, pack.yaw, 'pack'));
+    this.fall([pack]);
     return pack.uid;
   }
 
@@ -400,7 +465,8 @@ export class Dice {
    */
   private pickUp(grab: { x: number; y: number }, lead: string | null, alt: boolean, aside: { x: number; y: number }): HeldDie[] {
     const store = this.app.store;
-    const held = [...this.selected].map((u) => store.dice.get(u)).filter((d): d is Die => !!d && !this.busy.has(d.uid)).map((d) => ({ uid: d.uid, ox: d.x - grab.x, oy: d.y - grab.y, die: { ...d } }));
+    // A tipped sleeve pack comes up level in the hand (decision 362).
+    const held = [...this.selected].map((u) => store.dice.get(u)).filter((d): d is Die => !!d && !this.busy.has(d.uid)).map(({ rest: _rest, ...d }) => ({ uid: d.uid, ox: d.x - grab.x, oy: d.y - grab.y, die: { ...d } }));
     // Picked up from the other side of the table: it turns round to face you (decision 267),
     // but not with Alt, which moves them exactly as they lay (decision 275).
     const side = this.app.side;
@@ -566,7 +632,9 @@ export class Dice {
         this.carrying = null;
         return;
       }
-      const moved = held.map((h) => {
+      // Sleeve packs let go fall like thick cards (decision 362); dice land at once.
+      const falling = p ? held.filter((h) => isPack(h.die)) : [];
+      const moved = held.filter((h) => !falling.includes(h)).map((h) => {
         this.busy.delete(h.uid);
         this.layer.carried.delete(h.uid);
         if (!p) return h.die;
@@ -575,7 +643,8 @@ export class Dice {
       });
       held = null;
       this.carrying = null;
-      store.setDice(moved);
+      if (moved.length) store.setDice(moved);
+      this.fall(falling.map((h) => ({ ...h.die, x: p!.x + h.ox, y: p!.y + h.oy })));
     };
     return {
       kind: 'custom',

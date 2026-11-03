@@ -34,6 +34,11 @@ export interface Die {
   /** A sleeve pack of art sleeves (decision 360): the art crop's URL, and the card's name for the hint. */
   art?: string;
   artName?: string;
+  /**
+   * A sleeve pack resting tipped, on another pack or an edge (decision 362):
+   * its whole turn as a quaternion (x, y, z, w), as physics left it. Unset, it lies flat, turned by `yaw`.
+   */
+  rest?: [number, number, number, number];
 }
 
 /** White, the six-sided dice's color unless chosen. */
