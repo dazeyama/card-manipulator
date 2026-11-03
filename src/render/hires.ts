@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import type { App } from '../app';
 import { visibleShare } from '../state/piles';
 import { CARD_H, CARD_T, CARD_W } from '../state/types';
-import { FOIL_GLSL } from './cards';
+import { FOIL_GLSL, SLEEVE_RIM } from './cards';
 import { ImageLoader } from './images';
 
 /** How close-up images behave; the graphics mode sets these (decision 152). */
@@ -52,6 +52,7 @@ export class HiRes {
   private readonly e = new THREE.Euler(0, 0, 0, 'ZXY');
   private readonly p = new THREE.Vector3();
   private readonly one = new THREE.Vector3(1, 1, 1);
+  private readonly inSleeve = new THREE.Matrix4().makeScale((CARD_W - 2 * SLEEVE_RIM) / CARD_W, (CARD_H - 2 * SLEEVE_RIM) / CARD_H, 1);
 
   constructor(private readonly app: App) {
     this.geometry = new THREE.PlaneGeometry(CARD_W - INSET * 2, CARD_H - INSET * 2);
@@ -100,6 +101,8 @@ export class HiRes {
       this.e.set(pose.tiltX, pose.roll + pose.tiltY, pose.yaw, 'ZXY');
       this.q.setFromEuler(this.e);
       this.m.compose(this.p, this.q, this.one).multiply(this.lift);
+      // In a sleeve the card is a rim smaller all round (decision 363); raised, it is half out at full size.
+      if (card.sleeve && !card.raised) this.m.multiply(this.inSleeve);
       o.mesh.matrix.copy(this.m);
       // Only while the front faces up; the small back image is fine for backs.
       o.mesh.visible = Math.cos(pose.roll) > 0.2;
