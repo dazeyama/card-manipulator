@@ -8,7 +8,7 @@ import type { CardLayer } from './cards';
 import { ImageLoader } from './images';
 import { HIDDEN } from '../../shared/table';
 import { ART_RIM, isArtSleeve } from '../state/sleeves';
-import { sleeveCanvas } from './sleeveArt';
+import { sleeveCanvas, sleeveTextureReady, whenSleeveTexture } from './sleeveArt';
 
 export class CardImages {
   readonly loader = new ImageLoader(IMG_W, IMG_H);
@@ -71,18 +71,24 @@ export class CardImages {
     let slot = this.atlas.get(key);
     if (slot) return slot;
     slot = this.atlas.allocate(key);
+    const s = slot;
     if (!isArtSleeve(sleeve)) {
-      this.atlas.draw(slot, sleeveCanvas(IMG_W, IMG_H, sleeve));
+      this.atlas.draw(s, sleeveCanvas(IMG_W, IMG_H, sleeve));
+      // Drawn again with the matte finish once it arrives (decision 366).
+      if (!sleeveTextureReady()) whenSleeveTexture(() => this.atlas.draw(s, sleeveCanvas(IMG_W, IMG_H, sleeve)));
       return slot;
     }
-    this.atlas.draw(slot, sleeveCanvas(IMG_W, IMG_H, ART_RIM));
-    const s = slot;
+    this.atlas.draw(s, sleeveCanvas(IMG_W, IMG_H, ART_RIM));
     this.waiting.add(key);
     this.loader
       .loadCover(sleeve)
       .then((bmp) => {
         this.atlas.draw(s, sleeveCanvas(IMG_W, IMG_H, ART_RIM, bmp));
-        bmp.close();
+        if (sleeveTextureReady()) bmp.close();
+        else whenSleeveTexture(() => {
+          this.atlas.draw(s, sleeveCanvas(IMG_W, IMG_H, ART_RIM, bmp));
+          bmp.close();
+        });
       })
       .catch((err) => console.warn(String(err)))
       .finally(() => this.waiting.delete(key));

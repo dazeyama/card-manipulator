@@ -15,7 +15,7 @@ import { outlineMaterial } from './standMesh';
 import { remoteHeld } from '../state/remoteHeld';
 import { ART_RIM, DEFAULT_SLEEVE, PACK_H, PACK_T, PACK_W } from '../state/sleeves';
 import { ImageLoader } from './images';
-import { sleeveCanvas } from './sleeveArt';
+import { sleeveCanvas, sleeveTextureReady, whenSleeveTexture } from './sleeveArt';
 
 /** Pip spots for each number, on a 3 x 3 grid from -1 to 1. */
 const PIPS: Record<number, [number, number][]> = {
@@ -197,14 +197,21 @@ export class DiceLayer {
     const color = die.color ?? DEFAULT_SLEEVE;
     const side = new THREE.MeshLambertMaterial({ color: new THREE.Color(color).multiplyScalar(0.85) });
     const top = new THREE.MeshLambertMaterial({ map: canvasTexture(sleeveCanvas(292, 408, color)) });
+    const paint = (art?: ImageBitmap) => {
+      top.map?.dispose();
+      top.map = canvasTexture(sleeveCanvas(292, 408, art ? ART_RIM : color, art));
+      top.needsUpdate = true;
+    };
     if (die.art) {
       void this.packArt.loadCover(die.art).then((bmp) => {
-        top.map?.dispose();
-        top.map = canvasTexture(sleeveCanvas(292, 408, ART_RIM, bmp));
-        top.needsUpdate = true;
-        bmp.close();
+        paint(bmp);
+        // With the matte finish once it arrives (decision 366).
+        whenSleeveTexture(() => {
+          paint(bmp);
+          bmp.close();
+        });
       }).catch((err) => console.warn(String(err)));
-    }
+    } else if (!sleeveTextureReady()) whenSleeveTexture(() => paint());
     // Box faces: +x, -x, +y, -y, +z (the top), -z.
     return [side, side, side, side, top, side];
   }
